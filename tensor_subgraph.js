@@ -27,7 +27,9 @@ qk:["Score GEMM","Scores=Q@Kt/sqrt(d)","[B,hq,S,d]×[B,hq,d,T]","[B,hq,S,T]","at
 mask:["Mask / broadcast","Scores'=Scores+Mask","[B,hq,S,T]","[B,hq,S,T]","gate"],
 softmax:["Softmax","A=softmax(Scores',-1)","[B,hq,S,T]","[B,hq,S,T]","attn"],
 av:["Attention GEMM","O=A@V","[B,hq,S,T]×[B,hq,T,d]","[B,hq,S,d]","ffn"],
-merge:["Merge heads","O.permute(...).reshape(B,S,hq*d)","[B,hq,S,d]","[B,S,hq*d]","norm"],
+layout:["Head axis reorder","O.permute(0,2,1,3)","[B,hq,S,d]","[B,S,hq,d]","norm"],
+contiguous:["Contiguous boundary","O.contiguous() if needed","[B,S,hq,d]","[B,S,hq,d]","norm"],
+merge:["Concat heads / reshape","O.reshape(B,S,hq*d)","[B,S,hq,d]","[B,S,hq*d]","norm"],
 wo:["Output GEMM","Y=OWo","[B,S,hq*d]","[B,S,H]","ffn"],
 residual:["Residual add","Y=X+Attention(X)","[B,S,H]","[B,S,H]","residual"],
 ffnorm:["FFN norm","U=Norm(X)","[B,S,H]","[B,S,H]","norm"],
@@ -71,7 +73,7 @@ attention:[
 ["k","kview"],["kview","kperm"],["kperm","krope"],["krope","kcache"],["kcache","kexpand"],["kexpand","kt"],
 ["v","vview"],["vview","vperm"],["vperm","vcache"],["vcache","vexpand"],
 ["qrope","qk"],["kt","qk"],["qk","mask"],["mask","softmax"],["softmax","av"],["vexpand","av"],
-["av","merge"],["merge","wo"],["wo","residual"],["x","residual"]],
+["av","layout"],["layout","contiguous"],["contiguous","merge"],["merge","wo"],["wo","residual"],["x","residual"]],
 ffn:[["x","ffnorm"],["ffnorm","gmm"],["ffnorm","umm"],["gatew","gmm"],["upw","umm"],["gmm","silu"],["silu","mul"],["umm","mul"],["mul","down"],["down","ffnres"],["x","ffnres"]],
 gpt:[["x","ffnorm"],["ffnorm","w1"],["w1","gelu"],["gelu","w2"],["w2","ffnres"],["x","ffnres"]],
 adaln:[["x","norm"],["c","cw"],["cw","split"],["split","shift"],["norm","shift"],["shift","residual"],["x","residual"]]
@@ -83,7 +85,7 @@ graphs.dit=[
 ["q","qview"],["qview","qperm"],["qperm","qk"],
 ["k","kview"],["kview","kperm"],["kperm","kt"],["kt","qk"],
 ["v","vview"],["vview","vperm"],["vperm","av"],
-["qk","mask"],["mask","softmax"],["softmax","av"],["av","merge"],["merge","wo"],["wo","residual"],["x","residual"]
+["qk","mask"],["mask","softmax"],["softmax","av"],["av","layout"],["layout","contiguous"],["contiguous","merge"],["merge","wo"],["wo","residual"],["x","residual"]
 ];
 graphs.moe=[
 ["x","routermm"],["routerw","routermm"],["routermm","topk"],["topk","dispatch"],["x","dispatch"],
@@ -104,7 +106,9 @@ mask:"mask 的形状、广播规则与 −∞ 数值处理决定注意力可见�
 softmax:"FlashAttention 等融合实现可避免实体化完整 Scores/Softmax 矩阵。",
 qk:"QKᵀ 是匹配路径；和 A·V 的内容聚合路径要分开分析。",
 av:"A·V 是内容路径；物理实现可能和 QKᵀ、Softmax 同在一个 fused kernel。",
-merge:"可能需要 contiguous() 才能以目标 stride reshape；需看真实实现。",
+layout:"交换序列轴和头轴通常产生非连续视图，不应直接视为物理复制。",
+contiguous:"这里是可选内存布局边界：若实际执行不需要复制，就不应计入额外 kernel。",
+merge:"多头 concat 是数学上的轴合并；真实实现常用 reshape 而不是 torch.cat。",
 gmm:"Gate 与 Up 两个 GEMM 在某些架构可合并为单次更宽的投影。",
 mul:"这是逐元素乘法而不是 GEMM；broadcast 形状需要验证。",
 down:"稀疏化后须检查 Down 投影的输出误差，而不仅是中间通道激活。",
