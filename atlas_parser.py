@@ -101,6 +101,9 @@ class Index:
         for file in files:
             if self.count>=MAX_FILES:self.errors.append("file cap reached");break
             if any(v in file.parts for v in (".git","__pycache__",".venv")):continue
+            if file.is_symlink():
+                self.errors.append(str(file)+": symlink skipped")
+                continue
             try:
                 if file.stat().st_size>2_000_000:self.errors.append(str(file)+": skipped >2MB");continue
                 tree=ast.parse(file.read_text(encoding="utf8"),filename=str(file))
