@@ -54,6 +54,37 @@ def _shape_text(items):
     ) or "∅"
 
 
+# Operator semantics are established library math, not recovered model design intent.
+# We never assign a Q/K/V or FFN role merely because an ATen matrix multiply appeared.
+_MATH = {
+    "mm": ("Y = A @ B", "2-D matrix multiplication"),
+    "bmm": ("Y[b] = A[b] @ B[b]", "batched matrix multiplication"),
+    "matmul": ("Y = matmul(A,B)", "broadcast-aware matrix multiplication"),
+    "addmm": ("Y = beta*C + alpha*(A @ B)", "affine matrix multiplication"),
+    "linear": ("Y = X @ W.T + b (optional)", "learned affine transform"),
+    "view": ("Y = view(X,new_shape)", "view with layout constraints"),
+    "reshape": ("Y = reshape(X,new_shape)", "logical shape change, possible copy"),
+    "permute": ("Y = permute(X,axes)", "reorders logical tensor axes"),
+    "transpose": ("Y = transpose(X,axis1,axis2)", "swaps two logical axes"),
+    "contiguous": ("Y = contiguous(X)", "layout/materialization boundary"),
+    "cat": ("Y = concat(X_i,dim)", "concatenates tensors on an axis"),
+    "_softmax": ("softmax(X,dim)", "normalized exponential weights"),
+    "softmax": ("softmax(X,dim)", "normalized exponential weights"),
+    "gelu": ("Y = GELU(X)", "elementwise GELU activation"),
+    "silu": ("Y = X*sigmoid(X)", "elementwise SiLU activation"),
+    "mul": ("Y = A * B", "elementwise multiplication (broadcasting possible)"),
+    "add": ("Y = A + B", "elementwise addition (broadcasting possible)"),
+    "div": ("Y = A / B", "elementwise division"),
+    "sum": ("Y = sum(X, axes)", "tensor reduction"),
+    "mean": ("Y = mean(X, axes)", "tensor reduction"),
+    "masked_fill": ("Y = where(mask, value, X)", "mask application"),
+    "embedding": ("Y = table[index]", "indexed lookup, not dense GEMM"),
+    "layer_norm": ("Y = gamma*(X-mean)/sqrt(var+eps)+beta", "channel normalization"),
+    "native_layer_norm": ("Y = normalized X (plus statistics)", "layer normalization and stats"),
+    "detach": ("Y = stop_gradient(X)", "autograd history boundary"),
+}
+
+
 class _DispatchRecorder(TorchDispatchMode):
     def __init__(self, trace):
         super().__init__()
@@ -167,10 +198,11 @@ class RuntimeTrace:
         key = label.lower()
         is_matmul = key in {"mm", "addmm", "bmm", "matmul", "linear"}
         category = "attn" if is_matmul else ("norm" if key in {"view", "reshape", "permute", "transpose", "contiguous"} else "ffn")
+        formula, intent = _MATH.get(key, (op, "ATen operator executed; semantics not annotated"))
         eid = self._add(label + " · " + self._phase, category, parent=parent,
-                        inputs=in_meta, outputs=out_meta, formula=op,
-                        purpose=("Observed matrix operation" if is_matmul
-                                 else "Observed ATen operator"),
+                        inputs=in_meta, outputs=out_meta, formula=formula,
+                        purpose=intent,
+                        explanation_certainty=("operator_semantic_rule" if key in _MATH else "unannotated"),
                         aten_op=op)
         if eid is None:
             return
