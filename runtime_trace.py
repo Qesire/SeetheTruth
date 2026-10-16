@@ -104,6 +104,7 @@ class RuntimeTrace:
                               for name, module in model.named_modules()}
         self._parameter_names = {id(p): name for name, p in model.named_parameters()}
         self._root_id = None
+        self._parameter_grad_ids = {}
 
     def _add(self, label, category, *, parent=None, inputs=(), outputs=(), **fields):
         if len(self.nodes) >= self.max_events:
@@ -219,6 +220,8 @@ class RuntimeTrace:
                                     purpose="Observed parameter gradient hook.",
                                     formula="∂L/∂" + name,
                                     parameter=name, phase="backward")
+                    if mid is not None:
+                        self._parameter_grad_ids[name] = mid
                     return g
                 self._handles.append(p.register_hook(record_parameter_grad))
         self._dispatch = _DispatchRecorder(self)
@@ -247,11 +250,13 @@ class RuntimeTrace:
             changed = [self._parameter_names.get(id(p), "<unregistered>")
                        for group in optimizer.param_groups for p in group["params"]
                        if p._version != versions[id(p)]]
-            self._add("Optimizer " + type(optimizer).__name__, "head",
+            step_id = self._add("Optimizer " + type(optimizer).__name__, "head",
                       parent=self._root_id, formula=type(optimizer).__name__ + ".step",
                       purpose="Explicit optimizer.step() completed; modified parameter versions observed.",
                       optimizer=type(optimizer).__name__,
                       updated_parameters=changed[:64], updated_count=len(changed))
+            for name in changed:
+                self._link(self._parameter_grad_ids.get(name), step_id, "data")
             return result
         finally:
             self._phase = prev
