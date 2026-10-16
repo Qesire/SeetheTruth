@@ -17,7 +17,7 @@ jobs:
           node-version: '22'
       - name: Python syntax and tests
         run: |
-          python -m py_compile atlas_parser.py atlas_server.py
+          python -m py_compile atlas_parser.py atlas_server.py runtime_trace.py examples/runtime_trace_demo.py
           python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Tensor graph JavaScript syntax
         run: |
@@ -39,4 +39,33 @@ jobs:
           assert "SeetheTruthTensor.build" in s
           assert "SeetheTruthTensor.detail" in s
           print('UI integration anchors pass')
+          PY
+
+  runtime-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch for integration test
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Runtime forward backward optimizer tests
+        run: python -m unittest discover -s tests -p 'test_runtime_trace.py' -v
+      - name: Smoke demo and validate graph schema
+        run: |
+          python examples/runtime_trace_demo.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          g=json.loads(Path('examples/runtime_trace_demo.json').read_text())
+          assert g['schema']=='model-atlas-graph-v1'
+          assert g['meta']['runtime_validated']
+          assert any(n['phase']=='backward' for n in g['nodes'])
+          assert any(n.get('updated_count',0)>0 for n in g['nodes'])
+          assert len(g['nodes'])<=900 and len(g['edges'])<=3500
+          print('Runtime graph frontend contract PASS',len(g['nodes']),len(g['edges']))
           PY
