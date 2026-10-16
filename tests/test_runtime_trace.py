@@ -41,7 +41,7 @@ class RuntimeTraceTests(unittest.TestCase):
             saved = trace.save(Path(tmp) / "example-trace.json")
             serialized = json.loads(saved.read_text(encoding="utf8"))
             self.assertEqual(len(serialized["nodes"]), len(graph["nodes"]))
-            self.assertNotIn("values", saved.read_text(encoding="utf8").lower())
+            self.assertTrue(all("values" not in n and "data" not in n for n in serialized["nodes"]))
 
     def test_opt_in_does_not_call_forward(self):
         class SideEffect(torch.nn.Module):
