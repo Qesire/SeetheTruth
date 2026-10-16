@@ -23,6 +23,13 @@ jobs:
         run: |
           node --check tensor_subgraph.js
           node tests/tensor_graph_check.js
+          node - <<'JS'
+          const fs=require('node:fs'),vm=require('node:vm');
+          const html=fs.readFileSync('index.html','utf8');
+          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+          for(const match of scripts){if(match[1].trim())new vm.Script(match[1]);}
+          console.log('Inline HTML scripts compile:',scripts.length);
+          JS
           python - <<'PY'
           import re
           from pathlib import Path
