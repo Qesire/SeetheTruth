@@ -22,6 +22,7 @@ jobs:
       - name: Tensor graph JavaScript syntax
         run: |
           node --check tensor_subgraph.js
+          node tests/tensor_graph_check.js
           python - <<'PY'
           import re
           from pathlib import Path
