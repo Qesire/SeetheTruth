@@ -1,0 +1,34 @@
+name: Static Analysis CI
+on:
+  push:
+  pull_request:
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python syntax and tests
+        run: |
+          python -m py_compile atlas_parser.py atlas_server.py
+          python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Tensor graph JavaScript syntax
+        run: |
+          node --check tensor_subgraph.js
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert '<button class="seg-btn" data-level="tensor">张量</button>' in s
+          assert 'tensor_subgraph.js' in s
+          assert "SeetheTruthTensor.build" in s
+          assert "SeetheTruthTensor.detail" in s
+          print('UI integration anchors pass')
+          PY
