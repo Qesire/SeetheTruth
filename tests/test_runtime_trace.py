@@ -34,6 +34,9 @@ class RuntimeTraceTests(unittest.TestCase):
         self.assertTrue(any(n.get("aten_op", "").startswith("aten.") for n in graph["nodes"]))
         self.assertTrue(any(n.get("phase") == "backward" for n in graph["nodes"]))
         self.assertTrue(any(n.get("updated_count", 0) > 0 for n in graph["nodes"]))
+        step_ids = {n["id"] for n in graph["nodes"] if n.get("updated_count", 0) > 0}
+        grad_ids = {n["id"] for n in graph["nodes"] if n.get("parameter")}
+        self.assertTrue(any(e["from"] in grad_ids and e["to"] in step_ids for e in graph["edges"]))
         self.assertTrue(any(n.get("tensor", {}).get("outputs") for n in graph["nodes"]))
         self.assertTrue(all(e["kind"] in {"data", "feedback"} for e in graph["edges"]))
         self.assertEqual(len({n["id"] for n in graph["nodes"]}), len(graph["nodes"]))
