@@ -46,6 +46,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,7 +55,17 @@ jobs:
       - name: Install CPU PyTorch for integration test
         run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Runtime forward backward optimizer tests
-        run: python -m unittest discover -s tests -p 'test_runtime_trace.py' -v
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -p 'test_runtime_trace.py' -v 2>&1 | tee runtime_ci_diagnostic.txt
+      - name: Temporarily report synthetic-test traceback on PR
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          { echo 'Temporary CI diagnostic (synthetic test only):'; echo '```'; tail -c 5000 runtime_ci_diagnostic.txt; echo '```'; } > /tmp/trace_comment.txt
+          gh pr comment "$PR_NUMBER" --body-file /tmp/trace_comment.txt
       - name: Smoke demo and validate graph schema
         run: |
           python examples/runtime_trace_demo.py
