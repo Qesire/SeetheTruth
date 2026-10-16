@@ -40,6 +40,17 @@ class SourceGraphTests(unittest.TestCase):
             g=parse_paths([str(src)],entry="forward")
             self.assertFalse(sentinel.exists())
             self.assertTrue(g["nodes"])
+    def test_symlink_input_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)/"repo"
+            root.mkdir()
+            (root/"good.py").write_text("def forward(x):\n return x + x\n",encoding="utf8")
+            outside=Path(d)/"private.py"
+            outside.write_text("def secret():\n return 'must not scan'\n",encoding="utf8")
+            (root/"link.py").symlink_to(outside)
+            graph=parse_paths([str(root)],entry="forward")
+            self.assertEqual(graph["meta"]["source_files"],1)
+            self.assertTrue(any("symlink skipped" in x for x in graph["meta"]["parse_errors"]))
     def test_restrict_remote_hosts(self):
         self.assertEqual(normalize_repo_url("https://github.com/Qesire/SeetheTruth"),"https://github.com/Qesire/SeetheTruth")
         self.assertEqual(normalize_repo_url("https://huggingface.co/org/model"),"https://huggingface.co/org/model")
