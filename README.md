@@ -16,6 +16,19 @@ SeetheTruth 是一个面向大模型学习与研究的交互式全息计算图�
 4. 本地源码解析（解析器及服务端文件见仓库）：
    `python atlas_server.py --port 8765`，打开 `http://127.0.0.1:8765`。
 
+## 新增：运行时实测与反向传播（Runtime Trace）
+
+不再局限于配置/AST 推断。实验性 RuntimeTrace 在**用户主动运行的可信 PyTorch 脚本中**记录 ATen、module、shape、stride、dtype、梯度与显式 optimizer.step；导出图后可在前端钻取。
+
+    python examples/runtime_trace_demo.py
+    python atlas_server.py --port 8765
+
+将产生的 examples/runtime_trace_demo.json 导入浏览器。需要安装 PyTorch；静态 AST 解析仍不依赖 torch。
+
+使用方法、数据隐私与精度边界：[Runtime Trace 文档](docs/runtime-trace.md)。
+
+**重要：** HTTP 服务器从不执行被分析的源码；RuntimeTrace 只有用户显式导入并在自己的脚本中调用才会运行。图内 ATen 是观察到的算子，不是 GPU kernel 发射或完整 Autograd DAG。
+
 ## 证据边界
 3D 张量视图展示**逻辑张量运算**：实际执行可能使用融合 kernel、FlashAttention、tensor parallel 或无物化的 GQA 广播。符号形状不是运行时实测，不表示真实 kernel 数量或显存布局。要确认真实调用路径、dtype、stride 和实际分支，需要结合源码实现及 runtime trace。
 
@@ -24,6 +37,8 @@ SeetheTruth 是一个面向大模型学习与研究的交互式全息计算图�
 - `tensor_subgraph.js`: Tensor micrograph 的教学分解与契约
 - `atlas_parser.py`: Python AST 静态计算图解析器
 - `atlas_server.py`: 本地受限源码分析 HTTP 服务
+- `runtime_trace.py`: 显式启用的 PyTorch 动态观测器
+- `docs/runtime-trace.md`: 采集、证据等级与限制
 - `examples/`: 静态图测试源代码
 - `tests/`: 一致性与安全测试
 
