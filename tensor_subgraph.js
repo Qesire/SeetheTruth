@@ -43,6 +43,23 @@ w1:["GELU MLP GEMM 1","Z=X@W1+b1","[B,S,H]×[H,F]","[B,S,F]","ffn"],
 gelu:["GELU","A=GELU(Z)","[B,S,F]","[B,S,F]","gate"],
 w2:["GELU MLP GEMM 2","Y=A@W2+b2","[B,S,F]×[F,H]","[B,S,H]","ffn"],
 c:["Condition","c=Embed(t,condition)","[B,C]","[B,C]","input"],
+
+routerw:["Router weight","Wr","[H,E]","[H,E]","head"],
+routermm:["Routing GEMM","Scores=X@Wr","[N,H]×[H,E]","[N,E]","router"],
+topk:["Top-k selection","S_i=TopK(softmax(scores_i),k)","[N,E]","[N,k]","router"],
+dispatch:["Dispatch tokens","X_e={X_i:e∈S_i}","[N,H]","[N_e,H]","router"],
+e1g:["Expert A gate GEMM","G_e=X_e@W_e,gate","[N_e,H]×[H,F]","[N_e,F]","gate"],
+e1u:["Expert A up GEMM","U_e=X_e@W_e,up","[N_e,H]×[H,F]","[N_e,F]","ffn"],
+e1act:["Expert A SiLU","A_e=SiLU(G_e)","[N_e,F]","[N_e,F]","gate"],
+e1mul:["Expert A gate product","M_e=A_e⊙U_e","[N_e,F]","[N_e,F]","cond"],
+e1down:["Expert A down GEMM","Y_e=M_e@W_e,down","[N_e,F]×[F,H]","[N_e,H]","ffn"],
+e2g:["Expert B gate GEMM","G_e=X_e@W_e,gate","[N_e,H]×[H,F]","[N_e,F]","gate"],
+e2u:["Expert B up GEMM","U_e=X_e@W_e,up","[N_e,H]×[H,F]","[N_e,F]","ffn"],
+e2act:["Expert B SiLU","A_e=SiLU(G_e)","[N_e,F]","[N_e,F]","gate"],
+e2mul:["Expert B gate product","M_e=A_e⊙U_e","[N_e,F]","[N_e,F]","cond"],
+e2down:["Expert B down GEMM","Y_e=M_e@W_e,down","[N_e,F]×[F,H]","[N_e,H]","ffn"],
+combine:["Expert combine","Y_i=Σ_{e∈S_i}p_ieY_ie","[N,k,H]","[N,H]","ffn"],
+moeout:["MoE output","X'=X+MoE(X)","[N,H]","[N,H]","output"],
 cw:["AdaLN affine GEMM","a=c@W+b","[B,C]×[C,K]","[B,K]","cond"],
 split:["Split / chunk","a→(gamma,beta,alpha)","[B,K]","[B,H]×n","norm"],
 shift:["Modulation / broadcast","Z=(1+gamma)⊙Norm(X)+beta","[B,S,H]+[B,H]","[B,S,H]","cond"]
@@ -59,6 +76,21 @@ ffn:[["x","ffnorm"],["ffnorm","gmm"],["ffnorm","umm"],["gatew","gmm"],["upw","um
 gpt:[["x","ffnorm"],["ffnorm","w1"],["w1","gelu"],["gelu","w2"],["w2","ffnres"],["x","ffnres"]],
 adaln:[["x","norm"],["c","cw"],["cw","split"],["split","shift"],["norm","shift"],["shift","residual"],["x","residual"]]
 };
+
+graphs.mha=graphs.attention.filter(([a,b])=>!["qrope","krope"].includes(a)&&!["qrope","krope"].includes(b)).concat([["qperm","qk"],["kperm","kcache"]]);
+graphs.dit=[
+["x","norm"],["norm","q"],["norm","k"],["norm","v"],["qw","q"],["kw","k"],["vw","v"],
+["q","qview"],["qview","qperm"],["qperm","qk"],
+["k","kview"],["kview","kperm"],["kperm","kt"],["kt","qk"],
+["v","vview"],["vview","vperm"],["vperm","av"],
+["qk","mask"],["mask","softmax"],["softmax","av"],["av","merge"],["merge","wo"],["wo","residual"],["x","residual"]
+];
+graphs.moe=[
+["x","routermm"],["routerw","routermm"],["routermm","topk"],["topk","dispatch"],["x","dispatch"],
+["dispatch","e1g"],["dispatch","e1u"],["e1g","e1act"],["e1act","e1mul"],["e1u","e1mul"],["e1mul","e1down"],["e1down","combine"],
+["dispatch","e2g"],["dispatch","e2u"],["e2g","e2act"],["e2act","e2mul"],["e2u","e2mul"],["e2mul","e2down"],["e2down","combine"],
+["topk","combine"],["combine","moeout"]
+];
 const notes={
 qview:"reshape 只规定逻辑形状；不保证零拷贝，是否复制由 stride 与实现决定。",
 kperm:"transpose/permute 通常更改 stride；下游 kernel 可能要求 contiguous。",
@@ -76,9 +108,12 @@ merge:"可能需要 contiguous() 才能以目标 stride reshape；需看真实�
 gmm:"Gate 与 Up 两个 GEMM 在某些架构可合并为单次更宽的投影。",
 mul:"这是逐元素乘法而不是 GEMM；broadcast 形状需要验证。",
 down:"稀疏化后须检查 Down 投影的输出误差，而不仅是中间通道激活。",
+dispatch:"实际每个 expert 的 N_e 依动态路由决定；这里展示 A/B 两条可能路径，不断言它们必被选中。",
+routermm:"路由 GEMM 之后仍需要 top-k、dispatch 和容量控制。",
+combine:"不同模型可能采用归一化权重、共享专家或不同 token dropping 策略。",
 cw:"AdaLN 参数可能由多层 MLP 产生，这里仅以一层线性作为教学示意。"
 };
-function type(st){return ['adaln','condition'].includes(st.focus)?'adaln':st.focus==='ffn'?(st.cfg.kind==='gpt'?'gpt':'ffn'):'attention'}
+function type(st){if(['adaln','condition'].includes(st.focus))return 'adaln';if(st.focus==='ffn')return st.cfg.kind==='gpt'?'gpt':st.cfg.kind==='moe'?'moe':'ffn';return st.cfg.kind==='dit'?'dit':st.cfg.kind==='gpt'?'mha':'attention'}
 function build({st,palette,node,edge}){
  const pairs=graphs[type(st)], ids=[...new Set(pairs.flat())],rank=new Map(ids.map(id=>[id,0]));
  for(let i=0;i<ids.length;i++){let changed=false;for(const [a,b] of pairs){let next=rank.get(a)+1;if(next>rank.get(b)){rank.set(b,next);changed=true}}if(!changed)break}
