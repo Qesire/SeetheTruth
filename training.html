@@ -180,7 +180,7 @@ function render(){
   (["zero_grad"].includes(e.kind)?"None":"None → Σgᵢ");
  by("momentState").textContent=numeric?(run.config.optimizer==="adamw"?
   "m="+number(state.m)+" · v="+number(state.v):"SGD · no m/v"):"mₜ · vₜ（AdamW）";
- by("inspectorTitle").textContent=b.title;
+ by("inspectorTitle").textContent=e.label+" · "+b.title;
  by("phase").textContent=names[b.category]+" / "+e.phase;
  by("formula").textContent=b.formula;
  by("symbol").textContent=e.symbol;
