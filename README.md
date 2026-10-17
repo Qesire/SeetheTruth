@@ -101,3 +101,13 @@ python atlas_server.py --port 8765
 验证命令：node tests/semantic_tensor_ir_contracts.js。启动 python atlas_server.py --port 8765，在浏览器访问 http://127.0.0.1:8765/learn.html 。
 
 这些是**真实计算的有界微型教学数值**，而不是运行真实 LLM 或 GPU。Decode 示例只读取提供的 K/V 前缀，尚未实现可持续更新的 KV Cache。数学合同及测试见 docs/learning-studio.md。
+
+## Stateful KV Cache 学习与真实截图验收
+
+新增 [KV Cache 状态机实验室](cache.html)。Prefill 将投影 K/V 实际写入独立 Session 的缓存数组；每一步 Decode 仅追加当前 token 的 K/V，之后使用完整已缓存前缀计算 GQA 注意力。页面展示缓存槽位、Key/Value 数值矩阵、逐 Head 注意力概率及数学 GEMM FLOPs。
+
+测试 node tests/kv_cache_contracts.js 将逐 token 输出与完整 causal 前缀重算逐元素比较。通过 python tests/browser_cache_screenshots.py 使用真实 Chromium 截图并验证 DOM 中的缓存槽位、矩阵单元格和布局。四张 PNG 及 manifest.json 上传到 GitHub Actions 的 seethetruth-kv-real-chromium-screenshots artifact（14 天保留）。
+
+启动：python atlas_server.py --port 8765，访问 http://127.0.0.1:8765/cache.html。
+
+限定：这是确定性教学数值模拟，没有实际大模型权重、采样、真实 GPU latency，也没有复杂批次或 Paged Attention。实际缓存数组更新已实现，但不代表 PyTorch/HF/KV cache 的具体物理数据结构。
