@@ -85,8 +85,15 @@ class SourceSemantics(unittest.TestCase):
         a = next(n for n in g["nodes"] if n["label"] == "a")
         b = next(n for n in g["nodes"] if n["label"] == "b")
         ret = next(n for n in g["nodes"] if n["label"] == "Return")
-        to_return = {e["from"] for e in g["edges"] if e["to"] == ret["id"]}
-        self.assertEqual(to_return,{a["id"],b["id"]})
+        slots = {n["return_slot"]:n for n in g["nodes"] if "return_slot" in n}
+        self.assertEqual(set(slots),{0,1})
+        edges={(e["from"],e["to"]) for e in g["edges"]}
+        self.assertIn((a["id"],slots[0]["id"]),edges)
+        self.assertIn((b["id"],slots[1]["id"]),edges)
+        self.assertNotIn((b["id"],slots[0]["id"]),edges)
+        self.assertNotIn((a["id"],slots[1]["id"]),edges)
+        self.assertIn((slots[0]["id"],ret["id"]),edges)
+        self.assertIn((slots[1]["id"],ret["id"]),edges)
 
     def test_two_distinct_return_slots_bind_to_caller_outputs(self):
         g = self.build("consume_pair")
