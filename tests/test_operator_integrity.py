@@ -50,6 +50,20 @@ class SourceOperatorIntegrity(unittest.TestCase):
         self.assertTrue(any(n.get("callee") == "torch.baddbmm" for n in g["nodes"]))
         self.assertTrue(any(n.get("callee") == "self.proj" for n in g["nodes"]))
 
+    def test_cross_function_parameter_binding_edges(self):
+        g = self.parse("OperatorCases.forward")
+        call = next(n for n in g["nodes"] if n.get("callee") == "self._scores")
+        caller_projection = next(n for n in g["nodes"] if n.get("callee") == "self.proj")
+        caller_y = next(n for n in g["nodes"] if n["label"] == "y" and n["parent"] is None)
+        inner_x = next(n for n in g["nodes"] if n["label"] == "x" and n["parent"] == call["id"])
+        inner_y = next(n for n in g["nodes"] if n["label"] == "y" and n["parent"] == call["id"])
+        self.assertTrue(any(e["from"] == caller_projection["id"] and e["to"] == inner_x["id"] for e in g["edges"]))
+        self.assertTrue(any(e["from"] == caller_y["id"] and e["to"] == inner_y["id"] for e in g["edges"]))
+        # The actual nested matrix op must depend on these formal input nodes.
+        inner_mul = next(n for n in g["nodes"] if n["label"] == "MatMult" and n["parent"] == call["id"])
+        self.assertTrue(any(e["to"] == inner_mul["id"] and e["from"] in {inner_x["id"], inner_y["id"]}
+                            for e in g["edges"]))
+
     def test_augassign_output_connects_to_return(self):
         g = self.parse("simple_aug")
         assign = next(n for n in g["nodes"] if n["label"] == "Add=")
