@@ -79,3 +79,16 @@ CPU 自耗时、包含下级的成本、真实张量 shape/stride/dtype 与调�
 说明与计时口径：[Performance & Tensor Observatory](docs/telemetry.md)。
 所有 Profiler 数字都属于**有插桩的单次测量**，不是未插桩模型吞吐率；
 含子模块成本不能跨父子相加，CUDA profiler 归因时间不等于设备执行关键路径。
+
+## Scratch 式大模型学习实验台（新增）
+
+本项目新增 [Learning Studio](learn.html)：在一张可以拖拽、连线、修改参数的工作台上，自行拼出微型 FFN、残差、单头 Attention 与 Loss。选择积木可观察数学公式和设计意图；按“运行微型计算”后逐步查看 **真实由浏览器数值计算得到的小矩阵、shape、Attention 分数与 Softmax 权重**。可尝试断线挑战、修复输入端口、保存或导入本地课程工程 JSON。
+
+```bash
+python atlas_server.py --port 8765
+# 浏览器打开 http://127.0.0.1:8765/learn.html
+```
+
+学习实验台的权重是教学用固定伪权重；输入由确定性种子生成，矩阵最大 8×16。**它不执行任何真实 LLM 权重，不包含训练反向传播、真实 GPU 用时或 RL rollout。** 原有 [全息源码/运行分析器](index.html) 和性能显微镜保持不变。升级方向、支持的积木、限制和逐阶段研究型课程设计见 [Learning Studio Roadmap](docs/learning-studio.md)。
+
+验证：`node tests/learning_lab_contracts.js` 和真实浏览器 CI。
