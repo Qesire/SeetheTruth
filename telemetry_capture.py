@@ -147,6 +147,8 @@ class TelemetrySession:
         self._names = {id(m): (n or "<root>") for n, m in model.named_modules()}
         self._handles = []
         self._stacks = {}
+        self._active_calls = []
+        self._invocation_counts = {}
         self._module_rows = []
         self._snapshots = []
         self._profiler = None
@@ -160,16 +162,30 @@ class TelemetrySession:
 
     def _before(self, module, args):
         name = self._names[id(module)]
+        index = self._invocation_counts.get(name, 0) + 1
+        self._invocation_counts[name] = index
+        # The profiler tag identifies an individual invocation, not only an
+        # aggregate module path. It is emitted by the hook inside this pass.
+        tag = "SeetheTruth.module/" + name + "/invocation/" + str(index)
+        key = name + "#" + str(index)
+        parent = self._active_calls[-1] if self._active_calls else None
         start = time.perf_counter_ns()
-        annotation = record_function("SeetheTruth.module/" + name)
+        annotation = record_function(tag)
         annotation.__enter__()
-        self._stacks.setdefault(id(module), []).append((start, annotation, args))
+        self._stacks.setdefault(id(module), []).append(
+            (start, annotation, args, index, key, parent, tag))
+        self._active_calls.append(key)
 
     def _after(self, module, args, output):
         stack = self._stacks.get(id(module), [])
         if not stack:
             return
-        start, annotation, original_args = stack.pop()
+        start, annotation, original_args, index, key, parent, tag = stack.pop()
+        # Only well-nested, synchronous module hooks are supported. A later
+        # exceptional/unbalanced forward cannot silently claim verified costs.
+        if not self._active_calls or self._active_calls[-1] != key:
+            raise RuntimeError("Unbalanced module profiling invocation stack")
+        self._active_calls.pop()
         annotation.__exit__(None, None, None)
         elapsed = (time.perf_counter_ns() - start) / 1e6
         name = self._names[id(module)]
@@ -178,6 +194,8 @@ class TelemetrySession:
         self._module_rows.append({
             "name": name, "type": type(module).__name__, "host_wall_ms": elapsed,
             "host_timing_scope": "python_hook_and_enqueue_not_cuda_execution",
+            "invocation_index": index, "invocation_key": key,
+            "parent_invocation_key": parent, "annotation_label": tag,
             "inputs": inputs, "outputs": outs,
         })
         if self.capture_values and len(self._snapshots) < self.max_snapshots:
@@ -231,7 +249,78 @@ class TelemetrySession:
             self._entered = False
         return False
 
+    def _attributed_module_events(self):
+        """Use profiler CPU parent tree to assign each ATen *self* cost once.
+
+        A child module's operators belong exclusively to that child; parent
+        inclusive totals are derived separately. Device time is profiler
+        attribution, not a device critical path or kernel timeline.
+        """
+        rows = {r["invocation_key"]: r for r in self._module_rows}
+        markers = {r["annotation_label"]: r["invocation_key"] for r in self._module_rows}
+        cost = {key: {"operator_events": 0, "self_cpu_us": 0.0,
+                      "self_device_us": 0.0} for key in rows}
+        unmatched = 0
+        for event in self._profiler.events():
+            name = str(getattr(event, "name", getattr(event, "key", "")))
+            if not name.startswith("aten::"):
+                continue
+            parent = getattr(event, "cpu_parent", None)
+            key = None
+            hops = 0
+            while parent is not None and hops < 150:
+                candidate = str(getattr(parent, "name", getattr(parent, "key", "")))
+                if candidate in markers:
+                    key = markers[candidate]
+                    break
+                parent = getattr(parent, "cpu_parent", None)
+                hops += 1
+            if key is None:
+                unmatched += 1
+                continue
+            record = cost[key]
+            record["operator_events"] += 1
+            record["self_cpu_us"] += _event_number(event, ("self_cpu_time_total",))
+            if self._gpu:
+                record["self_device_us"] += _event_number(
+                    event, ("self_device_time_total", "self_cuda_time_total"))
+        result = {}
+        for key, row in rows.items():
+            incl = dict(cost[key])
+            for child_key, child in rows.items():
+                ancestor = child["parent_invocation_key"]
+                limit = 0
+                while ancestor is not None and limit <= len(rows):
+                    if ancestor == key:
+                        for k in incl:
+                            incl[k] += cost[child_key][k]
+                        break
+                    ancestor = rows[ancestor]["parent_invocation_key"] if ancestor in rows else None
+                    limit += 1
+            result[key] = {
+                "exclusive_operator_events": cost[key]["operator_events"],
+                "inclusive_operator_events": incl["operator_events"],
+                "exclusive_self_cpu_ms": round(cost[key]["self_cpu_us"] / 1000, 5),
+                "inclusive_attributed_cpu_ms": round(incl["self_cpu_us"] / 1000, 5),
+                "exclusive_self_device_ms": round(cost[key]["self_device_us"] / 1000, 5) if self._gpu else None,
+                "inclusive_attributed_device_ms": round(incl["self_device_us"] / 1000, 5) if self._gpu else None,
+                "profiler_scope": "aten_self_time_assigned_to_nearest_module_profiler_annotation",
+            }
+        return result, unmatched
+
     def _assemble(self):
+        per_call_cost, unassigned = self._attributed_module_events()
+        module_calls = []
+        for row in self._module_rows:
+            key = row["invocation_key"]
+            module_calls.append({
+                "name": row["name"], "type": row["type"],
+                "invocation_index": row["invocation_index"],
+                "invocation_key": key, "parent_invocation_key": row["parent_invocation_key"],
+                "host_wall_ms": round(row["host_wall_ms"], 5),
+                "last_inputs": row["inputs"], "last_outputs": row["outputs"],
+                **per_call_cost[key],
+            })
         operators = []
         for item in self._profiler.key_averages(group_by_input_shape=False):
             key = str(item.key)
@@ -260,6 +349,13 @@ class TelemetrySession:
             a["last_outputs"] = row["outputs"]
         for item in module_agg.values():
             item["host_wall_ms"] = round(item["host_wall_ms"], 5)
+            rows = [r for r in module_calls if r["name"] == item["name"]]
+            for metric in ("exclusive_self_cpu_ms", "inclusive_attributed_cpu_ms",
+                           "exclusive_operator_events", "inclusive_operator_events"):
+                item[metric] = round(sum(r[metric] for r in rows), 5)
+            for metric in ("exclusive_self_device_ms", "inclusive_attributed_device_ms"):
+                item[metric] = round(sum(r[metric] or 0 for r in rows), 5) if self._gpu else None
+            item["profiler_scope"] = "per_invocation_aten_self_time_not_wall_latency"
         gpu = None
         if self._gpu:
             gpu = {"allocated_before_bytes": self._memory_before,
@@ -281,6 +377,10 @@ class TelemetrySession:
                 "parameter_values_not_intentionally_sampled": True,
                 "operator_rows_truncated": len(operators) > self.max_operator_rows,
                 "module_observations": len(self._module_rows),
+                "module_cost_attribution": "nearest_module_profiler_annotation_exclusive_aten_self",
+                "unattributed_operator_events": unassigned,
+                "module_device_cost_is_not_kernel_critical_path": True,
+                "module_inclusive_costs_overlap_and_must_not_be_summed": True,
                 "wall_session_ms": round((time.perf_counter() - self._started)*1000, 4),
                 "notes": [
                     "GPU device time is profiler attribution, not device utilization.",
@@ -291,6 +391,7 @@ class TelemetrySession:
             },
             "operators": operators[:self.max_operator_rows],
             "modules": sorted(module_agg.values(), key=lambda x:x["host_wall_ms"], reverse=True),
+            "module_calls": module_calls,
             "snapshots": self._snapshots,
             "gpu_memory": gpu,
         }
