@@ -13,7 +13,8 @@ Policy: a successfully rendered diagram, AST parse, or single profiler capture i
 
 1. A valid user node named root collided with the navigation sentinel root. Graph navigation now separates action from node ID and regression test covers it.
 2. Imported telemetry allowed malformed matrix cells, shapes and inconsistent histogram counts, so malformed data could reach Canvas. Import validates finite numeric counts/shape and histogram invariants before rendering.
-3. Initial browser acceptance tests had incorrect async assumptions and one case-sensitive assertion. Tests now wait for file reads and assert exact observable labels.
+3. Importing invalid Config while viewing an annotated source graph used to clear internal graph state before input validation; importing is now transactional, and browser regression re-enters a nested node after the invalid import.
+4. Initial browser acceptance tests had incorrect async assumptions and one case-sensitive assertion. Tests now wait for file reads and assert exact observable labels.
 
 ## Not validated by this gate
 
