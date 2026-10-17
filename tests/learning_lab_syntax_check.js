@@ -8,6 +8,9 @@ for(const [i,script] of scripts.entries()){
  if(script[1].trim())new vm.Script(script[1],{filename:'learn.html:inline:'+i});
 }
 assert.match(page,/learning_lab\.js/);
+assert.match(page,/block_catalog\.js/);
+assert.match(page,/id="blockSearch"/);
+assert.match(page,/id="catalogCategories"/);
 assert.match(page,/tensor_ir\.js/);
 const server=fs.readFileSync('atlas_server.py','utf8');
 const cache=fs.readFileSync('cache.html','utf8');
@@ -26,4 +29,5 @@ assert.match(page,/id="challenge"/);
 assert.match(page,/TEACHING SIMULATION/);
 assert.match(server,/learn\.html/);
 assert.match(server,/learning_lab\.js/);
+assert.match(server,/block_catalog\.js/);
 console.log('Learning Studio client syntax and local-only route PASS');
