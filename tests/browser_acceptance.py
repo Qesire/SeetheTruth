@@ -229,6 +229,9 @@ class BrowserAcceptance(unittest.TestCase):
         bad = synthetic_telemetry()
         bad["operators"][0]["self_cpu_ms"] = -5
         cases.append(("negative time", bad))
+        bad = synthetic_telemetry()
+        bad["meta"]["notes"] = "not an array"
+        cases.append(("malformed meta", bad))
         for label, payload in cases:
             with self.subTest(label=label):
                 with self.page.expect_event("dialog") as event:
