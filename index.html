@@ -35,6 +35,17 @@
 .provenance-chip.hypothesis{color:#ffd49c;border-color:#9b6d42}
 .source-telemetry{color:#9cbcd2;line-height:1.6;font-size:10px;margin-top:8px}
 .source-telemetry strong{color:#bff3ff}
+
+.consensus-card{margin:8px 0 0;border:1px solid #2b5269;background:linear-gradient(145deg,#102737,#0a1929);border-radius:13px;padding:13px}
+.consensus-card .consensus-head{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;font-weight:650}
+.consensus-small{font-size:10px;line-height:1.65;color:#9fc2d9;margin-top:5px}
+.consensus-flow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:8px}
+.consensus-step{border:1px solid #365a78;background:#142b41;padding:4px 6px;border-radius:7px;font-size:10px;line-height:1.4;max-width:230px}
+.consensus-arrow{color:#64cfe7;font-size:11px}
+.consensus-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.consensus-links a{font-size:10px;color:#91eaff;border:1px solid #396c7e;padding:4px 7px;border-radius:6px;text-decoration:none;overflow-wrap:anywhere}
+.consensus-links a:hover{border-color:#91eaff}
+.consensus-note{border-left:2px solid #b3a4ff;padding-left:9px;color:#bccbdf;font-size:10px;line-height:1.65;margin-top:9px}
 </style>
 </head>
 <body>
@@ -69,6 +80,7 @@
 <div class="overlay" id="modal"><div class="modal" role="dialog" aria-modal="true" aria-label="导入 Hugging Face 模型配置"><div style="display:flex;justify-content:space-between;align-items:start"><div><h2>导入模型信息 / 模块语义图</h2><p>支持 Hugging Face <code>config.json</code> 或附有来源定位、张量契约、数学说明的 <code>model-atlas-graph-v1</code> JSON。仅在本地解析，不执行源码。</p></div><button id="modalClose" class="icon-button" title="关闭">×</button></div><textarea id="jsonText" spellcheck="false" placeholder='{"model_type":"llama","hidden_size":4096,"num_hidden_layers":32,"num_attention_heads":32,"num_key_value_heads":8,"intermediate_size":11008}'></textarea><div class="error" id="importError"></div><div class="modal-actions"><label class="btn" for="jsonFile" style="cursor:pointer">选择本地 JSON 文件</label><input id="jsonFile" type="file" accept=".json,application/json" class="sr-only"><div style="display:flex;gap:8px"><button class="btn" id="loadExample">Config 示例</button><button class="btn" id="loadGraphExample">结构图示例</button><button class="btn primary" id="importApply">解析并可视化 →</button></div></div></div></div>
 <div class="overlay" id="sourceModal"><div class="modal" role="dialog" aria-modal="true" aria-label="从源码重建模型结构"><div style="display:flex;justify-content:space-between;align-items:start;gap:20px"><div><h2>从源码生成全息计算图</h2><p>支持公开 GitHub、Hugging Face 模型仓库 URL，或运行本地服务电脑上的 Python 文件/目录。不会加载权重，也不会执行导入的模型代码。</p></div><button id="analyzeClose" class="icon-button">×</button></div><label class="journey-label" for="sourceLocation">REPOSITORY URL / LOCAL PATH</label><input id="sourceLocation" placeholder="https://github.com/owner/repo 或 C:\\models\\my_model" style="width:100%;margin:6px 0 13px;padding:12px;border:1px solid #3b5875;border-radius:9px;background:#081626;color:#e9f9ff;outline:none"/><label class="journey-label" for="sourceEntry">入口函数（可选，推荐明确提供）</label><input id="sourceEntry" placeholder="TransformerBlock.forward / train_step / grpo_step" style="width:100%;margin:6px 0 12px;padding:12px;border:1px solid #3b5875;border-radius:9px;background:#081626;color:#e9f9ff;outline:none"/><div class="micro-example">启动本地源码服务：<code>python atlas_server.py --port 8765</code>。浏览器访问 <code>http://127.0.0.1:8765</code>，即可提交解析请求。<b>单文件 HTML 离线模式仍可使用导入 JSON 和内置演示，但无法独立解析 Python AST。</b></div><div class="error" id="analysisError" aria-live="polite"></div><div class="modal-actions"><span style="color:#89adc9;font-size:10px">SOURCE AST → SYMBOLIC DEPENDENCIES → 3D</span><button id="analyzeApply" class="btn primary">开始静态解析 →</button></div></div></div>
 <script src="tensor_subgraph.js"></script>
+<script src="consensus_knowledge.js"></script>
 <script>
 (()=>{'use strict';
 const $=s=>document.querySelector(s);
@@ -439,6 +451,40 @@ function renderInspector(){const id=st.selected||scene.nodes[0]?.id||'',desc=det
  const c=st.cfg;let q=st.mode==='decode'&&!isDit()?1:c.s;let estimate=st.workflow==='model'&&!st.customGraph?(id.includes('attention')?`注意力 score 与 AV ≈ ${formatFlops(4*c.b*c.a*q*c.s*(c.h/c.a))} FLOPs (不含 QKV 投影、Softmax)`:(id.includes('ffn')||id==='gate')?`${st.cfg.kind==='gpt'?'GELU 两组线性层':isMoe()?'每激活专家三组线性层（未乘 Top-k）':'SwiGLU 三组线性层'} ≈ ${formatFlops((st.cfg.kind==='gpt'?4:6)*c.b*q*c.h*c.f)} FLOPs`:null):null;let journey=st.workflow==='model'?(st.customGraph?(st.customGraph.meta?.analysis==='runtime-torch-dispatch'?['Forward','ATen','Gradient','Optimizer']:['Python AST','调用/依赖','语义规则','Trace 待验证']):isDit()?['Condition','AdaLN','Attn / FFN','Residual']:(st.level==='tensor'?['Reshape','Permute','RoPE','Mask','MatMul']:['Norm','Attention','Residual','FFN'])):st.workflow==='train'?['Forward','Loss','Gradient','Optimizer']:st.workflow==='infer'?(isDit()?['Scheduler','DiT','Step','Decode']:['Prefill','KV Cache','Decode','Sample']):['Policy','Reward','Advantage',st.rlAlgo.toUpperCase()];
  let isSource=st.customGraph?.meta?.analysis==='static-python-ast';let isRuntime=st.customGraph?.meta?.analysis==='runtime-torch-dispatch';let traceNode=isRuntime?st.customGraph.nodes.find(n=>n.id===id):null;let tensorMeta=traceNode?.tensor;let traceExtras=traceNode?`<div class="mechanism-section"><div class="mechanism-heading">RUNTIME EVIDENCE · 运行时实测</div><div class="micro-example">PHASE ${esc(traceNode.phase||'forward')} · ${esc(traceNode.aten_op||traceNode.module||traceNode.optimizer||traceNode.formula||'module hook')}</div>${['inputs','outputs'].map(side=>`<div class="mathlabel">${side.toUpperCase()} · shape / dtype / stride / device</div>${(tensorMeta?.[side]||[]).slice(0,8).map(t=>`<div class="mathbox">shape=${esc(JSON.stringify(t.shape))}\ndtype=${esc(t.dtype)} · device=${esc(t.device)}\nstride=${esc(JSON.stringify(t.stride))} · contiguous=${esc(String(t.contiguous))} · requires_grad=${esc(String(t.requires_grad))}</div>`).join('')||'<div class="help">无可用 tensor metadata</div>'}`).join('')}${traceNode.updated_count!==undefined?`<div class="micro-example">实测参数版本改变：${esc(String(traceNode.updated_count))} 个；未核实具体更新幅度。</div>`:''}<div class="source-telemetry">证据来自运行时 ATen dispatcher / module 或 tensor hook；不代表 CUDA kernel 次数、GPU 用时或完整反向计算依赖。</div></div>`:'';let sourceExtras=st.customGraph&&st.workflow==='model'?`<div class="mechanism-section"><div class="mechanism-heading">SOURCE EVIDENCE · 实际源码表达式</div>${m.certainty?`<span class="provenance-chip ${['source_call','source_operator','source_control','source_return','source_parameter'].includes(m.certainty)?'factual':'hypothesis'}">${esc(m.certainty)}</span>`:''}<div class="equation">${esc(m.expression||'无可用表达式')}</div>${m.condition?`<div class="micro-example">静态分支：${esc(m.condition)}</div>`:''}<div class="source-telemetry">${isSource?'语法提取是真实 AST；设计意图为规则/命名推断。源代码未运行，未验证 shape、分支是否命中。':(isRuntime?'此节点来自显式插桩观测，未验证 GPU kernel 启动与完整 Autograd DAG。':'从导入 JSON 读取；没有外部验证。')}</div></div>`:'';
  $('#inspectContent').innerHTML=`<div class="eyebrow">${esc(phase)} · SELECTED</div><h3>${esc(m.title)}</h3><span class="source-badge">◈ ${esc(provenance)}</span>${m.source?`<div class="source-badge">SOURCE LOCATOR / ${esc(m.source.file||'未提供文件')} : ${esc(m.source.line||'?')} · ${isSource?'AST 提取':'用户注释未验证'}</div>`:''}${sourceExtras}${traceExtras}<div class="mechanism-section" style="border:0;padding-top:15px"><div class="mechanism-heading">01 / DESIGN INTENT · 设计目的</div><div class="intent-card">${esc(m.intent)}</div></div><div class="mechanism-section"><div class="mechanism-heading">02 / MATHEMATICAL TRANSFORM · 数学功能</div><div class="equation">${esc(m.equation)}</div></div><div class="mechanism-section"><div class="mechanism-heading">03 / TENSOR CONTRACT · 输入输出</div><div class="kv"><span>输入</span><b>${esc(m.input)}</b></div><div class="kv"><span>输出</span><b>${esc(m.output)}</b></div>${dimguidance}${estimate?`<div class="micro-example" style="margin-top:8px">估计计算量：${esc(estimate)}</div>`:''}</div><div class="mechanism-section"><div class="mechanism-heading">04 / MECHANISM · 为什么这样设计</div><div class="mechanism-copy">${esc(m.why)}</div></div>${(m.kind==='module'||m.kind==='manifest')?`<div class="mechanism-section"><div class="mechanism-heading">05 / TRAINING ↔ INFERENCE · 不同行为</div><div class="journey-label">训练时</div><div class="mechanism-copy">${esc(m.train)}</div><div class="journey-label">推理时</div><div class="mechanism-copy">${esc(m.infer)}</div>${controls}</div>`:''}<div class="mechanism-section"><div class="mechanism-heading">${(m.kind==='module'||m.kind==='manifest')?'06':'05'} / RESEARCH PROBE · 如何验证</div><div class="note">${esc(m.probe)}</div></div><div class="mechanism-section"><div class="mechanism-heading">计算链 · 当前流程</div><div class="journey-line">${journey.map((x,i)=>`${i?'<span class="journey-arrow">→</span>':''}<span class="journey-token">${esc(x)}</span>`).join('')}</div></div><div class="aside-actions"><button id="goDetail" class="btn primary">${st.customGraph&&st.workflow==='model'?(graphHasChildren(id)?'进入源码模块 →':'镜头聚焦 →'):st.workflow==='model'?(st.level==='macro'?'进入 Block →':st.level==='block'?'拆解算子 →':st.level==='operator'?'展开矩阵 →':st.level==='matrix'?'展开张量 →':'返回矩阵 ↑'):'切到模型内部 →'}</button><button id="goUp" class="btn">${st.workflow!=='model'?'返回架构':st.customGraph?(st.graphScope?'返回父层 ↑':'全景复位'):st.level==='macro'?'全景复位':'上一级'}</button></div><div class="help" style="margin-top:18px">${st.workflow==='rl'&&isDit()?'<b style="color:#ffb879">注意：RL 图谱展示文本策略优化范式，不代表所选 DiT 的实际强化训练流程。</b> ':''}说明：设计目的与公式是基于已知机制的解释性映射。矩阵/张量级视图按选定教学架构展开逻辑运算，但 fused kernel、并行切分、runtime 真实 shape 与命中分支仍需源码和 trace 验证。</div>`;
+
+ // Literature explains general design priors, independent of source/runtime evidence.
+ const baseNode=st.customGraph?.nodes?.find(n=>n.id===id)||null;
+ const match=window.SeetheTruthConsensus?.resolve({
+   id,node:baseNode,workflow:st.workflow,preset:st.cfg.kind,focus:st.focus,
+   rlAlgo:st.rlAlgo,
+   graphMeta:st.customGraph?{analysis:st.customGraph.meta?.analysis||'imported-annotations',entry:st.customGraph.meta?.entry||''}:null
+ });
+ if(match){
+   const e=match.entry;
+   const rs=window.SeetheTruthConsensus.references;
+   const chain=e.chain.map((part,i)=>`${i?'<span class="consensus-arrow">→</span>':''}<span class="consensus-step">${esc(part)}</span>`).join('');
+   const refs=e.refs.map(k=>`<a href="${esc(rs[k].url)}" target="_blank" rel="noopener noreferrer" title="${esc(rs[k].title)}">${esc(rs[k].title)} (${esc(rs[k].year)}) ↗</a>`).join('');
+   const evidence=match.matchBasis==='teaching_template'||match.matchBasis==='workflow_template_only'
+     ?'匹配依据：教学模板；不是当前模型的真实源码证据。'
+     :'匹配依据：已识别的源码/算子声明；该模块是否实际达到论文中的效果尚未验证。';
+   $('#inspectContent').insertAdjacentHTML('beforeend',`
+    <div class="mechanism-section" id="academicConsensus">
+      <div class="mechanism-heading">07 / ACADEMIC CONSENSUS · 文献机制与设计目标</div>
+      <div class="consensus-card">
+        <div class="consensus-head"><span>${esc(e.title)}</span><span class="provenance-chip hypothesis">LITERATURE · ${esc(e.epistemic)}</span></div>
+        <div class="consensus-small">${esc(evidence)}</div>
+        <div class="mathlabel">典型数学形式</div><div class="equation">${esc(e.formula)}</div>
+        <div class="mathlabel">局部数学作用</div><div class="mechanism-copy">${esc(e.mechanism)}</div>
+        <div class="mathlabel">预期终端效果（有条件）</div><div class="mechanism-copy">${esc(e.objective)}</div>
+        <div class="mathlabel">机制 → 效果的假设链</div><div class="consensus-flow">${chain}</div>
+        <div class="mathlabel">适用前提与变体</div><div class="consensus-small">${esc(e.assumptions)}</div>
+        <div class="mathlabel">如何对照实验验证</div><div class="consensus-small">${esc(e.measure)}</div>
+        <div class="consensus-note">${esc(e.contrast)}</div>
+        <div class="consensus-links">${refs}</div>
+      </div>
+    </div>`);
+ }
+
  document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{st.mode=b.dataset.mode;syncScene()});
  const linked=linkedModuleRow(id);
  if(st.telemetry){$('#inspectContent').insertAdjacentHTML('beforeend',linked?'<div class="mechanism-section"><div class="mechanism-heading">PROFILE JOIN / 完整模块名匹配</div><div class="note">观察：'+esc(linked.name)+' · '+esc(linked.host_wall_ms)+' ms Host wall（'+esc(linked.calls)+' 次）；包含子层耗时，CUDA 不代表设备时间。仅名称精确匹配，尚未验证同一模型版本和同一运行步。</div><a href="telemetry.html">打开张量统计详情 →</a></div>':'<div class="mechanism-section"><div class="mechanism-heading">PROFILE JOIN / 无匹配</div><div class="help">已导入统计记录，但当前节点没有精确模块路径匹配；不推断耗时归属。</div></div>');}

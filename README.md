@@ -54,3 +54,9 @@ python atlas_server.py --port 8765
 ```
 
 打开 http://127.0.0.1:8765/telemetry.html 并导入生成的 JSON。**默认不采集数值；性能测量与数值采样建议分成两次运行。** [技术与隐私说明](docs/telemetry.md)。
+
+## 学术与业界机制共识（新增）
+
+选择模块节点后，右侧新增 **ACADEMIC CONSENSUS** 知识层：典型数学公式 → 局部机制 → 预期终端效果 → 适用前提与测量建议，并提供原始论文链接。涵盖 Attention、GQA、RoPE、FFN、归一化、MoE、AdaLN、FlashAttention、语言模型损失、AdamW、PPO、GRPO。**与 AST 的源码事实和 Runtime Trace 的观测事实分离；不保证目标模型获得文献里的效果。**
+
+知识条目见 [`consensus_knowledge.js`](./consensus_knowledge.js)，说明见 [机制共识文档](./docs/mechanism-consensus.md)，验证命令 `node tests/consensus_contracts.js`。

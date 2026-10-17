@@ -121,6 +121,51 @@ class BrowserAcceptance(unittest.TestCase):
                 self.assertTrue(self.page.locator("#inspectContent").inner_text().strip())
                 self.assertGreater(self.page.locator("#scene").evaluate("(e)=>e.width"), 0)
 
+    def test_mechanism_panel_shows_math_goal_limits_and_literature(self):
+        self.load_atlas()
+        self.page.locator('[data-preset="gqa"]').click()
+        self.page.locator('[data-level="block"]').click()
+        panel = self.page.locator("#academicConsensus")
+        self.assertTrue(panel.is_visible())
+        text = panel.inner_text()
+        self.assertIn("Grouped-Query Attention", text)
+        self.assertIn("预期终端效果", text)
+        self.assertIn("适用前提", text)
+        self.assertIn("如何对照实验验证", text)
+        links = panel.locator('a[href^="https://"]')
+        self.assertGreaterEqual(links.count(), 1)
+        self.assertIn("noopener", links.first.get_attribute("rel"))
+        self.page.locator('[data-preset="dit"]').click()
+        self.page.locator('[data-level="operator"]').click()
+        self.assertIn("AdaLN", self.page.locator("#academicConsensus").inner_text())
+
+    def test_mechanism_does_not_guess_unknown_imported_module(self):
+        self.load_atlas()
+        unknown = synthetic_graph()
+        unknown["meta"]["analysis"] = "static-python-ast"
+        unknown["meta"]["entry"] = "GenericBlock.forward"
+        unknown["nodes"][0]["callee"] = "self.mysterious_transform"
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(unknown))
+        self.page.locator("#importApply").click()
+        self.assertEqual(self.page.locator("#academicConsensus").count(), 0)
+        known = synthetic_graph()
+        known["meta"]["analysis"] = "static-python-ast"
+        known["meta"]["entry"] = "GenericBlock.forward"
+        known["nodes"][0]["callee"] = "self.proj"
+        known["nodes"][0]["module_constructor"] = "Linear"
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(known))
+        self.page.locator("#importApply").click()
+        self.assertIn("线性投影", self.page.locator("#academicConsensus").inner_text())
+        self.page.locator('[data-nav="node"][data-scope="root"]').click()
+        # Inside the child scope the selected node is a different computation;
+        # its parent literature role must not leak into the child.
+        self.assertEqual(self.page.locator("#academicConsensus").count(), 0)
+        self.page.locator('[data-nav="home"]').click()
+        self.assertIn("线性投影", self.page.locator("#academicConsensus").inner_text())
+        self.assertIn("尚未验证", self.page.locator("#academicConsensus").inner_text())
+
     def test_training_inference_and_rl_mode_switch(self):
         self.load_atlas()
         for mode in ("train", "infer", "rl", "model"):
