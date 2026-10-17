@@ -22,6 +22,8 @@ jobs:
       - name: Tensor graph JavaScript syntax
         run: |
           node --check tensor_subgraph.js
+          node --check learning_lab.js
+          node tests/learning_lab_contracts.js
           node --check source_evidence_levels.js
           node tests/source_evidence_contracts.js
           node --check consensus_knowledge.js
