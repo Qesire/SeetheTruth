@@ -123,12 +123,14 @@ class KVBrowserScreenshots(unittest.TestCase):
     def test_invalid_config_does_not_erase_live_session(self):
         p = self.page
         p.locator("#advance").click()
-        p.locator("#kvHeads").select_option("2")
+        p.locator("#prefix").fill("10")
+        p.locator("#prefix").dispatch_event("change")
         self.assertIn("配置不合法", p.locator("#status").inner_text())
         # Failed config must NOT claim it created a fresh, valid cache.
         self.assertEqual(p.locator("#lengthMetric").inner_text(), "3 / 7")
         self.assertEqual(p.locator("#cacheSlots .filled").count(), 3)
-        p.locator("#kvHeads").select_option("1")
+        p.locator("#prefix").fill("3")
+        p.locator("#prefix").dispatch_event("change")
         self.assert_screen("EMPTY", "0 / 7", "—", 0)
 
 if __name__ == "__main__":
