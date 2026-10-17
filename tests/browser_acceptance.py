@@ -159,6 +159,20 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#next").click()
         self.assertIn("shape = [3, 4]", self.page.locator("#shape").inner_text())
 
+    def test_learning_lab_break_and_repair_challenge(self):
+        self.load_lab()
+        self.page.locator("#challenge").click()
+        self.assertIn("已拆除", self.page.locator("#status").inner_text())
+        self.page.locator("#run").click()
+        self.assertIn("还没有连接", self.page.locator("#status").inner_text())
+        self.page.locator('[data-out="act"]').click()
+        self.page.locator('[data-in="down"][data-port="x"]').click()
+        self.page.locator("#run").click()
+        self.assertIn("1 / 4", self.page.locator("#stepInfo").inner_text())
+        for _ in range(3):
+            self.page.locator("#next").click()
+        self.assertIn("shape = [3, 4]", self.page.locator("#shape").inner_text())
+
     def test_learning_lab_import_rejects_untrusted_shapes_transactionally(self):
         self.load_lab()
         good = self.page.locator("#blocks .block").count()
