@@ -127,5 +127,34 @@ class StaticAcceptance(unittest.TestCase):
                     normalize_repo_url(url)
 
 
+    def test_dense_source_reports_edge_truncation_instead_of_silent_loss(self):
+        # 64 live input parameters × 60 source callsites = 3840 distinct
+        # data dependencies; fewer than MAX_NODES, more than MAX_EDGES.
+        names = ["x" + str(i) for i in range(64)]
+        invocations = "\n".join("    merge(" + ", ".join(names) + ")" for _ in range(60))
+        source_text = "def forward(" + ", ".join(names) + "):\n" + invocations + "\n    return x0\n"
+        _, source = self.make_source(source_text)
+        g = parse_paths([str(source)], entry="forward")
+        meta = g["meta"]
+        self.assertTrue(meta["truncated"])
+        self.assertTrue(meta["truncated_edges"])
+        self.assertFalse(meta["truncated_nodes"])
+        self.assertGreater(meta["dropped_edges"], 0)
+        self.assertEqual(meta["dropped_nodes"], 0)
+        self.assertEqual(len(g["edges"]), meta["graph_limits"]["max_edges"])
+        self.assertLess(len(g["nodes"]), meta["graph_limits"]["max_nodes"])
+
+    def test_node_overflow_reports_incomplete_graph(self):
+        source_text = "def forward(x):\n" + "".join("    touch(x)\n" for _ in range(850)) + "    return x\n"
+        _, source = self.make_source(source_text)
+        g = parse_paths([str(source)], entry="forward")
+        meta = g["meta"]
+        self.assertTrue(meta["truncated"])
+        self.assertTrue(meta["truncated_nodes"])
+        self.assertFalse(meta["truncated_edges"])
+        self.assertGreater(meta["dropped_nodes"], 0)
+        self.assertEqual(len(g["nodes"]), meta["graph_limits"]["max_nodes"])
+
+
 if __name__ == "__main__":
     unittest.main()

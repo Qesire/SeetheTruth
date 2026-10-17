@@ -62,9 +62,24 @@ e2mul:["Expert B gate product","M_e=A_e⊙U_e","[N_e,F]","[N_e,F]","cond"],
 e2down:["Expert B down GEMM","Y_e=M_e@W_e,down","[N_e,F]×[F,H]","[N_e,H]","ffn"],
 combine:["Expert combine","Y_i=Σ_{e∈S_i}p_ieY_ie","[N,k,H]","[N,H]","ffn"],
 moeout:["MoE output","X'=X+MoE(X)","[N,H]","[N,H]","output"],
-cw:["AdaLN affine GEMM","a=c@W+b","[B,C]×[C,K]","[B,K]","cond"],
-split:["Split / chunk","a→(gamma,beta,alpha)","[B,K]","[B,H]×n","norm"],
-shift:["Modulation / broadcast","Z=(1+gamma)⊙Norm(X)+beta","[B,S,H]+[B,H]","[B,S,H]","cond"]
+csilu:["Condition activation","u=SiLU(c)","[B,C]","[B,C]","gate"],
+cw:["AdaLN affine GEMM","a=u@W+b","[B,C]×[C,6*H]","[B,6*H]","cond"],
+split:["Six parameter slots","(shift_msa,scale_msa,gate_msa,shift_mlp,scale_mlp,gate_mlp)=chunk(a,6)","[B,6*H]","6 × [B,H]","norm"],
+shift_msa:["MSA shift slot","shift_msa=chunk(a,6)[0]","[B,6*H]","[B,H]","cond"],
+scale_msa:["MSA scale slot","scale_msa=chunk(a,6)[1]","[B,6*H]","[B,H]","cond"],
+gate_msa_param:["MSA gate slot","gate_msa=chunk(a,6)[2]","[B,6*H]","[B,H]","cond"],
+shift_mlp_param:["MLP shift slot","shift_mlp=chunk(a,6)[3]","[B,6*H]","[B,H]","cond"],
+scale_mlp_param:["MLP scale slot","scale_mlp=chunk(a,6)[4]","[B,6*H]","[B,H]","cond"],
+gate_mlp_param:["MLP gate slot","gate_mlp=chunk(a,6)[5]","[B,6*H]","[B,H]","cond"],
+shift:["MSA modulation","u=(1+scale_msa)⊙Norm1(x)+shift_msa","[B,S,H], [B,H]","[B,S,H]","cond"],
+attn_f:["MSA attention","v=Attention(u)","[B,S,H]","[B,S,H]","attn"],
+gate_msa:["MSA residual gate","delta=gate_msa⊙v","[B,H] × [B,S,H]","[B,S,H]","gate"],
+msa_res:["MSA residual add","h=x+delta","[B,S,H] × [B,S,H]","[B,S,H]","residual"],
+norm2:["MLP pre-norm","z=Norm2(h)","[B,S,H]","[B,S,H]","norm"],
+shift_mlp:["MLP modulation","w=(1+scale_mlp)⊙Norm2(h)+shift_mlp","[B,S,H], [B,H]","[B,S,H]","cond"],
+mlp_f:["MLP transform","m=MLP(w)","[B,S,H]","[B,S,H]","ffn"],
+gate_mlp:["MLP residual gate","epsilon=gate_mlp⊙m","[B,H] × [B,S,H]","[B,S,H]","gate"],
+adaln_out:["MLP residual add","y=h+epsilon","[B,S,H] × [B,S,H]","[B,S,H]","output"]
 };
 const graphs={
 attention:[
@@ -76,7 +91,17 @@ attention:[
 ["av","layout"],["layout","contiguous"],["contiguous","merge"],["merge","wo"],["wo","residual"],["x","residual"]],
 ffn:[["x","ffnorm"],["ffnorm","gmm"],["ffnorm","umm"],["gatew","gmm"],["upw","umm"],["gmm","silu"],["silu","mul"],["umm","mul"],["mul","down"],["down","ffnres"],["x","ffnres"]],
 gpt:[["x","ffnorm"],["ffnorm","w1"],["w1","gelu"],["gelu","w2"],["w2","ffnres"],["x","ffnres"]],
-adaln:[["x","norm"],["c","cw"],["cw","split"],["split","shift"],["norm","shift"],["shift","residual"],["x","residual"]]
+adaln:[
+["x","norm"],["c","csilu"],["csilu","cw"],["cw","split"],
+["split","shift_msa"],["split","scale_msa"],["split","gate_msa_param"],
+["split","shift_mlp_param"],["split","scale_mlp_param"],["split","gate_mlp_param"],
+["norm","shift"],["shift_msa","shift"],["scale_msa","shift"],
+["shift","attn_f"],["attn_f","gate_msa"],["gate_msa_param","gate_msa"],
+["x","msa_res"],["gate_msa","msa_res"],["msa_res","norm2"],
+["norm2","shift_mlp"],["shift_mlp_param","shift_mlp"],["scale_mlp_param","shift_mlp"],
+["shift_mlp","mlp_f"],["mlp_f","gate_mlp"],["gate_mlp_param","gate_mlp"],
+["msa_res","adaln_out"],["gate_mlp","adaln_out"]
+]
 };
 
 graphs.mha=graphs.attention.filter(([a,b])=>!["qrope","krope"].includes(a)&&!["qrope","krope"].includes(b)).concat([["qperm","qk"],["kperm","kcache"]]);
@@ -91,7 +116,7 @@ graphs.moe=[
 ["x","routermm"],["routerw","routermm"],["routermm","topk"],["topk","dispatch"],["x","dispatch"],
 ["dispatch","e1g"],["dispatch","e1u"],["e1g","e1act"],["e1act","e1mul"],["e1u","e1mul"],["e1mul","e1down"],["e1down","combine"],
 ["dispatch","e2g"],["dispatch","e2u"],["e2g","e2act"],["e2act","e2mul"],["e2u","e2mul"],["e2mul","e2down"],["e2down","combine"],
-["topk","combine"],["combine","moeout"]
+["topk","combine"],["combine","moeout"],["x","moeout"]
 ];
 const notes={
 qview:"reshape 只规定逻辑形状；不保证零拷贝，是否复制由 stride 与实现决定。",
@@ -115,7 +140,11 @@ down:"稀疏化后须检查 Down 投影的输出误差，而不仅是中间通�
 dispatch:"实际每个 expert 的 N_e 依动态路由决定；这里展示 A/B 两条可能路径，不断言它们必被选中。",
 routermm:"路由 GEMM 之后仍需要 top-k、dispatch 和容量控制。",
 combine:"不同模型可能采用归一化权重、共享专家或不同 token dropping 策略。",
-cw:"AdaLN 参数可能由多层 MLP 产生，这里仅以一层线性作为教学示意。"
+cw:"Pinned Meta DiT AdaLN-Zero uses SiLU followed by one affine projection producing six H-dimensional parameters; shapes are teaching contracts, not runtime observations.",
+gate_msa:"AdaLN-Zero 的残差门控是连续缩放，不是二值稀疏选择。gate_msa=0 时该分支是恒等残差。",
+gate_mlp:"gate_mlp=0 时该 MLP 分支是恒等残差；调制输入不能直接跳过 F(x) 加入残差。",
+shift:"AdaLN 调制产生子层输入，不是可直接加到残差状态的子层输出。",
+shift_mlp:"Attention 残差之后才对 MLP 执行独立归一化与调制。"
 };
 function type(st){if(['adaln','condition'].includes(st.focus))return 'adaln';if(st.focus==='ffn')return st.cfg.kind==='gpt'?'gpt':st.cfg.kind==='moe'?'moe':'ffn';return st.cfg.kind==='dit'?'dit':st.cfg.kind==='gpt'?'mha':'attention'}
 function build({st,palette,node,edge}){

@@ -148,8 +148,11 @@ class Graph:
     def __init__(self,index,entry,depth):
         self.i=index;self.entry=entry;self.depth=depth;self.nodes=[];self.edges=[];self.last_effect=None
         self.unresolved=set();self.scopes=[];self.branches=0;self.loops=0;self.truncated=False;self.call_outputs={}
+        self.truncated_nodes=False;self.truncated_edges=False;self.dropped_nodes=0;self.dropped_edges=0
     def add(self,label,kind,purpose,formula,why,fn,at,parent,certainty,**extra):
-        if len(self.nodes)>=MAX_NODES:self.truncated=True;return None
+        if len(self.nodes)>=MAX_NODES:
+            self.truncated=True;self.truncated_nodes=True;self.dropped_nodes+=1
+            return None
         ident="n%03d"%(len(self.nodes)+1)
         n={"id":ident,"label":label[:85],"type":TYPE.get(kind,"ffn"),
            "purpose":purpose,"formula":formula,
@@ -164,7 +167,11 @@ class Graph:
     def edge(self,a,b,kind="data"):
         if not a or not b or a==b:return
         e={"from":a,"to":b,"kind":kind}
-        if e not in self.edges and len(self.edges)<MAX_EDGES:self.edges.append(e)
+        if e in self.edges:return
+        if len(self.edges)>=MAX_EDGES:
+            self.truncated=True;self.truncated_edges=True;self.dropped_edges+=1
+            return
+        self.edges.append(e)
     def read(self,ex,fn,parent,env,guard,depth,seen):
         if ex is None:return []
         if isinstance(ex,ast.Name):return [env[ex.id]] if ex.id in env else []
@@ -380,7 +387,11 @@ class Graph:
           "meta":{"analysis":"static-python-ast","entry":self.entry,"entry_file":str(self.i.defs[self.entry].path.name),
             "source_files":self.i.count,"source_sha256":self.i.source_digests,"nested_scopes":self.scopes,"conditional_branches":self.branches,
             "loops":self.loops,"unresolved_calls_and_limits":sorted(self.unresolved),
-            "parse_errors":self.i.errors,"truncated":self.truncated,"runtime_validated":False,"shape_verified":False},
+            "parse_errors":self.i.errors,"truncated":self.truncated,
+            "truncated_nodes":self.truncated_nodes,"truncated_edges":self.truncated_edges,
+            "dropped_nodes":self.dropped_nodes,"dropped_edges":self.dropped_edges,
+            "graph_limits":{"max_nodes":MAX_NODES,"max_edges":MAX_EDGES},
+            "runtime_validated":False,"shape_verified":False},
           "nodes":self.nodes,"edges":self.edges}
 def parse_paths(paths:list[str],entry:str|None=None,max_depth:int=3)->dict[str,Any]:
     resolved=[Path(s).resolve() for s in paths]
