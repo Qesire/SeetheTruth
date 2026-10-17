@@ -30,6 +30,8 @@ jobs:
           node tests/block_catalog_contracts.js
           node --check block_knowledge.js
           node tests/block_knowledge_contracts.js
+          node --check composite_atlas.js
+          node tests/composite_atlas_contracts.js
           node --check concept_flow.js
           node tests/concept_flow_contracts.js
           node --check learning_lab.js
