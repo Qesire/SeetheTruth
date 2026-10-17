@@ -114,7 +114,6 @@ class DetailedBlockKnowledgeAcceptance(unittest.TestCase):
         self.assertEqual(p.locator("#matrix .cell").count(),0)
         self.assertNotIn("FLOPs",p.locator("#metrics").inner_text())
         self.select("gqa","gqa")
-        self.assertIn("FlashAttention",p.locator("#blockKnowledge").inner_text()) if False else None
 
 if __name__=="__main__":
     unittest.main()
