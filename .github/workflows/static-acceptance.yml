@@ -35,6 +35,18 @@ jobs:
             catalog_screenshots/manifest.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Verify public-source block deep dives in real Chromium
+        run: python tests/browser_block_knowledge.py
+      - name: Archive rendered knowledge inspector and citation screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-real-browser-block-knowledge
+          path: |
+            knowledge_screenshots/*.png
+            knowledge_screenshots/manifest.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve rendered Chromium screenshots and visual checks
         if: always()
         uses: actions/upload-artifact@v4
