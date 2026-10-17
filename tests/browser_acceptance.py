@@ -295,6 +295,25 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertIn("源码尚未核验", self.page.locator("#inspectContent").inner_text())
         self.assertNotIn("源码映射已核验", self.page.locator("#inspectContent").inner_text())
 
+    def test_telemetry_per_invocation_cost_ui(self):
+        self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
+        fixture = synthetic_telemetry()
+        fixture["modules"][0]["exclusive_self_cpu_ms"] = 0.12
+        fixture["modules"][0]["inclusive_attributed_cpu_ms"] = 0.78
+        fixture["module_calls"] = [{
+            "name": "block.attn", "type": "SyntheticAttention",
+            "invocation_index": 1, "invocation_key": "block.attn#1",
+            "exclusive_self_cpu_ms": 0.12,
+            "inclusive_attributed_cpu_ms": 0.78,
+        }]
+        self.attach("#file", "same-pass.json", fixture)
+        self.page.wait_for_function(
+            "document.querySelector('#modules')?.textContent.includes('独占 ATen')")
+        self.assertIn("0.12", self.page.locator("#modules").inner_text())
+        self.assertIn("0.78", self.page.locator("#modules").inner_text())
+        self.page.locator("#modules .module").first.click()
+        self.assertIn("block.attn#1", self.page.locator("#moduleCalls").inner_text())
+
     def test_same_pass_module_profiler_cost_and_unmatched_state(self):
         self.load_atlas()
         fixture = synthetic_graph()
