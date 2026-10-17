@@ -39,6 +39,13 @@ class TensorSamplingOracle(unittest.TestCase):
         self.assertEqual(s["matrix_original_shape"], [4, 3])
         self.assertEqual(s["matrix"][0], [0, 4, 8])
 
+    def test_scalar_output_uses_one_by_one_heatmap(self):
+        sample = _sample(torch.tensor(2.5), cap=32)
+        self.assertEqual(sample["population"], 1)
+        self.assertEqual(sample["matrix_original_shape"], [1, 1])
+        self.assertEqual(sample["matrix"], [[2.5]])
+        self.assertEqual(sum(sample["histogram"]["bins"]), 1)
+
     def test_bounded_sampling_does_not_claim_population_statistics(self):
         large = torch.arange(50000, dtype=torch.float32).reshape(100, 500)
         sample = _sample(large, cap=50)
