@@ -67,6 +67,23 @@ fails(()=>IR.gqa([[1,2,3,4]],[[1,2]],[[1,2]],{heads:3,kvHeads:1}),/divisible/);
 fails(()=>IR.gqa([[1,2]],[[1,2],[2,3]],[[1,2]],{heads:1,kvHeads:1}),/K\/V token/);
 fails(()=>IR.gqa([[1,2],[3,4]],[[1,2]],[[1,2]],{heads:1,kvHeads:1,causal:true}),/cannot exceed/);
 fails(()=>IR.gqa([[1,2]],[[1]],[[1]],{heads:2,kvHeads:1,rope:true}),/even Dk/);
+// Feature switches must actually change the numeric computation.
+{
+ const q=[[1,2,3,4],[2,-1,0,3],[4,0,-2,1]];
+ const k=[[2,0,1,-3],[1,2,-2,0],[0,-2,1,2]];
+ const v=[[1,2,-3,4],[4,2,1,0],[-1,3,2,5]];
+ const common={heads:2,kvHeads:1};
+ const noRope=IR.gqa(q,k,v,{...common,causal:false,rope:false});
+ const withRope=IR.gqa(q,k,v,{...common,causal:false,rope:true});
+ const masked=IR.gqa(q,k,v,{...common,causal:true,rope:false});
+ assert.ok(noRope.output.flat().some((x,i)=>Math.abs(x-withRope.output.flat()[i])>1e-6),
+           'RoPE switch must alter positional attention math');
+ assert.ok(masked.output.flat().some((x,i)=>Math.abs(x-noRope.output.flat()[i])>1e-6),
+           'Causal switch must alter which keys contribute');
+ const p=IR.plane(masked.stages.probabilities,{Hq:1}).view;
+ for(const row of p)eq(row.reduce((x,y)=>x+y,0),1);
+ assert.deepEqual(p[0].slice(1),[0,0]);
+}
 for(const lesson of ['gqa','decode']){
  const g=L.preset(lesson), result=L.evaluate(g),step=result.steps.find(x=>x.kind==='gqa');
  assert.ok(step,'GQA executable learning block');
