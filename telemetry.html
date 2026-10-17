@@ -44,7 +44,7 @@ main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-te
 <div id="empty" class="empty"><div style="font-size:32px;color:#7defff">◇</div><h2>导入一次真实 PyTorch Profiler 采集</h2><p>该视图能够探索 ATen 算子性能排行、模块调用时间、实测张量形状，以及自愿提供的统计样本。</p><p><code>python examples/telemetry_demo.py</code></p><p class="tiny">点击「示意样本」可预览布局；其数据由程序生成，并明确标记 SYNTHETIC。</p></div>
 <div id="body" hidden><div class="stats" id="stats"></div><div class="panel"><div class="panel-title"><strong>ATen · Self time 排行</strong><span class="badge source" id="timerel"></span></div><div id="operators"></div><div class="tiny">算子时间来自 torch.profiler.key_averages；按 self time 排序。聚合 CPU 与设备时间不应相加为总延迟。</div></div>
 <div class="twocol"><div class="panel"><div class="panel-title"><strong>张量切片热力图</strong><select id="heatmode"><option value="signed">正负值</option><option value="magnitude">幅值</option><option value="zero">零 / 非零</option></select></div><div class="canvasframe"><canvas id="heatmap"></canvas></div><div class="legend" id="legend"></div><div class="tiny" id="matrixnote"></div></div>
-<div class="panel"><div class="panel-title"><strong>采样值分布</strong><span class="badge" id="samplecount">sample</span></div><canvas id="hist" class="chart"></canvas><div class="tiny">直方图只代表有限的抽样值，不是整个张量的精确分布。</div></div></div>
+<div class="panel"><div class="panel-title"><strong>采样值分布</strong><select id="histmode"><option value="hist">采样直方图</option><option value="rowenergy">行 L2 能量</option><option value="colabs">列平均绝对值</option></select><span class="badge" id="samplecount">sample</span></div><canvas id="hist" class="chart"></canvas><div class="tiny">直方图只代表有限的抽样值，不是整个张量的精确分布。</div></div></div>
 <div class="panel"><div class="panel-title"><strong>Evidence contract · 指标口径</strong><span class="badge">可追溯</span></div><div id="evidence" class="notice"></div></div></div></main>
 <aside class="inspector"><div class="eyebrow">03 / TENSOR INSPECTOR</div><h2 style="margin-top:10px" id="selTitle">未选择张量</h2><div class="hint" id="selHint">载入数据后，可单击左侧张量切片查看逻辑 shape、stride、dtype、样本直方图与热力图。</div><div id="details"></div><hr><div class="eyebrow">04 / INTERPRETATION</div><div class="notice" id="interpret">数据展示与计算机制分开：shape、stride 为运行时观测；数值分布是有界抽样。不能据此断言具体 CUDA kernel 数量、理论峰值利用率或完整显存峰值。</div></aside></div><div id="tooltip"></div>
 <script>
@@ -94,8 +94,20 @@ const t=Math.min(1,Math.abs(v)/Math.max(maxabs,1e-9));return v<0?'rgb('+Math.rou
 function drawMatrix(){const {ctx,w,h}=initCanvas('heatmap'),s=doc.snapshots[activeSnap],mat=s?.summary?.matrix||[],rows=mat.length,cols=mat[0]?.length||0;if(!rows||!cols)return;let all=mat.flat().filter(x=>typeof x==='number'&&Number.isFinite(x)),max=Math.max(1e-8,...all.map(Math.abs)),mode=$('#heatmode').value;let pad=18,cell=Math.min((w-pad*2)/cols,(h-pad*2)/rows),startX=(w-cols*cell)/2,startY=(h-rows*cell)/2;
 for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){ctx.fillStyle=color(mat[i][j],mode,max);ctx.fillRect(startX+j*cell,startY+i*cell,Math.ceil(cell)-.5,Math.ceil(cell)-.5);}
 window.__heat={mat,cell,startX,startY,rows,cols};const l=$('#legend');l.style.background=mode==='zero'?'linear-gradient(90deg,#152438,#76e7ed)':mode==='magnitude'?'linear-gradient(90deg,#112643,#f48c69)':'linear-gradient(90deg,#3e68f5,#15243e,#ffb262)';}
-function drawHistogram(){const {ctx,w,h}=initCanvas('hist'),s=doc.snapshots[activeSnap],bins=s?.summary?.histogram?.bins||[],M=Math.max(1,...bins),pad=20;if(!bins.length)return;ctx.strokeStyle='#40607d';ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-8,h-pad);ctx.stroke();let step=(w-pad-10)/bins.length;bins.forEach((v,i)=>{let hh=v/M*(h-45);ctx.fillStyle='rgba(109,222,245,.84)';ctx.fillRect(pad+i*step,h-pad-hh,Math.max(1,step-2),hh)});ctx.fillStyle='#b5d5ed';ctx.font='10px Consolas';ctx.fillText(format(s.summary.histogram.domain[0],3),pad,h-4);ctx.fillText(format(s.summary.histogram.domain[1],3),w-65,h-4);}
+function drawHistogram(){
+const {ctx,w,h}=initCanvas('hist'),s=doc.snapshots[activeSnap],mode=$('#histmode').value,matrix=s?.summary?.matrix||[];
+let bins=s?.summary?.histogram?.bins||[];
+if(mode==='rowenergy') bins=matrix.map(row=>Math.sqrt(row.reduce((a,v)=>a+(Number.isFinite(v)?v*v:0),0)));
+if(mode==='colabs'){const cols=matrix[0]?.length||0;bins=Array.from({length:cols},(_,j)=>{const vals=matrix.map(row=>row[j]).filter(Number.isFinite);return vals.length?vals.reduce((a,v)=>a+Math.abs(v),0)/vals.length:0});}
+const M=Math.max(1e-9,...bins),pad=20;if(!bins.length)return;
+ctx.strokeStyle='#40607d';ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-8,h-pad);ctx.stroke();
+const step=(w-pad-10)/bins.length;bins.forEach((v,i)=>{const hh=v/M*(h-45);ctx.fillStyle='rgba(109,222,245,.84)';ctx.fillRect(pad+i*step,h-pad-hh,Math.max(1,step-2),hh)});
+ctx.fillStyle='#b5d5ed';ctx.font='10px Consolas';
+ctx.fillText(mode==='hist'?format(s.summary.histogram.domain[0],3):'0',pad,h-4);
+ctx.fillText(mode==='hist'?format(s.summary.histogram.domain[1],3):mode==='rowenergy'?'row L2':'column abs',w-90,h-4);
+}
 $('#heatmode').addEventListener('change',()=>{if(doc?.snapshots.length)drawMatrix()});
+$('#histmode').addEventListener('change',()=>{if(doc?.snapshots.length)drawHistogram()});
 $('#heatmap').addEventListener('mousemove',e=>{const a=window.__heat;if(!a)return;const rect=e.target.getBoundingClientRect(),i=Math.floor((e.clientY-rect.top-a.startY)/a.cell),j=Math.floor((e.clientX-rect.left-a.startX)/a.cell),t=$('#tooltip');if(i<0||i>=a.rows||j<0||j>=a.cols){t.style.display='none';return;}t.textContent='['+i+', '+j+'] = '+String(a.mat[i][j]);t.style.left=(e.clientX+16)+'px';t.style.top=(e.clientY+14)+'px';t.style.display='block';});
 $('#heatmap').addEventListener('mouseleave',()=>$('#tooltip').style.display='none');
 $('#file').onchange=async e=>{let f=e.target.files?.[0];if(!f)return;try{if(f.size>8_000_000)throw Error('最大支持 8 MB JSON');load(JSON.parse(await f.text()),false);}catch(err){alert('加载失败：'+err.message)}finally{e.target.value='';}};
