@@ -92,3 +92,14 @@ CPU tensor-contract checks. A red gate blocks merge.
 **Next correctness gate:** canonical inter-module symbol resolution across
 pinned dependencies and explicit alias / in-place mutation modeling, before
 claiming complete source-to-matrix coverage.
+
+## 2026-10-17: equation-to-source regression
+
+New pinned-source test `test_dit_real_source_dual_gated_residual_operators`
+inspects the original `DiTBlock.forward` AST to verify two assignments to `x`
+with distinct `gate_msa` / `gate_mlp` tensor products, the actual module
+calls `self.attn` and `self.mlp`, and the source graph's arithmetic
+`Mult -> Add` data dependencies at the same source line. The separate
+teaching micrograph is now a full logical two-branch gated residual flow,
+with six condition parameter slots; it is **not** substituted for the pinned
+source AST or claimed to reconstruct the external `timm` implementations.
