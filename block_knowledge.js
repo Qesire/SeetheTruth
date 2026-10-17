@@ -52,7 +52,7 @@ const notes={
  row_mean:["沿每个 token 的特征维求平均，其他轴保留；Reduce 的轴语义决定功能。","Loss 和统计常需忽略 padding，实际 reduction 的分母应按有效元素数量确认。","RowMean 不是 Batch Mean，更不会令结果自动归一化到概率。","在固定均值下改变特征宽度，比较 Sum 与 Mean。","ln"],
  row_sum:["沿一个维度累加，不除元素数；可能是进一步做归一化的中间步骤。","mask 后 Sum 需区分有效 token 和 padding；实际框架有多种 reduction 选项。","求和本身不是概率，输出也未必落在固定范围内。","把每行元素翻倍，观察 RowSum 如何变化。","softmax,ln"],
  row_var:["先消去行均值，平方差后对 D 求平均；本课程 correction=0。","PyTorch LayerNorm 使用 biased population variance，不应误用 correction=1。","常数向量的方差为零，但 RMS 可以是非零。","对 [2,2,2] 分别计算 Var 与 RMS²。","ln,rms"],
- layernorm:["逐 token 做减均值、除标准差，真实层通常带 gamma 和 beta。","Pre-Norm/Post-Norm 放置与可训练仿射参数都影响梯度路径和模型行为。","当前教学的无仿射版本不代表所有框架默认配置。","把同一个常数加到每个通道，对比 RMSNorm 的变化。","ln,rms"],
+ layernorm:["逐 token 做减均值、除标准差，真实层通常带 gamma 和 beta。","Pre-Norm/Post-Norm 放置与可训练仿射参数都影响梯度路径和模型行为。","当前教学的无仿射版本不代表所有框架默认配置，实际 gamma/beta 必须核对模型参数。","把同一个常数加到每个通道，对比 RMSNorm 的变化。","ln,rms"],
  l2norm:["沿特征维计算向量长度，再用 max(norm,epsilon) 稳定缩放。","检索和对比学习常对两侧特征先 L2 Normalization 再点积。","零向量不会突然变成长度 1，且与 RMSNorm 的 sqrt(D) 约定不同。","将非零向量乘 3，再观察归一化后的方向。","norm,rms"],
  relu:["对负值输出严格 0、正值直通，在零处按框架约定处理导数。","即便出现数值 0，普通密集 GEMM 也不会自动跳过对应权重乘加。","大量零激活不等于可无损永久删除通道。","对 [-1,0,1] 比较 ReLU 和 SiLU。","glu"],
  gelu_tanh:["用 tanh 近似高斯 CDF 的平滑门控，与 ReLU 的硬阈值不同。","PyTorch GELU 默认 approximate=none；本积木明确采用 tanh 近似。","精确 GELU 和 tanh GELU 不能被称为完全同一数值运算。","选择相同 x 比较 GELU(tanh) 与 SiLU。","gelu,glu"],
