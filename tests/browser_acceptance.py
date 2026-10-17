@@ -184,7 +184,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertEqual(stage.locator(".cell").count(), 9)
         stage.locator('[data-stage="probabilities"]').select_option("1")
         self.assertEqual(stage.locator(".cell").count(), 9)
-        self.assertIn("head 1", stage.inner_text())
+        self.assertIn("HEAD 1", stage.inner_text())
         # Turning off RoPE still executes, but is a distinct numerically tested path.
         self.page.locator('[data-node="gqa"] .block-head').click()
         self.page.locator('[data-param="rope"]').select_option("false")
@@ -207,9 +207,12 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator('[data-param="kvHeads"]').dispatch_event("change")
         self.page.locator('[data-param="heads"]').fill("3")
         self.page.locator('[data-param="heads"]').dispatch_event("change")
+        self.assertIn("整除", self.page.locator("#status").inner_text())
+        # Invalid head ratio was rejected transactionally; previous valid params persist.
+        self.assertEqual(self.page.locator('[data-param="heads"]').input_value(), "2")
         self.page.locator("#run").click()
         self.assertIn("无法运行", self.page.locator("#status").inner_text())
-        self.assertIn("整除", self.page.locator("#status").inner_text())
+        self.assertIn("per-head Dk must match", self.page.locator("#status").inner_text())
 
     def test_learning_lab_break_and_repair_challenge(self):
         self.load_lab()
