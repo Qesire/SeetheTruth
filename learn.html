@@ -95,6 +95,39 @@ input[type="file"]{display:none}
 #courseProgress{margin-top:9px;color:#a9d6bd;font-size:11px}
 @media(max-width:1120px){.app{grid-template-columns:210px minmax(380px,1fr)}.inspector{grid-column:1/-1;max-height:320px;border-left:0;border-top:1px solid var(--line)}.rail{grid-row:1}.app{height:auto;min-height:calc(100vh - 78px)}.stage{min-height:600px}}
 @media(max-width:680px){.header{flex-wrap:wrap}.app{display:flex;flex-direction:column}.rail,.inspector{max-height:none}.palette{grid-template-columns:repeat(3,1fr)}.stage{min-height:600px}}
+.composite-nav{padding:12px 19px;background:linear-gradient(130deg,#0b2836,#091d2b);border-bottom:1px solid #2f6175}
+.composite-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.composite-title{font-weight:760;font-size:13px;color:#e4f8f7}
+.composite-crumbs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.composite-crumbs button{background:#122f40;border:1px solid #31556c;color:#b7dce9;border-radius:16px;font-size:10px;padding:4px 8px}
+.composite-crumbs button:last-of-type{color:#f0d5a2;border-color:#806d48}
+.composite-intro{color:#b7d6e2;font-size:11px;line-height:1.7;margin:6px 0}
+.composite-caveat{color:#e1ba83;font-size:10px;line-height:1.6;margin:6px 0}
+.composite-stages{display:flex;gap:8px;overflow:auto;padding:7px 0 2px;scrollbar-width:thin}
+.composite-card{flex:0 0 184px;text-align:left;min-height:102px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
+  border:1px solid #375c75;border-top:3px solid #3aaeb8;background:#102e41;color:#d5eaf3;border-radius:11px;padding:10px;cursor:pointer}
+.composite-card:hover,.composite-card:focus-visible{background:#19465b;border-color:#8ce8e3;outline:none}
+.composite-card:focus-visible{box-shadow:0 0 0 2px #79ddcc}
+.composite-card[aria-current="step"]{border-color:#e6c484;background:#2a3543}
+.composite-card .card-title{font-weight:735;font-size:12px;line-height:1.4}
+.composite-card .card-shape{font:10px ui-monospace,monospace;color:#6fe7c9}
+.composite-card .card-more{font-size:10px;color:#e3c48a}
+.composite-card .card-brief{font-size:10px;color:#a6c3d3;line-height:1.55}
+.composite-nav.overview{flex:1;overflow:auto;background:radial-gradient(circle at 38% 5%,#165069,#081523 66%)}
+.composite-nav.overview .composite-title{font-size:19px}
+.composite-nav.overview .composite-intro{font-size:13px;max-width:780px}
+.composite-nav.overview .composite-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;margin-top:16px;gap:13px}
+.composite-nav.overview .composite-card{min-height:168px;max-width:none;flex-basis:auto;padding:16px;border-top-width:4px}
+.composite-nav.overview .card-title{font-size:15px}
+.composite-nav.overview .card-brief{font-size:12px}
+.composite-nav.overview .card-shape{font-size:11px}
+.composite-top-help{font:10px ui-monospace,monospace;color:#9cbbb9;margin-top:5px}
+.composite-launch{width:100%;text-align:left;border:1px solid #4c8989;border-radius:11px;padding:12px;background:#123648;color:#d7fbfc;margin-bottom:10px}
+.composite-launch strong{display:block}
+.composite-launch small{display:block;color:#9dc8d2;margin-top:3px}
+.composite-launch:hover{background:#195268}
+@media(max-width:800px){.composite-nav.overview .composite-stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.composite-nav.overview .composite-stages{grid-template-columns:1fr}}
 </style></head><body>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
@@ -109,7 +142,12 @@ input[type="file"]{display:none}
   <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
   <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
   <div class="palette" id="palette"></div>
-  <div class="rule"></div>  <div class="kicker">02 / GUIDED MISSIONS</div><h2>课程任务</h2>
+  <div class="rule"></div>
+  <div class="kicker">02 / HIERARCHICAL LEARNING</div><h2>逐层拆解模型</h2>
+  <button id="compositeLaunch" class="composite-launch" type="button"><strong>⌘ 从 Decoder Layer 进入</strong>
+   <small>完整层 → Attention / FFN → 每次矩阵计算</small></button>
+  <div class="hint">宏模块只组织已有的基础算子，不计入新的可执行积木。</div>
+  <div class="rule"></div>  <div class="kicker">03 / GUIDED MISSIONS</div><h2>课程任务</h2>
   <button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
   <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
   <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
@@ -135,6 +173,14 @@ input[type="file"]{display:none}
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
+  <section id="compositeNavigator" class="composite-nav" aria-label="复合模块逐层展开" hidden>
+   <div class="composite-bar"><div class="composite-title" id="compositeTitle"></div><button class="btn small" id="compositeBack">← 返回上层</button></div>
+   <nav class="composite-crumbs" id="compositeTrail" aria-label="模块层级"></nav>
+   <p class="composite-intro" id="compositeIntro"></p>
+   <p class="composite-caveat" id="compositeCaveat"></p>
+   <p class="composite-top-help">点选阶段查看积木的详细知识卡；带「展开」的阶段进入下一层。宏模块是教学组织，不是新增 kernel。</p>
+   <div id="compositeStages" class="composite-stages"></div>
+  </section>
   <div class="board-viewport" id="viewport"><div id="board" role="region" aria-label="可拖动积木与交互连线的微型神经网络工作台"><svg id="wires" aria-hidden="true"></svg><div id="blocks"></div></div></div>
   <div class="playbar">
    <div class="row"><label class="study-mode-label" for="studyMode">学习方式
@@ -166,16 +212,19 @@ input[type="file"]{display:none}
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
+<script src="composite_atlas.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,$=q=>document.querySelector(q);
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,
+  A=window.SeetheTruthComposites,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧"};
 const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
+let activeComposite=null,compositeHistory=[];
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -188,11 +237,64 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{activeComposite=null;compositeHistory=[];graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
 }
+function openComposite(id,history){
+ try{
+  const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
+  const g=A.build(id);
+  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];
+  run=null;step=-1;from=null;selected=g.nodes[0].id;
+  document.querySelectorAll("[data-preset]").forEach(b=>b.classList.remove("active"));
+  render();say("已打开 "+next.title+"。可逐层展开或执行符号推演；不要求 GPU。");
+ }catch(e){say(e.message,true);}
+}
+function renderComposite(){
+ const nav=$("#compositeNavigator");nav.hidden=!activeComposite;
+ if(!activeComposite){$("#viewport").hidden=false;return;}
+ const module=A.get(activeComposite),stages=A.stages(activeComposite),overview=activeComposite==="decoder";
+ nav.classList.toggle("overview",overview);
+ $("#viewport").hidden=overview;
+ $("#compositeTitle").textContent=module.title;
+ $("#compositeIntro").textContent=module.intro;
+ $("#compositeCaveat").textContent="适用边界："+module.limits;
+ $("#compositeBack").textContent=compositeHistory.length?"← 返回上层":"← 返回课程";
+ const trail=[...compositeHistory,activeComposite];
+ $("#compositeTrail").innerHTML=trail.map((id,i)=>
+   '<button type="button" data-comp-crumb="'+i+'">'+esc(A.get(id).title.split(" · ")[0])+'</button>'+
+   (i<trail.length-1?'<span aria-hidden="true" style="color:#658f9e">›</span>':'')).join("");
+ document.querySelectorAll("[data-comp-crumb]").forEach(b=>b.onclick=()=>{
+  const ix=Number(b.dataset.compCrumb);
+  if(ix===trail.length-1)return;
+  openComposite(trail[ix],trail.slice(0,ix));
+ });
+ $("#compositeStages").innerHTML=stages.map((stage,i)=>{
+  const expandable=Boolean(stage.child),isSelected=selected===stage.node;
+  return '<button class="composite-card" type="button" data-comp-stage="'+i+'"'+
+    (isSelected?' aria-current="step"':'')+'>'+
+   '<div class="card-title">'+esc(stage.title)+'</div>'+
+   '<div class="card-brief">'+esc(stage.detail)+'</div>'+
+   '<div class="card-shape">输出 '+esc(stage.shape.join(" × "))+' · '+esc(stage.nodeKind)+'</div>'+
+   '<div class="card-more">'+(expandable?'↳ 展开下一层':'⊙ 查看知识卡')+'</div></button>';
+ }).join("");
+ document.querySelectorAll("[data-comp-stage]").forEach(b=>b.onclick=()=>{
+  const stage=stages[Number(b.dataset.compStage)];
+  if(stage.child){openComposite(stage.child,[...compositeHistory,activeComposite]);return;}
+  selected=stage.node;
+  if(run){const idx=run.steps.findIndex(s=>s.id===selected);if(idx>=0)step=idx;}
+  render();
+  $("#inspectorTitle").scrollIntoView({behavior:"instant",block:"nearest"});
+ });
+}
+$("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
+$("#compositeBack").onclick=()=>{
+ if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
+ else setPreset("ffn");
+};
+
 function newId(g){let id;do{id="lab"+(++seq);}while(g.nodes.some(n=>n.id===id));return id;}
 function addBlock(kind,x=480,y=360){
  mutate(g=>{const id=newId(g);
@@ -403,9 +505,10 @@ function inspect(){
  });
 }
 function render(){
+ renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const factor=Math.max(.48,Math.min(1,(viewport.clientWidth-24)/extent));
+ const factor=Math.max(.22,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
  $("#board").style.width=extent+"px";
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
  $("#fitLabel").textContent="自动适配 "+Math.round(factor*100)+"% · 点击节点查看解释";
@@ -413,7 +516,9 @@ function render(){
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
- $("#courseProgress").textContent=run?(step===run.steps.length-1?"✓ 本次前向微型计算已完成。":"当前已展示第 "+(step+1)+" 步；继续观察输出。"):"运行后查看每一步真实的微型数值计算。";
+ $("#courseProgress").textContent=activeComposite?
+   "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
+   run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
  renderBlocks();inspect();
 }
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
