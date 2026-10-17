@@ -25,6 +25,7 @@ jobs:
           node --check tests/telemetry_syntax_check.js
           node tests/telemetry_syntax_check.js
           node tests/tensor_graph_check.js
+          node tests/tensor_static_contracts.js
           node - <<'JS'
           const fs=require('node:fs'),vm=require('node:vm');
           const html=fs.readFileSync('index.html','utf8');
