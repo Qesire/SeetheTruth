@@ -6,6 +6,7 @@ Enable with SEETHTRUTH_AUDIT_UPSTREAM=1. Normal offline unit tests still run.
 """
 from __future__ import annotations
 import ast
+import hashlib
 import os
 import tempfile
 import unittest
@@ -54,6 +55,7 @@ class PinnedOfficialSourceAudit(unittest.TestCase):
 
     def graph(self, owner, name, depth=3):
         result = parse_paths([str(self.path)], entry=owner + "." + name, max_depth=depth)
+        self.assertEqual(result["meta"]["source_sha256"]["modeling_gpt2.py"], hashlib.sha256(self.original.encode("utf8")).hexdigest())
         self.assertFalse(result["meta"]["runtime_validated"])
         self.assertFalse(result["meta"]["shape_verified"])
         self.assertFalse(result["meta"]["truncated"],
