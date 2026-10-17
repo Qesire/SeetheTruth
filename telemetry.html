@@ -70,6 +70,9 @@ function validate(d){
  const nullableNumber=x=>x===null||finite(x);
  if(!obj(d)||d.schema!=='seethetruth-telemetry-v1'||!Array.isArray(d.operators)||!Array.isArray(d.modules)||!Array.isArray(d.snapshots))fail('不是 SeetheTruth Telemetry v1');
  if(d.operators.length>5000||d.modules.length>5000||d.snapshots.length>64)fail('数据超过允许的条目数');
+ if(d.meta!=null&&(!obj(d.meta)||
+   (d.meta.notes!=null&&(!Array.isArray(d.meta.notes)||d.meta.notes.length>100||!d.meta.notes.every(text)))||
+   (d.meta.measurement!=null&&!text(d.meta.measurement))))fail('非法采集元数据');
  for(const op of d.operators){
   if(!obj(op)||!text(op.name)||!Number.isSafeInteger(op.count)||op.count<0||
     !finite(op.self_cpu_ms)||op.self_cpu_ms<0||
