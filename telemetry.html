@@ -81,6 +81,22 @@ function validate(d){
  for(const m of d.modules){
   if(!obj(m)||!text(m.name)||!text(m.type)||!Number.isSafeInteger(m.calls)||m.calls<0||!finite(m.host_wall_ms)||m.host_wall_ms<0)fail('非法模块名称或 Host 时间');
   if(m.last_outputs!=null&&!Array.isArray(m.last_outputs))fail('模块张量元数据需要数组');
+  if(m.exclusive_self_cpu_ms!=null&&(!finite(m.exclusive_self_cpu_ms)||m.exclusive_self_cpu_ms<0||
+      !finite(m.inclusive_attributed_cpu_ms)||m.inclusive_attributed_cpu_ms<0||
+      m.inclusive_attributed_cpu_ms+.0002<m.exclusive_self_cpu_ms))fail('非法模块独占或含下级 ATen CPU 成本');
+ }
+ if(d.module_calls!==undefined){
+  if(!Array.isArray(d.module_calls)||d.module_calls.length>10000)fail('过多模块逐次调用');
+  const keys=new Set();
+  for(const c of d.module_calls){
+   if(!obj(c)||!text(c.name)||!text(c.type)||!text(c.invocation_key)||
+       !Number.isSafeInteger(c.invocation_index)||c.invocation_index<1||
+       !finite(c.exclusive_self_cpu_ms)||c.exclusive_self_cpu_ms<0||
+       !finite(c.inclusive_attributed_cpu_ms)||c.inclusive_attributed_cpu_ms<0||
+       c.inclusive_attributed_cpu_ms+.0002<c.exclusive_self_cpu_ms||
+       keys.has(c.invocation_key))fail('非法或重复模块调用成本');
+   keys.add(c.invocation_key);
+  }
  }
  for(const t of d.snapshots){
   if(!obj(t)||!text(t.module)||!obj(t.tensor)||!obj(t.summary))fail('非法 snapshot 格式');
