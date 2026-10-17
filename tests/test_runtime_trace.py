@@ -61,6 +61,58 @@ class RuntimeTraceTests(unittest.TestCase):
         self.assertEqual(module.called, 0)
         self.assertFalse(trace.graph()["nodes"])
 
+    def test_opt_in_exact_source_root_matches_real_cpu_calls(self):
+        import importlib.util
+        from atlas_parser import parse_paths
+        from source_runtime_join import join_graphs
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            model_file = root / "toy.py"
+            model_file.write_text(
+                "import torch\n"
+                "class Toy(torch.nn.Module):\n"
+                "    def __init__(self):\n"
+                "        super().__init__()\n"
+                "        self.lin = torch.nn.Linear(4, 4)\n"
+                "    def forward(self, x):\n"
+                "        z = self.lin(x)\n"
+                "        pair = x @ x.transpose(-1, -2)\n"
+                "        return z, pair\n", encoding="utf-8")
+            spec = importlib.util.spec_from_file_location("toy_for_trace", model_file)
+            loaded = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(loaded)
+            model = loaded.Toy()
+            src = parse_paths([str(root)], entry="Toy.forward")
+            with RuntimeTrace(model, max_events=500, record_gradients=False,
+                              source_root=root) as recorder:
+                with torch.no_grad():
+                    model(torch.ones(2, 4))
+                    model(torch.ones(2, 4))
+            runtime = recorder.graph()
+            linked = join_graphs(src, runtime)
+            stats = linked["meta"]["source_attribution"]["stats"]
+            self.assertEqual(stats["matched_module"], 2)
+            self.assertGreaterEqual(stats["matched_operator"], 2)
+            callsites = [n for n in linked["nodes"]
+                         if n.get("source_attribution", {}).get("status") == "matched"]
+            self.assertTrue(any(n.get("module") == "lin" for n in callsites))
+            self.assertTrue(any(n.get("aten_op", "").startswith("aten.mm") for n in callsites))
+            self.assertEqual([n["invocation_index"] for n in linked["nodes"]
+                              if n.get("module") == "lin"], [1, 2])
+            self.assertFalse(any("source_root" in n for n in linked["nodes"]))
+            self.assertFalse(runtime["meta"]["source_capture"]["source_root_serialized"])
+            self.assertTrue(runtime["meta"]["source_capture"]["enabled"])
+            self.assertFalse(src["meta"]["shape_verified"])
+            self.assertFalse(any(n.get("source_attribution") for n in runtime["nodes"]))
+
+    def test_source_capture_default_off(self):
+        with RuntimeTrace(torch.nn.Linear(2, 2), record_gradients=False) as t:
+            with torch.no_grad():
+                t.model(torch.ones(1, 2))
+        g = t.graph()
+        self.assertFalse(g["meta"]["source_capture"]["enabled"])
+        self.assertTrue(all("source" not in n for n in g["nodes"]))
+
     def test_bounds(self):
         with self.assertRaises(ValueError):
             RuntimeTrace(torch.nn.Linear(2, 2), max_events=2)
