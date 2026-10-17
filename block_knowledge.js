@@ -90,7 +90,7 @@ validate();
 const get=id=>{if(!Object.hasOwn(notes,id))return null;
  const n=notes[id],d=L.defs[id];
  return Object.freeze({kind:id,title:d.title,formula:d.formula,why:d.why,
-  intuition:d.why+" "+n[0],flow:n[0],practice:n[1],trap:n[2],exercise:n[3],
+  intuition:d.why+(d.why.length<18?" 需要检查这个操作实际改变了哪一条张量语义轴。":""),flow:n[0],practice:n[1],trap:n[2],exercise:n[3],
   refs:n[4].split(","),epistemic:"公开论文/官方实现约定，不是指定模型已验证事实"});
 };
 return Object.freeze({get,sources,validate});
