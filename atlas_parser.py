@@ -105,15 +105,36 @@ class Index:
         parts=list(relative.with_suffix("").parts)
         if parts[-1]=="__init__":parts.pop()
         return ".".join(parts)
+    def import_module(self,file,stmt):
+        if stmt.level==0:return stmt.module
+        # Python relative import semantics: level=1 refers to current package.
+        base=self.module_name(file)
+        package=base if file.name=="__init__.py" else base.rpartition(".")[0]
+        parts=package.split(".") if package else []
+        up=stmt.level-1
+        if up>len(parts):return None
+        suffix=stmt.module.split(".") if stmt.module else []
+        return ".".join(parts[:len(parts)-up]+suffix)
     def resolve_constructor(self,fn,ctor):
         if not ctor:return None
         local=self.class_def_keys.get((fn.path,ctor,"forward"))
+        binding=self.imports.get(fn.path,{}).get(ctor)
+        if local and binding:
+            # An import/class shadow collision needs statement-order modeling.
+            return None
         if local:return local
-        origin=self.imports.get(fn.path,{}).get(ctor)
-        if not origin:return None
-        module,symbol=origin
-        path=self.module_paths.get(module)
-        return self.class_def_keys.get((path,symbol,"forward")) if path else None
+        seen=set()
+        for _ in range(8):
+            if not binding or binding in seen:return None
+            seen.add(binding)
+            module,symbol=binding
+            path=self.module_paths.get(module)
+            if not path:return None
+            target=self.class_def_keys.get((path,symbol,"forward"))
+            if target:return target
+            # Explicit reexports only; no star-import or heuristic dispatch.
+            binding=self.imports.get(path,{}).get(symbol)
+        return None
     def resolve_method(self,fn,name):
         return self.class_def_keys.get((fn.path,fn.cls,name)) if fn.cls else None
     def load(self,path):
@@ -137,10 +158,12 @@ class Index:
                 self.errors.append("duplicate module path "+module_path)
             else:self.module_paths[module_path]=file
             for item in tree.body:
-                if isinstance(item,ast.ImportFrom) and item.module and item.level==0:
-                    for alias in item.names:
-                        if alias.name!="*":
-                            self.imports[file][alias.asname or alias.name]=(item.module,alias.name)
+                if isinstance(item,ast.ImportFrom):
+                    module=self.import_module(file,item)
+                    if module:
+                        for alias in item.names:
+                            if alias.name!="*":
+                                self.imports[file][alias.asname or alias.name]=(module,alias.name)
             for item in tree.body:
                 if isinstance(item,(ast.FunctionDef,ast.AsyncFunctionDef)):
                     self.defs.setdefault(item.name,Def(file,None,item.name,item))
