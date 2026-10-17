@@ -137,3 +137,11 @@ Learning Studio 现在包含 **45 种真的进行有限二维 Float64 数值计�
 打开 [Learning Studio](learn.html)，选择例如 **GQA、SwiGLU、LayerNorm 或 CrossEntropy**，在右侧“积木深度讲解”展开各部分。知识来源标明为公共论文或 PyTorch/Hugging Face 官方文档，不代表已经审查你打开的某个真实模型。会明确区分 GQA 的缓存收益与真实加速、FlashAttention 的 IO 优化与数学公式、GELU 精确/近似形式、标签 shift、Dropout 的真实训练随机性等。
 
 知识体系的原则与证据边界见 [积木深度讲解设计](docs/block-knowledge-deep-dives.md)。验证：`node tests/block_knowledge_contracts.js`，以及 `python tests/browser_block_knowledge.py`（真实 Chromium，截图会随 CI 上传）。
+
+## 分层展开完整大模型模块（Learning Studio）
+
+进入 [学习工作台](learn.html)，在左侧选择 **“从 Decoder Layer 进入”**，即可沿六个数学阶段进入 GQA Attention、FFN、Normalization 与 Residual，并进一步展开到 **QKᵀ、分数缩放、Softmax、PV** 或 **gate/up → SiLU → Hadamard → down** 等原子计算。点击任意阶段还会关联既有的数学/工程惯例/易错点知识卡。
+
+这是 **8 种复合学习视图，不是额外增加 8 种可执行算子**；45 种已有积木仍是底层单一算子表。默认只做定性的形状、语义、连接与条件推演，不生成大矩阵或要求 GPU。小矩阵数值模式独立可选。
+
+关键验收不是仅截图：`tests/composite_atlas_contracts.js` 会逐元素比较父级与展开后 SwiGLU、Attention 的独立计算结果，并检查实际 Decoder 双残差与输出 shape。`tests/browser_composite_hierarchy.py` 使用真正 Chromium 逐层点击生成截图。详见 [分层积木设计与数学验收](docs/hierarchical-composite-learning.md)。
