@@ -98,6 +98,24 @@ def rule(name):
 class Index:
     def __init__(self,root):
         self.root=root;self.defs={};self.modules=defaultdict(dict);self.sequential_defs=defaultdict(dict);self.errors=[];self.count=0;self.source_digests={}
+        # Imports are only resolved into explicitly scanned, nonexecuted ASTs.
+        self.module_paths={};self.imports=defaultdict(dict);self.class_def_keys={}
+    def module_name(self,file):
+        relative=file.relative_to(self.root) if file.is_relative_to(self.root) else Path(file.name)
+        parts=list(relative.with_suffix("").parts)
+        if parts[-1]=="__init__":parts.pop()
+        return ".".join(parts)
+    def resolve_constructor(self,fn,ctor):
+        if not ctor:return None
+        local=self.class_def_keys.get((fn.path,ctor,"forward"))
+        if local:return local
+        origin=self.imports.get(fn.path,{}).get(ctor)
+        if not origin:return None
+        module,symbol=origin
+        path=self.module_paths.get(module)
+        return self.class_def_keys.get((path,symbol,"forward")) if path else None
+    def resolve_method(self,fn,name):
+        return self.class_def_keys.get((fn.path,fn.cls,name)) if fn.cls else None
     def load(self,path):
         files=sorted(path.rglob("*.py")) if path.is_dir() else [path]
         for file in files:
@@ -114,6 +132,15 @@ class Index:
             locator=str(file.relative_to(self.root)) if file.is_relative_to(self.root) else file.name
             self.source_digests[locator]=hashlib.sha256(raw).hexdigest()
             self.count+=1
+            module_path=self.module_name(file)
+            if module_path in self.module_paths and self.module_paths[module_path]!=file:
+                self.errors.append("duplicate module path "+module_path)
+            else:self.module_paths[module_path]=file
+            for item in tree.body:
+                if isinstance(item,ast.ImportFrom) and item.module and item.level==0:
+                    for alias in item.names:
+                        if alias.name!="*":
+                            self.imports[file][alias.asname or alias.name]=(item.module,alias.name)
             for item in tree.body:
                 if isinstance(item,(ast.FunctionDef,ast.AsyncFunctionDef)):
                     self.defs.setdefault(item.name,Def(file,None,item.name,item))
@@ -122,8 +149,11 @@ class Index:
                         if not isinstance(f,(ast.FunctionDef,ast.AsyncFunctionDef)):continue
                         key=item.name+"."+f.name
                         if key in self.defs:
+                            key=module_path+"."+key
+                        if key in self.defs:
                             self.errors.append("duplicate class method "+key);continue
                         self.defs[key]=Def(file,item.name,f.name,f)
+                        self.class_def_keys[(file,item.name,f.name)]=key
                         if f.name=="__init__":
                             for n in ast.walk(f):
                                 if not isinstance(n,(ast.Assign,ast.AnnAssign)):continue
@@ -131,9 +161,9 @@ class Index:
                                 for target in targets:
                                     if isinstance(target,ast.Attribute) and isinstance(target.value,ast.Name) and target.value.id=="self" and isinstance(n.value,ast.Call):
                                         ctor=expr(n.value.func).split(".")[-1]
-                                        self.modules[item.name][target.attr]=ctor
+                                        self.modules[(file,item.name)][target.attr]=ctor
                                         if ctor=="Sequential" and not n.value.keywords and all(isinstance(a,ast.Call) for a in n.value.args):
-                                            self.sequential_defs[item.name][target.attr]=list(n.value.args)
+                                            self.sequential_defs[(file,item.name)][target.attr]=list(n.value.args)
         if not self.defs:raise ValueError("No Python functions found")
     def choose(self,entry):
         if entry:
@@ -192,7 +222,7 @@ class Graph:
             constructor=None
             if callee.startswith("self.") and fn.cls:
                 key=callee.split(".")[1].split("[")[0]
-                constructor=self.i.modules[fn.cls].get(key)
+                constructor=self.i.modules[(fn.path,fn.cls)].get(key)
                 if constructor and constructor.lower() in SEMANTICS:
                     kind,purpose,formula,why=rule(constructor)
             certainty="constructor_and_semantic_rule" if constructor and constructor.lower() in SEMANTICS else "semantic_rule" if kind!="Call" else "source_call"
@@ -202,7 +232,7 @@ class Graph:
             for a in incoming:self.edge(a,n)
             if constructor=="Sequential" and fn.cls:
                 attribute=callee.split(".")[1] if callee.startswith("self.") else ""
-                chain=self.i.sequential_defs[fn.cls].get(attribute)
+                chain=self.i.sequential_defs[(fn.path,fn.cls)].get(attribute)
                 if chain:
                     previous=list(dict.fromkeys(incoming))
                     for offset,declared_op in enumerate(chain):
@@ -225,12 +255,19 @@ class Graph:
             if callee.endswith((".backward",".step",".zero_grad")):
                 self.edge(self.last_effect,n);self.last_effect=n
             nested=None
-            if callee.startswith("self.") and constructor and constructor+".forward" in self.i.defs:
-                nested=constructor+".forward"
-            elif callee.startswith("self.") and fn.cls:
-                method=fn.cls+"."+callee.split(".")[1]
-                if method in self.i.defs:nested=method
+            if callee.startswith("self.") and constructor:
+                nested=self.i.resolve_constructor(fn,constructor)
+            if not nested and callee.startswith("self.") and fn.cls and not constructor:
+                nested=self.i.resolve_method(fn,callee.split(".")[1])
             elif callee in self.i.defs:nested=callee
+            if nested and n:
+                found=next(node for node in self.nodes if node["id"]==n)
+                found["resolved_scope"]=nested
+                target=self.i.defs[nested].path
+                found["resolved_source_file"]=str(target.relative_to(self.i.root)) if target.is_relative_to(self.i.root) else target.name
+            elif constructor and constructor in self.i.imports.get(fn.path,{}) and not nested:
+                module,symbol=self.i.imports[fn.path][constructor]
+                self.unresolved.add("unloaded imported module: "+module+"."+symbol+" at "+str(ex.lineno))
             if nested and nested not in seen and depth<self.depth and n:
                 slot_sources=self.function(nested,n,depth+1,seen|{nested},argument_sources=(positional_sources,keyword_sources))
                 if slot_sources:self.call_outputs[n]=slot_sources
