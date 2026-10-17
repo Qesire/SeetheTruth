@@ -1,0 +1,224 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeetheTruth · Training Loop Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#081722;--surface:#102535;--surface2:#142f40;--line:#305064;
+--text:#e8f7fc;--muted:#a0bcca;--cyan:#65d9d4;--gold:#ebbf7a;--blue:#91b5fa;--warn:#f1b18e}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,"Microsoft YaHei",system-ui,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+a{color:#9be8e4;text-decoration:none}
+.header{min-height:82px;padding:17px 25px;border-bottom:1px solid #29536a;background:linear-gradient(110deg,#103447,#092032 55%,#0a1c29);
+ display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:850;letter-spacing:1.5px}.brand strong{color:var(--cyan)}
+.sub{font:11px ui-monospace,monospace;color:#abc2ce;margin-top:4px}
+.links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.link{border:1px solid #416279;border-radius:9px;padding:9px 12px;color:#c8e8f1;font-size:12px}
+.pill{font:10px ui-monospace,monospace;color:#a2dfc9;border:1px solid #35705f;border-radius:16px;padding:6px 10px}
+.page{display:grid;grid-template-columns:276px minmax(520px,1fr) 390px;height:calc(100vh - 82px);min-height:690px}
+.sidebar,.details{overflow:auto;background:#0d202d}
+.sidebar{border-right:1px solid var(--line);padding:18px 17px}
+.details{border-left:1px solid var(--line);padding:18px 20px}
+.kicker{color:#74d5d0;font:bold 10px ui-monospace,monospace;letter-spacing:1.5px;margin-bottom:7px}
+h1,h2,h3,p{margin:0}h2{font-size:17px}p{line-height:1.7}
+.help{font-size:11px;color:var(--muted);line-height:1.75}
+.rule{border-top:1px solid #294859;margin:16px 0}
+.field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;color:#bdd5df;font-size:12px}
+.field input,.field select{background:#0a1c2a;border:1px solid #41687b;border-radius:8px;color:#f1f8fc;padding:7px 8px;max-width:116px;width:104px}
+.field:has(select) select{min-width:142px;max-width:none}
+.field input:focus,.field select:focus{outline:2px solid var(--cyan)}
+.controls{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+.btn{border:1px solid #49718b;background:#14374a;color:#e0eff7;border-radius:9px;padding:9px 11px;font-size:12px}
+.btn.primary{background:#257f82;border-color:#65d9d4;color:white;font-weight:750}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.catalog{display:grid;gap:6px;margin-top:12px}
+.catalog button{background:#132b3a;color:#cce4ea;border:1px solid #2d4c60;text-align:left;border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.catalog button:hover,.catalog button.active{background:#1c485a;border-color:#66d8d2}
+.catalog .tag{font:9px ui-monospace,monospace;color:#8eb7cb}
+.workspace{overflow:auto;background:radial-gradient(circle at 56% -2%,#15394b,#091927 58%);padding:22px 25px}
+.hero{border:1px solid #386a78;border-radius:16px;background:linear-gradient(115deg,#163b4b,#122334);padding:19px 21px}
+.hero h1{font-size:24px;letter-spacing:-.4px}
+.hero p{font-size:12px;color:#bcd6dc;margin-top:9px;max-width:790px}
+.scope{color:#f4c595!important;font-size:11px!important}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}
+.legend span{font:10px ui-monospace,monospace;border:1px solid #395b6b;border-radius:18px;padding:5px 9px;color:#b7d5de}
+.state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.state-card{border:1px solid #416279;border-radius:12px;padding:13px;background:#0f2b3b;min-height:102px}
+.state-card.grad{border-color:#9a7552}.state-card.moment{border-color:#506d9e}
+.state-card .key{font:10px ui-monospace,monospace;color:#a4c5d1}
+.state-card .value{font:bold 16px ui-monospace,monospace;color:#e4f7f5;margin:10px 0 4px;word-break:break-word}
+.state-card .hint{color:#a7bac8;font-size:10px}
+.flow-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 10px;flex-wrap:wrap}
+.flow-head h2{font-size:16px}
+.sequence{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.step{min-height:123px;text-align:left;position:relative;border:1px solid #36576b;border-top:3px solid var(--cyan);border-radius:12px;background:#102a3a;color:#dcecf4;padding:12px;display:flex;flex-direction:column;gap:9px}
+.step.backward{border-top-color:#a5b6ec}.step.optimizer{border-top-color:var(--gold)}.step.state{border-top-color:#d8a876}
+.step.active{background:#254c58;border-color:#8be9df;box-shadow:0 0 0 2px #3f8884}
+.step .idx{font:10px ui-monospace,monospace;color:#8fb3c3}
+.step .name{font-size:12px;font-weight:780}
+.step .math{font:11px ui-monospace,monospace;color:#b8e9e4;overflow-wrap:anywhere}
+.step .round{font-size:9px;color:#9cb6c4;margin-top:auto}
+.step:focus-visible{outline:2px solid #efbf83;outline-offset:2px}
+.timeline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0}
+.timeline .progress{flex:1;color:#9fc2d2;font:11px ui-monospace,monospace}
+.bar{width:100%;height:6px;border-radius:5px;background:#254156;overflow:hidden;margin-top:5px}
+.bar div{height:100%;background:linear-gradient(90deg,#4accc6,#e1be84);width:0%}
+.category{color:#7dcfc9;font:bold 10px ui-monospace,monospace;letter-spacing:1px}
+.formula{padding:11px;margin:13px 0;border:1px solid #386a7a;border-radius:9px;background:#0b2535;font:12px ui-monospace,monospace;color:#e2eee9;line-height:1.8;overflow-wrap:anywhere}
+.block-note{border-top:1px solid #2b4a5c;margin-top:12px;padding-top:11px}
+.block-note summary{cursor:pointer;color:#bee6ea;font-size:12px;font-weight:700}
+.block-note p{font-size:12px;color:#bfd2dc;margin-top:8px}
+.trap{border-left:3px solid var(--warn);padding:10px 12px;background:#2b2732;font-size:12px;color:#f0d4bf;margin:14px 0}
+.references{display:grid;gap:10px;margin-top:12px}
+.references a{font-size:11px;text-decoration:underline;text-underline-offset:3px;line-height:1.5}
+.value-box{margin:12px 0;background:#112f3e;padding:10px 12px;border-radius:9px;border:1px solid #376475}
+.value-box .key{font:10px ui-monospace,monospace;color:#a1bfcc}
+.value-box .value{font:13px ui-monospace,monospace;color:#f5e8d0;margin-top:6px;overflow-wrap:anywhere}
+.alert{font-size:11px;color:#f1bc94;margin-top:12px}
+#comparison{margin-top:13px;font-size:12px;line-height:1.8;color:#c4dfdc}
+#comparison:empty{display:none}
+@media(max-width:1190px){.page{grid-template-columns:240px minmax(420px,1fr)}.details{grid-column:1/-1;max-height:520px;border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:690px){.header{padding:12px}.page{display:flex;flex-direction:column;height:auto}.sidebar,.details{max-height:none}.workspace{overflow:visible;padding:16px}.state{grid-template-columns:1fr}.hero h1{font-size:21px}}
+</style></head><body>
+<header class="header"><div><div class="brand">SEE<strong>THE</strong>TRUTH <span style="color:#83b9cb;font-size:13px;font-weight:400">/ TRAINING STUDIO</span></div>
+<div class="sub">LEARN HOW A GRADIENT BECOMES AN UPDATE · no GPU needed</div></div>
+<div class="links"><span class="pill">CONCEPT FIRST · 14 BLOCKS</span><a class="link" href="learn.html">← 计算积木库</a><a class="link" href="index.html">全息模型图谱</a></div></header>
+<div class="page">
+<aside class="sidebar">
+ <div class="kicker">01 / TRAINING PARAMETERS</div><h2>训练实验条件</h2>
+ <p class="help">默认按符号推演完整训练状态。启用标量验证才计算一个 θ 的局部数值；不运行真实模型或 GPU。</p>
+ <label class="field">教学模式<select id="mode"><option value="concept">原理与状态推演</option><option value="scalar">可选：标量数值验证</option></select></label>
+ <label class="field">优化器<select id="optimizer"><option value="adamw">AdamW</option><option value="sgd">SGD（无 decay）</option></select></label>
+ <label class="field">Microbatch 数<select id="microbatches"><option value="2">2（累积）</option><option value="1">1（不累积）</option></select></label>
+ <label class="field">Optimizer Steps<select id="steps"><option value="2">2（跨步状态）</option><option value="1">1</option></select></label>
+ <label class="field">学习率 η<input id="lr" type="number" value="0.1" min="0.00001" max="1" step="0.01"></label>
+ <label class="field">初始参数 θ<input id="theta" type="number" value="0.4" min="-10" max="10" step=".1"></label>
+ <label class="field">Weight decay λ<input id="weightDecay" type="number" value=".02" min="0" max="1" step=".01"></label>
+ <div class="controls"><button id="restart" class="btn primary">↺ 从头推演</button><button id="compare" class="btn">反例：错误累积</button></div>
+ <div id="comparison" role="status"></div>
+ <div class="rule"></div>
+ <div class="kicker">02 / REAL SEMANTIC BLOCKS</div><h2>训练状态积木 <span id="typeCount">14</span></h2>
+ <p class="help">点击积木跳到本轮首次出现的步骤，并阅读其数学定义、工程惯例和常见误区。</p>
+ <nav class="catalog" id="catalog" aria-label="14 种训练计算与状态积木"></nav>
+</aside>
+<main class="workspace">
+ <section class="hero">
+  <div class="kicker">03 / SCALAR TRAINING TIMELINE</div>
+  <h1>Forward → Loss → Backward → Optimizer</h1>
+  <p>数学演示：一个可学习标量 θ，单样本损失 ℓᵢ=½(θxᵢ−yᵢ)²。
+  每个有效 batch 内的 microbatch 依次执行前向与反向，梯度累积完成后只进行一次参数更新。</p>
+  <p class="scope">这是训练机制的可推演实例，不等同完整自动微分、Transformer 参数训练、分布式同步或 GPU Profiling。</p>
+  <div class="legend"><span>● PARAMETER · 持久 θ</span><span>◆ GRAD BUFFER · 每轮清空</span><span>◇ OPTIMIZER STATE · m/v 跨轮持久</span></div>
+ </section>
+ <div class="state" aria-label="学习状态追踪">
+  <div class="state-card"><div class="key">PARAMETER θ</div><div id="thetaState" class="value">θ（符号状态）</div><div class="hint">只在 Optimizer Step 更新</div></div>
+  <div class="state-card grad"><div class="key">GRADIENT BUFFER · θ.grad</div><div id="gradState" class="value">None → Σgᵢ</div><div class="hint">每个有效 batch 开始时清理</div></div>
+  <div class="state-card moment"><div class="key">ADAMW OPTIMIZER STATE</div><div id="momentState" class="value">mₜ, vₜ</div><div class="hint">跨 optimizer step 保存；SGD 不使用</div></div>
+ </div>
+ <div class="flow-head"><h2 id="timelineTitle">训练积木执行顺序</h2><div class="controls"><button id="prev" class="btn">← 上一步</button><button id="next" class="btn primary">下一步 →</button></div></div>
+ <div class="timeline"><div class="progress"><span id="stepCount"></span><div class="bar"><div id="progressBar"></div></div></div></div>
+ <div id="sequence" class="sequence" aria-label="实际数学与状态转移时间线"></div>
+</main>
+<aside class="details">
+ <div class="kicker">04 / WHY THIS BLOCK EXISTS</div>
+ <h2 id="inspectorTitle">选择一个训练积木</h2>
+ <div id="phase" class="category"></div>
+ <div class="formula" id="formula"></div>
+ <div class="value-box"><div class="key">当前步骤的符号输出</div><div class="value" id="symbol"></div></div>
+ <div id="numericBox" class="value-box" hidden><div class="key">可选标量演示结果（不是模型训练）</div><div id="numericValue" class="value"></div></div>
+ <p id="detail" class="help"></p>
+ <details class="block-note" open><summary>精确计算流与状态影响</summary><p id="how"></p></details>
+ <details class="block-note" open><summary>工业实践中的重要习惯</summary><p id="practice"></p></details>
+ <div class="trap"><div class="kicker" style="color:#f5bc95">误区 / PUBLIC SECRET</div><p id="trap"></p></div>
+ <details class="block-note"><summary>自己判断：最小可证伪问题</summary><p id="exercise"></p></details>
+ <details class="block-note"><summary>依据：PyTorch 官方计算合同</summary><div id="sources" class="references"></div></details>
+ <div class="alert" id="evidence">EVIDENCE: symbolic state machine only · no trained model</div>
+</aside>
+</div>
+<script src="training_flow.js"></script>
+<script>
+(()=>{"use strict";
+const T=window.SeetheTruthTraining,by=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let run=null,current=0;
+const names={parameter:"参数",state:"状态",data:"数据",forward:"前向",loss:"损失",backward:"反向",optimizer:"优化器"};
+function cfg(){return {optimizer:by("optimizer").value,microbatches:Number(by("microbatches").value),
+  steps:Number(by("steps").value),lr:Number(by("lr").value),theta:Number(by("theta").value),
+  weightDecay:Number(by("weightDecay").value)};}
+const number=n=>n===null?"None":typeof n==="number"?
+  (Math.abs(n)>1e-4&&Math.abs(n)<1e6?n.toFixed(6):n.toExponential(4)):"—";
+function renderCatalog(){
+ by("catalog").innerHTML=Object.entries(T.BLOCKS).map(([id,b])=>
+  '<button type="button" data-type="'+esc(id)+'" class="'+(run?.events[current]?.kind===id?'active':'')+'">'+
+  '<span>'+esc(b.title)+'</span><span class="tag">'+esc(names[b.category]||b.category)+'</span></button>').join("");
+ document.querySelectorAll("[data-type]").forEach(el=>el.onclick=()=>{
+  const i=run.events.findIndex(e=>e.kind===el.dataset.type);
+  if(i!==-1){current=i;render();focus();}
+  else{
+   by("inspectorTitle").textContent=T.BLOCKS[el.dataset.type].title;
+   by("detail").textContent="当前配置未启用该训练积木：可以切换 AdamW 再查看动量与权重衰减。";
+  }
+ });
+}
+function render(){
+ const e=run.events[current],b=T.BLOCKS[e.kind],numeric=run.mode==="scalar";
+ by("stepCount").textContent="STEP "+(current+1)+" / "+run.events.length+" · "+e.phase;
+ by("progressBar").style.width=((current+1)/run.events.length*100)+"%";
+ by("prev").disabled=current===0;by("next").disabled=current===run.events.length-1;
+ by("timelineTitle").textContent="当前阶段："+e.phase;
+ by("sequence").innerHTML=run.events.map((evt,i)=>{
+  const d=T.BLOCKS[evt.kind];
+  return '<button type="button" data-evt="'+i+'" class="step '+esc(d.category)+(i===current?' active':'')+'"'+
+    (i===current?' aria-current="step"':'')+'>'+
+    '<span class="idx">#'+String(i+1).padStart(2,'0')+' · '+esc(names[d.category])+'</span>'+
+    '<span class="name">'+esc(d.title)+'</span><span class="math">'+esc(evt.symbol)+'</span>'+
+    '<span class="round">'+esc(evt.phase)+'</span></button>';
+ }).join("");
+ document.querySelectorAll("[data-evt]").forEach(el=>el.onclick=()=>{current=Number(el.dataset.evt);render();});
+ const state=e.state;
+ by("thetaState").textContent=numeric?number(state.theta):"θ · 只在 Step 更新";
+ by("gradState").textContent=numeric?number(state.grad):
+  (["zero_grad"].includes(e.kind)?"None":"None → Σgᵢ");
+ by("momentState").textContent=numeric?(run.config.optimizer==="adamw"?
+  "m="+number(state.m)+" · v="+number(state.v):"SGD · no m/v"):"mₜ · vₜ（AdamW）";
+ by("inspectorTitle").textContent=b.title;
+ by("phase").textContent=names[b.category]+" / "+e.phase;
+ by("formula").textContent=b.formula;
+ by("symbol").textContent=e.symbol;
+ by("numericBox").hidden=!numeric;
+ by("numericValue").textContent=number(e.value);
+ if(numeric&&e.meta&&Object.keys(e.meta).length)
+   by("numericValue").textContent+=" · "+Object.entries(e.meta).filter(([,v])=>typeof v==="number").map(([k,v])=>k+"="+number(v)).join(" · ");
+ by("detail").textContent=e.detail;
+ by("how").textContent=b.how;
+ by("practice").textContent=b.practice;
+ by("trap").textContent=b.trap;
+ by("exercise").textContent=b.test;
+ by("sources").innerHTML=b.refs.map(k=>'<a href="'+esc(T.SOURCE[k].url)+'" rel="noopener noreferrer" target="_blank">↗ '+esc(T.SOURCE[k].title)+'</a>').join("");
+ by("evidence").textContent=numeric?
+  "EVIDENCE: analytic scalar oracle · NOT actual PyTorch autograd/model training":
+  "EVIDENCE: symbolic state contract · no numerical execution or GPU";
+ renderCatalog();
+}
+function focus(){const el=document.querySelector('[data-evt="'+current+'"]');el?.scrollIntoView({block:"nearest",inline:"nearest",behavior:"instant"});}
+function reset(){
+ try{run=T.build(cfg(),by("mode").value);current=0;by("comparison").textContent="";render();
+ }catch(err){by("comparison").textContent="配置被拒绝："+err.message;}
+}
+by("prev").onclick=()=>{if(current>0){current--;render();focus();}};
+by("next").onclick=()=>{if(current<run.events.length-1){current++;render();focus();}};
+by("restart").onclick=reset;
+for(const id of ["mode","optimizer","microbatches","steps"])by(id).onchange=reset;
+for(const id of ["lr","theta","weightDecay"])by(id).onchange=reset;
+by("compare").onclick=()=>{
+ const b=T.build(cfg(),"scalar").events;
+ const first=b.find(e=>e.kind==="chain_rule"),all=b.find(e=>e.kind==="gradient_ready");
+ const g=b.filter(e=>e.kind==="chain_rule").slice(0,run.config.microbatches).map(e=>e.value);
+ const correct=all.value,sum=g.reduce((a,v)=>a+v,0),wrongLast=g.at(-1)/run.config.microbatches;
+ by("comparison").textContent="错误累积的可证伪对照：正确平均梯度 "+number(correct)+
+  "；若忘记除以 N，则为 "+number(sum)+"；若每个 microbatch 都 zero_grad，只保留最后梯度贡献 "+number(wrongLast)+
+  "。这是一个标量反例，不是实际 GPU 实验。";
+};
+reset();
+})();
+</script>
+</body></html>
