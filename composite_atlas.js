@@ -121,7 +121,7 @@
    stages:[
     {title:"01 / W_gate",node:"gate",detail:"每 token 对输入特征投影，产生门控的中间宽度。"},
     {title:"02 / SiLU",node:"act",detail:"逐坐标 SiLU(x)=xσ(x)，只改变数值不改变 shape。"},
-    {title:"03 / W_up",node:"up",detail:"另一路独立线性投影，提供门控乘法的内容。"},
+    {title:"03 / W_up",node:"up",detail:"另一条独立 Linear 上投影产生 Up 内容特征，必须与 Gate 逐元素对齐才可执行后续乘法。"},
     {title:"04 / Hadamard",node:"mul",detail:"SiLU(G)⊙U 没有矩阵维收缩，仍输出 [T,Dff]。"},
     {title:"05 / W_down",node:"down",detail:"在 Dff 维收缩后回到残差 D，注意这一步才是矩阵乘法。"}
    ]
