@@ -170,7 +170,7 @@ function render(){
   return '<button type="button" data-evt="'+i+'" class="step '+esc(d.category)+(i===current?' active':'')+'"'+
     (i===current?' aria-current="step"':'')+'>'+
     '<span class="idx">#'+String(i+1).padStart(2,'0')+' · '+esc(names[d.category])+'</span>'+
-    '<span class="name">'+esc(d.title)+'</span><span class="math">'+esc(evt.symbol)+'</span>'+
+    '<span class="name">'+esc(evt.label)+'</span><span class="math">'+esc(evt.symbol)+'</span>'+
     '<span class="round">'+esc(evt.phase)+'</span></button>';
  }).join("");
  document.querySelectorAll("[data-evt]").forEach(el=>el.onclick=()=>{current=Number(el.dataset.evt);render();});
