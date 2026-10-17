@@ -60,6 +60,12 @@ h1{font-size:27px;line-height:1.15;letter-spacing:-.035em;margin:7px 0 8px;font-
 .matrix-head h3{font-size:13px;margin:4px 0}.matrix-head select{background:#112d41;border:1px solid #3d6279;color:#d1eef2;border-radius:7px;padding:5px}
 .heatmap{margin-top:10px;display:grid;gap:5px}.heat{height:32px;border-radius:6px;border:1px solid #355b70;display:flex;align-items:center;justify-content:center;font:10px ui-monospace,monospace;color:white;font-variant-numeric:tabular-nums}
 .axis-labels{display:flex;justify-content:space-between;color:#7191ab;font:10px ui-monospace,monospace;margin-top:6px}
+.kv-value-panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.kv-value-pane{border:1px solid #2a4c65;border-radius:9px;padding:10px;background:#0c1e31}
+.kv-value-pane .label{color:#9acbdb}
+.kv-mini-matrix{display:grid;gap:3px;margin-top:10px}
+.kv-mini-cell{height:22px;display:flex;align-items:center;justify-content:center;font:10px ui-monospace,monospace;border-radius:4px;color:#e7f3fc}
+@media(max-width:700px){.kv-value-panes{grid-template-columns:1fr}}
 .formula{padding:14px;background:#091b2c;border:1px solid #254960;border-radius:9px;margin:12px 0;color:#bfe7fa;font:12px/1.8 Cambria,Georgia,serif}
 .evidence{display:flex;align-items:flex-start;gap:8px;color:#b0cde0;font-size:11px;margin:13px 0}
 .evidence .dot{width:7px;height:7px;border-radius:100%;background:#61dcb2;margin-top:5px;flex-shrink:0}
@@ -113,6 +119,11 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
 <label class="hint">Query head <select id="headSlice"><option value="0">Head 0</option></select></label></div>
 <div id="matrix" class="heatmap"><div class="empty">尚无 Attention 分数；先执行 Prefill。</div></div>
 <div class="axis-labels"><span>横轴 → Key position / Tk</span><span>纵轴 → Query position / Tq</span></div>
+<div class="rule"></div>
+<div class="matrix-head"><div><div class="label">05 / ACTUAL KV CONTENT</div><h3>缓存数值显微镜</h3></div><label class="hint">KV head <select id="kvHeadSlice"><option value="0">Head 0</option></select></label></div>
+<div class="kv-value-panes"><section class="kv-value-pane"><div class="label">K · [Tk, Dk] · Projected Keys</div><div id="keyValues" class="kv-mini-matrix"><div class="hint">等待缓存写入</div></div></section>
+<section class="kv-value-pane"><div class="label">V · [Tk, Dv] · Projected Values</div><div id="valueValues" class="kv-mini-matrix"><div class="hint">等待缓存写入</div></div></section></div>
+<div class="axis-labels"><span>每行 = 实际已缓存 token</span><span>每列 = 对应 head 的特征通道</span></div>
 </div></main>
 <aside class="panel notes"><div class="panel-header"><div class="label">05 / MECHANISM INSPECTOR</div><h2>当前运算与证据</h2></div><div class="pane-body">
 <div class="label">MATHEMATICAL CONTRACT</div>
@@ -160,6 +171,14 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
        alpha+')">'+val.toFixed(3)+'</div>';
    }).join('')).join('');
  }
+ function valueMatrix(rows,from,to){
+   if(!rows.length)return '<p class="hint">等待缓存写入。</p>';
+   const width=to-from,chunk=rows.flatMap(r=>r.slice(from,to)),max=Math.max(.01,...chunk.map(v=>Math.abs(v)));
+   return rows.map(row=>row.slice(from,to).map(v=>{
+     const t=Math.min(1,Math.abs(v)/max),a=(.14+t*.6).toFixed(3),rgb=v<0?'199,112,159':'53,177,175';
+     return '<div class="kv-mini-cell" style="background:rgba('+rgb+','+a+')">'+v.toFixed(2)+'</div>';
+   }).join('')).join('');
+ }
  function row(label,value){return '<div class="smalltable"><span>'+safe(label)+'</span><b>'+safe(value)+'</b></div>';}
  function selectStep(index){selected=index;draw();}
  function draw(){
@@ -182,11 +201,20 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
       ' · Hq '+cfg.heads+'</span></button></li>').join(''):
       '<li><span class="hint">无记录 · 点击执行 Prefill</span></li>';
    document.querySelectorAll('[data-tick]').forEach(b=>b.onclick=()=>selectStep(Number(b.dataset.tick)));
+   const activeRow=$('#timeline li.active'),timeline=$('#timeline');
+   if(activeRow){
+     const top=activeRow.offsetTop,bottom=top+activeRow.offsetHeight;
+     if(bottom>timeline.scrollTop+timeline.clientHeight)timeline.scrollTop=bottom-timeline.clientHeight+8;
+     if(top<timeline.scrollTop)timeline.scrollTop=Math.max(0,top-4);
+   }
    if(!show){
      $('#selectedPhase').textContent='· 尚未执行';
      $('#qShape').textContent='[1, Hq, Tq, Dk]';$('#kShape').textContent='[1, Hkv, Tk, Dk]';
      $('#vShape').textContent='[1, Hkv, Tk, Dv]';
      $('#headSlice').innerHTML='<option value="0">Head 0</option>';
+     $('#kvHeadSlice').innerHTML='<option value="0">Head 0</option>';
+     $('#keyValues').innerHTML='<p class="hint">缓存为空</p>';
+     $('#valueValues').innerHTML='<p class="hint">缓存为空</p>';
      $('#matrix').innerHTML='<div class="empty">尚无 Attention 分数；先执行 Prefill。</div>';
      $('#observed').innerHTML='<div class="empty">暂无已执行步骤。</div>';
    }else{
@@ -197,6 +225,15 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
      const choice=Math.min(Number($('#headSlice').value)||0,cfg.heads-1);
      $('#headSlice').innerHTML=Array.from({length:cfg.heads},(_,h)=>'<option value="'+h+'"'+
        (h===choice?' selected':'')+'>Head '+h+'</option>').join('');
+     const kvChoice=Math.min(Number($('#kvHeadSlice').value)||0,cfg.kvHeads-1);
+     $('#kvHeadSlice').innerHTML=Array.from({length:cfg.kvHeads},(_,h)=>
+       '<option value="'+h+'"'+(h===kvChoice?' selected':'')+'>Head '+h+'</option>').join('');
+     const keys=snap.cache.key.slice(0,show.cacheAfter),vals=snap.cache.value.slice(0,show.cacheAfter);
+     const ki=kvChoice*cfg.headDim,vi=kvChoice*cfg.valueDim;
+     $('#keyValues').style.gridTemplateColumns='repeat('+cfg.headDim+',minmax(0,1fr))';
+     $('#valueValues').style.gridTemplateColumns='repeat('+cfg.valueDim+',minmax(0,1fr))';
+     $('#keyValues').innerHTML=valueMatrix(keys,ki,ki+cfg.headDim);
+     $('#valueValues').innerHTML=valueMatrix(vals,vi,vi+cfg.valueDim);
      const probs=IR.plane(show.attention,{Hq:choice}).view;
      $('#matrix').style.gridTemplateColumns='repeat('+probs[0].length+',minmax(0,1fr))';
      $('#matrix').innerHTML=heatmap(probs);
@@ -227,6 +264,7 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
  $('#reset').onclick=restart;
  ['prefix','decode','heads','kvHeads','rope'].forEach(id=>$('#'+id).addEventListener('change',restart));
  $('#headSlice').onchange=draw;
+ $('#kvHeadSlice').onchange=draw;
  restart();
 })();
 </script></body></html>
