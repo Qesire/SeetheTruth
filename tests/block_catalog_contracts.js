@@ -78,4 +78,4 @@ for(const type of ['swiglu','norm','embedding','classifier']){
  assert.ok(trace.steps.every(s=>s.values.flat().every(Number.isFinite)));
  assert.deepEqual(trace,L.evaluate(graph));
 }
-console.log('42-block catalogue: 31 new executable kinds, numerically checked math, negative contracts and four lessons PASS');
+console.log('45-block catalogue: 34 new executable kinds, numerically checked math, negative contracts and four lessons PASS');
