@@ -26,6 +26,8 @@ jobs:
           node tests/semantic_tensor_ir_contracts.js
           node --check kv_cache_lab.js
           node tests/kv_cache_contracts.js
+          node --check block_catalog.js
+          node tests/block_catalog_contracts.js
           node --check learning_lab.js
           node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js

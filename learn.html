@@ -22,10 +22,17 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .mission.active{border-color:#7fdbd9;background:#163c50}.mission .num{font:700 14px ui-monospace,monospace;color:#77e7e5;min-width:22px}
 .mission .desc{font-size:10px;color:var(--muted);display:block}
 .rule{height:1px;background:var(--line);margin:19px 0}
+.catalog-count{font:700 11px ui-monospace,monospace;color:#68e1d9;white-space:nowrap}
+#blockSearch{width:100%;background:#0a2032;border:1px solid #385d75;border-radius:8px;color:#effcff;padding:10px 11px;margin:10px 0;font-size:12px}
+#blockSearch:focus{outline:2px solid #6be7d5;outline-offset:2px}
+.catalog-categories{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.catalog-categories button{border:1px solid #34556b;border-radius:18px;background:#132a3b;color:#9ab8c9;font-size:10px;padding:5px 8px;cursor:pointer}
+.catalog-categories button.active{border-color:#80e6d6;color:#dffff6;background:#154a4b}
 .palette{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .palette button{border-radius:10px;border:1px solid #36516a;min-height:71px;background:#13283a;color:var(--text);text-align:left;padding:9px;display:flex;flex-direction:column;justify-content:space-between}
 .palette button:hover{border-color:var(--cyan);background:#193b4e}
 .palette .glyph{font-size:17px;font-weight:750}.palette .name{font-size:11px}
+.palette .block-mini-id{font-size:9px;color:#87a4b8;line-height:1.15}
 .palette [data-kind="attention"]{border-color:#7468bd}.palette [data-kind="mse"]{border-color:#bf9864}
 .hint{color:var(--muted);font-size:11px;line-height:1.75}.hint strong{color:#b4eafb}
 .badge{display:inline-flex;align-items:center;gap:5px;background:#153146;color:#9ddcea;border:1px solid #316079;border-radius:30px;padding:4px 9px;font:700 10px ui-monospace,monospace}
@@ -79,25 +86,33 @@ input[type="file"]{display:none}
 </header>
 <div class="app">
  <aside class="rail">
-  <div class="kicker">01 / GUIDED MISSIONS</div><h2>课程任务</h2>
+  <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
+  <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
+  <p class="hint">先搜索或按类别筛选，再拖动到画布。全部积木均有可执行数值实现、公式、形状约束与反例测试。</p>
+  <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
+  <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
+  <div class="palette" id="palette"></div>
+  <div class="rule"></div>  <div class="kicker">02 / GUIDED MISSIONS</div><h2>课程任务</h2>
   <button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
   <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
   <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
   <button class="mission" data-preset="loss"><span class="num">04</span><span>训练从哪里开始？<span class="desc">预测、目标、Loss（仅前向）</span></span></button>
   <button class="mission" data-preset="gqa"><span class="num">05</span><span>GQA / RoPE / Causal Mask<span class="desc">展开语义轴和 Attention 矩阵</span></span></button>
   <button class="mission" data-preset="decode"><span class="num">06</span><span>Decode 读取 KV 前缀<span class="desc">一条 Q、三条 K/V，对齐位置</span></span></button>
+  <button class="mission" data-preset="swiglu"><span class="num">07</span><span>SwiGLU FFN<span class="desc">上行双投影与门控计算</span></span></button>
+  <button class="mission" data-preset="norm"><span class="num">08</span><span>LayerNorm 对比 RMSNorm<span class="desc">查看中心化与均方差</span></span></button>
+  <button class="mission" data-preset="embedding"><span class="num">09</span><span>Token → Embedding → Position<span class="desc">索引查表与位置编码</span></span></button>
+  <button class="mission" data-preset="classifier"><span class="num">10</span><span>Classifier 与 CE Loss<span class="desc">Logits、概率与训练目标</span></span></button>
+  <button class="mission" data-preset="mask"><span class="num">11</span><span>亲手构造 Causal Mask<span class="desc">Mask=0 保证概率严格为零</span></span></button>
+  <button class="mission" data-preset="sampling"><span class="num">12</span><span>温度、贪心与 Top-k<span class="desc">Logits 到候选类别的路径</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
-  <div class="kicker">02 / DRAG BLOCKS</div><h2>运算积木</h2>
-  <p class="hint">拖到画布中，或<strong>点击积木</strong>直接添加。先点击一个输出圆点，再点击目标输入圆点建立连线。</p>
-  <div class="palette" id="palette"></div>
-  <div class="rule"></div>
-  <p class="hint">支持本地 JSON 保存、导入、撤销和重做。没有外部代码执行、后台训练或数据上传。</p>
+  <p class="hint">支持本地 JSON 保存、导入、撤销和重做。教学模拟不代表真实模型性能。</p>
  </aside>
  <main class="stage">
   <div class="stage-top">
-   <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · 点击节点查看解释</div></div>
+   <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · <span id="fitLabel">画布自适配</span></div></div>
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
@@ -120,12 +135,15 @@ input[type="file"]{display:none}
  </aside>
 </div>
 <script src="tensor_ir.js"></script>
+<script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,$=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑"};
+const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧"};
+const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化"};
+let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
@@ -153,10 +171,26 @@ function addBlock(kind,x=480,y=360){
  say("已添加 "+L.defs[kind].title+"。用输出和输入插口建立连接。");
 }
 function renderPalette(){
- $("#palette").innerHTML=L.KINDS.map(k=>{const d=L.defs[k];return '<button type="button" draggable="true" data-add="'+esc(k)+'" data-kind="'+esc(k)+'" title="拖入画布或单击添加"><span class="glyph">'+(categories[d.category]||"◇")+'</span><span class="name">'+esc(d.title)+'</span></button>'}).join("");
+ const matches=L.KINDS.filter(k=>{
+  const d=L.defs[k],term=(k+" "+d.title+" "+d.en+" "+d.formula+" "+d.why+" "+categoryNames[d.category]).toLowerCase();
+  return (filterCategory==="all"||d.category===filterCategory)&&term.includes(filterText.toLowerCase());
+ });
+ $("#blockCount").textContent=matches.length+" / "+L.KINDS.length;
+ $("#palette").innerHTML=matches.length?matches.map(k=>{
+  const d=L.defs[k];
+  return '<button type="button" draggable="true" data-add="'+esc(k)+'" data-kind="'+esc(k)+'" title="'+esc(d.why)+'"><span class="glyph">'+(categories[d.category]||"◇")+'</span><span class="name">'+esc(d.title)+'</span><span class="block-mini-id">'+esc(d.en)+'</span></button>';
+ }).join(""):'<p class="hint">没有匹配的积木。试着清除搜索或切换全部分类。</p>';
  document.querySelectorAll("[data-add]").forEach(b=>{
   b.addEventListener("click",()=>addBlock(b.dataset.add,380+Math.random()*80,350+Math.random()*80));
   b.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",b.dataset.add);e.dataTransfer.effectAllowed="copy";});
+ });
+}
+function renderCategoryButtons(){
+ const groups=["all",...new Set(L.KINDS.map(k=>L.defs[k].category))];
+ $("#catalogCategories").innerHTML=groups.map(g=>'<button type="button" data-catalog="'+esc(g)+'" class="'+(g===filterCategory?'active':'')+'">'+
+  (g==="all"?"全部":categoryNames[g]||g)+'</button>').join("");
+ document.querySelectorAll("[data-catalog]").forEach(b=>b.onclick=()=>{
+  filterCategory=b.dataset.catalog;renderCategoryButtons();renderPalette();
  });
 }
 function renderBlocks(){
@@ -189,10 +223,11 @@ function startDrag(e){
  if(!n)return;
  e.preventDefault();selected=id;
  const initial={x:n.x,y:n.y},original=clone(graph),sx=e.clientX,sy=e.clientY;
+ const scale=Number($("#board").style.zoom)||1;
  h.setPointerCapture(e.pointerId);
  dragging={id,h,original};
- const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+ev.clientX-sx)),
- sy2=Math.max(8,Math.min(650,initial.y+ev.clientY-sy));n.x=Math.round(sx2);n.y=Math.round(sy2);
+ const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+(ev.clientX-sx)/scale)),
+ sy2=Math.max(8,Math.min(650,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
  const el=document.querySelector('[data-node="'+id+'"]');if(el){el.style.left=n.x+"px";el.style.top=n.y+"px";}
  drawWires();
  };
@@ -209,8 +244,9 @@ function drawWires(){
  const paths=graph.edges.map(e=>{
   const o=r(e.from,'[data-out] .socket'),i=r(e.to,'[data-in][data-port="'+CSS.escape(e.port)+'"] .socket');
   if(!o||!i)return "";
-  const x1=o.left+o.width/2-box.left,y1=o.top+o.height/2-box.top,
-    x2=i.left+i.width/2-box.left,y2=i.top+i.height/2-box.top,
+  const scale=Number(board.style.zoom)||1;
+  const x1=(o.left+o.width/2-box.left)/scale,y1=(o.top+o.height/2-box.top)/scale,
+    x2=(i.left+i.width/2-box.left)/scale,y2=(i.top+i.height/2-box.top)/scale,
     bend=Math.max(70,Math.abs(x2-x1)*.47);
   return '<path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#14334a" stroke-width="9" stroke-linecap="round"/><path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#65dadd" stroke-opacity=".9" stroke-width="2.3"/>';
  }).join("");
@@ -267,6 +303,12 @@ function inspect(){
  });
 }
 function render(){
+ const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
+ const viewport=$("#viewport");
+ const factor=Math.max(.48,Math.min(1,(viewport.clientWidth-24)/extent));
+ $("#board").style.width=extent+"px";
+ $("#board").style.zoom=String(Number(factor.toFixed(3)));
+ $("#fitLabel").textContent="自动适配 "+Math.round(factor*100)+"% · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
@@ -276,7 +318,7 @@ function render(){
 }
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
- if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();addBlock(kind,e.clientX-box.left-100,e.clientY-box.top-45);
+ if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#challenge").onclick=()=>{
@@ -305,6 +347,7 @@ $("#load").addEventListener("change",async e=>{
 });
 window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
-renderPalette();render();
+$("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
+renderCategoryButtons();renderPalette();render();
 })();
 </script></body></html>

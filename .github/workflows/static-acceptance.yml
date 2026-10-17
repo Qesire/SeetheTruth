@@ -23,6 +23,18 @@ jobs:
         run: python tests/browser_acceptance.py
       - name: Screenshot-backed KV Cache visual acceptance
         run: python tests/browser_cache_screenshots.py
+      - name: Screenshot-backed 45-block library and numerical lesson acceptance
+        run: python tests/browser_catalog_screenshots.py
+      - name: Archive visible 45-block catalogue screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-45-block-library-real-chromium
+          path: |
+            catalog_screenshots/*.png
+            catalog_screenshots/manifest.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve rendered Chromium screenshots and visual checks
         if: always()
         uses: actions/upload-artifact@v4

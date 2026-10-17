@@ -111,3 +111,13 @@ python atlas_server.py --port 8765
 启动：python atlas_server.py --port 8765，访问 http://127.0.0.1:8765/cache.html。
 
 限定：这是确定性教学数值模拟，没有实际大模型权重、采样、真实 GPU latency，也没有复杂批次或 Paged Attention。实际缓存数组更新已实现，但不代表 PyTorch/HF/KV cache 的具体物理数据结构。
+
+## 45 个可执行数学积木 · Scratch 式大模型学习
+
+Learning Studio 现在包含 **45 种真的进行有限二维 Float64 数值计算的积木**，而非只有说明文字的占位节点。新增 34 种，覆盖 Token ID/Embedding、位置编码、矩阵切片/拼接/转置、LayerNorm、GELU、SwiGLU/GEGLU、Causal Mask、Masked Softmax、Temperature、Top-k、固定随机数演示的 Dropout、CrossEntropy、KL(P||Q) 等。12 个计算课程和自由编辑模式依旧允许拖拽、插口连线、调参、断线、数值单步观测与撤销。
+
+工作台左栏现在首先呈现可搜索、可按 13 类筛选的积木库，并提供自动适配图谱宽度以避免输出节点被截断。完整执行定义、形状限制、PyTorch 数值口径与未实现能力见 [积木合同说明](docs/block-catalog.md)。
+
+数值验证：`node tests/block_catalog_contracts.js`；真实截图与交互验证：`python tests/browser_catalog_screenshots.py`。GitHub Actions 会产生可查看的 Chromium PNG 截图，包括全部目录、SwiGLU 搜索、损失分类、SwiGLU 数值链、分类交叉熵及因果 Mask 计算。每张截图源自真实浏览器内联计算，而非概念效果图。
+
+本版本仍为教学微型数值执行器；自动微分/反向传播、Optimizer、真实模型权重与 GPU 计时尚未实现，不属于 45 个积木。
