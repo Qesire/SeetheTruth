@@ -105,7 +105,8 @@ class DetailedBlockKnowledgeAcceptance(unittest.TestCase):
         p=self.p
         self.select("norm","ln")
         self.assertIn("Pre-Norm",p.locator("#blockKnowledge").inner_text())
-        self.assertIn("PyTorch LayerNorm",p.locator("#blockKnowledge").inner_text())
+        p.locator("#blockKnowledge details").last.click()
+        self.assertIn("PyTorch LayerNorm",p.locator("#blockKnowledge .knowledge-sources").inner_text())
         self.select("classifier","ce")
         self.assertIn("shift",p.locator("#blockKnowledge").inner_text())
         self.assertIn("logits",p.locator("#blockKnowledge").inner_text())
