@@ -89,3 +89,15 @@ GEMM FLOPs 只覆盖可明确计算的 QK^T 与 P×V 乘加部分：2*Hq*Tq*Tk*(
 Node 数值测试覆盖 Head 拆装、轴置换、RoPE 范数不变、均匀注意力、精确 Causal Mask、不同 GQA 组的 KV 路由、Decode 对齐和异常输入。Chromium 验证参数修改与 Head 切片交互。
 
 当前尚无真正可更新的 KV Cache 状态机、自动微分、Optimizer、FlashAttention 内核、完整多 batch 或实际 GPU 执行证据。与既有 AST/Runtime/Profiler 工具保持证据分层。
+
+## 6. 有状态 KV Cache、Prefill / Decode 与截图证据
+
+新增 kv_cache_lab.js 保存可变 K/V 投影数组和独立 Session。Prefill 一次写入配置的 prefix token；每次 Decode 只投影新 token，追加新位置，再由完整缓存做 causal GQA attention。cache.key.length 与 cache.value.length 总是等于实际处理过的位置数。
+
+RoPE、GQA、Causal 使用上一阶段数值验证的 Tensor IR。测试在多个 Hq/Hkv、Dk/Dv、RoPE 配置下，将每一步输出与完整 causal 序列中对应位置的参考输出逐元素核对。历史快照仅供回看，不会重新投影或追加。Reset 清空缓存。
+
+可访问的交互入口 cache.html 有分阶段计数卡、可视化 Cache Slots、逐 Head 概率热图、实际缓存 K/V Float64 数值热图以及教学 QK/PV GEMM FLOPs。用于对照的整段前缀重算是明确基线，不是 GPU 实测加速比。
+
+真实截图验收采用 Playwright Chromium（1600x1000），顺次打开 cache.html、点击 Prefill 和 Decode，生成 01-kv-empty.png、02-kv-prefill.png、03-kv-decode-head1.png、04-kv-finished.png。DOM 断言覆盖可见阶段、槽位数、最新写入标志、矩阵单元格、当前时间线是否仍可见和网页横向溢出；浏览器 JS 错误使测试失败。PNG 与 manifest.json 在 GitHub Actions Static Behavior Acceptance 工件中保留 14 天。
+
+这不是运行真实模型或 GPU 的截图。训练、Hugging Face 真模型、Paged KV Cache、动态批次、采样和模型代码归因属于未来分阶段验收项目。
