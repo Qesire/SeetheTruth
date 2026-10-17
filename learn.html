@@ -183,7 +183,7 @@ function startDrag(e){
  const h=e.currentTarget,id=h.dataset.grab,n=graph.nodes.find(q=>q.id===id);
  if(!n)return;
  e.preventDefault();selected=id;
- const initial={x:n.x,y:n.y},original=clone(graph),sx:e.clientX,sy=e.clientY;
+ const initial={x:n.x,y:n.y},original=clone(graph),sx=e.clientX,sy=e.clientY;
  h.setPointerCapture(e.pointerId);
  dragging={id,h,original};
  const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+ev.clientX-sx)),
