@@ -148,7 +148,6 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#importOpen").click()
         self.page.locator("#jsonText").fill(json.dumps(unknown))
         self.page.locator("#importApply").click()
-        self.page.locator('[data-nav="node"][data-scope="root"]').click()
         self.assertEqual(self.page.locator("#academicConsensus").count(), 0)
         known = synthetic_graph()
         known["meta"]["analysis"] = "static-python-ast"
@@ -158,7 +157,12 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#importOpen").click()
         self.page.locator("#jsonText").fill(json.dumps(known))
         self.page.locator("#importApply").click()
+        self.assertIn("线性投影", self.page.locator("#academicConsensus").inner_text())
         self.page.locator('[data-nav="node"][data-scope="root"]').click()
+        # Inside the child scope the selected node is a different computation;
+        # its parent literature role must not leak into the child.
+        self.assertEqual(self.page.locator("#academicConsensus").count(), 0)
+        self.page.locator('[data-nav="home"]').click()
         self.assertIn("线性投影", self.page.locator("#academicConsensus").inner_text())
         self.assertIn("尚未验证", self.page.locator("#academicConsensus").inner_text())
 
