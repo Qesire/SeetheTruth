@@ -17,7 +17,7 @@ jobs:
           node-version: '22'
       - name: Python syntax and tests
         run: |
-          python -m py_compile atlas_parser.py atlas_server.py runtime_trace.py telemetry_capture.py examples/runtime_trace_demo.py examples/telemetry_demo.py
+          python -m py_compile atlas_parser.py atlas_server.py runtime_trace.py source_runtime_join.py telemetry_capture.py examples/runtime_trace_demo.py examples/telemetry_demo.py
           python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Tensor graph JavaScript syntax
         run: |
