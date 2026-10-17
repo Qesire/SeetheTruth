@@ -25,6 +25,7 @@ jobs:
           node --check tests/telemetry_syntax_check.js
           node tests/telemetry_syntax_check.js
           node tests/tensor_graph_check.js
+          node tests/tensor_static_contracts.js
           node - <<'JS'
           const fs=require('node:fs'),vm=require('node:vm');
           const html=fs.readFileSync('index.html','utf8');
@@ -60,6 +61,7 @@ jobs:
           set -o pipefail
           python -m unittest discover -s tests -p 'test_runtime_trace.py' -v 2>&1 | tee runtime_ci_diagnostic.txt
           python -m unittest discover -s tests -p 'test_telemetry.py' -v
+          python -m unittest discover -s tests -p 'test_telemetry_oracles.py' -v
       - name: Smoke demo and validate graph schema
         run: |
           python examples/runtime_trace_demo.py

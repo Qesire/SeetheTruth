@@ -82,7 +82,9 @@ def _sample(t, cap=1024, matrix_side=20):
         plane = v
         while plane.ndim > 2:
             plane = plane[0]
-        if plane.ndim == 1:
+        if plane.ndim == 0:
+            plane = plane.reshape(1, 1)
+        elif plane.ndim == 1:
             plane = plane.unsqueeze(0)
         rows, cols = map(int, plane.shape)
         rstep = max(1, math.ceil(rows / matrix_side))
