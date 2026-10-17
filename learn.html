@@ -170,6 +170,9 @@ input[type="file"]{display:none}
    <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · <span id="fitLabel">画布自适配</span></div></div>
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
+    <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
+    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button>
+    <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
@@ -224,7 +227,7 @@ const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕
 const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[];
+let activeComposite=null,compositeHistory=[],zoomOverride=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -237,7 +240,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{activeComposite=null;compositeHistory=[];graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{activeComposite=null;compositeHistory=[];zoomOverride=null;graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -246,11 +249,25 @@ function openComposite(id,history){
  try{
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
-  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];
+  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;
   run=null;step=-1;from=null;selected=g.nodes[0].id;
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.remove("active"));
   render();say("已打开 "+next.title+"。可逐层展开或执行符号推演；不要求 GPU。");
  }catch(e){say(e.message,true);}
+}
+function focusGraphNode(id){
+ const el=document.querySelector('[data-node="'+id+'"]'),viewport=$("#viewport");
+ if(!el||viewport.hidden)return;
+ const factor=Number($("#board").style.zoom)||1;
+ viewport.scrollLeft=Math.max(0,(el.offsetLeft+el.offsetWidth/2)*factor-viewport.clientWidth/2);
+ viewport.scrollTop=Math.max(0,(el.offsetTop+el.offsetHeight/2)*factor-viewport.clientHeight/2);
+ requestAnimationFrame(drawWires);
+}
+function adjustZoom(next,focus=true){
+ zoomOverride=next===null?null:Math.max(.25,Math.min(1.5,Math.round(next*100)/100));
+ render();
+ if(focus&&zoomOverride!==null)focusGraphNode(selected);
+ else {$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;}
 }
 function renderComposite(){
  const nav=$("#compositeNavigator");nav.hidden=!activeComposite;
@@ -286,10 +303,14 @@ function renderComposite(){
   selected=stage.node;
   if(run){const idx=run.steps.findIndex(s=>s.id===selected);if(idx>=0)step=idx;}
   render();
+  if(zoomOverride!==null)focusGraphNode(stage.node);
   $("#inspectorTitle").scrollIntoView({behavior:"instant",block:"nearest"});
  });
 }
 $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
+$("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
+$("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
+$("#zoomFit").onclick=()=>adjustZoom(null);
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
  else setPreset("ffn");
@@ -508,10 +529,11 @@ function render(){
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const factor=Math.max(.22,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const fit=Math.max(.22,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const factor=zoomOverride===null?fit:zoomOverride;
  $("#board").style.width=extent+"px";
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
- $("#fitLabel").textContent="自动适配 "+Math.round(factor*100)+"% · 点击节点查看解释";
+ $("#fitLabel").textContent=(zoomOverride===null?"自动适配 ":"手动放大 ")+Math.round(factor*100)+"% · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
