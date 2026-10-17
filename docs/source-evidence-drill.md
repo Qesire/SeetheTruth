@@ -5,15 +5,16 @@ the separate model teaching templates or the runtime trace.
 
 ## Local import binding
 
-The AST index records local module paths and explicit absolute
-`from module import Class as Alias` statements. For a constructor
+The AST index records local module paths and explicit absolute and relative
+`from module import Class as Alias` / `from .module import Class` statements.
+A bounded chain of explicit reexports can be followed, without executing imports. For a constructor
 `self.attn = Alias(...)`, its `forward` implementation is traversed
 **only when the exact imported module and class were included in the input
 source directory**. The graph node exposes `resolved_scope` and
 `resolved_source_file`, and retains file SHA-256 fingerprints. Classes
 with identical names in other local modules are not substituted.
 
-Relative imports, reexports, arbitrary Python import hooks, closures, factory
+Star imports, dynamic reexports, arbitrary Python import hooks, closures, factory
 functions, dynamic dispatch, `ModuleList` indices, alias mutations and
 `torch.compile` graphs are **not generally resolved**. Missing external
 modules remain explicitly unresolved. No weights or inspected Python modules
