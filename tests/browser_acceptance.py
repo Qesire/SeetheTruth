@@ -255,7 +255,8 @@ class BrowserAcceptance(unittest.TestCase):
             "nodes": [{"id": "evil", "kind": "<img src=x onerror=alert(1)>",
                        "x": 3, "y": 5, "params": {}}],
             "edges": []})
-        self.assertIn("导入被拒绝", self.page.locator("#status").inner_text())
+        self.page.wait_for_function(
+            "document.querySelector('#status')?.textContent.includes('导入被拒绝')")
         self.assertEqual(self.page.locator("#blocks .block").count(), good)
         self.assertIn("任务 01", self.page.locator("#workspaceTitle").inner_text())
 
