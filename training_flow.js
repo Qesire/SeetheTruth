@@ -112,6 +112,50 @@ const SAMPLE=[
 function build(params={},mode="concept"){
  const cfg=validateConfig(params);
  if(mode!=="concept"&&mode!=="scalar")throw Error("mode 必须为 concept 或 scalar");
+ // Dedicated no-arithmetic conceptual execution. Do not call numerical build,
+ // nor calculate even toy gradients while this branch is selected.
+ if(mode==="concept"){
+   const events=[];
+   const emit=(kind,phase,label,symbol,detail)=>{
+     events.push({id:"e"+events.length,kind,phase,label,
+       formula:BLOCKS[kind].formula,symbol,detail,value:null,state:null,meta:{}});
+   };
+   for(let epoch=0;epoch<cfg.steps;epoch++){
+     const tag="第 "+(epoch+1)+" 次有效批次";
+     emit("parameter",tag,"读取叶参数 θ","θ₍"+(epoch+1)+"₎","同一有效批次期间参数保持不变。");
+     emit("zero_grad",tag,"清除上一轮梯度","θ.grad=None","只清除叶参数 grad，不清除 AdamW 的 m/v。");
+     for(let i=0;i<cfg.microbatches;i++){
+       const s=SAMPLE[i],sub=tag+" / microbatch "+(i+1);
+       emit("microbatch",sub,"读取输入与标签","("+s.x+","+s.y+")","读取一份有效标量样本。");
+       emit("forward",sub,"Forward 预测",s.pred,"读取参数的局部可微前向路径。");
+       emit("loss",sub,"半平方误差 Loss",s.loss,"前向 Loss，不代表 backward 或 step。");
+       emit("seed_grad",sub,"Backward 起点","∂ℓ/∂ŷ=("+s.pred+"−"+s.y+")",
+          "用 half-squared-error 的局部导数。");
+       emit("chain_rule",sub,"反传到 θ","∂ℓ/∂θ="+s.deriv,"乘以 ∂ŷ/∂θ="+s.x+"。");
+       emit("loss_scale",sub,"按有效样本数缩放",
+         "g"+(i+1)+"=("+s.deriv+")/"+cfg.microbatches,
+         "等权 microbatch 的平均梯度贡献。");
+       emit("accumulate",sub,"加入梯度 buffer","θ.grad=Σⱼ≤"+(i+1)+" gⱼ",
+         "追加当前微批次的梯度，不改变 θ。");
+     }
+     emit("gradient_ready",tag,"有效批次平均梯度",
+       "g=Σᵢ(∂ℓᵢ/∂θ)/"+cfg.microbatches,
+       "所有 microbatch 的贡献已归一化并累积。");
+     if(cfg.optimizer==="adamw"){
+       emit("adam_moment",tag,"更新 m / v","mₜ=β₁mₜ₋₁+(1−β₁)g; vₜ=β₂vₜ₋₁+(1−β₂)g²",
+        "跨 optimizer step 追踪一阶和平方梯度。");
+       emit("bias_correct",tag,"校正初始零偏差","m̂ₜ=mₜ/(1−β₁ᵗ), v̂ₜ=vₜ/(1−β₂ᵗ)",
+        "偏差校正计数只与 optimizer step 有关。");
+       emit("decay",tag,"参数解耦衰减","θᵈ=θ(1−ηλ)",
+        "在梯度自适应项之外执行解耦衰减。");
+     }
+     emit("update",tag,cfg.optimizer.toUpperCase()+" 参数更新",
+       cfg.optimizer==="sgd"?"θₜ=θₜ₋₁−ηg":"θₜ=θₜ₋₁(1−ηλ)−η·m̂/(√v̂+ε)",
+       "完成一次有效批次更新，下一轮前向读取新参数。");
+   }
+   return {config:cfg,mode,blocks:BLOCKS,sources:SOURCE,events,
+     evidence:"symbolic_state_contract_no_numeric_training",final:null};
+ }
  let theta=cfg.theta,grad=null,m=0,v=0,t=0;
  const events=[];
  const state=()=>mode==="scalar"?{theta,grad,m,v,step:t}:null;
