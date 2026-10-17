@@ -169,6 +169,25 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#importApply").click()
         self.assertTrue(self.page.locator("#importError").inner_text().strip())
 
+    def test_failed_import_is_transactional(self):
+        self.load_atlas()
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(synthetic_graph()))
+        self.page.locator("#importApply").click()
+        self.assertIn("Known structure", self.page.locator("#stageTitle").inner_text())
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps({
+            "model_type": "llama", "hidden_size": 96,
+            "num_hidden_layers": 2, "num_attention_heads": 7,
+        }))
+        self.page.locator("#importApply").click()
+        self.assertIn("整除", self.page.locator("#importError").inner_text())
+        self.page.locator("#modalClose").click()
+        # A failed replacement must not destroy the previous import's
+        # internal graph data, so normal navigation must remain possible.
+        self.page.locator('[data-nav="node"][data-scope="root"]').click()
+        self.assertIn("Root", self.page.locator("#stageTitle").inner_text())
+
     def test_runtime_module_exact_join(self):
         self.load_atlas()
         self.page.locator("#importOpen").click()
