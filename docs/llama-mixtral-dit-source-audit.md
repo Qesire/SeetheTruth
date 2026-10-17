@@ -103,3 +103,36 @@ calls `self.attn` and `self.mlp`, and the source graph's arithmetic
 teaching micrograph is now a full logical two-branch gated residual flow,
 with six condition parameter slots; it is **not** substituted for the pinned
 source AST or claimed to reconstruct the external `timm` implementations.
+
+## Pinned external DiT → timm source closure (October 2026)
+
+The model AST and **three separately loaded external source files** are
+now verified together by `tests/test_pinned_dit_timm_closure.py`.
+
+| Upstream | Immutable commit | Parsed source |
+|---|---|---|
+| Meta DiT | `ed81ce2229091fd4ecc9a223645f95cf379d582b` | `models.py` |
+| timm / pytorch-image-models | `6e6f3686a7e06bcba37bbd3b7c755f04a516a1e7` | `timm/models/vision_transformer.py`, `timm/layers/__init__.py`, `timm/layers/mlp.py` |
+
+Static symbol resolution follows `DiTBlock.attn` → `Attention.forward`
+in the pinned `vision_transformer.py`, and `DiTBlock.mlp` →
+`vision_transformer`'s explicit `Mlp` reexport → `timm.layers` →
+`timm.layers.mlp.Mlp.forward`. It never imports the modules into Python.
+All four source-byte hashes appear in `meta.source_sha256`.
+
+The independent original-source AST checks confirm that the attention
+implementation contains **two explicit infix matrix products** on the
+non-fused source branch, as well as an alternative
+`scaled_dot_product_attention` source call. The two branches are
+*not both observed to run*. The MLP's `fc1` and `fc2` callsites are
+captured, but its `linear_layer = ... if use_conv else nn.Linear`
+constructor is dynamic: the parser **does not** claim a proven GEMM,
+resolved runtime parameterization or measured tensor shapes there.
+
+Run with:
+`SEETHTRUTH_AUDIT_UPSTREAM=1 python -m unittest discover -s tests -p 'test_pinned_dit_timm_closure.py' -v`.
+
+The dependency source set is deliberately small, immutable and explicit.
+This does not imply complete `timm` package resolution, tensor-shape
+propagation, all submodule implementation closure, execution trace, or
+measured GPU work.
