@@ -156,6 +156,41 @@ class RealModelOperatorAudit(unittest.TestCase):
         helper=self.concordance("dit",None,"modulate",["unsqueeze"])
         self.assertEqual(len(graph_calls(helper,"unsqueeze")),2)
 
+    def test_dit_real_source_dual_gated_residual_operators(self):
+        # Independently inspect the *actual pinned DiT AST*, not a textual
+        # teaching diagram or a guessed architecture. The two additions must
+        # each take x and a separately gated Attention / MLP result.
+        source = func(self.trees["dit"], "DiTBlock", "forward")
+        assignments = [st for st in source.body if isinstance(st, ast.Assign)
+                       and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name)
+                       and st.targets[0].id == "x"]
+        self.assertEqual(len(assignments), 2)
+        g = self.graph("dit", "DiTBlock", "forward")
+        edges = {(e["from"], e["to"]) for e in g["edges"]}
+        for stmt, expected_gate, expected_module in zip(
+                assignments, ("gate_msa", "gate_mlp"), ("self.attn", "self.mlp")):
+            value = stmt.value
+            self.assertIsInstance(value, ast.BinOp)
+            self.assertIsInstance(value.op, ast.Add)
+            self.assertIsInstance(value.left, ast.Name)
+            self.assertEqual(value.left.id, "x")
+            gated = value.right
+            self.assertIsInstance(gated, ast.BinOp)
+            self.assertIsInstance(gated.op, ast.Mult)
+            self.assertIsInstance(gated.left, ast.Call)
+            self.assertEqual(ast.unparse(gated.left.func), expected_gate + ".unsqueeze")
+            self.assertIsInstance(gated.right, ast.Call)
+            self.assertEqual(ast.unparse(gated.right.func), expected_module)
+            self.assertIsInstance(gated.right.args[0], ast.Call)
+            self.assertEqual(ast.unparse(gated.right.args[0].func), "modulate")
+            additions = [n for n in g["nodes"] if n["label"] == "Add"
+                         and n["source"]["line"] == stmt.lineno]
+            multiplications = [n for n in g["nodes"] if n["label"] == "Mult"
+                               and n["source"]["line"] == stmt.lineno]
+            self.assertEqual(len(additions), 1)
+            self.assertEqual(len(multiplications), 1)
+            self.assertIn((multiplications[0]["id"], additions[0]["id"]), edges)
+
     def test_dit_final_modulation_two_way_split(self):
         g=self.concordance("dit","FinalLayer","forward",["adaLN_modulation","chunk","linear","modulate"])
         chunks=[n for n in g["nodes"] if n.get("tuple_binding") in ("shift","scale")]
