@@ -92,3 +92,12 @@ python atlas_server.py --port 8765
 学习实验台的权重是教学用固定伪权重；输入由确定性种子生成，矩阵最大 8×16。**它不执行任何真实 LLM 权重，不包含训练反向传播、真实 GPU 用时或 RL rollout。** 原有 [全息源码/运行分析器](index.html) 和性能显微镜保持不变。升级方向、支持的积木、限制和逐阶段研究型课程设计见 [Learning Studio Roadmap](docs/learning-studio.md)。
 
 验证：`node tests/learning_lab_contracts.js` 和真实浏览器 CI。
+
+
+## 多维张量与 GQA / RoPE / Decode（教学实验）
+
+新文件 tensor_ir.js 保存微型张量的命名轴、真实计算数值和可选择的 Head 切片。Learning Studio 新增 **任务 05 · GQA / RoPE / Causal Attention** 和 **任务 06 · Decode 读取已有 KV 前缀**。积木支持切换 Query Head 数、KV Head 数、因果 Mask 和 RoPE，在检查器内逐次展开 Q/K/V Heads、旋转、scores、Mask、Softmax probabilities 与输出拼接。
+
+验证命令：node tests/semantic_tensor_ir_contracts.js。启动 python atlas_server.py --port 8765，在浏览器访问 http://127.0.0.1:8765/learn.html 。
+
+这些是**真实计算的有界微型教学数值**，而不是运行真实 LLM 或 GPU。Decode 示例只读取提供的 K/V 前缀，尚未实现可持续更新的 KV Cache。数学合同及测试见 docs/learning-studio.md。
