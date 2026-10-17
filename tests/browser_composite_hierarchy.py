@@ -62,7 +62,7 @@ class CompositeHierarchyChromium(unittest.TestCase):
         self.assertIn("Decoder Layer",p.locator("#compositeTitle").inner_text())
         self.assertEqual(p.locator("#compositeStages .composite-card").count(),6)
         self.assertIn("输出 3 × 4",p.locator("#compositeStages").inner_text())
-        self.assertIn("Pre-Norm",p.locator("#compositeCaveat").inner_text())
+        self.assertIn("通用固定源码",p.locator("#compositeCaveat").inner_text())
         shots=[self.screenshot("01-decoder-overview-six-stages.png")]
         p.locator('#compositeStages [data-comp-stage="1"]').click()
         self.assertFalse(p.locator("#viewport").is_hidden())
