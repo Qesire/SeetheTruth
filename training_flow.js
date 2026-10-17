@@ -149,7 +149,7 @@ function build(params={},mode="concept"){
        emit("decay",tag,"参数解耦衰减","θᵈ=θ(1−ηλ)",
         "在梯度自适应项之外执行解耦衰减。");
      }
-     emit("update",tag,cfg.optimizer.toUpperCase()+" 参数更新",
+     emit("update",tag,(cfg.optimizer==="adamw"?"AdamW":"SGD")+" 参数更新",
        cfg.optimizer==="sgd"?"θₜ=θₜ₋₁−ηg":"θₜ=θₜ₋₁(1−ηλ)−η·m̂/(√v̂+ε)",
        "完成一次有效批次更新，下一轮前向读取新参数。");
    }
@@ -211,7 +211,7 @@ function build(params={},mode="concept"){
    // Plain SGD: no momentum, no L2 penalty, no decoupled decay.
    theta=old-cfg.lr*grad;
   }
-  add("update",tag,cfg.optimizer.toUpperCase()+" 参数更新",
+  add("update",tag,(cfg.optimizer==="adamw"?"AdamW":"SGD")+" 参数更新",
     cfg.optimizer==="sgd"?"θₜ=θₜ₋₁−ηg":"θₜ=θₜ₋₁(1−ηλ)−η·m̂/(√v̂+ε)",
     "将本批次梯度用于一次且仅一次参数更新；下一轮才读取新 θ。",theta,
     {old,new:theta,gradient:grad,optimizer:cfg.optimizer,optimizerStep:t});
