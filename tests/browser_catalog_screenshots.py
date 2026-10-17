@@ -123,8 +123,9 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
           "viewport":[1600,1000],"catalogue_count":45,
-          "captures":screens,
-          "tests":"real DOM output for numeric SwiGLU, CE Loss, Masked Softmax, search and category",
+          "captures":screens+[{"file":"07-qualitative-gqa-no-matrix.png",
+            "description":"No numeric matrices or hardware measurements; GQA dimensions only"}],
+          "tests":"qualitative GQA without numeric cells, opt-in numeric SwiGLU/CE/Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
         },ensure_ascii=False,indent=2),encoding="utf-8")
 
