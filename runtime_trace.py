@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import weakref
 from pathlib import Path
+from source_runtime_join import SourceLocator
 
 try:
     import torch
@@ -112,7 +113,8 @@ class RuntimeTrace:
     Use a small representative step before applying it to a large model.
     """
 
-    def __init__(self, model, *, max_events=500, record_gradients=True):
+    def __init__(self, model, *, max_events=500, record_gradients=True,
+                 source_root=None):
         if not isinstance(model, torch.nn.Module):
             raise TypeError("model must be torch.nn.Module")
         if not 16 <= max_events <= 10000:
@@ -120,6 +122,8 @@ class RuntimeTrace:
         self.model = model
         self.max_events = max_events
         self.record_gradients = bool(record_gradients)
+        self._locator = SourceLocator(source_root) if source_root is not None else None
+        self._module_invocations = {}
         self.nodes = []
         self.edges = []
         self._stack = []
@@ -203,7 +207,9 @@ class RuntimeTrace:
                         inputs=in_meta, outputs=out_meta, formula=formula,
                         purpose=intent,
                         explanation_certainty=("operator_semantic_rule" if key in _MATH else "unannotated"),
-                        aten_op=op)
+                        aten_op=op,
+                        **({"source": self._locator.capture()} if self._locator and
+                           self._phase == "forward" else {}))
         if eid is None:
             return
         for t in inputs:
@@ -216,11 +222,14 @@ class RuntimeTrace:
     def _pre(self, module, inputs):
         parent = self._stack[-1] if self._stack else None
         name = self._module_names.get(id(module), type(module).__name__)
+        self._module_invocations[name] = self._module_invocations.get(name, 0) + 1
         ident = self._add(name, "head", parent=parent,
                           inputs=[_meta(t) for t in _tensors(inputs)],
                           formula=type(module).__name__ + ".forward",
                           purpose="Module forward invocation observed at runtime.",
-                          module=name)
+                          module=name, module_type=type(module).__name__,
+                          invocation_index=self._module_invocations[name],
+                          **({"source": self._locator.capture()} if self._locator else {}))
         if not self._stack and self._root_id is None:
             self._root_id = ident
         self._stack.append(ident)
@@ -320,6 +329,14 @@ class RuntimeTrace:
                                  "unexecuted branches", "all autograd graph edges",
                                  "untraced optimizers or external processes"],
                 "truncated": bool(self._dropped),
+                "source_capture": {
+                    "enabled": self._locator is not None,
+                    "mode": "opt_in_source_root_exact_line_and_sha256",
+                    "files_hashed": len(self._locator.digests) if self._locator else 0,
+                    "unlocated_frames": self._locator.omitted if self._locator else 0,
+                    "source_root_serialized": False,
+                    "capture_has_overhead": self._locator is not None,
+                },
                 "dropped_events": self._dropped,
                 "recorded_nodes": len(self.nodes),
             },

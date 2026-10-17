@@ -275,6 +275,26 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator('[data-nav="node"][data-scope="root"]').click()
         self.assertIn("Root", self.page.locator("#stageTitle").inner_text())
 
+    def test_source_runtime_attribution_evidence_and_unmatched_ui(self):
+        self.load_atlas()
+        graph = synthetic_graph()
+        graph["nodes"][0]["source_attribution"] = {
+            "status": "matched", "static_node_id": "n001",
+            "static_source": {"file": "toy.py", "line": 8, "sha256": "a" * 64},
+            "evidence": "exact_file_sha256_line_and_module_type",
+        }
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
+        self.page.locator("#importApply").click()
+        self.assertIn("源码映射已核验", self.page.locator("#inspectContent").inner_text())
+        self.assertIn("toy.py:8", self.page.locator("#inspectContent").inner_text())
+        graph["nodes"][0]["source_attribution"] = {"status": "source_mismatch"}
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
+        self.page.locator("#importApply").click()
+        self.assertIn("源码尚未核验", self.page.locator("#inspectContent").inner_text())
+        self.assertNotIn("源码映射已核验", self.page.locator("#inspectContent").inner_text())
+
     def test_runtime_module_exact_join(self):
         self.load_atlas()
         self.page.locator("#importOpen").click()

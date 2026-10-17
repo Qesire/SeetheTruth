@@ -42,3 +42,55 @@ RL 训练时真实 rollout、reference logprob、policy loss 只有在执行对�
 | Profiler（未实现） | 实际设备 kernel、耗时与显存行为 |
 
 本阶段未实现 torch.compile 展开、GPU kernel 时间线、分布式跨设备收集或完整梯度雅可比链。
+
+
+## SOURCE ↔ RUNTIME 归因：逐调用的源码证据（2026-10）
+
+本功能默认关闭；只有可信、由用户控制的 Python 脚本显式提供
+`RuntimeTrace(model, source_root=source_directory)` 才采集运行帧的源码位置。
+输出仅包含相对于 `source_root` 的 Python 文件名、行号、SHA-256，
+不序列化目录绝对路径或源码文本。追踪不执行额外的 forward、backward 或 step，
+但额外的堆栈检查和文件哈希会影响性能，建议先用 CPU 小模型验证。
+
+建议在**同一份未修改的源码快照**上生成两个图。静态侧：
+
+```python
+from atlas_parser import parse_paths
+from pathlib import Path
+import json
+root = Path("my_code").resolve()
+g = parse_paths([str(root)], entry="Toy.forward")
+Path("static.json").write_text(json.dumps(g, ensure_ascii=False))
+```
+
+运行时侧，在自己明确允许执行的代码中插入：
+
+```python
+with RuntimeTrace(model, record_gradients=False, source_root=root) as trace:
+    with torch.no_grad():
+        _ = model(example_input)
+trace.save("runtime.json")
+```
+
+然后**在运行代码外部**执行：
+
+```bash
+python source_runtime_join.py --static static.json --runtime runtime.json --out joined.json
+```
+
+在 SeetheTruth 中导入 `joined.json`，查看每一个有证据的 Runtime 节点上的
+SOURCE ↔ RUNTIME 匹配。所有来源信息都经过 HTML 转义处理。
+
+匹配是保守的，并要求同一个 AST 节点具有完全一致的
+**文件相对路径 + SHA-256 + 行号**，还必须满足唯一的算子语义，
+或（Module Hook）一致的 `self.<attr>` 调用名称和真实 `module_type`。
+重复执行一个调用点会生成多条运行事件，`invocation_index` 保留调用顺序；
+绝不会用调用顺序替代源位置校验。
+
+状态包括 `matched`、`unmatched`、`missing_location`、
+`source_mismatch` 和 `ambiguous`。当静态/运行任意图发生截断时，
+**整次匹配会被阻止**。没有匹配的 ATen 不代表运行错误，
+可能由框架内部、动态调用、未提供的源文件或源码行多个操作造成。
+本功能不推导未执行分支、CUDA Kernel、完整动态控制流或 GPU 用时，
+也不将来自另一单独 Profiling 会话的统计数据强行关联到某个调用点。
+源码归因不是训练机制、模型设计意图或完整 Autograd 证据。
