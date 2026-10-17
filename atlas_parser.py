@@ -299,7 +299,7 @@ class Graph:
             subscript=expr(ex.value)
             if subscript.startswith("self.") and fn.cls:
                 name=subscript.split(".")[1]
-                if self.i.modules[fn.cls].get(name)=="ModuleList":
+                if self.i.modules[(fn.path,fn.cls)].get(name)=="ModuleList":
                     self.unresolved.add("dynamic ModuleList index: "+subscript+" at "+str(ex.lineno))
             return self.read(ex.value,fn,parent,env,guard,depth,seen)+self.read(ex.slice,fn,parent,env,guard,depth,seen)
         if isinstance(ex,(ast.List,ast.Tuple,ast.Set)):return list(dict.fromkeys(sum((self.read(x,fn,parent,env,guard,depth,seen) for x in ex.elts),[])))
