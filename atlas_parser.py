@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SeetheTruth static Python AST graph compiler. No import/exec of analyzed code."""
 from __future__ import annotations
-import ast, argparse, json, re
+import ast, argparse, hashlib, json, re
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass
@@ -96,7 +96,7 @@ def rule(name):
 
 class Index:
     def __init__(self,root):
-        self.root=root;self.defs={};self.modules=defaultdict(dict);self.errors=[];self.count=0
+        self.root=root;self.defs={};self.modules=defaultdict(dict);self.errors=[];self.count=0;self.source_digests={}
     def load(self,path):
         files=sorted(path.rglob("*.py")) if path.is_dir() else [path]
         for file in files:
@@ -107,8 +107,11 @@ class Index:
                 continue
             try:
                 if file.stat().st_size>2_000_000:self.errors.append(str(file)+": skipped >2MB");continue
-                tree=ast.parse(file.read_text(encoding="utf8"),filename=str(file))
+                raw=file.read_bytes()
+                tree=ast.parse(raw.decode("utf8"),filename=str(file))
             except (SyntaxError,UnicodeError,OSError) as e:self.errors.append(str(file)+": "+str(e));continue
+            locator=str(file.relative_to(self.root)) if file.is_relative_to(self.root) else file.name
+            self.source_digests[locator]=hashlib.sha256(raw).hexdigest()
             self.count+=1
             for item in tree.body:
                 if isinstance(item,(ast.FunctionDef,ast.AsyncFunctionDef)):
@@ -300,7 +303,7 @@ class Graph:
         self.function(self.entry,None,0,{self.entry})
         return {"schema":"model-atlas-graph-v1","name":"SOURCE · "+self.entry,
           "meta":{"analysis":"static-python-ast","entry":self.entry,"entry_file":str(self.i.defs[self.entry].path.name),
-            "source_files":self.i.count,"nested_scopes":self.scopes,"conditional_branches":self.branches,
+            "source_files":self.i.count,"source_sha256":self.i.source_digests,"nested_scopes":self.scopes,"conditional_branches":self.branches,
             "loops":self.loops,"unresolved_calls_and_limits":sorted(self.unresolved),
             "parse_errors":self.i.errors,"truncated":self.truncated,"runtime_validated":False,"shape_verified":False},
           "nodes":self.nodes,"edges":self.edges}
