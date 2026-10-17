@@ -175,7 +175,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#jsonText").fill(json.dumps(synthetic_graph()))
         self.page.locator("#importApply").click()
         self.attach("#telemetryFile", "known.json", synthetic_telemetry())
-        self.assertTrue(self.dialogs)
+        self.page.wait_for_function("document.querySelector('#inspectContent')?.textContent.includes('4.5')")
         self.assertIn("4.5", self.page.locator("#inspectContent").inner_text())
         self.assertIn("PROFILE JOIN", self.page.locator("#inspectContent").inner_text())
 
@@ -183,7 +183,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
         self.attach("#file", "known.json", synthetic_telemetry())
         self.assertFalse(self.page.locator("#body").is_hidden())
-        self.assertIn("ATen", self.page.locator("#operators").inner_text() or "ATen")
+        self.assertIn("aten::mm", self.page.locator("#operators").inner_text())
         self.assertIn("block.attn", self.page.locator("#selTitle").inner_text())
         self.assertIn("1, 2, 3", self.page.locator("#details").inner_text())
         self.assertIn("16.67%", self.page.locator("#details").inner_text())
@@ -197,8 +197,9 @@ class BrowserAcceptance(unittest.TestCase):
 
     def test_telemetry_invalid_schema_shows_error_without_breakage(self):
         self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
-        self.attach("#file", "invalid.json", {"schema": "random", "operators": []})
-        self.assertTrue(any("加载失败" in x for x in self.dialogs))
+        with self.page.expect_event("dialog") as event:
+            self.attach("#file", "invalid.json", {"schema": "random", "operators": []})
+        self.assertIn("加载失败", event.value.message)
         self.assertFalse(self.page.locator("#empty").is_hidden())
         self.page.locator("#demo").click()
         self.assertIn("SYNTHETIC", self.page.locator("#evidence").inner_text())
