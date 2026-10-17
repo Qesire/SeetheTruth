@@ -26,3 +26,20 @@ Policy: a successfully rendered diagram, AST parse, or single profiler capture i
 - Multi-GPU execution or realistic large-model performance and visual frame rate.
 
 Static acceptance means the documented **simulated** cases pass with correct provenance and without crashes or untrusted Python execution. Research-grade completeness is not yet claimed.
+
+## 2026-10-17: truncation and gated-residual correctness gate
+
+- The parser now reports `truncated_nodes`, `truncated_edges`, `dropped_nodes`,
+  `dropped_edges` and `graph_limits` alongside the conservative `truncated` flag.
+  Dense fan-out can reach the edge limit before the node limit; a graph with
+  missing edges must never advertise itself as complete.
+- The teaching MoE graph must have both the original `x` and combined experts
+  feeding the residual output; the teaching DiT AdaLN-Zero graph must expose
+  six distinct condition slots and both independently gated Attention and MLP
+  residual additions. These are structural and mathematical *teaching* checks,
+  not claims about real GPU launches.
+- A pinned Meta DiT source AST test independently asserts the two additions
+  each contain `gate_msa/gate_mlp.unsqueeze(1) * self.attn/self.mlp(...)`.
+  Imported real-source graphs still use source navigator rather than seamless
+  five-level teaching views; external `timm` Attention/MLP internals remain
+  unresolved until their exact pinned source is provided.
