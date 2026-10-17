@@ -84,6 +84,23 @@ class CompositeHierarchyChromium(unittest.TestCase):
         self.assertEqual(p.locator("#matrix .cell").count(),0)
         self.assertIn("Q[Tq,Dk]",p.locator("#compositeStages").inner_text())
         shots.append(self.screenshot("03-single-head-expanded-qk-matmul.png"))
+        # A fitted 10-node graph is correct but visually small. Explicit zoom
+        # must make the selected MatMul legible and automatically center it.
+        for _ in range(3):
+            p.locator("#zoomIn").click()
+        self.assertGreaterEqual(float(p.locator("#board").evaluate("(e) => e.style.zoom")),0.9)
+        self.assertIn("手动放大",p.locator("#fitLabel").inner_text())
+        visible=p.evaluate("""() => {
+            const vp=document.querySelector('#viewport').getBoundingClientRect();
+            const qk=document.querySelector('[data-node="qk"]').getBoundingClientRect();
+            return {inView:qk.left>=vp.left-3 && qk.right<=vp.right+3,
+                    width:qk.width,viewportWidth:vp.width};
+        }""")
+        self.assertTrue(visible["inView"],visible)
+        self.assertGreater(visible["width"],185)
+        shots.append(self.screenshot("03b-qk-matmul-readable-zoom.png"))
+        p.locator("#zoomFit").click()
+        self.assertIn("自动适配",p.locator("#fitLabel").inner_text())
         p.locator('#compositeTrail button[data-comp-crumb="0"]').click()
         self.assertEqual(p.locator("#compositeStages .composite-card").count(),6)
         p.locator('#compositeStages [data-comp-stage="4"]').click()
