@@ -72,6 +72,34 @@ class SourceImports(unittest.TestCase):
                      if n["parent"] == inv["id"] and n["label"] == "x")
         self.assertTrue(any(e["to"] == param["id"] for e in g["edges"]))
 
+    def test_explicit_relative_reexport_resolves_exact_source(self):
+        root = self.fixture(import_line="from pkg.export import Exported as ImportedAttention")
+        (root / "pkg" / "export.py").write_text(
+            "from .layers import Attention as Exported\\n", encoding="utf8")
+        g = parse_paths([str(root)], entry="Block.forward", max_depth=2)
+        inv = next(n for n in g["nodes"] if n.get("callee") == "self.attn")
+        self.assertEqual(inv["resolved_source_file"], "pkg/layers.py")
+        self.assertTrue(any(n["parent"] == inv["id"] and n["label"] == "MatMult"
+                            for n in g["nodes"]))
+
+    def test_parent_relative_import_binds_nested_package(self):
+        root = self.fixture()
+        nested = root / "pkg" / "sub"
+        nested.mkdir()
+        (nested / "entry.py").write_text(
+            "from ..layers import Attention as ImportedAttention\\n"
+            "class Block:\\n"
+            "    def __init__(self):\\n"
+            "        self.attn = ImportedAttention()\\n"
+            "    def forward(self, x):\\n"
+            "        return self.attn(x)\\n", encoding="utf8")
+        # The old entry would give an ambiguous Block.forward name.
+        (root / "pkg" / "entry.py").unlink()
+        g = parse_paths([str(root)], entry="Block.forward", max_depth=2)
+        inv = next(n for n in g["nodes"] if n.get("callee") == "self.attn")
+        self.assertEqual(inv["resolved_source_file"], "pkg/layers.py")
+
+
 
 if __name__ == "__main__":
     unittest.main()
