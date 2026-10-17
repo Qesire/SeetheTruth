@@ -61,7 +61,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path=self.path.split("?")[0]
         if path=="/healthz":return self.emit(200,{"ok":True,"mode":"static-source"})
-        mapping={"/":"index.html","/index.html":"index.html","/tensor_subgraph.js":"tensor_subgraph.js","/consensus_knowledge.js":"consensus_knowledge.js","/telemetry.html":"telemetry.html"}
+        mapping={"/":"index.html","/index.html":"index.html","/tensor_subgraph.js":"tensor_subgraph.js","/source_evidence_levels.js":"source_evidence_levels.js","/consensus_knowledge.js":"consensus_knowledge.js","/telemetry.html":"telemetry.html"}
         if path not in mapping:
             self.send_error(404,"Not found");return
         target=ROOT/mapping[path]

@@ -196,6 +196,48 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertFalse(self.page.locator("#modal").evaluate("(e)=>e.classList.contains('open')"))
         self.assertIn("96", self.page.locator("#shapeChip").inner_text())
 
+    def test_source_matrix_tensor_tabs_show_only_ast_evidence(self):
+        # Real non-executing parser output, not a handwritten simulated scene.
+        import tempfile
+        from atlas_parser import parse_paths
+        with tempfile.TemporaryDirectory() as dirname:
+            path = Path(dirname) / "mini_source.py"
+            path.write_text(
+                "class ToyAttention:\n"
+                "    def forward(self, x):\n"
+                "        y = x.transpose(-1, -2)\n"
+                "        return y @ x\n"
+                "class Block:\n"
+                "    def __init__(self):\n"
+                "        self.attn = ToyAttention()\n"
+                "    def forward(self, x):\n"
+                "        return self.attn(x)\n",
+                encoding="utf8")
+            graph = parse_paths([str(path)], entry="Block.forward", max_depth=2)
+        self.assertFalse(graph["meta"]["shape_verified"])
+        self.assertTrue(any(n["label"] == "MatMult" for n in graph["nodes"]))
+        self.load_atlas()
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
+        self.page.locator("#importApply").click()
+        self.assertFalse(self.page.locator('[data-level="matrix"]').is_disabled())
+        self.assertFalse(self.page.locator('[data-level="tensor"]').is_disabled())
+        self.page.locator('[data-level="matrix"]').click()
+        self.assertIn("矩阵证据", self.page.locator("#stageTitle").inner_text())
+        self.assertIn("1 对应运算", self.page.locator("#nodeCount").inner_text())
+        self.assertIn("NO VERIFIED SHAPES", self.page.locator("#chainLabel").inner_text())
+        self.page.locator('[data-level="tensor"]').click()
+        self.assertIn("张量操作", self.page.locator("#stageTitle").inner_text())
+        self.assertIn("2 对应运算", self.page.locator("#nodeCount").inner_text())
+        attn = next(n for n in graph["nodes"] if n.get("callee") == "self.attn")
+        self.page.locator('[data-nav="node"][data-scope="' + attn["id"] + '"]').click()
+        self.assertIn("attn", self.page.locator("#stageTitle").inner_text())
+        self.page.locator('[data-level="matrix"]').click()
+        self.assertIn("1 对应运算", self.page.locator("#nodeCount").inner_text())
+        self.page.locator('[data-nav="home"]').click()
+        self.page.locator('[data-level="macro"]').click()
+        self.assertIn("整体", self.page.locator("#stageTitle").inner_text())
+
     def test_hierarchy_and_cycle_rejection(self):
         self.load_atlas()
         self.page.locator("#importOpen").click()
