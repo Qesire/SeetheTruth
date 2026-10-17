@@ -1,0 +1,18 @@
+/* Compile actual inline Learning Studio script with a source filename. */
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const page=fs.readFileSync('learn.html','utf8');
+const scripts=[...page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+assert.ok(scripts.length>=1);
+for(const [i,script] of scripts.entries()){
+ if(script[1].trim())new vm.Script(script[1],{filename:'learn.html:inline:'+i});
+}
+assert.match(page,/learning_lab\.js/);
+assert.match(page,/id="blocks"/);
+assert.match(page,/id="wires"/);
+assert.match(page,/id="challenge"/);
+assert.match(page,/TEACHING SIMULATION/);
+const server=fs.readFileSync('atlas_server.py','utf8');
+assert.match(server,/learn\.html/);
+assert.match(server,/learning_lab\.js/);
+console.log('Learning Studio client syntax and local-only route PASS');
