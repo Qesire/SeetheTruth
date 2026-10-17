@@ -86,7 +86,7 @@ class DetailedBlockKnowledgeAcceptance(unittest.TestCase):
         text=p.locator("#blockKnowledge").inner_text()
         self.assertIn("gate",text.lower())
         self.assertIn("GEGLU",text)
-        self.assertIn("对比",text)
+        self.assertIn("区别",text)
         screenshots.append(self.shot("03-swiglu-industry-conventions.png","#blockKnowledge"))
         self.select("mask","masked")
         content=p.locator("#blockKnowledge").inner_text()
