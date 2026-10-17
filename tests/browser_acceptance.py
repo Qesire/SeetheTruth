@@ -295,6 +295,35 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertIn("源码尚未核验", self.page.locator("#inspectContent").inner_text())
         self.assertNotIn("源码映射已核验", self.page.locator("#inspectContent").inner_text())
 
+    def test_same_pass_module_profiler_cost_and_unmatched_state(self):
+        self.load_atlas()
+        fixture = synthetic_graph()
+        fixture["nodes"][0]["phase"] = "forward"
+        fixture["nodes"][0]["same_pass_profile"] = {
+            "status": "matched", "invocation_key": "block.attn#1",
+            "run_id": "simulated-in-browser-test",
+            "exclusive_self_cpu_ms": 0.125,
+            "inclusive_attributed_cpu_ms": 0.750,
+            "exclusive_operator_events": 2, "inclusive_operator_events": 8,
+            "host_wall_ms": 1.2, "exclusive_self_device_ms": None,
+        }
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(fixture))
+        self.page.locator("#importApply").click()
+        displayed = self.page.locator("#inspectContent").inner_text()
+        self.assertIn("SAME-PASS PROFILER", displayed)
+        self.assertIn("0.125", displayed)
+        self.assertIn("0.75", displayed)
+        self.assertIn("不", displayed)
+        fixture["nodes"][0]["same_pass_profile"] = {
+            "status": "tensor_signature_mismatch"}
+        self.page.locator("#importOpen").click()
+        self.page.locator("#jsonText").fill(json.dumps(fixture))
+        self.page.locator("#importApply").click()
+        displayed = self.page.locator("#inspectContent").inner_text()
+        self.assertIn("tensor_signature_mismatch", displayed)
+        self.assertNotIn("0.125", displayed)
+
     def test_runtime_module_exact_join(self):
         self.load_atlas()
         self.page.locator("#importOpen").click()
