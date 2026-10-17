@@ -7,8 +7,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-MAX_NODES=130
-MAX_EDGES=400
+MAX_NODES=350
+MAX_EDGES=1400
 MAX_FILES=800
 
 @dataclass
@@ -29,6 +29,7 @@ SEMANTICS={
 "mm":("MatMul","Matrix multiplication","C=A@B","May differ from batched matmul."),
 "einsum":("MatMul","Index-labelled tensor contraction","Y=einsum(spec,tensors)","Read the actual subscript pattern."),
 "addmm":("MatMul","Add a matrix product","Y=beta*X+alpha*(A@B)","May fuse add and GEMM."),
+"baddbmm":("MatMul","Batched affine matmul","Y=beta*X+alpha*bmm(A,B)","Read alpha/beta and batch dimensions; not an independent forward GEMM count if a fused kernel."),
 "reshape":("Shape","Reshape logical axes","reshape(X,new_shape)","Element count conserved; physical copy may occur."),
 "view":("Shape","View tensor with requested strides/layout","view(X,new_shape)","Requires stride-compatible layout."),
 "flatten":("Shape","Coalesce selected axes","flatten(X,start,end)","Check which axes are collapsed."),
@@ -182,11 +183,25 @@ class Graph:
             nested=None
             if callee.startswith("self.") and constructor and constructor+".forward" in self.i.defs:
                 nested=constructor+".forward"
+            elif callee.startswith("self.") and fn.cls:
+                method=fn.cls+"."+callee.split(".")[1]
+                if method in self.i.defs:nested=method
             elif callee in self.i.defs:nested=callee
             if nested and nested not in seen and depth<self.depth and n:
                 self.function(nested,n,depth+1,seen|{nested})
             elif nested in seen if nested else False:self.unresolved.add("recursive: "+str(nested))
+            elif callee.startswith("self.") and fn.cls and not constructor and not nested:
+                self.unresolved.add("unresolved self-call: "+fn.cls+"."+callee.split(".")[1])
             return [n] if n else []
+        if isinstance(ex,ast.IfExp):
+            condition=self.read(ex.test,fn,parent,env,guard,depth,seen)
+            truth=self.read(ex.body,fn,parent,env,expr(ex.test),depth,seen)
+            false=self.read(ex.orelse,fn,parent,env,"not ("+expr(ex.test)+")",depth,seen)
+            ident=self.add("φ conditional","Call","Conditional expression result","a if condition else b",
+                           "Analysis-only branch union; neither expression is proven executed.",
+                           fn,ex,parent,"analysis_construct",condition=expr(ex.test))
+            for dep in [*condition,*truth,*false]:self.edge(dep,ident)
+            return [ident] if ident else []
         if isinstance(ex,ast.BinOp):
             inputs=self.read(ex.left,fn,parent,env,guard,depth,seen)+self.read(ex.right,fn,parent,env,guard,depth,seen)
             name=type(ex.op).__name__;kind="MatMul" if name=="MatMult" else "Pointwise"
@@ -212,6 +227,18 @@ class Graph:
                     elif isinstance(target,(ast.Tuple,ast.List)):
                         for t in target.elts:
                             if isinstance(t,ast.Name) and values:env[t.id]=values[-1]
+            elif isinstance(st,ast.AugAssign):
+                lhs=self.read(st.target,fn,parent,env,guard,depth,seen)
+                rhs=self.read(st.value,fn,parent,env,guard,depth,seen)
+                opname=type(st.op).__name__
+                op=self.add(opname+"=","MatMul" if isinstance(st.op,ast.MatMult) else "Pointwise",
+                            "Augmented assignment operation",expr(st),
+                            "Source-level augmented assignment; potential in-place mutation or reassignment depends on operand implementation.",
+                            fn,st,parent,"source_operator",condition=guard)
+                for dep in [*lhs,*rhs]:self.edge(dep,op)
+                if isinstance(st.target,ast.Name) and op:env[st.target.id]=op
+                elif isinstance(st.target,(ast.Subscript,ast.Attribute)):
+                    self.unresolved.add("in-place alias effects not resolved at "+str(st.lineno))
             elif isinstance(st,ast.Return):
                 sources=self.read(st.value,fn,parent,env,guard,depth,seen)
                 n=self.add("Return","Call","Function return","return value","Actual return branch is runtime-dependent.",fn,st,parent,"source_return")
@@ -224,13 +251,16 @@ class Graph:
                 left=dict(env);right=dict(env)
                 self.statements(st.body,fn,parent,left,condition,depth,seen)
                 self.statements(st.orelse,fn,parent,right,"not ("+condition+")",depth,seen)
-                for variable in set(left)|set(right):
+                for variable in sorted(set(left)|set(right)):
                     a,b=left.get(variable),right.get(variable)
                     if a and b and a!=b:
                         p=self.add("φ "+variable,"Call","Static branch merge","φ(then,else)","Analysis-only join, not a real operator.",fn,st,parent,"analysis_construct")
                         self.edge(a,p);self.edge(b,p)
                         if p:env[variable]=p
-                    elif a or b:env[variable]=a or b
+                    elif a or b:
+                        p=self.add("φ? "+variable,"Call","Conditionally defined variable","φ(defined,undefined)","Analysis-only uncertain join. Not defined on both branches; runtime may raise UnboundLocalError.",fn,st,parent,"analysis_construct",conditional_defined=True)
+                        self.edge(a or b,p)
+                        if p:env[variable]=p
             elif isinstance(st,(ast.For,ast.While,ast.AsyncFor)):
                 self.loops+=1
                 n=self.add("Loop "+expr(st.iter if isinstance(st,(ast.For,ast.AsyncFor)) else st.test)[:40],"Call","Loop scope","iteration","Exact iteration counts not determined.",fn,st,parent,"source_control")
