@@ -7,8 +7,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-MAX_NODES=350
-MAX_EDGES=1400
+MAX_NODES=800
+MAX_EDGES=3200
 MAX_FILES=800
 
 @dataclass
