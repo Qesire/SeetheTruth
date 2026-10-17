@@ -60,6 +60,7 @@ jobs:
           set -o pipefail
           python -m unittest discover -s tests -p 'test_runtime_trace.py' -v 2>&1 | tee runtime_ci_diagnostic.txt
           python -m unittest discover -s tests -p 'test_telemetry.py' -v
+          python -m unittest discover -s tests -p 'test_telemetry_oracles.py' -v
       - name: Smoke demo and validate graph schema
         run: |
           python examples/runtime_trace_demo.py
