@@ -93,6 +93,24 @@ class RealModelOperatorAudit(unittest.TestCase):
             self.assertEqual(n["certainty"],"constructor_and_semantic_rule")
         self.assertGreater(g["meta"]["conditional_branches"],0)
 
+    def test_llama_rotary_return_slots_preserve_query_key_identity(self):
+        graph=self.graph("llama","LlamaAttention","forward",depth=1)
+        invoke=next(n for n in graph["nodes"] if n.get("callee")=="apply_rotary_pos_emb")
+        returns={n["return_slot"]:n for n in graph["nodes"]
+                 if n["parent"]==invoke["id"] and "return_slot" in n}
+        self.assertEqual(set(returns),{0,1})
+        assigned=[n for n in graph["nodes"]
+                  if n.get("tuple_binding") in ("query_states","key_states") and n["parent"] is None]
+        matches={n["tuple_binding"]:n for n in assigned
+                 if any(e["from"] in {returns[0]["id"],returns[1]["id"]} and e["to"]==n["id"]
+                        for e in graph["edges"])}
+        self.assertEqual(set(matches),{"query_states","key_states"})
+        edges={(e["from"],e["to"]) for e in graph["edges"]}
+        self.assertIn((returns[0]["id"],matches["query_states"]["id"]),edges)
+        self.assertIn((returns[1]["id"],matches["key_states"]["id"]),edges)
+        self.assertNotIn((returns[1]["id"],matches["query_states"]["id"]),edges)
+        self.assertNotIn((returns[0]["id"],matches["key_states"]["id"]),edges)
+
     def test_llama_rope_and_head_expansion_helpers(self):
         rope=self.concordance("llama",None,"apply_rotary_pos_emb",["rotate_half","unsqueeze"])
         self.assertEqual(len(graph_calls(rope,"rotate_half")),2)
