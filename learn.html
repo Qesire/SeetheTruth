@@ -112,7 +112,7 @@ input[type="file"]{display:none}
  </aside>
  <main class="stage">
   <div class="stage-top">
-   <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · 点击节点查看解释</div></div>
+   <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · <span id="fitLabel">画布自适配</span></div></div>
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
@@ -223,10 +223,11 @@ function startDrag(e){
  if(!n)return;
  e.preventDefault();selected=id;
  const initial={x:n.x,y:n.y},original=clone(graph),sx=e.clientX,sy=e.clientY;
+ const scale=Number($("#board").style.zoom)||1;
  h.setPointerCapture(e.pointerId);
  dragging={id,h,original};
- const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+ev.clientX-sx)),
- sy2=Math.max(8,Math.min(650,initial.y+ev.clientY-sy));n.x=Math.round(sx2);n.y=Math.round(sy2);
+ const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+(ev.clientX-sx)/scale)),
+ sy2=Math.max(8,Math.min(650,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
  const el=document.querySelector('[data-node="'+id+'"]');if(el){el.style.left=n.x+"px";el.style.top=n.y+"px";}
  drawWires();
  };
@@ -243,8 +244,9 @@ function drawWires(){
  const paths=graph.edges.map(e=>{
   const o=r(e.from,'[data-out] .socket'),i=r(e.to,'[data-in][data-port="'+CSS.escape(e.port)+'"] .socket');
   if(!o||!i)return "";
-  const x1=o.left+o.width/2-box.left,y1=o.top+o.height/2-box.top,
-    x2=i.left+i.width/2-box.left,y2=i.top+i.height/2-box.top,
+  const scale=Number(board.style.zoom)||1;
+  const x1=(o.left+o.width/2-box.left)/scale,y1=(o.top+o.height/2-box.top)/scale,
+    x2=(i.left+i.width/2-box.left)/scale,y2=(i.top+i.height/2-box.top)/scale,
     bend=Math.max(70,Math.abs(x2-x1)*.47);
   return '<path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#14334a" stroke-width="9" stroke-linecap="round"/><path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#65dadd" stroke-opacity=".9" stroke-width="2.3"/>';
  }).join("");
@@ -301,6 +303,12 @@ function inspect(){
  });
 }
 function render(){
+ const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
+ const viewport=$("#viewport");
+ const factor=Math.max(.48,Math.min(1,(viewport.clientWidth-24)/extent));
+ $("#board").style.width=extent+"px";
+ $("#board").style.zoom=String(Number(factor.toFixed(3)));
+ $("#fitLabel").textContent="自动适配 "+Math.round(factor*100)+"% · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
@@ -310,7 +318,7 @@ function render(){
 }
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
- if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();addBlock(kind,e.clientX-box.left-100,e.clientY-box.top-45);
+ if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#challenge").onclick=()=>{
