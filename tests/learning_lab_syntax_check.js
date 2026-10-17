@@ -37,6 +37,8 @@ assert.match(cache,/kv_cache_lab\.js/);
 assert.match(cache,/id="cacheSlots"/);
 assert.match(cache,/id="headSlice"/);
 assert.match(server,/cache\.html/);
+assert.match(server,/training\.html/);
+assert.match(server,/training_flow\.js/);
 assert.match(server,/kv_cache_lab\.js/);
 assert.match(page,/id="blocks"/);
 assert.match(page,/id="wires"/);
