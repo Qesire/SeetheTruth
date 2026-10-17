@@ -21,3 +21,15 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Real-browser UI behavior and adversarial imports
         run: python tests/browser_acceptance.py
+      - name: Screenshot-backed KV Cache visual acceptance
+        run: python tests/browser_cache_screenshots.py
+      - name: Preserve rendered Chromium screenshots and visual checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-kv-real-chromium-screenshots
+          path: |
+            screenshots/*.png
+            screenshots/manifest.json
+          if-no-files-found: warn
+          retention-days: 14
