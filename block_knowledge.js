@@ -90,8 +90,7 @@ validate();
 const get=id=>{if(!Object.hasOwn(notes,id))return null;
  const n=notes[id],d=L.defs[id];
  return Object.freeze({kind:id,title:d.title,formula:d.formula,why:d.why,
-  intuition:n[0],flow:n[1],practice:n[2],trap:n[3],
-  // Questions and source IDs are derived from a dedicated map below.
+  intuition:d.why,flow:n[0],practice:n[1],trap:n[2],exercise:n[3],
   refs:n[4].split(","),epistemic:"公开论文/官方实现约定，不是指定模型已验证事实"});
 };
 return Object.freeze({get,sources,validate});
