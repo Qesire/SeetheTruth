@@ -30,6 +30,15 @@ class Route:
 def unpack_explicit(a, b):
     left, right = a, b
     return left, right
+
+def produce_pair(x, y):
+    query = x + x
+    key = y * y
+    return query, key
+
+def consume_pair(x, y):
+    q, k = produce_pair(x, y)
+    return q @ k
 """
 
 
@@ -78,6 +87,25 @@ class SourceSemantics(unittest.TestCase):
         ret = next(n for n in g["nodes"] if n["label"] == "Return")
         to_return = {e["from"] for e in g["edges"] if e["to"] == ret["id"]}
         self.assertEqual(to_return,{a["id"],b["id"]})
+
+    def test_two_distinct_return_slots_bind_to_caller_outputs(self):
+        g = self.build("consume_pair")
+        call=next(n for n in g["nodes"] if n.get("callee")=="produce_pair")
+        returned={n["return_slot"]:n for n in g["nodes"]
+                  if n["parent"]==call["id"] and "return_slot" in n}
+        self.assertEqual(set(returned),{0,1})
+        projections={n["tuple_binding"]:n for n in g["nodes"]
+                     if n.get("tuple_binding") in ("q","k") and n["parent"] is None}
+        self.assertEqual(set(projections),{"q","k"})
+        edge_set={(e["from"],e["to"]) for e in g["edges"]}
+        self.assertIn((returned[0]["id"],projections["q"]["id"]),edge_set)
+        self.assertIn((returned[1]["id"],projections["k"]["id"]),edge_set)
+        self.assertNotIn((returned[1]["id"],projections["q"]["id"]),edge_set)
+        self.assertNotIn((returned[0]["id"],projections["k"]["id"]),edge_set)
+        mat=next(n for n in g["nodes"] if n["label"]=="MatMult" and n["parent"] is None)
+        self.assertIn((projections["q"]["id"],mat["id"]),edge_set)
+        self.assertIn((projections["k"]["id"],mat["id"]),edge_set)
+        self.assertEqual(g["meta"]["nested_scopes"],["consume_pair","produce_pair"])
 
     def test_graph_contract_and_repeatability(self):
         a=self.build("Cond.forward")
