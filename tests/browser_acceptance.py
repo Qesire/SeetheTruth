@@ -203,6 +203,8 @@ class BrowserAcceptance(unittest.TestCase):
         mask = self.page.locator('[data-tensor-stage="causal_mask"]')
         self.assertIn("1×3", mask.inner_text())
         self.page.locator('[data-node="gqa"] .block-head').click()
+        self.page.locator('[data-param="kvHeads"]').fill("2")
+        self.page.locator('[data-param="kvHeads"]').dispatch_event("change")
         self.page.locator('[data-param="heads"]').fill("3")
         self.page.locator('[data-param="heads"]').dispatch_event("change")
         self.page.locator("#run").click()
