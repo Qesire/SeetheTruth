@@ -195,6 +195,48 @@ class BrowserAcceptance(unittest.TestCase):
             self.assertGreater(self.page.locator("#hist").evaluate("(e)=>e.width"), 0)
         self.assertIn("DETERMINISTIC_TEST_FIXTURE", self.page.locator("#evidence").inner_text())
 
+    def test_malformed_tensor_data_rejected_before_canvas_render(self):
+        self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
+        cases = []
+        bad = synthetic_telemetry()
+        bad["snapshots"][0]["tensor"]["shape"] = "1x2x3"
+        cases.append(("shape", bad))
+        bad = synthetic_telemetry()
+        bad["snapshots"][0]["summary"]["matrix"][0][0] = "<img src=x onerror=alert(1)>"
+        cases.append(("cell", bad))
+        bad = synthetic_telemetry()
+        bad["snapshots"][0]["summary"]["histogram"]["bins"][0] = 999
+        cases.append(("histogram", bad))
+        bad = synthetic_telemetry()
+        bad["operators"][0]["self_cpu_ms"] = -5
+        cases.append(("negative time", bad))
+        for label, payload in cases:
+            with self.subTest(label=label):
+                with self.page.expect_event("dialog") as event:
+                    self.attach("#file", label + ".json", payload)
+                self.assertIn("加载失败", event.value.message)
+                self.assertFalse(self.page.locator("#empty").is_hidden())
+        self.attach("#file", "recover.json", synthetic_telemetry())
+        self.page.wait_for_function("!document.querySelector('#body').hidden")
+        self.assertIn("block.attn", self.page.locator("#selTitle").inner_text())
+
+    def test_matrix_visual_modes_produce_distinct_pixels(self):
+        self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
+        self.attach("#file", "known.json", synthetic_telemetry())
+        self.page.wait_for_function("!document.querySelector('#body').hidden")
+        draw = lambda selector: self.page.locator(selector).evaluate("(e)=>e.toDataURL('image/png')")
+        signed = draw("#heatmap")
+        self.page.locator("#heatmode").select_option("zero")
+        zero = draw("#heatmap")
+        self.assertNotEqual(signed, zero)
+        hist = draw("#hist")
+        self.page.locator("#histmode").select_option("rowenergy")
+        rowenergy = draw("#hist")
+        self.page.locator("#histmode").select_option("colabs")
+        colabs = draw("#hist")
+        self.assertNotEqual(hist, rowenergy)
+        self.assertNotEqual(rowenergy, colabs)
+
     def test_telemetry_invalid_schema_shows_error_without_breakage(self):
         self.page.goto(self.base + "/telemetry.html", wait_until="domcontentloaded")
         with self.page.expect_event("dialog") as event:
