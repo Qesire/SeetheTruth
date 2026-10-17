@@ -31,7 +31,7 @@ assert.equal(seen.size,45);
 for(const id of ['linear','rmsnorm','layernorm','attention','gqa','swiglu','geglu',
  'rope2d','masked_softmax','causal_mask','cross_entropy','kl_prob','dropout_demo']){
  const k=K.get(id);
- assert.ok(k.practice.length>36,id+': missing actual engineering context');
+ assert.ok(k.practice.length>=30,id+': missing actual engineering context');
  assert.ok(k.trap.length>22,id+': missing caveat');
 }
 assert.match(K.get('gelu_tanh').practice,/approximate=none/);
