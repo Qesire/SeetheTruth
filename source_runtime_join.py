@@ -38,7 +38,8 @@ class SourceLocator:
                 if frame is None:
                     break
                 filename = frame.f_code.co_filename
-                frame = frame.f_back if frame else None
+                lineno = frame.f_lineno
+                frame = frame.f_back
                 if not filename.endswith(".py"):
                     continue
                 try:
@@ -54,7 +55,7 @@ class SourceLocator:
                             self.omitted += 1
                             continue
                         self.digests[relative.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-                    return {"file": relative.as_posix(), "line": frame.f_lineno if frame else -1,
+                    return {"file": relative.as_posix(), "line": lineno,
                             "sha256": self.digests[relative.as_posix()]}
                 except OSError:
                     self.omitted += 1
