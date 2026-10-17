@@ -38,6 +38,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.page.on("pageerror",lambda e:self.errors.append(str(e)))
         self.page.goto(self.base+"/learn.html",wait_until="domcontentloaded")
         self.page.wait_for_function("document.querySelectorAll('#palette [data-add]').length===45")
+        self.page.locator("#studyMode").select_option("numeric")
 
     def tearDown(self):
         self.assertEqual(self.errors,[],"Browser JavaScript errors")
@@ -126,6 +127,20 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
           "tests":"real DOM output for numeric SwiGLU, CE Loss, Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
         },ensure_ascii=False,indent=2),encoding="utf-8")
+
+    def test_default_qualitative_library_capture(self):
+        p=self.page
+        p.locator("#studyMode").select_option("concept")
+        p.locator('[data-preset="gqa"]').click()
+        p.locator("#run").click()
+        for _ in range(5):
+            p.locator("#next").click()
+        self.assertIn("6 / 7",p.locator("#stepInfo").inner_text())
+        self.assertIn("推断 shape",p.locator("#shape").inner_text())
+        self.assertIn("内部阶段的形状推断",p.locator("#intermediates").inner_text())
+        self.assertEqual(p.locator("#matrix .cell").count(),0)
+        self.assertNotIn("FLOPs",p.locator("#metrics").inner_text())
+        self.shot("07-qualitative-gqa-no-matrix.png")
 
     def test_legacy_and_new_preset_numerical_runs(self):
         p=self.page
