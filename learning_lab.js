@@ -10,6 +10,7 @@
 })(typeof window!=="undefined"?window:{},function(){
   "use strict";
   const SCHEMA="seethetruth-learning-lab-v1";
+  const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const MAX_NODES=48,MAX_EDGES=96;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -50,6 +51,13 @@
       why:"通过 query 与 key 的相关性，为每个 query 加权汇聚 value。",
       caution:"只模拟单头、无 mask、无 dropout 的显式数学形式；没有 FlashAttention、KV Cache 或 GQA。",
       lesson:"展开分数矩阵与概率矩阵：Q 长度与 K/V 长度可以不同，但 K 和 V 的 token 数必须一致。"},
+    gqa:{title:"多头 GQA / Causal / RoPE",en:"GQA Attention",category:"attention",ports:["q","k","v"],
+      params:{heads:2,kvHeads:1,causal:true,rope:true},
+      formula:"head(Q)·head(K)ᵀ/√d → causal mask → softmax → P·head(V)",
+      why:"多个 query head 分组共享少量 KV head，可分别观察 heads、位置旋转、Mask 与注意力矩阵。",
+      caution:"输入为已有的投影矩阵；K/V 全量输入可模拟缓存前缀读取，但不会真实分配或更新 KV Cache。单批次、无 dropout、无训练。",
+      lesson:"改变 Hq/Hkv、causal 和 rope；按 head 展开 Q/K/V、scores、probabilities、context，观察轴语义以及错误维度。",
+    },
     mse:{title:"均方误差",en:"MSE Loss",category:"loss",ports:["prediction","target"],params:{},
       formula:"L = mean((prediction−target)²)",
       why:"将预测和目标张量的差异化为标量优化目标。",
@@ -85,6 +93,12 @@
         if(!Number.isSafeInteger(params.seed)||Math.abs(params.seed)>10000)fail("seed 必须是 [-10000,10000] 整数",n.id);
       }
       if(type==="linear")safeDim(params.out,n.id,"输出维度");
+      if(type==="gqa"){
+        safeDim(params.heads,n.id,"query heads",8);
+        safeDim(params.kvHeads,n.id,"KV heads",8);
+        if(params.heads%params.kvHeads)fail("Query head 数必须能被 KV head 数整除",n.id);
+        for(const flag of ["causal","rope"])if(typeof params[flag]!=="boolean")fail(flag+" 必须是布尔值",n.id);
+      }
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
@@ -159,6 +173,28 @@
                    probabilities:{shape:shape(weights),values:weights}};
         break;
       }
+      case "gqa":{
+        if(!TensorIR)fail("Tensor IR 尚未加载，请确认 tensor_ir.js 已正确加载",n.id);
+        let r;
+        try{r=TensorIR.gqa(inputs.q,inputs.k,inputs.v,n.params);}
+        catch(e){fail("GQA: "+e.message,n.id);}
+        value=r.output;flops=r.knownMatmulFlops;
+        internals=Object.fromEntries(Object.entries(r.stages).map(([label,tensor])=>{
+          const preview=TensorIR.plane(tensor);
+          return [label,{shape:preview.shape,axes:preview.axes,values:preview.view,
+                         selected:preview.selected,tensor}];
+        }));
+        internals.causal_mask=r.masks?{
+          shape:r.masks.shape,axes:["Tq","Tk"],
+          values:r.masks.allowed.map(row=>row.map(x=>x?1:0)),
+          note:"1=allowed, 0=masked (excluded exactly in Softmax)"}:undefined;
+        if(!r.masks)delete internals.causal_mask;
+        internals.explanation={
+          shape:[1,1],values:[[r.teachingConfig.groupSize]],
+          note:"GQA group size Hq / Hkv; Q offset = "+r.teachingConfig.queryPositionOffset+
+               "; K/V 全量已提供，不代表有可更新的 KV Cache"};
+        break;
+      }
       case "mse":{
         const sq=map2(inputs.prediction,inputs.target,(u,v)=>(u-v)**2,n.id);
         value=[[sq.flat().reduce((u,v)=>u+v,0)/(sq.length*sq[0].length)]];
@@ -211,6 +247,21 @@
              N("attn","attention",565,187),N("proj","linear",855,187,{out:4})];
       edges=[["x","q","x"],["x","k","x"],["x","v","x"],["q","attn","q"],
              ["k","attn","k"],["v","attn","v"],["attn","proj","x"]];
+    }else if(name==="gqa" || name==="decode"){
+      const decode=name==="decode";
+      title=decode?"任务 06 · GQA 的 Decode 与 KV 前缀":"任务 05 · 拆解 GQA / RoPE / Causal Attention";
+      nodes=[
+        N("xq","input",25,50,{rows:decode?1:3,width:4,seed:3}),
+        N("xkv","input",25,370,{rows:3,width:4,seed:5}),
+        N("q","linear",290,50,{out:8}),
+        N("k","linear",290,260,{out:4}),
+        N("v","linear",290,450,{out:4}),
+        N("gqa","gqa",580,190,{heads:2,kvHeads:1,causal:true,rope:true}),
+        N("out","linear",855,190,{out:4})
+      ];
+      edges=[["xq","q","x"],["xkv","k","x"],["xkv","v","x"],
+             ["q","gqa","q"],["k","gqa","k"],["v","gqa","v"],
+             ["gqa","out","x"]];
     }else if(name==="loss"){
       title="任务 04 · 识别训练目标";
       nodes=[N("x","input",30,100,{rows:3,width:4,seed:1}),
