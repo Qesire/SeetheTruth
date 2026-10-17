@@ -338,7 +338,7 @@ function renderKnowledge(d,n){
    part('行业惯例与实用经验（有前提）',item.practice,true)+
    '<div class="knowledge-trap"><div class="kicker">常见误判 / PITFALL</div><p>'+esc(item.trap)+'</p></div>'+
    (cmp?'<div class="knowledge-compare"><strong>与相近模块的区别 · '+esc(cmp[0])+'</strong><p>'+esc(cmp[1])+'</p></div>':'')+
-   part('动手验证与反例',d.lesson,false)+additional+
+   part('动手验证与反例',item.exercise+' '+d.lesson,false)+additional+
    '<details class="knowledge-part"><summary>公开论文与官方文档（'+item.refs.length+'）</summary>'+
    '<div class="knowledge-sources">'+sourceLinks+'</div>'+
    '<p class="knowledge-basis">引用支持通用原理或公开 API 约定，不等于已检查你当前导入的模型实现。</p></details>';
