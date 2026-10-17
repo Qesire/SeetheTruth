@@ -43,6 +43,23 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(self.errors,[],"Browser JavaScript errors")
         self.page.close()
 
+    def assert_all_graph_blocks_visible(self):
+        p=self.page
+        data=p.evaluate("""() => {
+          const viewport=document.querySelector('#viewport').getBoundingClientRect();
+          const nodes=[...document.querySelectorAll('#blocks .block')].map(n=>{
+            const r=n.getBoundingClientRect();
+            return {id:n.dataset.node,left:r.left,right:r.right,top:r.top,bottom:r.bottom};
+          });
+          return {viewport:{left:viewport.left,right:viewport.right,top:viewport.top,bottom:viewport.bottom},
+                  zoom:Number(document.querySelector('#board').style.zoom),nodes};
+        }""")
+        self.assertGreater(data["zoom"],0.45)
+        for n in data["nodes"]:
+            self.assertGreaterEqual(n["left"],data["viewport"]["left"]-3,n["id"])
+            self.assertLessEqual(n["right"],data["viewport"]["right"]+3,n["id"])
+            self.assertLessEqual(n["bottom"],data["viewport"]["bottom"]+3,n["id"])
+
     def shot(self,name):
         p=self.page
         p.evaluate("document.fonts.ready")
@@ -83,6 +100,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("4 / 5",p.locator("#stepInfo").inner_text())
         self.assertIn("SwiGLU",p.locator("#inspectorTitle").inner_text())
         self.assertEqual(p.locator("#matrix .cell").count(),24)
+        self.assert_all_graph_blocks_visible()
         screens.append(self.shot("04-swiglu-numeric-execution.png"))
         p.locator('[data-preset="classifier"]').click()
         p.locator("#run").click()
@@ -90,6 +108,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("5 / 5",p.locator("#stepInfo").inner_text())
         self.assertIn("交叉熵",p.locator("#inspectorTitle").inner_text())
         self.assertEqual(p.locator("#matrix .cell").count(),1)
+        self.assert_all_graph_blocks_visible()
         screens.append(self.shot("05-classifier-crossentropy.png"))
         p.locator('[data-preset="mask"]').click()
         p.locator("#run").click()
@@ -98,6 +117,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("3 / 3",p.locator("#stepInfo").inner_text())
         self.assertIn("Mask Softmax",p.locator("#inspectorTitle").inner_text())
         self.assertEqual(p.locator("#matrix .cell").count(),9)
+        self.assert_all_graph_blocks_visible()
         screens.append(self.shot("06-causal-mask-output.png"))
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
