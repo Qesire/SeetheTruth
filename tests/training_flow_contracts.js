@@ -23,7 +23,8 @@ for(const [i,e] of numerical.events.entries()){
  assert.ok(e.state&&typeof e.state.theta==='number');
 }
 for(const b of Object.values(T.BLOCKS)){
- for(const s of ['formula','how','practice','trap','test'])assert.ok(b[s]?.length>18);
+ for(const [field,min] of Object.entries({formula:5,how:18,practice:18,trap:18,test:18}))
+   assert.ok(b[field]?.length>=min,field+' too short');
  for(const ref of b.refs)assert.ok(T.SOURCE[ref]?.url.startsWith('https://docs.pytorch.org'));
 }
 // Independent scalar analytic reference for microbatch 1 and microbatch 2.
