@@ -17,7 +17,7 @@ jobs:
           node-version: '22'
       - name: Python syntax and tests
         run: |
-          python -m py_compile atlas_parser.py atlas_server.py runtime_trace.py source_runtime_join.py telemetry_capture.py examples/runtime_trace_demo.py examples/telemetry_demo.py
+          python -m py_compile atlas_parser.py atlas_server.py runtime_trace.py source_runtime_join.py telemetry_capture.py same_pass_evidence.py examples/runtime_trace_demo.py examples/telemetry_demo.py
           python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Tensor graph JavaScript syntax
         run: |
@@ -67,9 +67,11 @@ jobs:
           python -m unittest discover -s tests -p 'test_runtime_trace.py' -v 2>&1 | tee runtime_ci_diagnostic.txt
           python -m unittest discover -s tests -p 'test_telemetry.py' -v
           python -m unittest discover -s tests -p 'test_telemetry_oracles.py' -v
+          python -m unittest discover -s tests -p 'test_same_pass_evidence.py' -v
       - name: Smoke demo and validate graph schema
         run: |
           python examples/runtime_trace_demo.py
+          python examples/same_pass_demo.py
           python - <<'PY'
           import json
           from pathlib import Path

@@ -39,7 +39,7 @@ main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-te
 </style></head><body>
 <header><div><div class="brand">SEETHE<span style="color:#6deafa">TRUTH</span> / OBSERVATORY</div><small class="muted">PERFORMANCE INTELLIGENCE · TENSOR MICROSCOPY</small></div>
 <div class="actions"><span class="badge">本地 JSON 分析 · 无网络上传</span><a href="index.html">◈ 返回全息架构</a><label class="filebtn primary" for="file">＋ 导入 Telemetry JSON</label><input id="file" type="file" accept="application/json,.json"><button id="demo">示意样本</button></div></header>
-<div class="layout"><aside class="sidebar"><div class="eyebrow">01 / PERFORMANCE</div><h2 style="margin-top:8px">模块效率地图</h2><div class="hint">CPU Host 时间包含子模块并可能受到 Python Hook 影响，不代表 CUDA kernel 执行耗时。</div><div id="modules"><p class="muted">导入采集结果后显示模块及调用次数。</p></div><hr><div class="eyebrow">02 / TENSOR GALLERY</div><div id="tensorlist" class="tensorlist"><p class="muted">需要显式开启 capture_values 才有数值样本。</p></div></aside>
+<div class="layout"><aside class="sidebar"><div class="eyebrow">01 / PERFORMANCE</div><h2 style="margin-top:8px">模块效率地图</h2><div class="hint">Host 时间包含子模块且不代表 GPU 延迟；同次采样的新 ATen 独占自 CPU 与包含子模块成本可分别显示，后者跨父子模块不可加总。</div><div id="modules"><p class="muted">导入采集结果后显示模块及调用次数。</p></div><div id="moduleCalls" class="hint"></div><hr><div class="eyebrow">02 / TENSOR GALLERY</div><div id="tensorlist" class="tensorlist"><p class="muted">需要显式开启 capture_values 才有数值样本。</p></div></aside>
 <main><div class="eyebrow">INSTRUMENTED EXECUTION / QUANTITATIVE VIEW</div><h1>运行画像 · 张量显微镜</h1><div class="topnotes">统计证据驱动的计算图补充视图。不同数据来源分别标记；不将估算吞吐当作硬件利用率。</div>
 <div id="empty" class="empty"><div style="font-size:32px;color:#7defff">◇</div><h2>导入一次真实 PyTorch Profiler 采集</h2><p>该视图能够探索 ATen 算子性能排行、模块调用时间、实测张量形状，以及自愿提供的统计样本。</p><p><code>python examples/telemetry_demo.py</code></p><p class="tiny">点击「示意样本」可预览布局；其数据由程序生成，并明确标记 SYNTHETIC。</p></div>
 <div id="body" hidden><div class="stats" id="stats"></div><div class="panel"><div class="panel-title"><strong>ATen · Self time 排行</strong><span class="badge source" id="timerel"></span></div><div id="operators"></div><div class="tiny">算子时间来自 torch.profiler.key_averages；按 self time 排序。聚合 CPU 与设备时间不应相加为总延迟。</div></div>
@@ -81,6 +81,22 @@ function validate(d){
  for(const m of d.modules){
   if(!obj(m)||!text(m.name)||!text(m.type)||!Number.isSafeInteger(m.calls)||m.calls<0||!finite(m.host_wall_ms)||m.host_wall_ms<0)fail('非法模块名称或 Host 时间');
   if(m.last_outputs!=null&&!Array.isArray(m.last_outputs))fail('模块张量元数据需要数组');
+  if(m.exclusive_self_cpu_ms!=null&&(!finite(m.exclusive_self_cpu_ms)||m.exclusive_self_cpu_ms<0||
+      !finite(m.inclusive_attributed_cpu_ms)||m.inclusive_attributed_cpu_ms<0||
+      m.inclusive_attributed_cpu_ms+.0002<m.exclusive_self_cpu_ms))fail('非法模块独占或含下级 ATen CPU 成本');
+ }
+ if(d.module_calls!==undefined){
+  if(!Array.isArray(d.module_calls)||d.module_calls.length>10000)fail('过多模块逐次调用');
+  const keys=new Set();
+  for(const c of d.module_calls){
+   if(!obj(c)||!text(c.name)||!text(c.type)||!text(c.invocation_key)||
+       !Number.isSafeInteger(c.invocation_index)||c.invocation_index<1||
+       !finite(c.exclusive_self_cpu_ms)||c.exclusive_self_cpu_ms<0||
+       !finite(c.inclusive_attributed_cpu_ms)||c.inclusive_attributed_cpu_ms<0||
+       c.inclusive_attributed_cpu_ms+.0002<c.exclusive_self_cpu_ms||
+       keys.has(c.invocation_key))fail('非法或重复模块调用成本');
+   keys.add(c.invocation_key);
+  }
  }
  for(const t of d.snapshots){
   if(!obj(t)||!text(t.module)||!obj(t.tensor)||!obj(t.summary))fail('非法 snapshot 格式');
@@ -110,7 +126,10 @@ $('#stats').innerHTML=st.map(([a,b,c])=>'<div class="stat"><span>'+esc(a)+'</spa
 const top=ops.slice().sort((a,b)=>(b[gpu?'self_device_ms':'self_cpu_ms']||0)-(a[gpu?'self_device_ms':'self_cpu_ms']||0)).slice(0,16);
 const max=Math.max(0.0001,...top.map(o=>o[gpu?'self_device_ms':'self_cpu_ms']||0));
 $('#operators').innerHTML=top.map(o=>'<div class="rank" title="'+esc(o.name)+' · '+esc(o.count)+' calls"><span>'+esc(o.name)+'</span><div class="bar"><i style="width:'+Math.max(1,(o[gpu?'self_device_ms':'self_cpu_ms']||0)/max*100)+'%"></i></div><em>'+format(o[gpu?'self_device_ms':'self_cpu_ms'],3)+' ms</em></div>').join('');
-$('#modules').innerHTML=mods.slice(0,100).map((m,i)=>'<div class="module '+(selectedModule===i?'active':'')+'" data-mod="'+i+'"><b>'+esc(m.name)+'</b><div class="sub"><span>'+esc(m.type)+' · '+format(m.calls,0)+'x</span><span>'+format(m.host_wall_ms,3)+' ms host</span></div></div>').join('')||'<p class="muted">无模块调用统计</p>';
+$('#modules').innerHTML=mods.slice(0,100).map((m,i)=>'<div class="module '+(selectedModule===i?'active':'')+'" data-mod="'+i+'"><b>'+esc(m.name)+'</b><div class="sub"><span>'+esc(m.type)+' · '+format(m.calls,0)+'x</span><span>'+format(m.host_wall_ms,3)+' ms host</span></div>'+(Number.isFinite(m.exclusive_self_cpu_ms)?'<div class="sub"><span>独占 ATen 自 CPU</span><span>'+format(m.exclusive_self_cpu_ms,3)+' ms</span></div><div class="sub"><span>含子模块（不可加和）</span><span>'+format(m.inclusive_attributed_cpu_ms,3)+' ms</span></div>':'')+'</div>').join('')||'<p class="muted">无模块调用统计</p>';
+const calls=(doc.module_calls||[]).filter(c=>selectedModule!==null&&c.name===mods[selectedModule]?.name).slice(0,30);
+$('#moduleCalls').innerHTML=calls.length?'<div class="eyebrow">逐次调用 · PROVENANCE</div>'+calls.map(c=>'<div class="module"><b>'+esc(c.invocation_key)+'</b><div class="sub"><span>独占 CPU: '+format(c.exclusive_self_cpu_ms,3)+' ms</span><span>包含子模块: '+format(c.inclusive_attributed_cpu_ms,3)+' ms</span></div></div>').join(''):'';
+
 document.querySelectorAll('[data-mod]').forEach(el=>el.onclick=()=>{selectedModule=+el.dataset.mod;const index=snaps.findIndex(x=>x.module===mods[selectedModule].name);if(index>=0)activeSnap=index;render();});
 $('#tensorlist').innerHTML=snaps.map((s,i)=>'<button class="'+(i===activeSnap?'active':'')+'" data-snap="'+i+'"><b>'+esc(s.module)+'</b><span class="shape">'+esc((s.tensor?.shape||[]).join(' × '))+' / '+esc(s.tensor?.dtype)+'</span></button>').join('')||'<p class="muted">未开启数值样本采集。可仅查看 shape/stride 与性能数据。</p>';
 document.querySelectorAll('[data-snap]').forEach(el=>el.onclick=()=>{activeSnap=+el.dataset.snap;render();});

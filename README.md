@@ -64,3 +64,18 @@ python atlas_server.py --port 8765
 ## 真实源码的矩阵与张量证据视图（实验性）
 
 用 `python atlas_server.py --port 8765` 分析本地 Python 源码目录，再切换整体 / Block / 算子 / 矩阵 / 张量：源码导入后可以在当前调用层级和其嵌套模块中筛选有源码依据的运算（不再仅依赖教学模板）。已加载的显式绝对 `from module import Class as Alias` 可以解析同名类冲突及真实跨文件 `forward`，未知或未加载依赖会保留未解析证据。矩阵标签只识别明确的线性/GEMM 调用，不把自定义类名称臆断为 GEMM；所有源码图的张量 shape 仍标记为**未经运行验证**。完整范围、外部库限制、投影容量和验证方式见 [Source evidence drill](docs/source-evidence-drill.md)。
+
+
+## 一次真实 Pass 的计算成本与源码证据
+
+已支持在**同一个用户显式执行的 PyTorch Pass**中联合采集 RuntimeTrace 和
+Profiler：调用 `same_pass_evidence.VerifiedPass`，为每次模块调用记录独占 ATen
+CPU 自耗时、包含下级的成本、真实张量 shape/stride/dtype 与调用序号。
+依赖父子调用关系自底向上汇总，避免把子模块的 ATen 成本再次作为父模块独占成本。
+主全息图的运行模块 inspector 显示同次成本，Telemetry 页面也可展开逐次调用。
+源码版本一致时仍可用此前的 SHA-256/行号验证为节点绑定源码证据。
+
+快速 CPU 验收：`python examples/same_pass_demo.py`。
+说明与计时口径：[Performance & Tensor Observatory](docs/telemetry.md)。
+所有 Profiler 数字都属于**有插桩的单次测量**，不是未插桩模型吞吐率；
+含子模块成本不能跨父子相加，CUDA profiler 归因时间不等于设备执行关键路径。
