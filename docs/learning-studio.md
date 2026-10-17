@@ -10,7 +10,7 @@ SeetheTruth 原有的 AST/Runtime/Profiler 层保持独立、可溯源。新增�
 
 入口：\`http://127.0.0.1:8765/learn.html\`，或离线同时保留 \`learn.html\` 与 \`learning_lab.js\`。
 
-- **构建**：从 11 种教学积木拖放/单击添加，自由移动，明确输入端口、输出端口，连线、断线和删除。循环连线不合法；同一输入端口至多一个来源。
+- **构建**：从 10 种教学积木拖放/单击添加，自由移动，明确输入端口、输出端口，连线、断线和删除。循环连线不合法；同一输入端口至多一个来源。
 - **执行**：确定性、有界的二维小矩阵 CPU JS 运算。功能包括 Input、Linear、RMSNorm、SiLU、Add、Multiply、MatMul、Softmax、单头无 mask Scaled Dot-Product Attention、MSE Loss。
 - **解释**：节点可查看设计意图、公式、注意事项、参数、输入输出 shape。逐步输出矩阵热力图；Attention 可展开 QKᵀ/√d 分数和 Softmax 权重。
 - **检验**：断线挑战、形状检查、未连接提示、课程示例；具有独立 JS 数学/数值 oracle、Chromium 浏览器验收及恶意 JSON 拒绝测试。
