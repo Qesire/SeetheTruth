@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · KV Cache State Machine</title><style>
+:root{color-scheme:dark;--bg:#070d19;--panel:#0e1a2b;--panel2:#102139;--edge:#223c55;--text:#e7effb;--muted:#839db8;--cyan:#54dbf1;--purple:#b493ff;--amber:#ffc278;--green:#6be7af}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:13px/1.5 Inter,system-ui,-apple-system,"Microsoft YaHei",sans-serif}
+body{background:radial-gradient(ellipse 1150px 590px at 53% -18%,#183456aa,transparent 82%),#070d19}button,select,input{font:inherit}
+button{cursor:pointer}a{color:#92e5f2;text-decoration:none}a:hover{text-decoration:underline}
+nav{height:70px;padding:14px 29px;border-bottom:1px solid #2a4058;background:#091422dd;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{letter-spacing:.18em;font-size:14px;font-weight:800}.brand b{color:var(--cyan)}.brand small{font-size:11px;color:#95b5c8;font-weight:500;letter-spacing:.06em}
+.nav-right{display:flex;gap:9px;align-items:center}.nav-right a{padding:8px 12px;color:#b9d7e6}
+.label{font-size:10px;font-weight:760;letter-spacing:.16em;color:#8facbf;text-transform:uppercase}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:100px;background:#10293d;border:1px solid #315b70;color:#a6edee;font:700 10px ui-monospace,monospace;white-space:nowrap}
+.chip.yellow{color:#edc693;background:#2e291f;border-color:#655238}
+.header{padding:23px 30px 17px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+h1{font-size:27px;line-height:1.15;letter-spacing:-.035em;margin:7px 0 8px;font-weight:720}
+.lede{font-size:12px;color:#9ab1c5;max-width:760px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;padding:0 30px 17px}
+.metric{background:linear-gradient(125deg,#12283b,#101c2c);border:1px solid var(--edge);border-radius:12px;padding:13px 16px;min-width:0}
+.metric .val{display:block;font:700 25px ui-monospace,Consolas,monospace;color:#e6f7ff;margin:4px 0}.metric .sub{color:#819db4;font-size:11px}
+.metric:nth-child(2) .val{color:#86ddef}.metric:nth-child(3) .val{color:#bd9fff}.metric:nth-child(4) .val{color:#ffc98f}
+.layout{display:grid;grid-template-columns:252px minmax(540px,1fr) 310px;gap:11px;padding:0 30px 26px;align-items:stretch;min-height:610px}
+.panel{background:#0c1929e8;border:1px solid var(--edge);border-radius:13px;min-width:0;overflow:hidden;box-shadow:0 14px 35px #0002}
+.panel-header{padding:15px 17px 13px;border-bottom:1px solid #263b51}
+.panel-header h2{margin:3px 0 0;font-size:15px;font-weight:680}
+.pane-body{padding:14px 15px}.controls .param{display:grid;grid-template-columns:1fr 77px;align-items:center;gap:7px;margin:13px 0;color:#a9c8dc;font-size:12px}
+.param input,.param select{width:100%;padding:8px;background:#0c2235;border:1px solid #3a556d;border-radius:7px;color:#e7f2ff}
+.hint{color:#829db6;font-size:11px;line-height:1.7}
+.action{padding:10px 14px;border-radius:8px;background:#13384d;border:1px solid #39738a;color:#e7fbff;font-weight:650;min-height:38px}
+.action.primary{background:#0d8b9c;border-color:#43d8e3;color:#061923}
+.action:hover{filter:brightness(1.2)}.action:disabled{opacity:.35;filter:none;cursor:not-allowed}
+.btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
+.status{border-radius:8px;background:#09253b;border:1px solid #24506a;padding:10px;margin-top:13px;color:#a0dbe7;font-size:11px;min-height:49px}
+.status.error{color:#ffb4aa;border-color:#994c4a;background:#321d29}
+.timeline{position:relative;margin:8px 0 0;padding:0;list-style:none;max-height:250px;overflow:auto}
+.timeline li{position:relative;margin-left:10px;padding:0 0 9px 15px;border-left:1px solid #3b5b70}
+.timeline li:last-child{border-color:transparent}
+.timeline li::before{content:"";position:absolute;left:-5px;top:11px;width:9px;height:9px;border-radius:50%;background:#42677b;border:1px solid #8eb1c7}
+.timeline li.active::before{background:#78ebdc;box-shadow:0 0 12px #39dac4}
+.timeline button{background:transparent;border:0;text-align:left;color:#a2bbcd;width:100%;padding:5px;line-height:1.6}
+.timeline li.active button{color:#fff}
+.timeline .stage{font:700 10px ui-monospace,monospace;color:#7ddddd}
+.timeline .time{font-size:10px;color:#7a95ac}
+.workspace{padding:15px 17px 17px}
+.workspace-title{display:flex;justify-content:space-between;align-items:center;gap:10px}.workspace-title h3{font-size:14px;margin:5px 0}
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px;align-items:stretch}
+.tensor-card{background:linear-gradient(155deg,#133248,#101e34);border:1px solid #38637b;border-radius:11px;min-height:123px;padding:12px;position:relative;overflow:hidden}
+.tensor-card::after{content:"";width:85px;height:85px;position:absolute;right:-30px;bottom:-40px;border-radius:100px;border:18px solid #4ba3b514;pointer-events:none}
+.tensor-card.k{border-color:#7d63b5;background:linear-gradient(145deg,#28223e,#141b32)}
+.tensor-card.v{border-color:#b18363;background:linear-gradient(145deg,#322636,#171d2e)}
+.tensor-card .title{font-size:12px;font-weight:700}.tensor-card .shape{font:600 12px ui-monospace,monospace;color:#b9d5ee;margin:12px 0 6px}
+.tensor-card .tag{font:10px ui-monospace,monospace;color:#9db4c9}
+.cache-header{display:flex;justify-content:space-between;align-items:center;margin:24px 0 11px}
+.cache-slots{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px}
+.slot{height:56px;border:1px dashed #32465a;border-radius:8px;background:#0b1826;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:4px;color:#566b80;overflow:hidden}
+.slot.filled{border:1px solid #447e93;background:linear-gradient(#184359,#123044);color:#b5e8ef}
+.slot.latest{border-color:#6deac4;box-shadow:0 0 0 1px #3ac29b,0 0 18px #44be9a3d}
+.slot .i{font:700 12px ui-monospace,monospace}.slot .txt{font:9px ui-monospace,monospace;white-space:nowrap}
+.rule{height:1px;background:#284156;margin:20px 0}
+.matrix-head{display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap}
+.matrix-head h3{font-size:13px;margin:4px 0}.matrix-head select{background:#112d41;border:1px solid #3d6279;color:#d1eef2;border-radius:7px;padding:5px}
+.heatmap{margin-top:10px;display:grid;gap:5px}.heat{height:32px;border-radius:6px;border:1px solid #355b70;display:flex;align-items:center;justify-content:center;font:10px ui-monospace,monospace;color:white;font-variant-numeric:tabular-nums}
+.axis-labels{display:flex;justify-content:space-between;color:#7191ab;font:10px ui-monospace,monospace;margin-top:6px}
+.formula{padding:14px;background:#091b2c;border:1px solid #254960;border-radius:9px;margin:12px 0;color:#bfe7fa;font:12px/1.8 Cambria,Georgia,serif}
+.evidence{display:flex;align-items:flex-start;gap:8px;color:#b0cde0;font-size:11px;margin:13px 0}
+.evidence .dot{width:7px;height:7px;border-radius:100%;background:#61dcb2;margin-top:5px;flex-shrink:0}
+.smalltable{display:grid;grid-template-columns:1fr auto;gap:10px;border-bottom:1px solid #263e51;padding:10px 0;font-size:11px;color:#9bb3c9}
+.smalltable b{font:600 11px ui-monospace,monospace;color:#e1f7ff}
+.empty{padding:27px 10px;text-align:center;color:#7997af;line-height:1.8}
+.notice{margin:14px 0;border-left:2px solid #c69b63;padding:8px 10px;color:#bfc4c9;background:#2b231c44;font-size:11px;line-height:1.7}
+#selectedPhase{color:#8ce6e4}.legend{display:flex;gap:16px;margin-top:9px;font-size:10px;color:#90adbf}
+.legend span::before{content:"";display:inline-block;width:8px;height:8px;background:#4bd1b3;border-radius:2px;margin-right:6px}
+.legend span:last-child::before{background:#3d586e}
+footer{padding:0 30px 25px;color:#637f95;font-size:10px}
+@media(max-width:1210px){.layout{grid-template-columns:235px minmax(430px,1fr)}.notes{grid-column:1/-1}.notes .pane-body{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:730px){.header,.metrics,.layout{padding-left:12px;padding-right:12px}.layout{display:flex;flex-direction:column}.controls,.notes{width:100%}.nav-right .chip{display:none}.pipeline{grid-template-columns:1fr}.cache-slots{gap:2px}.slot{height:42px}.slot .txt{font-size:8px}}
+</style></head><body>
+<nav><div class="brand">SEETHE<b>TRUTH</b> <small> / STATEFUL LAB</small></div>
+<div class="nav-right"><span class="chip yellow">DETERMINISTIC MICRO-MODEL · NOT GPU</span><a href="learn.html">◈ 积木工作台</a><a href="index.html">↗ 源码图谱</a></div></nav>
+<section class="header"><div><div class="label">07 / MODEL RUNTIME STATE</div>
+<h1>KV Cache · 状态机实验室</h1><p class="lede">用真正追加到缓存中的 Key / Value，逐步执行 Prefill 与 Decode。观察每个 token 如何改变缓存、Attention 和计算量。</p></div>
+<div class="chip">PREFILL → APPEND KV → DECODE → ATTEND</div></section>
+<section class="metrics" aria-label="当前实验统计">
+<div class="metric"><div class="label">STATE / 当前阶段</div><span class="val" id="phaseMetric">EMPTY</span><div class="sub">真实状态更新，而非文字动画</div></div>
+<div class="metric"><div class="label">CACHE LENGTH / 已占槽位</div><span class="val" id="lengthMetric">0 / 7</span><div class="sub">Key 与 Value 逐 token 同步追加</div></div>
+<div class="metric"><div class="label">QUERY / 本次长度</div><span class="val" id="queryMetric">—</span><div class="sub">Prefill Tq=N · Decode Tq=1</div></div>
+<div class="metric"><div class="label">MATMUL / 当前 FLOPs</div><span class="val" id="flopsMetric">—</span><div class="sub">QKᵀ 与 P×V 的教学乘加量</div></div>
+</section>
+<section class="layout">
+<aside class="panel controls"><div class="panel-header"><div class="label">01 / CONFIGURATION</div><h2>实验与时间轴</h2></div><div class="pane-body">
+<p class="hint">修改参数会创建全新会话，清空旧缓存。所有数值由固定公式可复算。</p>
+<label class="param">Prefill tokens <input id="prefix" type="number" min="1" max="8" value="3"></label>
+<label class="param">Decode tokens <input id="decode" type="number" min="1" max="9" value="4"></label>
+<label class="param">Query heads <select id="heads"><option>2</option><option>4</option><option>1</option></select></label>
+<label class="param">KV heads <select id="kvHeads"><option>1</option><option>2</option></select></label>
+<label class="param">RoPE <select id="rope"><option value="true">开启 / ON</option><option value="false">关闭 / OFF</option></select></label>
+<div class="btnrow"><button class="action primary" id="advance">▶ 执行 Prefill</button><button class="action" id="reset">↶ 重置</button></div>
+<div class="status" id="status" role="status">点击执行开始生成 K/V，并观察真正的缓存变化。</div>
+<div class="rule"></div><div class="label">02 / EXECUTION TIMELINE</div>
+<ul class="timeline" id="timeline"><li><span class="hint">无记录 · 点击执行 Prefill</span></li></ul>
+<p class="hint">时间轴可回看已执行的步骤，回看不会再次追加 K/V。继续运行从当前最新状态推进。</p>
+</div></aside>
+<main class="panel"><div class="panel-header"><div class="label">03 / DATAFLOW OBSERVATORY</div><h2>投影 → 缓存 → 注意力</h2></div><div class="workspace">
+<div class="workspace-title"><h3>输入与投影 <span id="selectedPhase">· 尚未执行</span></h3><span class="chip">B=1 · Float64</span></div>
+<div class="pipeline">
+<div class="tensor-card"><div class="title">Q · 当前 Query</div><div class="shape" id="qShape">[1, Hq, Tq, Dk]</div><div class="tag">每次重新投影</div></div>
+<div class="tensor-card k"><div class="title">K · Persistent Cache</div><div class="shape" id="kShape">[1, Hkv, Tk, Dk]</div><div class="tag">只追加新位置</div></div>
+<div class="tensor-card v"><div class="title">V · Persistent Cache</div><div class="shape" id="vShape">[1, Hkv, Tk, Dv]</div><div class="tag">与 K 同步追加</div></div>
+</div>
+<div class="cache-header"><div><div class="label">CACHE MEMORY / POSITION SLOTS</div><h3 style="font-size:13px;margin:5px 0">键值缓存槽位</h3></div><span class="chip" id="cacheLabel">0 / 7 FILLED</span></div>
+<div id="cacheSlots" class="cache-slots"></div><div class="legend"><span>已写入 token</span><span>未使用容量</span></div>
+<div class="rule"></div>
+<div class="matrix-head"><div><div class="label">04 / ATTENTION MICROSCOPE</div><h3>Attention 概率矩阵</h3></div>
+<label class="hint">Query head <select id="headSlice"><option value="0">Head 0</option></select></label></div>
+<div id="matrix" class="heatmap"><div class="empty">尚无 Attention 分数；先执行 Prefill。</div></div>
+<div class="axis-labels"><span>横轴 → Key position / Tk</span><span>纵轴 → Query position / Tq</span></div>
+</div></main>
+<aside class="panel notes"><div class="panel-header"><div class="label">05 / MECHANISM INSPECTOR</div><h2>当前运算与证据</h2></div><div class="pane-body">
+<div class="label">MATHEMATICAL CONTRACT</div>
+<div class="formula">Q ∈ ℝ[B,Hq,Tq,Dk]<br>K,V ∈ ℝ[B,Hkv,Tk,D]<br>P = softmax( QKᵀ / √Dk + Mask )<br>O = P·V</div>
+<div class="label">OBSERVED STATE</div><div id="observed"><div class="empty">执行后显示当前步骤的已写缓存、维度和数学归因。</div></div>
+<div class="rule"></div><div class="label">COST COMPARISON</div><div id="costs"><p class="hint">执行后对比缓存计算与明确的全前缀重计算基线。</p></div>
+<div class="rule"></div><div class="label">EVIDENCE & LIMITS</div>
+<div class="evidence"><span class="dot"></span><span>真实持久化在本次 JavaScript 会话内的数值 K/V 数组，非示意状态变量。</span></div>
+<div class="evidence"><span class="dot"></span><span>用完整前缀重新计算的独立数值结果校验 Decode 输出。</span></div>
+<div class="notice">教学数值模拟：无真实 tokenizer、LLM 权重、GPU、网络、Token 采样或 PyTorch 实测延迟。FLOPs 仅计 QK/PV 矩阵乘加。</div>
+</div></aside></section>
+<footer>SeetheTruth Learning Studio · actual browser-computed state, numerically cross-checked · learning evidence ≠ observed model run</footer>
+<script src="tensor_ir.js"></script><script src="kv_cache_lab.js"></script>
+<script>
+(()=>{'use strict';
+ const Lab=window.SeetheTruthCacheLab, IR=window.SeetheTruthTensorIR;
+ const $=s=>document.querySelector(s);
+ let session,selected=-1;
+ const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const numeral=x=>Number(x).toLocaleString('en-US');
+ function kvConfig(){return {prefix:Number($('#prefix').value),decode:Number($('#decode').value),
+   heads:Number($('#heads').value),kvHeads:Number($('#kvHeads').value),
+   headDim:4,valueDim:4,rope:$('#rope').value==='true'};}
+ function alertStatus(text,isError=false){$('#status').textContent=text;$('#status').classList.toggle('error',isError);}
+ function restart(){
+   try{
+     session=Lab.Session(kvConfig());selected=-1;
+     alertStatus('新的独立会话已经建立。Prefill 尚未运行，K/V 数组为空。');
+     draw();
+   }catch(e){alertStatus('配置不合法：'+e.message,true);}
+ }
+ function cacheMarkup(filled,total,newIndices=[]){
+   return Array.from({length:12},(_,i)=>{
+      const inRange=i<total,used=i<filled,isNew=newIndices.includes(i);
+      return '<div class="slot'+(used?' filled':'')+(isNew?' latest':'')+'"'+
+        (inRange?'':' style="opacity:.18"')+'><span class="i">'+i+'</span>'+
+        '<span class="txt">'+(used?'K/V':'—')+'</span></div>';
+   }).join('');
+ }
+ function heatmap(m){
+   const len=m[0].length,max=Math.max(.05,...m.flat());
+   return m.map((row,r)=>row.map((val,j)=>{
+     const intensity=val/max,alpha=Math.min(.88,.16+.68*intensity).toFixed(3);
+     return '<div class="heat" title="Q'+r+' K'+j+' = '+val.toFixed(6)+'" style="background:rgba(45,181,192,'+
+       alpha+')">'+val.toFixed(3)+'</div>';
+   }).join('')).join('');
+ }
+ function row(label,value){return '<div class="smalltable"><span>'+safe(label)+'</span><b>'+safe(value)+'</b></div>';}
+ function selectStep(index){selected=index;draw();}
+ function draw(){
+   if(!session)return;
+   const snap=session.snapshot(),cfg=snap.config,list=snap.history;
+   const show=selected<0?null:list[selected],display=show?.cacheAfter??0,latest=snap.last;
+   $('#phaseMetric').textContent=show?show.phase.toUpperCase():'EMPTY';
+   $('#lengthMetric').textContent=display+' / '+cfg.total;
+   $('#queryMetric').textContent=show?String(show.queryLength):'—';
+   $('#flopsMetric').textContent=show?numeral(show.mathMatmulFlops):'—';
+   $('#advance').textContent=snap.cursor===0?'▶ 执行 Prefill':snap.cursor===cfg.total?'✓ 全部完成':'▶ Decode +1 token';
+   $('#advance').disabled=snap.cursor===cfg.total;
+   $('#cacheLabel').textContent=display+' / '+cfg.total+' FILLED';
+   const newPositions=show?Array.from({length:show.appended},(_,j)=>show.cacheAfter-show.appended+j):[];
+   $('#cacheSlots').innerHTML=cacheMarkup(display,cfg.total,newPositions);
+   $('#timeline').innerHTML=list.length?list.map((h,i)=>
+     '<li class="'+(selected===i?'active':'')+'"><button data-tick="'+i+'"><span class="stage">'+
+      (h.phase==='prefill'?'PREFILL':'DECODE '+i)+'</span><br>'+
+      'K/V '+h.cacheBefore+' → '+h.cacheAfter+'<br><span class="time">Q '+h.queryLength+
+      ' · Hq '+cfg.heads+'</span></button></li>').join(''):
+      '<li><span class="hint">无记录 · 点击执行 Prefill</span></li>';
+   document.querySelectorAll('[data-tick]').forEach(b=>b.onclick=()=>selectStep(Number(b.dataset.tick)));
+   if(!show){
+     $('#selectedPhase').textContent='· 尚未执行';
+     $('#qShape').textContent='[1, Hq, Tq, Dk]';$('#kShape').textContent='[1, Hkv, Tk, Dk]';
+     $('#vShape').textContent='[1, Hkv, Tk, Dv]';
+     $('#headSlice').innerHTML='<option value="0">Head 0</option>';
+     $('#matrix').innerHTML='<div class="empty">尚无 Attention 分数；先执行 Prefill。</div>';
+     $('#observed').innerHTML='<div class="empty">暂无已执行步骤。</div>';
+   }else{
+     $('#selectedPhase').textContent='· '+show.phase.toUpperCase()+' #'+show.index;
+     $('#qShape').textContent=show.queryShape.join(' × ');
+     $('#kShape').textContent=show.keyShape.join(' × ');
+     $('#vShape').textContent=show.valueShape.join(' × ');
+     const choice=Math.min(Number($('#headSlice').value)||0,cfg.heads-1);
+     $('#headSlice').innerHTML=Array.from({length:cfg.heads},(_,h)=>'<option value="'+h+'"'+
+       (h===choice?' selected':'')+'>Head '+h+'</option>').join('');
+     const probs=IR.plane(show.attention,{Hq:choice}).view;
+     $('#matrix').style.gridTemplateColumns='repeat('+probs[0].length+',minmax(0,1fr))';
+     $('#matrix').innerHTML=heatmap(probs);
+     $('#observed').innerHTML=row('执行阶段',show.phase)+
+       row('新增 K/V token',show.kAppendedPositions.join(', '))+
+       row('Query positions',show.queryPositions.join(', '))+
+       row('实际缓存长度',show.cacheAfter)+
+       row('Attention shape',show.probabilitiesShape.join(' × '))+
+       row('新增投影计算位置',show.appended)+
+       '<p class="hint" style="margin-top:10px">'+safe(show.note)+'</p>';
+   }
+   const plan=Lab.countPlan(cfg),performed=show?show.index+1:0;
+   const steps=plan.steps.slice(0,performed);
+   const cost=steps.reduce((sum,x)=>sum+x.mathMatmulFlops,0);
+   const baseline=steps.reduce((sum,x)=>sum+
+      2*cfg.heads*x.cachedTokens*x.cachedTokens*(cfg.headDim+cfg.valueDim),0);
+   $('#costs').innerHTML=row('实际 QK/PV FLOPs',numeral(cost))+
+     row('全前缀重算基线',numeral(baseline))+
+     row('只新增投影位置',steps.reduce((n,x)=>n+x.projectedNewTokens,0))+
+     '<p class="hint" style="margin-top:11px">仅对比指定的数学算法量，不是 GPU 实测加速比；包含初始 Prefill。</p>';
+ }
+ $('#advance').onclick=()=>{
+  try{const state=session.advance();selected=state.history.length-1;draw();
+    alertStatus('已执行 '+state.last.phase+'：实际追加 '+state.last.appended+
+      ' 条 K/V，长度 '+state.last.cacheBefore+' → '+state.last.cacheAfter+'。');
+  }catch(e){alertStatus('执行失败：'+e.message,true);}
+ };
+ $('#reset').onclick=restart;
+ ['prefix','decode','heads','kvHeads','rope'].forEach(id=>$('#'+id).addEventListener('change',restart));
+ $('#headSlice').onchange=draw;
+ restart();
+})();
+</script></body></html>
