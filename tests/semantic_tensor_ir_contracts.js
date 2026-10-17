@@ -80,7 +80,7 @@ for(const lesson of ['gqa','decode']){
 }
 {
  const g=L.preset('gqa'),n=g.nodes.find(x=>x.id==='gqa');
- n.params.heads=3;fails(()=>L.evaluate(g),/整除/);
+ n.params.heads=3;n.params.kvHeads=2;fails(()=>L.evaluate(g),/整除/);
  n.params.heads=2;n.params.rope=1;fails(()=>L.evaluate(g),/布尔/);
  n.params.rope=false;n.params.kvHeads=2;
  assert.deepEqual(L.evaluate(g).steps.find(x=>x.kind==='gqa').shape,[3,8]);
