@@ -164,8 +164,16 @@ class Graph:
         if isinstance(ex,ast.Call):
             incoming=[]
             if isinstance(ex.func,ast.Attribute):incoming+=self.read(ex.func.value,fn,parent,env,guard,depth,seen)
-            for a in ex.args:incoming+=self.read(a,fn,parent,env,guard,depth,seen)
-            for a in ex.keywords:incoming+=self.read(a.value,fn,parent,env,guard,depth,seen)
+            positional_sources=[]
+            keyword_sources={}
+            for a in ex.args:
+                sources=self.read(a,fn,parent,env,guard,depth,seen)
+                positional_sources.append(sources)
+                incoming+=sources
+            for a in ex.keywords:
+                sources=self.read(a.value,fn,parent,env,guard,depth,seen)
+                if a.arg is not None:keyword_sources[a.arg]=sources
+                incoming+=sources
             callee=expr(ex.func);kind,purpose,formula,why=rule(callee)
             constructor=None
             if callee.startswith("self.") and fn.cls:
@@ -188,7 +196,7 @@ class Graph:
                 if method in self.i.defs:nested=method
             elif callee in self.i.defs:nested=callee
             if nested and nested not in seen and depth<self.depth and n:
-                self.function(nested,n,depth+1,seen|{nested})
+                self.function(nested,n,depth+1,seen|{nested},argument_sources=(positional_sources,keyword_sources))
             elif nested in seen if nested else False:self.unresolved.add("recursive: "+str(nested))
             elif callee.startswith("self.") and fn.cls and not constructor and not nested:
                 self.unresolved.add("unresolved self-call: "+fn.cls+"."+callee.split(".")[1])
@@ -276,13 +284,17 @@ class Graph:
                 for h in st.handlers:self.statements(h.body,fn,parent,dict(env),"exception",depth,seen)
                 self.statements(st.finalbody,fn,parent,env,guard,depth,seen)
             else:self.unresolved.add(type(st).__name__+" at "+str(getattr(st,"lineno","?")))
-    def function(self,key,parent,depth,seen):
+    def function(self,key,parent,depth,seen,argument_sources=None):
         fn=self.i.defs[key];self.scopes.append(key);env={}
         params=[*fn.tree.args.posonlyargs,*fn.tree.args.args,*fn.tree.args.kwonlyargs]
-        for p in params:
-            if p.arg in ("self","cls"):continue
+        formals=[p for p in params if p.arg not in ("self","cls")]
+        for i,p in enumerate(formals):
             n=self.add(p.arg,"Index","Function parameter",p.arg,"Input shape is not verified.",fn,p,parent,"source_parameter")
             if n:env[p.arg]=n
+            if n and argument_sources:
+                positional,keywords=argument_sources
+                sources=positional[i] if i<len(positional) else keywords.get(p.arg,[])
+                for value_source in sources:self.edge(value_source,n)
         self.statements(fn.tree.body,fn,parent,env,None,depth,seen)
     def build(self):
         self.function(self.entry,None,0,{self.entry})
