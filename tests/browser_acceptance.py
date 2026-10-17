@@ -4,12 +4,14 @@ No model weights, no remote sites, no untrusted Python imports. Run with
 python tests/browser_acceptance.py after installing Playwright Chromium.
 """
 import json
+import sys
 import threading
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from atlas_server import Handler
 
 
