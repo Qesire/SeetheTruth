@@ -111,6 +111,25 @@ class BrowserAcceptance(unittest.TestCase):
     def load_lab(self):
         self.page.goto(self.base + "/learn.html", wait_until="domcontentloaded")
         self.page.wait_for_function("document.querySelectorAll('#blocks .block').length > 0")
+        self.page.locator("#studyMode").select_option("numeric")
+
+    def test_learning_lab_default_is_qualitative_and_never_renders_numeric_cells(self):
+        self.page.goto(self.base + "/learn.html", wait_until="domcontentloaded")
+        self.assertEqual(self.page.locator("#studyMode").input_value(), "concept")
+        self.assertIn("无矩阵执行", self.page.locator("#evidence").inner_text())
+        self.page.locator("#run").click()
+        self.assertIn("1 / 4", self.page.locator("#stepInfo").inner_text())
+        self.page.locator("#next").click()
+        self.assertIn("推断 shape = [3, 8]", self.page.locator("#shape").inner_text())
+        self.assertIn("特征轴", self.page.locator("#metrics").inner_text())
+        self.assertIn("不构造矩阵", self.page.locator("#matrix").inner_text())
+        self.assertEqual(self.page.locator("#matrix .cell").count(), 0)
+        self.assertNotIn("FLOPs", self.page.locator("#metrics").inner_text())
+        self.page.locator("#studyMode").select_option("numeric")
+        self.page.locator("#run").click()
+        self.page.locator("#next").click()
+        self.assertIn("shape = [3, 8]", self.page.locator("#shape").inner_text())
+        self.assertEqual(self.page.locator("#matrix .cell").count(), 24)
 
     def test_learning_lab_ffn_and_attention_stepwise_numeric_execution(self):
         self.load_lab()
@@ -236,7 +255,8 @@ class BrowserAcceptance(unittest.TestCase):
             "nodes": [{"id": "evil", "kind": "<img src=x onerror=alert(1)>",
                        "x": 3, "y": 5, "params": {}}],
             "edges": []})
-        self.assertIn("导入被拒绝", self.page.locator("#status").inner_text())
+        self.page.wait_for_function(
+            "document.querySelector('#status')?.textContent.includes('导入被拒绝')")
         self.assertEqual(self.page.locator("#blocks .block").count(), good)
         self.assertIn("任务 01", self.page.locator("#workspaceTitle").inner_text())
 

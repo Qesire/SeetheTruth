@@ -1,3 +1,11 @@
+## 产品核心：Scratch 式大模型原理学习（不需要 GPU）
+
+SeetheTruth 默认是**可搭建、可单步推演的学习环境**：45 种积木的数学功能、形状变化、计算依赖和错误原因都可以在不运行任何矩阵乘法的情况下理解。打开 `learn.html` 后，默认选择 **“原理推演”**；如果希望亲手看小矩阵数值，再主动切换 **“小矩阵数值演示”**。两者都无需 GPU。
+
+真实模型运行、PyTorch/CUDA Profiler 和大规模矩阵计算**不是默认能力或核心验收条件**。它们将来可作为单独安装的外接 adapter 使用；现有研究型源码图谱和性能工具保持可选，不替代学习功能。
+
+完整的三层能力设计、数值证据边界和未来外接协议见 [Learning-first architecture](docs/learning-first-architecture.md)。
+
 # SeetheTruth
 
 SeetheTruth 是一个面向大模型学习与研究的交互式全息计算图浏览器（MODEL ATLAS HOLOGRAPH）。

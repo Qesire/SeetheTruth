@@ -9,6 +9,8 @@ for(const [i,script] of scripts.entries()){
 }
 assert.match(page,/learning_lab\.js/);
 assert.match(page,/block_catalog\.js/);
+assert.match(page,/concept_flow\.js/);
+assert.match(page,/id="studyMode"/);
 assert.match(page,/id="blockSearch"/);
 assert.match(page,/id="catalogCategories"/);
 assert.match(page,/tensor_ir\.js/);
