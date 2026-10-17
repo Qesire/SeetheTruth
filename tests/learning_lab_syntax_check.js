@@ -8,6 +8,7 @@ for(const [i,script] of scripts.entries()){
  if(script[1].trim())new vm.Script(script[1],{filename:'learn.html:inline:'+i});
 }
 assert.match(page,/learning_lab\.js/);
+assert.match(page,/tensor_ir\.js/);
 assert.match(page,/id="blocks"/);
 assert.match(page,/id="wires"/);
 assert.match(page,/id="challenge"/);
