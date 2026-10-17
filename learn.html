@@ -62,7 +62,7 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .metric{display:flex;justify-content:space-between;border-bottom:1px solid #233e50;padding:7px 0;font-size:11px;color:#b4d3e2}
 .metric b{color:#e7fcff;font-family:ui-monospace,monospace}
 .param{display:flex;flex-direction:column;gap:5px;margin-top:10px;font-size:11px;color:#c2deec}
-.param input{width:100%;border:1px solid #365970;border-radius:8px;background:#081b2c;color:white;padding:9px}
+.param input,.param select{width:100%;border:1px solid #365970;border-radius:8px;background:#081b2c;color:white;padding:9px}
 #matrix{display:grid;gap:3px;margin:9px 0}.cell{display:flex;align-items:center;justify-content:center;min-height:25px;border:1px solid #284759;border-radius:4px;font:10px ui-monospace,monospace;color:#f5f8ff}
 #trace{max-height:155px;overflow:auto}.trace-row{display:flex;justify-content:space-between;gap:4px;padding:5px 7px;border-bottom:1px solid #244154;color:#a8c4d5;font-size:11px}
 .trace-row.current{background:#184358;color:white}.trace-row button{background:none;border:0;color:inherit;text-align:left;flex:1}
@@ -84,6 +84,8 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
   <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
   <button class="mission" data-preset="loss"><span class="num">04</span><span>训练从哪里开始？<span class="desc">预测、目标、Loss（仅前向）</span></span></button>
+  <button class="mission" data-preset="gqa"><span class="num">05</span><span>GQA / RoPE / Causal Mask<span class="desc">展开语义轴和 Attention 矩阵</span></span></button>
+  <button class="mission" data-preset="decode"><span class="num">06</span><span>Decode 读取 KV 前缀<span class="desc">一条 Q、三条 K/V，对齐位置</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -117,6 +119,7 @@ input[type="file"]{display:none}
   <div class="section"><div class="kicker">学习提示与证据界限</div><p id="lesson"></p><div class="equation" id="caution"></div></div>
  </aside>
 </div>
+<script src="tensor_ir.js"></script>
 <script src="learning_lab.js"></script>
 <script>
 (()=>{"use strict";
@@ -229,9 +232,11 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"本工具是确定性数值教学模拟，非真实模型运行。";
  $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
-  '<label class="param">'+esc(k)+'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'"></label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
+  ''<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
+   '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
+   :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>'').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
  document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
-   const name=input.dataset.param,v=Number(input.value),id=selected;
+   const name=input.dataset.param, v=input.tagName==="SELECT"?input.value==="true":Number(input.value),id=selected;
    mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params[name]=v;return g;});
  }));
  $("#trace").innerHTML=run?run.steps.map((s,i)=>
@@ -244,8 +249,22 @@ function inspect(){
   '<div class="hint">暂无该积木的逐步输出；运行后向前单步执行。</div>';
  $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · float64 teaching matrix":"shape: —";
  $("#matrix").innerHTML=active?matrixHTML(active.values,"输出数值"):'<p class="hint">单步运行后，此处显示实际计算的微型矩阵。</p>';
- $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>
-   '<details><summary>'+esc(key)+' · '+val.shape.join("×")+'</summary>'+matrixHTML(val.values,key)+'</details>').join(""):"";
+ $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>{
+   const axes=Array.isArray(val.axes)?' [ '+val.axes.map((axis,i)=>axis+'='+val.shape[i]).join(' · ')+' ]':'';
+   const options=val.tensor&&val.tensor.shape.length===4&&val.tensor.shape[1]>1?
+     '<label class="param">Head 轴切片：<select data-stage="'+esc(key)+'">'+
+     Array.from({length:val.tensor.shape[1]},(_,head)=>
+       '<option value="'+head+'">'+head+' / '+(val.tensor.shape[1]-1)+'</option>').join('')+'</select></label>':'';
+   return '<details data-tensor-stage="'+esc(key)+'"><summary>'+esc(key)+' · '+val.shape.join("×")+
+     axes+'</summary>'+options+'<div class="tensor-stage-preview">'+matrixHTML(val.values,key)+'</div>'+
+     (val.note?'<p class="hint">'+esc(val.note)+'</p>':'')+'</details>';
+ }).join(""):"";
+ document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
+   const entry=active.internals[el.dataset.stage];if(!entry?.tensor)return;
+   const head=Number(el.value),tensor=entry.tensor;
+   const matrix=window.SeetheTruthTensorIR.plane(tensor,{[tensor.axes[1]]:head}).view;
+   el.closest("details").querySelector(".tensor-stage-preview").innerHTML=matrixHTML(matrix,el.dataset.stage+" · head "+head);
+ });
 }
 function render(){
  $("#workspaceTitle").textContent=graph.title;
