@@ -59,6 +59,18 @@ jobs:
             composite_screenshots/manifest.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Real Chromium symbolic-to-optimizer training state acceptance
+        run: python tests/browser_training_screenshots.py
+      - name: Archive real training-state browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-training-gradient-adamw-chromium
+          path: |
+            training_screenshots/*.png
+            training_screenshots/manifest.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve rendered Chromium screenshots and visual checks
         if: always()
         uses: actions/upload-artifact@v4
