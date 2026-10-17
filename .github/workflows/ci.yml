@@ -24,6 +24,7 @@ jobs:
           node --check tensor_subgraph.js
           node --check consensus_knowledge.js
           node tests/consensus_contracts.js
+          node tests/consensus_math_oracles.js
           node --check tests/telemetry_syntax_check.js
           node tests/telemetry_syntax_check.js
           node tests/tensor_graph_check.js
