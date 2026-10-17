@@ -19,6 +19,14 @@ assert.match(page,/id="studyMode"/);
 assert.match(page,/id="blockSearch"/);
 assert.match(page,/id="catalogCategories"/);
 assert.match(page,/tensor_ir\.js/);
+const training=fs.readFileSync('training.html','utf8');
+const trainingScripts=[...training.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+for(const [i,script] of trainingScripts.entries()){
+ if(script[1].trim())new vm.Script(script[1],{filename:'training.html:inline:'+i});
+}
+assert.match(training,/training_flow\.js/);
+assert.match(training,/id="sequence"/);
+assert.match(page,/training\.html/);
 const server=fs.readFileSync('atlas_server.py','utf8');
 const cache=fs.readFileSync('cache.html','utf8');
 const cacheScripts=[...cache.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
@@ -29,6 +37,8 @@ assert.match(cache,/kv_cache_lab\.js/);
 assert.match(cache,/id="cacheSlots"/);
 assert.match(cache,/id="headSlice"/);
 assert.match(server,/cache\.html/);
+assert.match(server,/training\.html/);
+assert.match(server,/training_flow\.js/);
 assert.match(server,/kv_cache_lab\.js/);
 assert.match(page,/id="blocks"/);
 assert.match(page,/id="wires"/);
