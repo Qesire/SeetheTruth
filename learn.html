@@ -130,6 +130,8 @@ function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=
 function mutate(fn){
  const before=clone(graph);
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
+  // Duplicate change events and idempotent connections must not consume history.
+  if(JSON.stringify(before)===JSON.stringify(valid)){render();return;}
   undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;render();
  }catch(e){say(e.message,true);}
 }
