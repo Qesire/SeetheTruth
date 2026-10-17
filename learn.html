@@ -136,7 +136,7 @@ function mutate(fn){
   // Duplicate change events and idempotent connections must not consume history.
   if(JSON.stringify(before)===JSON.stringify(valid)){render();return;}
   undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;render();
- }catch(e){say(e.message,true);}
+ }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
  try{graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
