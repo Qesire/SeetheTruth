@@ -77,7 +77,6 @@ class DetailedBlockKnowledgeAcceptance(unittest.TestCase):
         content=p.locator("#blockKnowledge").inner_text()
         self.assertIn("KV",content)
         self.assertIn("加速",content)
-        self.assertIn("Masked",p.locator("#inspectorTitle").inner_text()) if False else None
         screenshots.append(self.shot("01-gqa-mechanism-full-page.png"))
         p.locator("#blockKnowledge details").last.click()
         self.assertIn("Grouped-Query Attention",p.locator("#blockKnowledge .knowledge-sources").inner_text())
