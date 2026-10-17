@@ -115,6 +115,13 @@ def join_graphs(static_graph, runtime_graph):
     stats = {"matched_module": 0, "matched_operator": 0,
              "ambiguous": 0, "unmatched": 0, "missing_location": 0,
              "source_mismatch": 0, "ineligible": 0}
+    if not runtime_graph["meta"].get("source_capture", {}).get("enabled"):
+        result["meta"]["source_attribution"] = {
+            "status": "blocked_capture_disabled",
+            "reason": "Runtime callsite collection was not opted in; no source claims permitted.",
+            "stats": stats,
+        }
+        return result
     if static_graph["meta"].get("truncated") or runtime_graph["meta"].get("truncated"):
         result["meta"]["source_attribution"] = {
             "status": "blocked_truncated_graph",
