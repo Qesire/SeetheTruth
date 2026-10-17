@@ -208,6 +208,8 @@ function build(params={},mode="concept"){
    theta=decayed-cfg.lr*mh/(Math.sqrt(vh)+cfg.eps);
   }else{
    t++;
+   // Plain SGD: no momentum, no L2 penalty, no decoupled decay.
+   theta=old-cfg.lr*grad;
   }
   add("update",tag,cfg.optimizer.toUpperCase()+" 参数更新",
     cfg.optimizer==="sgd"?"θₜ=θₜ₋₁−ηg":"θₜ=θₜ₋₁(1−ηλ)−η·m̂/(√v̂+ε)",
