@@ -145,3 +145,11 @@ Learning Studio 现在包含 **45 种真的进行有限二维 Float64 数值计�
 这是 **8 种复合学习视图，不是额外增加 8 种可执行算子**；45 种已有积木仍是底层单一算子表。默认只做定性的形状、语义、连接与条件推演，不生成大矩阵或要求 GPU。小矩阵数值模式独立可选。
 
 关键验收不是仅截图：`tests/composite_atlas_contracts.js` 会逐元素比较父级与展开后 SwiGLU、Attention 的独立计算结果，并检查实际 Decoder 双残差与输出 shape。`tests/browser_composite_hierarchy.py` 使用真正 Chromium 逐层点击生成截图。详见 [分层积木设计与数学验收](docs/hierarchical-composite-learning.md)。
+
+## 第九阶段 · 训练状态和优化器积木（原理优先，无 GPU）
+
+新增 [Training Studio](training.html)：**14 种训练状态积木**，以可验证的标量学习问题逐步解释 Parameter → Forward → Loss → Backward（链式法则）→ 有效 batch 梯度累积 → SGD/AdamW Optimizer Step。默认只生成符号与状态依赖，不做数值计算；用户可以主动开启独立的标量解析检验，不需要 GPU、模型权重或 PyTorch。
+
+系统显式区分模型参数、`.grad` 缓冲区、AdamW 的 m/v 动量和 t 更新计数。支持 1/2 microbatch、1/2 optimizer step 的比较，以及“错误清除梯度”“错误忽略归一化”的教学反例；每个积木附详细数学、工程惯例、误区和 PyTorch 原始合同链接。45 种现有计算积木保持不变，新增 14 种**训练概念／状态积木**不冒充已有微矩阵执行器。
+
+数值合同与真实浏览器截图验收见 [训练教学语义规范](docs/training-learning-contracts.md)。
