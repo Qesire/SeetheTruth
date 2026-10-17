@@ -100,6 +100,14 @@ class SourceRuntimeAttribution(unittest.TestCase):
         joined = join_graphs(BASE, runtime)
         self.assertEqual(joined["nodes"][1]["source_attribution"]["status"], "unmatched")
 
+    def test_opt_out_forbids_all_source_claims(self):
+        runtime = copy.deepcopy(RUNTIME)
+        runtime["meta"]["source_capture"]["enabled"] = False
+        joined = join_graphs(BASE, runtime)
+        self.assertEqual(joined["meta"]["source_attribution"]["status"],
+                         "blocked_capture_disabled")
+        self.assertTrue(all("source_attribution" not in n for n in joined["nodes"]))
+
     def test_schema_rejection(self):
         with self.assertRaises(ValueError):
             join_graphs({"schema": "wrong"}, RUNTIME)
