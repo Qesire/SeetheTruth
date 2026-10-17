@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth | Performance & Tensor Observatory</title>
+<style>
+:root{color-scheme:dark;--bg:#050913;--panel:#0d1726;--line:#274059;--cyan:#67e5ef;--violet:#ac8cff;--ink:#e7f6ff;--muted:#91a9c3}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 4%,#143252 0%,#07101d 47%,#03070e 100%);color:var(--ink);font:13px/1.55 Inter,Segoe UI,Microsoft Yahei,sans-serif}
+a{color:#8ceeff;text-decoration:none}a:hover{text-decoration:underline}button,select,input{font:inherit;color:inherit}
+header{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;border-bottom:1px solid #294760;background:#06101fe0;gap:12px}
+.brand{font-weight:750;letter-spacing:2px;font-size:16px}.brand small{display:block;letter-spacing:1px;font-size:10px;font-weight:450;color:var(--muted)}.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button,.filebtn,select{border:1px solid #315873;background:#12253b;border-radius:9px;padding:9px 13px;cursor:pointer}button:hover,.filebtn:hover{border-color:#66dff8}button.primary,.filebtn.primary{background:linear-gradient(120deg,#176b83,#3e5293);border-color:#5bc4e1}
+input[type=file]{display:none}.badge{font-size:10px;color:#8dcde1;border:1px solid #315669;border-radius:99px;padding:5px 9px}
+.layout{display:grid;grid-template-columns:285px minmax(420px,1fr) 340px;height:calc(100dvh - 76px);min-height:690px}
+.sidebar,.inspector{background:#081321dc;overflow:auto;scrollbar-width:thin;padding:22px;border-color:#29425a}.sidebar{border-right:1px solid var(--line)}.inspector{border-left:1px solid var(--line)}
+h1{font-size:20px;margin:0 0 6px}h2{font-size:15px;margin:0 0 12px}h3{font-size:12px;margin:20px 0 9px;color:#b9eaf5;letter-spacing:1px}.muted,.hint{color:var(--muted);font-size:11px}.eyebrow{font-size:10px;letter-spacing:2px;color:#7ba2be;font-weight:700}
+hr{border:0;border-top:1px solid #244059;margin:17px 0}.topnotes{font-size:11px;color:#a8c2dc}
+.empty{border:1px dashed #39718a;border-radius:15px;padding:26px;text-align:center;color:#9bb7d2;margin:60px auto;max-width:570px;background:#081b2d99}
+main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin:18px 0}
+.stat,.panel{background:linear-gradient(150deg,#12253aa6,#0b1726d9);border:1px solid #294963;border-radius:14px;padding:16px;box-shadow:inset 0 1px #79e5ff13}
+.stat b{font-size:20px;display:block;margin:4px 0;color:#cdfaff;font-variant-numeric:tabular-nums}.stat span{font-size:10px;color:#8eabc3}.stat small{font-size:10px;color:#7ea8c6}
+.panel{margin:15px 0}.panel-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.panel-title strong{font-size:13px;letter-spacing:.2px}.badge.source{color:#94fcce;border-color:#326c61}
+.chart{width:100%;height:200px;display:block}.rank{display:grid;grid-template-columns:175px 1fr 75px;align-items:center;gap:9px;margin:10px 0;cursor:pointer;font-size:11px}
+.rank .bar{height:9px;border-radius:99px;background:#162a40;overflow:hidden}.rank .bar i{display:block;background:linear-gradient(90deg,#36b1cf,#a18cff);height:100%;border-radius:99px}
+.rank span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.rank em{font-style:normal;color:#c6eafa;text-align:right;font-variant-numeric:tabular-nums}.rank:hover span{color:#76f1fb}
+.module{padding:11px 12px;border:1px solid #294159;border-radius:11px;margin:8px 0;cursor:pointer;background:#101e2e}.module:hover,.module.active{border-color:#64dbea;background:#152e46}
+.module b{font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis}.module .sub{display:flex;justify-content:space-between;color:#9ab8cf;font-size:10px;margin-top:6px}
+.tensorlist button{display:block;text-align:left;width:100%;margin:7px 0;padding:11px;background:#0d2033}
+.tensorlist button.active{border-color:#6ef2f6;background:#173448}.shape{display:block;color:#92abc6;font-family:Consolas,monospace;font-size:10px;margin-top:3px}
+.inspect-grid{display:grid;grid-template-columns:1fr auto;gap:12px;border-bottom:1px solid #28435a;padding:9px 0;font-size:11px}.inspect-grid span{color:#8ca9c4}.inspect-grid strong{font-weight:600;text-align:right;overflow-wrap:anywhere;max-width:170px}
+.canvasframe{padding:10px;border:1px solid #2f536b;border-radius:12px;background:radial-gradient(ellipse,#0c2037,#060e1b);position:relative}
+#heatmap{width:100%;height:275px;display:block;image-rendering:pixelated;cursor:crosshair}
+#hist{height:155px;width:100%;display:block}.info{color:#9fc5dc;font-size:11px}.legend{height:9px;border-radius:12px;margin-top:12px;background:linear-gradient(90deg,#3b6ed8,#0d1d33,#ffbd73)}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:15px}.tiny{font-size:10px;color:#86a5bf}
+#tooltip{position:fixed;pointer-events:none;display:none;background:#071523;border:1px solid #78ebff;border-radius:8px;padding:7px 10px;color:#e7fbff;font-size:11px;z-index:9}
+.notice{font-size:11px;color:#afd3e8;line-height:1.75;border-left:2px solid #63dceb;padding:9px 13px;background:#102033}
+.error{color:#ffb7a7}code{font-family:Consolas,monospace;color:#b8f0fc;font-size:11px}
+@media(max-width:1150px){.layout{grid-template-columns:220px minmax(320px,1fr) 290px}.sidebar,.inspector,main{padding:15px}.rank{grid-template-columns:115px 1fr 65px}}
+@media(max-width:850px){header{height:auto;padding:14px;flex-wrap:wrap}.layout{display:flex;flex-direction:column;height:auto}.sidebar,.inspector{border:0;border-bottom:1px solid var(--line)}.stats{grid-template-columns:repeat(2,1fr)}.twocol{grid-template-columns:1fr}main{overflow:visible}}
+</style></head><body>
+<header><div><div class="brand">SEETHE<span style="color:#6deafa">TRUTH</span> / OBSERVATORY</div><small class="muted">PERFORMANCE INTELLIGENCE · TENSOR MICROSCOPY</small></div>
+<div class="actions"><span class="badge">本地 JSON 分析 · 无网络上传</span><a href="index.html">◈ 返回全息架构</a><label class="filebtn primary" for="file">＋ 导入 Telemetry JSON</label><input id="file" type="file" accept="application/json,.json"><button id="demo">示意样本</button></div></header>
+<div class="layout"><aside class="sidebar"><div class="eyebrow">01 / PERFORMANCE</div><h2 style="margin-top:8px">模块效率地图</h2><div class="hint">CPU Host 时间包含子模块并可能受到 Python Hook 影响，不代表 CUDA kernel 执行耗时。</div><div id="modules"><p class="muted">导入采集结果后显示模块及调用次数。</p></div><hr><div class="eyebrow">02 / TENSOR GALLERY</div><div id="tensorlist" class="tensorlist"><p class="muted">需要显式开启 capture_values 才有数值样本。</p></div></aside>
+<main><div class="eyebrow">INSTRUMENTED EXECUTION / QUANTITATIVE VIEW</div><h1>运行画像 · 张量显微镜</h1><div class="topnotes">统计证据驱动的计算图补充视图。不同数据来源分别标记；不将估算吞吐当作硬件利用率。</div>
+<div id="empty" class="empty"><div style="font-size:32px;color:#7defff">◇</div><h2>导入一次真实 PyTorch Profiler 采集</h2><p>该视图能够探索 ATen 算子性能排行、模块调用时间、实测张量形状，以及自愿提供的统计样本。</p><p><code>python examples/telemetry_demo.py</code></p><p class="tiny">点击「示意样本」可预览布局；其数据由程序生成，并明确标记 SYNTHETIC。</p></div>
+<div id="body" hidden><div class="stats" id="stats"></div><div class="panel"><div class="panel-title"><strong>ATen · Self time 排行</strong><span class="badge source" id="timerel"></span></div><div id="operators"></div><div class="tiny">算子时间来自 torch.profiler.key_averages；按 self time 排序。聚合 CPU 与设备时间不应相加为总延迟。</div></div>
+<div class="twocol"><div class="panel"><div class="panel-title"><strong>张量切片热力图</strong><select id="heatmode"><option value="signed">正负值</option><option value="magnitude">幅值</option><option value="zero">零 / 非零</option></select></div><div class="canvasframe"><canvas id="heatmap"></canvas></div><div class="legend" id="legend"></div><div class="tiny" id="matrixnote"></div></div>
+<div class="panel"><div class="panel-title"><strong>采样值分布</strong><select id="histmode"><option value="hist">采样直方图</option><option value="rowenergy">行 L2 能量</option><option value="colabs">列平均绝对值</option></select><span class="badge" id="samplecount">sample</span></div><canvas id="hist" class="chart"></canvas><div class="tiny">直方图只代表有限的抽样值，不是整个张量的精确分布。</div></div></div>
+<div class="panel"><div class="panel-title"><strong>Evidence contract · 指标口径</strong><span class="badge">可追溯</span></div><div id="evidence" class="notice"></div></div></div></main>
+<aside class="inspector"><div class="eyebrow">03 / TENSOR INSPECTOR</div><h2 style="margin-top:10px" id="selTitle">未选择张量</h2><div class="hint" id="selHint">载入数据后，可单击左侧张量切片查看逻辑 shape、stride、dtype、样本直方图与热力图。</div><div id="details"></div><hr><div class="eyebrow">04 / INTERPRETATION</div><div class="notice" id="interpret">数据展示与计算机制分开：shape、stride 为运行时观测；数值分布是有界抽样。不能据此断言具体 CUDA kernel 数量、理论峰值利用率或完整显存峰值。</div></aside></div><div id="tooltip"></div>
+<script>
+(()=>{'use strict';
+const $=s=>document.querySelector(s);
+let doc=null,activeSnap=0,selectedModule=null,rankMetric='cpu',synthetic=false;
+const esc=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+const format=(n,d=2)=>Number.isFinite(+n)?Number(n).toLocaleString(undefined,{maximumFractionDigits:d}):'—';
+const bytes=n=>n==null?'—':Math.abs(n)>=1024**3?format(n/1024**3)+' GiB':Math.abs(n)>=1024**2?format(n/1024**2)+' MiB':format(n/1024)+' KiB';
+const F=Number.isFinite;
+function example(){
+const mat=Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>+(Math.sin(i*.66)*Math.cos(j*.39)+Math.sin((i-j)*.16)*.23).toFixed(4)));
+const flat=mat.flat(),lo=Math.min(...flat),hi=Math.max(...flat),bins=Array(24).fill(0);
+for(const x of flat)bins[Math.min(23,Math.floor((x-lo)/(hi-lo)*24))]++;
+return {schema:'seethetruth-telemetry-v1',name:'Synthetic tutorial (not a measured model)',meta:{measurement:'SYNTHETIC_DEMO_NOT_MEASURED',gpu_activity:false,tensor_values_opt_in:true,host_timing_is_not_gpu_latency:true,notes:['Synthetic numeric values demonstrate the UI only.']},modules:[{name:'layers.0.attn',type:'DemoAttention',calls:1,host_wall_ms:3.8,last_outputs:[{shape:[1,20,20],stride:[400,20,1],dtype:'float32'}]},{name:'layers.0.ffn',type:'DemoFFN',calls:1,host_wall_ms:2.6,last_outputs:[{shape:[1,20,20],stride:[400,20,1],dtype:'float32'}]}],operators:[{name:'aten::mm',count:4,self_cpu_ms:3.0,self_device_ms:null},{name:'aten::softmax',count:2,self_cpu_ms:1.2,self_device_ms:null},{name:'aten::mul',count:3,self_cpu_ms:.6,self_device_ms:null}],snapshots:[{module:'layers.0.attn',tensor:{shape:[1,20,20],stride:[400,20,1],dtype:'float32',device:'cpu',numel:400,logical_bytes:1600,contiguous:true},summary:{population:400,sampled:400,finite_count:400,nonfinite_count:0,sample_zero_fraction:0,statistics:{min:lo,max:hi,mean:0,std:.6},histogram:{bins,domain:[lo,hi]},matrix:mat,matrix_original_shape:[20,20],matrix_stride:[1,1],leading_indices:[0]}}],gpu_memory:null};
+}
+function validate(d){if(!d||d.schema!=='seethetruth-telemetry-v1'||!Array.isArray(d.operators)||!Array.isArray(d.modules)||!Array.isArray(d.snapshots))throw Error('非 SeetheTruth Telemetry v1 格式');if(d.operators.length>5000||d.modules.length>5000||d.snapshots.length>64)throw Error('文件超过界面容量限制');for(const s of d.snapshots){if(!s.summary||!Array.isArray(s.summary.matrix)||s.summary.matrix.length>32||s.summary.matrix.some(row=>!Array.isArray(row)||row.length>32))throw Error('非法热力图数组');}}
+function load(d,isDemo){validate(d);doc=d;synthetic=isDemo;activeSnap=0;selectedModule=null;$('#empty').hidden=true;$('#body').hidden=false;render();}
+function render(){if(!doc)return;const meta=doc.meta||{},ops=doc.operators,mods=doc.modules,snaps=doc.snapshots;
+const gpu=meta.gpu_activity&&ops.some(o=>Number.isFinite(o.self_device_ms));rankMetric=gpu?'device':'cpu';
+const sum=ops.reduce((a,v)=>a+(Number(v[gpu?'self_device_ms':'self_cpu_ms'])||0),0);
+$('#timerel').textContent=(synthetic?'SYNTHETIC / ':gpu?'DEVICE / ':'CPU / ')+'self time';
+const st=[['ATen 算子',format(ops.length,0),'distinct aggregates'],['累计 self time',format(sum,3)+' ms',gpu?'device attribution':'CPU attribution'],['Module 调用',format(mods.reduce((a,m)=>a+(m.calls||0),0),0),'host call count'],['张量样本',format(snaps.length,0),meta.tensor_values_opt_in?'opt-in sampling':'values disabled']];
+$('#stats').innerHTML=st.map(([a,b,c])=>'<div class="stat"><span>'+esc(a)+'</span><b>'+esc(b)+'</b><small>'+esc(c)+'</small></div>').join('');
+const top=ops.slice().sort((a,b)=>(b[gpu?'self_device_ms':'self_cpu_ms']||0)-(a[gpu?'self_device_ms':'self_cpu_ms']||0)).slice(0,16);
+const max=Math.max(0.0001,...top.map(o=>o[gpu?'self_device_ms':'self_cpu_ms']||0));
+$('#operators').innerHTML=top.map(o=>'<div class="rank" title="'+esc(o.name)+' · '+esc(o.count)+' calls"><span>'+esc(o.name)+'</span><div class="bar"><i style="width:'+Math.max(1,(o[gpu?'self_device_ms':'self_cpu_ms']||0)/max*100)+'%"></i></div><em>'+format(o[gpu?'self_device_ms':'self_cpu_ms'],3)+' ms</em></div>').join('');
+$('#modules').innerHTML=mods.slice(0,100).map((m,i)=>'<div class="module '+(selectedModule===i?'active':'')+'" data-mod="'+i+'"><b>'+esc(m.name)+'</b><div class="sub"><span>'+esc(m.type)+' · '+format(m.calls,0)+'x</span><span>'+format(m.host_wall_ms,3)+' ms host</span></div></div>').join('')||'<p class="muted">无模块调用统计</p>';
+document.querySelectorAll('[data-mod]').forEach(el=>el.onclick=()=>{selectedModule=+el.dataset.mod;const index=snaps.findIndex(x=>x.module===mods[selectedModule].name);if(index>=0)activeSnap=index;render();});
+$('#tensorlist').innerHTML=snaps.map((s,i)=>'<button class="'+(i===activeSnap?'active':'')+'" data-snap="'+i+'"><b>'+esc(s.module)+'</b><span class="shape">'+esc((s.tensor?.shape||[]).join(' × '))+' / '+esc(s.tensor?.dtype)+'</span></button>').join('')||'<p class="muted">未开启数值样本采集。可仅查看 shape/stride 与性能数据。</p>';
+document.querySelectorAll('[data-snap]').forEach(el=>el.onclick=()=>{activeSnap=+el.dataset.snap;render();});
+$('#evidence').innerHTML='<b>'+esc(meta.measurement||'unknown')+'</b><p>'+esc(synthetic?'这是明确标识的模拟演示，不属于运行实测。':'数据由显式 PyTorch profiler 采集。CPU 时间与 CUDA device 时间是不同口径。')+'</p><p>'+esc((meta.notes||[]).join(' · '))+'</p>';
+renderSnapshot();}
+function row(k,v){return '<div class="inspect-grid"><span>'+esc(k)+'</span><strong>'+esc(v)+'</strong></div>'}
+function renderSnapshot(){const s=doc.snapshots[activeSnap];if(!s){$('#selTitle').textContent='无数值样本';$('#selHint').textContent='使用 TelemetrySession(model, capture_values=True) 可主动采集有界激活样本；此选项可能泄露激活信息并改变计时。';$('#details').innerHTML='';clearCanvas('heatmap');clearCanvas('hist');$('#matrixnote').textContent='';return;}
+const t=s.tensor||{},d=s.summary||{},st=d.statistics||{};
+$('#selTitle').textContent=s.module;$('#selHint').textContent='运行时输出形状与截取的一个矩阵平面。';
+$('#details').innerHTML=row('Shape','['+(t.shape||[]).join(', ')+']')+row('Stride','['+(t.stride||[]).join(', ')+']')+row('Dtype',t.dtype)+row('Device',t.device)+row('Logical bytes',bytes(t.logical_bytes))+row('Contiguous',String(t.contiguous))+row('Sample mean',format(st.mean,5))+row('Sample std',format(st.std,5))+row('Sample zero fraction',st.mean==null?'—':format((d.sample_zero_fraction||0)*100,2)+'%')+row('Nonfinite samples',format(d.nonfinite_count,0))+row('Sample range',format(st.min,3)+' → '+format(st.max,3));
+$('#samplecount').textContent=format(d.sampled,0)+' / '+format(d.population,0)+' sampled';
+$('#matrixnote').textContent='显示原始最后两轴的稀疏网格采样 '+JSON.stringify(d.matrix_original_shape)+'；步长 '+JSON.stringify(d.matrix_stride)+'；高维张量固定前导轴 '+JSON.stringify(d.leading_indices||[])+'。并非完整权重图。';
+$('#interpret').textContent='所见热力图对应一次观测的激活切片。'+(t.contiguous?'当前张量连续布局。':'当前张量非连续，后续算子可能发生布局调整。')+' Heatmap、Histogram 都只解释采样值；不能以样本零值率替代整体稀疏率。';
+drawMatrix();drawHistogram();}
+function clearCanvas(id){const c=$('#'+id);const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);}
+function initCanvas(id){const c=$('#'+id),r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);c.width=Math.max(50,Math.round(r.width*dpr));c.height=Math.max(50,Math.round(r.height*dpr));const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return{c,ctx,w:r.width,h:r.height};}
+function color(v,mode,maxabs,lo,hi){if(v==null||!Number.isFinite(v))return '#fb4872';if(mode==='zero')return v===0?'#152438':'#76e7ed';if(mode==='magnitude'){const t=Math.min(1,Math.abs(v)/Math.max(maxabs,1e-9));return 'rgb('+Math.round(17+225*t)+','+Math.round(38+142*t)+','+Math.round(67+38*t)+')';}
+const t=Math.min(1,Math.abs(v)/Math.max(maxabs,1e-9));return v<0?'rgb('+Math.round(21+41*t)+','+Math.round(36+68*t)+','+Math.round(62+183*t)+')':'rgb('+Math.round(21+234*t)+','+Math.round(36+146*t)+','+Math.round(62+64*t)+')';}
+function drawMatrix(){const {ctx,w,h}=initCanvas('heatmap'),s=doc.snapshots[activeSnap],mat=s?.summary?.matrix||[],rows=mat.length,cols=mat[0]?.length||0;if(!rows||!cols)return;let all=mat.flat().filter(x=>typeof x==='number'&&Number.isFinite(x)),max=Math.max(1e-8,...all.map(Math.abs)),mode=$('#heatmode').value;let pad=18,cell=Math.min((w-pad*2)/cols,(h-pad*2)/rows),startX=(w-cols*cell)/2,startY=(h-rows*cell)/2;
+for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){ctx.fillStyle=color(mat[i][j],mode,max);ctx.fillRect(startX+j*cell,startY+i*cell,Math.ceil(cell)-.5,Math.ceil(cell)-.5);}
+window.__heat={mat,cell,startX,startY,rows,cols};const l=$('#legend');l.style.background=mode==='zero'?'linear-gradient(90deg,#152438,#76e7ed)':mode==='magnitude'?'linear-gradient(90deg,#112643,#f48c69)':'linear-gradient(90deg,#3e68f5,#15243e,#ffb262)';}
+function drawHistogram(){
+const {ctx,w,h}=initCanvas('hist'),s=doc.snapshots[activeSnap],mode=$('#histmode').value,matrix=s?.summary?.matrix||[];
+let bins=s?.summary?.histogram?.bins||[];
+if(mode==='rowenergy') bins=matrix.map(row=>Math.sqrt(row.reduce((a,v)=>a+(Number.isFinite(v)?v*v:0),0)));
+if(mode==='colabs'){const cols=matrix[0]?.length||0;bins=Array.from({length:cols},(_,j)=>{const vals=matrix.map(row=>row[j]).filter(Number.isFinite);return vals.length?vals.reduce((a,v)=>a+Math.abs(v),0)/vals.length:0});}
+const M=Math.max(1e-9,...bins),pad=20;if(!bins.length)return;
+ctx.strokeStyle='#40607d';ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-8,h-pad);ctx.stroke();
+const step=(w-pad-10)/bins.length;bins.forEach((v,i)=>{const hh=v/M*(h-45);ctx.fillStyle='rgba(109,222,245,.84)';ctx.fillRect(pad+i*step,h-pad-hh,Math.max(1,step-2),hh)});
+ctx.fillStyle='#b5d5ed';ctx.font='10px Consolas';
+ctx.fillText(mode==='hist'?format(s.summary.histogram.domain[0],3):'0',pad,h-4);
+ctx.fillText(mode==='hist'?format(s.summary.histogram.domain[1],3):mode==='rowenergy'?'row L2':'column abs',w-90,h-4);
+}
+$('#heatmode').addEventListener('change',()=>{if(doc?.snapshots.length)drawMatrix()});
+$('#histmode').addEventListener('change',()=>{if(doc?.snapshots.length)drawHistogram()});
+$('#heatmap').addEventListener('mousemove',e=>{const a=window.__heat;if(!a)return;const rect=e.target.getBoundingClientRect(),i=Math.floor((e.clientY-rect.top-a.startY)/a.cell),j=Math.floor((e.clientX-rect.left-a.startX)/a.cell),t=$('#tooltip');if(i<0||i>=a.rows||j<0||j>=a.cols){t.style.display='none';return;}t.textContent='['+i+', '+j+'] = '+String(a.mat[i][j]);t.style.left=(e.clientX+16)+'px';t.style.top=(e.clientY+14)+'px';t.style.display='block';});
+$('#heatmap').addEventListener('mouseleave',()=>$('#tooltip').style.display='none');
+$('#file').onchange=async e=>{let f=e.target.files?.[0];if(!f)return;try{if(f.size>8_000_000)throw Error('最大支持 8 MB JSON');load(JSON.parse(await f.text()),false);}catch(err){alert('加载失败：'+err.message)}finally{e.target.value='';}};
+$('#demo').onclick=()=>load(example(),true);
+addEventListener('resize',()=>{if(doc?.snapshots.length)renderSnapshot()});
+})();
+</script></body></html>
