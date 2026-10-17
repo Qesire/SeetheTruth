@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """SeetheTruth static Python AST graph compiler. No import/exec of analyzed code."""
 from __future__ import annotations
-import ast, argparse, json, re
+import ast, argparse, hashlib, json, re
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-MAX_NODES=130
-MAX_EDGES=400
+MAX_NODES=800
+MAX_EDGES=3200
 MAX_FILES=800
 
 @dataclass
@@ -29,6 +29,7 @@ SEMANTICS={
 "mm":("MatMul","Matrix multiplication","C=A@B","May differ from batched matmul."),
 "einsum":("MatMul","Index-labelled tensor contraction","Y=einsum(spec,tensors)","Read the actual subscript pattern."),
 "addmm":("MatMul","Add a matrix product","Y=beta*X+alpha*(A@B)","May fuse add and GEMM."),
+"baddbmm":("MatMul","Batched affine matmul","Y=beta*X+alpha*bmm(A,B)","Read alpha/beta and batch dimensions; not an independent forward GEMM count if a fused kernel."),
 "reshape":("Shape","Reshape logical axes","reshape(X,new_shape)","Element count conserved; physical copy may occur."),
 "view":("Shape","View tensor with requested strides/layout","view(X,new_shape)","Requires stride-compatible layout."),
 "flatten":("Shape","Coalesce selected axes","flatten(X,start,end)","Check which axes are collapsed."),
@@ -95,7 +96,7 @@ def rule(name):
 
 class Index:
     def __init__(self,root):
-        self.root=root;self.defs={};self.modules=defaultdict(dict);self.errors=[];self.count=0
+        self.root=root;self.defs={};self.modules=defaultdict(dict);self.errors=[];self.count=0;self.source_digests={}
     def load(self,path):
         files=sorted(path.rglob("*.py")) if path.is_dir() else [path]
         for file in files:
@@ -106,8 +107,11 @@ class Index:
                 continue
             try:
                 if file.stat().st_size>2_000_000:self.errors.append(str(file)+": skipped >2MB");continue
-                tree=ast.parse(file.read_text(encoding="utf8"),filename=str(file))
+                raw=file.read_bytes()
+                tree=ast.parse(raw.decode("utf8"),filename=str(file))
             except (SyntaxError,UnicodeError,OSError) as e:self.errors.append(str(file)+": "+str(e));continue
+            locator=str(file.relative_to(self.root)) if file.is_relative_to(self.root) else file.name
+            self.source_digests[locator]=hashlib.sha256(raw).hexdigest()
             self.count+=1
             for item in tree.body:
                 if isinstance(item,(ast.FunctionDef,ast.AsyncFunctionDef)):
@@ -163,8 +167,16 @@ class Graph:
         if isinstance(ex,ast.Call):
             incoming=[]
             if isinstance(ex.func,ast.Attribute):incoming+=self.read(ex.func.value,fn,parent,env,guard,depth,seen)
-            for a in ex.args:incoming+=self.read(a,fn,parent,env,guard,depth,seen)
-            for a in ex.keywords:incoming+=self.read(a.value,fn,parent,env,guard,depth,seen)
+            positional_sources=[]
+            keyword_sources={}
+            for a in ex.args:
+                sources=self.read(a,fn,parent,env,guard,depth,seen)
+                positional_sources.append(sources)
+                incoming+=sources
+            for a in ex.keywords:
+                sources=self.read(a.value,fn,parent,env,guard,depth,seen)
+                if a.arg is not None:keyword_sources[a.arg]=sources
+                incoming+=sources
             callee=expr(ex.func);kind,purpose,formula,why=rule(callee)
             constructor=None
             if callee.startswith("self.") and fn.cls:
@@ -182,11 +194,25 @@ class Graph:
             nested=None
             if callee.startswith("self.") and constructor and constructor+".forward" in self.i.defs:
                 nested=constructor+".forward"
+            elif callee.startswith("self.") and fn.cls:
+                method=fn.cls+"."+callee.split(".")[1]
+                if method in self.i.defs:nested=method
             elif callee in self.i.defs:nested=callee
             if nested and nested not in seen and depth<self.depth and n:
-                self.function(nested,n,depth+1,seen|{nested})
+                self.function(nested,n,depth+1,seen|{nested},argument_sources=(positional_sources,keyword_sources))
             elif nested in seen if nested else False:self.unresolved.add("recursive: "+str(nested))
+            elif callee.startswith("self.") and fn.cls and not constructor and not nested:
+                self.unresolved.add("unresolved self-call: "+fn.cls+"."+callee.split(".")[1])
             return [n] if n else []
+        if isinstance(ex,ast.IfExp):
+            condition=self.read(ex.test,fn,parent,env,guard,depth,seen)
+            truth=self.read(ex.body,fn,parent,env,expr(ex.test),depth,seen)
+            false=self.read(ex.orelse,fn,parent,env,"not ("+expr(ex.test)+")",depth,seen)
+            ident=self.add("φ conditional","Call","Conditional expression result","a if condition else b",
+                           "Analysis-only branch union; neither expression is proven executed.",
+                           fn,ex,parent,"analysis_construct",condition=expr(ex.test))
+            for dep in [*condition,*truth,*false]:self.edge(dep,ident)
+            return [ident] if ident else []
         if isinstance(ex,ast.BinOp):
             inputs=self.read(ex.left,fn,parent,env,guard,depth,seen)+self.read(ex.right,fn,parent,env,guard,depth,seen)
             name=type(ex.op).__name__;kind="MatMul" if name=="MatMult" else "Pointwise"
@@ -212,6 +238,18 @@ class Graph:
                     elif isinstance(target,(ast.Tuple,ast.List)):
                         for t in target.elts:
                             if isinstance(t,ast.Name) and values:env[t.id]=values[-1]
+            elif isinstance(st,ast.AugAssign):
+                lhs=self.read(st.target,fn,parent,env,guard,depth,seen)
+                rhs=self.read(st.value,fn,parent,env,guard,depth,seen)
+                opname=type(st.op).__name__
+                op=self.add(opname+"=","MatMul" if isinstance(st.op,ast.MatMult) else "Pointwise",
+                            "Augmented assignment operation",expr(st),
+                            "Source-level augmented assignment; potential in-place mutation or reassignment depends on operand implementation.",
+                            fn,st,parent,"source_operator",condition=guard)
+                for dep in [*lhs,*rhs]:self.edge(dep,op)
+                if isinstance(st.target,ast.Name) and op:env[st.target.id]=op
+                elif isinstance(st.target,(ast.Subscript,ast.Attribute)):
+                    self.unresolved.add("in-place alias effects not resolved at "+str(st.lineno))
             elif isinstance(st,ast.Return):
                 sources=self.read(st.value,fn,parent,env,guard,depth,seen)
                 n=self.add("Return","Call","Function return","return value","Actual return branch is runtime-dependent.",fn,st,parent,"source_return")
@@ -224,13 +262,16 @@ class Graph:
                 left=dict(env);right=dict(env)
                 self.statements(st.body,fn,parent,left,condition,depth,seen)
                 self.statements(st.orelse,fn,parent,right,"not ("+condition+")",depth,seen)
-                for variable in set(left)|set(right):
+                for variable in sorted(set(left)|set(right)):
                     a,b=left.get(variable),right.get(variable)
                     if a and b and a!=b:
                         p=self.add("φ "+variable,"Call","Static branch merge","φ(then,else)","Analysis-only join, not a real operator.",fn,st,parent,"analysis_construct")
                         self.edge(a,p);self.edge(b,p)
                         if p:env[variable]=p
-                    elif a or b:env[variable]=a or b
+                    elif a or b:
+                        p=self.add("φ? "+variable,"Call","Conditionally defined variable","φ(defined,undefined)","Analysis-only uncertain join. Not defined on both branches; runtime may raise UnboundLocalError.",fn,st,parent,"analysis_construct",conditional_defined=True)
+                        self.edge(a or b,p)
+                        if p:env[variable]=p
             elif isinstance(st,(ast.For,ast.While,ast.AsyncFor)):
                 self.loops+=1
                 n=self.add("Loop "+expr(st.iter if isinstance(st,(ast.For,ast.AsyncFor)) else st.test)[:40],"Call","Loop scope","iteration","Exact iteration counts not determined.",fn,st,parent,"source_control")
@@ -246,19 +287,23 @@ class Graph:
                 for h in st.handlers:self.statements(h.body,fn,parent,dict(env),"exception",depth,seen)
                 self.statements(st.finalbody,fn,parent,env,guard,depth,seen)
             else:self.unresolved.add(type(st).__name__+" at "+str(getattr(st,"lineno","?")))
-    def function(self,key,parent,depth,seen):
+    def function(self,key,parent,depth,seen,argument_sources=None):
         fn=self.i.defs[key];self.scopes.append(key);env={}
         params=[*fn.tree.args.posonlyargs,*fn.tree.args.args,*fn.tree.args.kwonlyargs]
-        for p in params:
-            if p.arg in ("self","cls"):continue
+        formals=[p for p in params if p.arg not in ("self","cls")]
+        for i,p in enumerate(formals):
             n=self.add(p.arg,"Index","Function parameter",p.arg,"Input shape is not verified.",fn,p,parent,"source_parameter")
             if n:env[p.arg]=n
+            if n and argument_sources:
+                positional,keywords=argument_sources
+                sources=positional[i] if i<len(positional) else keywords.get(p.arg,[])
+                for value_source in sources:self.edge(value_source,n)
         self.statements(fn.tree.body,fn,parent,env,None,depth,seen)
     def build(self):
         self.function(self.entry,None,0,{self.entry})
         return {"schema":"model-atlas-graph-v1","name":"SOURCE · "+self.entry,
           "meta":{"analysis":"static-python-ast","entry":self.entry,"entry_file":str(self.i.defs[self.entry].path.name),
-            "source_files":self.i.count,"nested_scopes":self.scopes,"conditional_branches":self.branches,
+            "source_files":self.i.count,"source_sha256":self.i.source_digests,"nested_scopes":self.scopes,"conditional_branches":self.branches,
             "loops":self.loops,"unresolved_calls_and_limits":sorted(self.unresolved),
             "parse_errors":self.i.errors,"truncated":self.truncated,"runtime_validated":False,"shape_verified":False},
           "nodes":self.nodes,"edges":self.edges}
