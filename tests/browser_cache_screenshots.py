@@ -69,6 +69,19 @@ class KVBrowserScreenshots(unittest.TestCase):
         self.assertEqual(page.locator("#queryMetric").inner_text(), queries)
         self.assertEqual(page.locator("#cacheSlots .filled").count(), int(length.split()[0]))
         self.assertEqual(page.locator("#matrix .heat").count(), heat_cells)
+        filled = int(length.split()[0])
+        self.assertEqual(page.locator("#keyValues .kv-mini-cell").count(), filled*4)
+        self.assertEqual(page.locator("#valueValues .kv-mini-cell").count(), filled*4)
+        if filled:
+            self.assertEqual(page.locator("#cacheSlots .latest").count(), queries == "3" and 3 or 1)
+            current = page.locator("#timeline li.active")
+            self.assertEqual(current.count(), 1)
+            self.assertTrue(current.evaluate(
+                "(e) => { const box=e.parentElement.getBoundingClientRect();"
+                " const r=e.getBoundingClientRect();"
+                " return r.top>=box.top-2 && r.bottom<=box.bottom+3; }"),
+                "Active timeline step must be visible inside scroll region")
+
         self.assertFalse(page.evaluate("document.documentElement.scrollWidth > innerWidth + 2"),
                          "unexpected horizontal document overflow")
         for element in ["nav", "#phaseMetric", "#cacheSlots", "#matrix", "#observed"]:
