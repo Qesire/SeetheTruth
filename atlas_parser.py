@@ -51,6 +51,7 @@ SEMANTICS={
 "chunk":("Split","Split a tensor into chunks","chunk(X,chunks,dim)","Last chunk may have a different length."),
 "gather":("Index","Read values at tensor indices","gather(X,dim,index)","Index shape determines output."),
 "scatter":("Index","Write values into selected coordinates","scatter(X,dim,index,source)","Could be in-place or not."),
+"index_add_":("Index","In-place indexed scatter addition","X[index[i]] += source[i]","Mutates receiver; aliased views and overlapping indices need runtime validation."),
 "masked_fill":("Mask","Overwrite masked tensor values","masked_fill(X,mask,value)","Broadcast mask shape and numeric dtype matter."),
 "where":("Mask","Conditionally select tensor elements","where(mask,a,b)","All operands use broadcasting semantics."),
 "triu":("Mask","Keep upper-triangular portion","triu(X,k)","Causal meaning depends on whether mask or scores are transformed."),
@@ -96,7 +97,7 @@ def rule(name):
 
 class Index:
     def __init__(self,root):
-        self.root=root;self.defs={};self.modules=defaultdict(dict);self.errors=[];self.count=0;self.source_digests={}
+        self.root=root;self.defs={};self.modules=defaultdict(dict);self.sequential_defs=defaultdict(dict);self.errors=[];self.count=0;self.source_digests={}
     def load(self,path):
         files=sorted(path.rglob("*.py")) if path.is_dir() else [path]
         for file in files:
@@ -129,7 +130,10 @@ class Index:
                                 targets=n.targets if isinstance(n,ast.Assign) else [n.target]
                                 for target in targets:
                                     if isinstance(target,ast.Attribute) and isinstance(target.value,ast.Name) and target.value.id=="self" and isinstance(n.value,ast.Call):
-                                        self.modules[item.name][target.attr]=expr(n.value.func).split(".")[-1]
+                                        ctor=expr(n.value.func).split(".")[-1]
+                                        self.modules[item.name][target.attr]=ctor
+                                        if ctor=="Sequential" and not n.value.keywords and all(isinstance(a,ast.Call) for a in n.value.args):
+                                            self.sequential_defs[item.name][target.attr]=list(n.value.args)
         if not self.defs:raise ValueError("No Python functions found")
     def choose(self,entry):
         if entry:
@@ -189,6 +193,28 @@ class Graph:
             if constructor:label=callee[5:]+" : "+constructor
             n=self.add(label,kind,purpose,formula,why,fn,ex,parent,certainty,callee=callee,module_constructor=constructor,condition=guard)
             for a in incoming:self.edge(a,n)
+            if constructor=="Sequential" and fn.cls:
+                attribute=callee.split(".")[1] if callee.startswith("self.") else ""
+                chain=self.i.sequential_defs[fn.cls].get(attribute)
+                if chain:
+                    previous=list(dict.fromkeys(incoming))
+                    for offset,declared_op in enumerate(chain):
+                        name=expr(declared_op.func).split(".")[-1]
+                        subkind,purp,formula,reason=rule(name)
+                        ident=self.add("Sequential["+str(offset)+"] : "+name,subkind,purp,formula,
+                                       "Declared nn.Sequential composition; source constructor fact, not observed kernel.",
+                                       fn,declared_op,n,"constructor_chain_rule" if subkind!="Call" else "constructor_chain_unknown",
+                                       constructor_op=name,chain_slot=offset,condition=guard)
+                        if ident:
+                            for dep in previous:self.edge(dep,ident)
+                            previous=[ident]
+                    for dep in previous:self.edge(dep,n)
+            if isinstance(ex.func,ast.Attribute) and ex.func.attr.endswith("_"):
+                receiver=ex.func.value
+                if isinstance(receiver,ast.Name) and n:
+                    env[receiver.id]=n
+                else:
+                    self.unresolved.add("in-place alias effects unresolved: "+callee+" at "+str(ex.lineno))
             if callee.endswith((".backward",".step",".zero_grad")):
                 self.edge(self.last_effect,n);self.last_effect=n
             nested=None
@@ -221,7 +247,13 @@ class Graph:
             for p in inputs:self.edge(p,n)
             return [n] if n else []
         if isinstance(ex,ast.Attribute):return self.read(ex.value,fn,parent,env,guard,depth,seen)
-        if isinstance(ex,ast.Subscript):return self.read(ex.value,fn,parent,env,guard,depth,seen)+self.read(ex.slice,fn,parent,env,guard,depth,seen)
+        if isinstance(ex,ast.Subscript):
+            subscript=expr(ex.value)
+            if subscript.startswith("self.") and fn.cls:
+                name=subscript.split(".")[1]
+                if self.i.modules[fn.cls].get(name)=="ModuleList":
+                    self.unresolved.add("dynamic ModuleList index: "+subscript+" at "+str(ex.lineno))
+            return self.read(ex.value,fn,parent,env,guard,depth,seen)+self.read(ex.slice,fn,parent,env,guard,depth,seen)
         if isinstance(ex,(ast.List,ast.Tuple,ast.Set)):return list(dict.fromkeys(sum((self.read(x,fn,parent,env,guard,depth,seen) for x in ex.elts),[])))
         if isinstance(ex,ast.Dict):return list(dict.fromkeys(sum((self.read(x,fn,parent,env,guard,depth,seen) for x in [*ex.keys,*ex.values] if x),[])))
         out=[]
@@ -236,8 +268,24 @@ class Graph:
                 for target in targets:
                     if isinstance(target,ast.Name) and values:env[target.id]=values[-1]
                     elif isinstance(target,(ast.Tuple,ast.List)):
-                        for t in target.elts:
-                            if isinstance(t,ast.Name) and values:env[t.id]=values[-1]
+                        # Python destructuring extracts DISTINCT tuple/list slots.
+                        # A call such as topk() or chunk() is one producer but each
+                        # assigned tensor is a different output, not an alias.
+                        explicit=isinstance(st.value,(ast.Tuple,ast.List)) and len(st.value.elts)==len(target.elts)
+                        for slot,t in enumerate(target.elts):
+                            if not isinstance(t,ast.Name):
+                                self.unresolved.add("complex unpack target at "+str(st.lineno))
+                                continue
+                            if explicit and len(values)==len(target.elts):
+                                env[t.id]=values[slot]
+                                continue
+                            projection=self.add("unpack["+str(slot)+"] "+t.id,"Index",
+                                "Extract tuple/list result slot","result["+str(slot)+"]",
+                                "Analysis-only output projection; slot is distinct even if upstream source call is one.",
+                                fn,st,parent,"analysis_construct",tuple_slot=slot,tuple_binding=t.id,condition=guard)
+                            if projection:
+                                for source_id in values:self.edge(source_id,projection)
+                                env[t.id]=projection
             elif isinstance(st,ast.AugAssign):
                 lhs=self.read(st.target,fn,parent,env,guard,depth,seen)
                 rhs=self.read(st.value,fn,parent,env,guard,depth,seen)
@@ -276,6 +324,8 @@ class Graph:
                 self.loops+=1
                 n=self.add("Loop "+expr(st.iter if isinstance(st,(ast.For,ast.AsyncFor)) else st.test)[:40],"Call","Loop scope","iteration","Exact iteration counts not determined.",fn,st,parent,"source_control")
                 first=len(self.nodes)
+                if isinstance(st,(ast.For,ast.AsyncFor)) and isinstance(st.target,ast.Name):
+                    env[st.target.id]=n
                 self.statements(st.body,fn,parent,env,"loop",depth,seen)
                 body=[x for x in self.nodes[first:] if x["parent"]==parent]
                 if body:self.edge(n,body[0]["id"]);self.edge(body[-1]["id"],n,"feedback")
