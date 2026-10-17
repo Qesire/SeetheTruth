@@ -96,7 +96,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#next").click()
         p.locator("#next").click()
         self.assertIn("3 / 3",p.locator("#stepInfo").inner_text())
-        self.assertIn("Masked",p.locator("#inspectorTitle").inner_text())
+        self.assertIn("Mask Softmax",p.locator("#inspectorTitle").inner_text())
         self.assertEqual(p.locator("#matrix .cell").count(),9)
         screens.append(self.shot("06-causal-mask-output.png"))
         (DEST/"manifest.json").write_text(json.dumps({
