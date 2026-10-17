@@ -298,6 +298,20 @@
         N("ce","cross_entropy",855,230)];
       edges=[["x","logits","x"],["logits","soft","x"],["logits","ce","logits"],
         ["label","ce","labels"]];
+    }else if(name==="mask"){
+      title="任务 11 · Causal Mask → Masked Softmax";
+      nodes=[N("logits","input",25,150,{rows:3,width:3,seed:1}),
+        N("mask","causal_mask",330,345),N("masked","masked_softmax",650,170)];
+      edges=[["logits","mask","x"],["logits","masked","logits"],
+        ["mask","masked","mask"]];
+    }else if(name==="sampling"){
+      title="任务 12 · Logits 温度 / Greedy / Top-k";
+      nodes=[N("logits","input",25,180,{rows:3,width:8,seed:2}),
+        N("temp","temperature",310,180,{temperature:0.7}),
+        N("prob","softmax",605,40),N("greedy","argmax",605,220),
+        N("top","topk",605,410,{k:3})];
+      edges=[["logits","temp","x"],["temp","prob","x"],
+        ["temp","greedy","x"],["temp","top","x"]];
     }else if(name==="loss"){
       title="任务 04 · 识别训练目标";
       nodes=[N("x","input",30,100,{rows:3,width:4,seed:1}),
