@@ -10,6 +10,9 @@ for(const [i,script] of scripts.entries()){
 assert.match(page,/learning_lab\.js/);
 assert.match(page,/block_catalog\.js/);
 assert.match(page,/block_knowledge\.js/);
+assert.match(page,/composite_atlas\.js/);
+assert.match(page,/id="compositeLaunch"/);
+assert.match(page,/id="compositeNavigator"/);
 assert.match(page,/id="blockKnowledge"/);
 assert.match(page,/concept_flow\.js/);
 assert.match(page,/id="studyMode"/);
