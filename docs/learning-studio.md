@@ -55,3 +55,37 @@ SeetheTruth 原有的 AST/Runtime/Profiler 层保持独立、可溯源。新增�
 - 原有真正的模型源码审计和运行时性能测试不得被教学功能替换或减弱。
 
 这个升级不是抛弃 SeetheTruth 研究型工具，而是建立两条有桥梁、且证据分明的路径：**由积木学习原理** 与 **由源码/运行数据验证实现**。
+
+
+## 5. 多维语义轴 Tensor IR 与可展开 GQA
+
+新模块 tensor_ir.js 将微型数值张量的 shape、命名轴与 Float64 数值绑定。最多 5 维，每维最多 32 个元素，单个张量最多 4096 个元素。学习实验不执行实际模型权重或 CUDA Kernel。
+
+**任务 05：GQA / RoPE / Causal Attention**：从 Q/K/V 投影开始，建立两个 Query Head 对一个 KV Head 的分组共享结构。内部逐次展示 Head 拆分、旋转、缩放点积、因果掩码、Softmax、Value 汇聚及合并输出。可以调整 heads、kvHeads、causal、rope 参数。
+
+**任务 06：Decode KV 前缀读取**：一个 Query token 与三个已提供 K/V token 交互。教学使用位置偏移 Tk−Tq 进行对齐；这是已有 KV 前缀的只读情景，不包含缓存追加、生命周期或物理存储更新。
+
+### 数学约束
+
+输入：
+- Q: [Tq,Hq×Dk]
+- K: [Tk,Hkv×Dk]
+- V: [Tk,Hkv×Dv]
+
+展开成 [B,Hq,Tq,Dk] 与 [B,Hkv,Tk,Dk/Dv]；当前 B=1。必须 Hq % Hkv == 0。设 g=Hq/Hkv，则 Query Head h 使用 KV Head floor(h/g)。
+
+对于 Query Head h，scores 是 Q_h 乘 K_floor(h/g) 的转置，并除以 sqrt(Dk)。Softmax 在允许的 Key token 范围上计算，最后 P 乘以对应 V_head。因果模式允许的 key 为 j <= Tk-Tq+i。**被掩码排除的位置概率严格为 0**，并不是把近似小概率当作零。
+
+RoPE 采用相邻两个通道组成一对的正交旋转，并按 token position 指定角度。Dk 必须为偶数；旋转前后成对范数保持不变。真实模型可能使用其他等价旋转布局，必须针对具体源码再验证。
+
+### 展开与观测
+
+Inspector 展示 q_heads、k_heads、v_heads、q_positioned、k_positioned、scores、masked_scores、causal_mask、probabilities、context_heads、merged_output，每个阶段保留命名轴。对于具有 Head 轴的张量可选择 Head 0、1 等不同矩阵切片。
+
+GEMM FLOPs 只覆盖可明确计算的 QK^T 与 P×V 乘加部分：2*Hq*Tq*Tk*(Dk+Dv)，不包含 Mask、Softmax、RoPE 或设备实现开销。这是教学运算量，不是实测 profiler 时间。
+
+### 验收与限制
+
+Node 数值测试覆盖 Head 拆装、轴置换、RoPE 范数不变、均匀注意力、精确 Causal Mask、不同 GQA 组的 KV 路由、Decode 对齐和异常输入。Chromium 验证参数修改与 Head 切片交互。
+
+当前尚无真正可更新的 KV Cache 状态机、自动微分、Optimizer、FlashAttention 内核、完整多 batch 或实际 GPU 执行证据。与既有 AST/Runtime/Profiler 工具保持证据分层。
