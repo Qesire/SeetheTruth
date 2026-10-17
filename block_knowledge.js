@@ -67,7 +67,7 @@ const notes={
  swiglu:["双上投影 gate/up，SiLU(gate) 逐元素调制 up，下投影再混合通道。","gate/up 有时被融合为单 GEMM；中间宽度与普通 FFN 的比较需匹配参数量。","门控连续值不是硬稀疏 mask，也不保证自动加速。","拼出 Linear×2→SwiGLU→Linear，分析两路为何不能合并成一个任意 Linear。","glu,transformer"],
  geglu:["双上投影 gate/up，使用 GELU(gate) 而非 SiLU 进行逐元素门控。","GELU exact 与 tanh 近似需通过实际模型配置判断。","GEGLU 不是只有一个投影的 GELU MLP。","固定 gate/up，比较 GEGLU 与 SwiGLU 的输出。","glu,gelu"],
  causal_mask:["给时间序列设定过去可见、未来不可见的约束，是任务定义。","PyTorch SDPA 非方阵 is_causal 有自己的对齐偏置；KV decode 还需考虑 cache_position。","不能把 Tq=1、Tk=4 的 decode 直接画成左上角方阵规则。","在单 Query 读取三条缓存 Key 的场景推导允许位置。","sdpa,cache"],
- masked_softmax:["只在 mask=true 的 Key 中归一化概率，其他位置严格为 0。","PyTorch SDPA 中布尔 mask 的 True 表示允许参与，但其他 API 可能不同。","对不允许位置的 logits 乘 0 再 Softmax 不是严格遮罩。","给最高分位置设置 mask=0，检查其概率是否为零。","sdpa,softmax"],
+ masked_softmax:["只在 mask=true 的 Key 中归一化概率，其他位置严格为 0。","PyTorch SDPA 中布尔 mask 的 True 表示允许参与，但其他 API 可能不同。","把被屏蔽的 logits 简单乘零再 Softmax 仍会把零分数纳入分母，因此不是严格遮罩。","给最高分位置设置 mask=0，检查其概率是否为零。","sdpa,softmax"],
  rope2d:["对 Q/K 特征成对正交旋转，位置差影响其相互内积。","真实 RoPE 可能是 adjacent-pair 或 split-half 编排，也有 position scaling。","范数保持不代表不同位置内积保持，更不代表无限长度外推。","对同一个向量采用两个 position，比较范数与内积。","rope,cache"],
  temperature:["把 logits 除以正温度，随后 Softmax 的集中度发生变化。","实际解码还可能有重复惩罚、Top-k/p、EOS 和采样，执行顺序不一定相同。","温度本身不会产生 token，也不会改变正比例缩放下的 ArgMax 顺序。","比较温度 0.5 和 2 的 Softmax 与 ArgMax。","softmax,ce"],
  argmax:["沿类别轴选取最大分数所在下标，属于逐步贪心。","局部最优 token 不保证生成整段文本的全局最高联合概率。","并列情况必须明确 tie-break，不能声称所有 API 稳定一致。","构造并列最高分，核对该教学规则的下标选择。","argmax"],
