@@ -147,7 +147,7 @@ class Index:
 class Graph:
     def __init__(self,index,entry,depth):
         self.i=index;self.entry=entry;self.depth=depth;self.nodes=[];self.edges=[];self.last_effect=None
-        self.unresolved=set();self.scopes=[];self.branches=0;self.loops=0;self.truncated=False
+        self.unresolved=set();self.scopes=[];self.branches=0;self.loops=0;self.truncated=False;self.call_outputs={}
     def add(self,label,kind,purpose,formula,why,fn,at,parent,certainty,**extra):
         if len(self.nodes)>=MAX_NODES:self.truncated=True;return None
         ident="n%03d"%(len(self.nodes)+1)
@@ -225,7 +225,11 @@ class Graph:
                 if method in self.i.defs:nested=method
             elif callee in self.i.defs:nested=callee
             if nested and nested not in seen and depth<self.depth and n:
-                self.function(nested,n,depth+1,seen|{nested},argument_sources=(positional_sources,keyword_sources))
+                slot_sources=self.function(nested,n,depth+1,seen|{nested},argument_sources=(positional_sources,keyword_sources))
+                if slot_sources:self.call_outputs[n]=slot_sources
+                for result in self.nodes:
+                    if result["parent"]==n and result["label"]=="Return":
+                        self.edge(result["id"],n)
             elif nested in seen if nested else False:self.unresolved.add("recursive: "+str(nested))
             elif callee.startswith("self.") and fn.cls and not constructor and not nested:
                 self.unresolved.add("unresolved self-call: "+fn.cls+"."+callee.split(".")[1])
@@ -284,7 +288,10 @@ class Graph:
                                 "Analysis-only output projection; slot is distinct even if upstream source call is one.",
                                 fn,st,parent,"analysis_construct",tuple_slot=slot,tuple_binding=t.id,condition=guard)
                             if projection:
-                                for source_id in values:self.edge(source_id,projection)
+                                for source_id in values:
+                                    selected=self.call_outputs.get(source_id,{}).get(slot)
+                                    for upstream in selected if selected else [source_id]:
+                                        self.edge(upstream,projection)
                                 env[t.id]=projection
             elif isinstance(st,ast.AugAssign):
                 lhs=self.read(st.target,fn,parent,env,guard,depth,seen)
@@ -299,9 +306,21 @@ class Graph:
                 elif isinstance(st.target,(ast.Subscript,ast.Attribute)):
                     self.unresolved.add("in-place alias effects not resolved at "+str(st.lineno))
             elif isinstance(st,ast.Return):
-                sources=self.read(st.value,fn,parent,env,guard,depth,seen)
-                n=self.add("Return","Call","Function return","return value","Actual return branch is runtime-dependent.",fn,st,parent,"source_return")
-                for p in sources:self.edge(p,n)
+                slots=[]
+                if isinstance(st.value,(ast.Tuple,ast.List)):
+                    for slot,item in enumerate(st.value.elts):
+                        sources=self.read(item,fn,parent,env,guard,depth,seen)
+                        projection=self.add("Return["+str(slot)+"]","Index",
+                            "Return tuple element","return["+str(slot)+"]",
+                            "Static return slot, not a materialized operator; branch execution is unverified.",
+                            fn,st,parent,"analysis_construct",return_slot=slot,condition=guard)
+                        if projection:
+                            for p in sources:self.edge(p,projection)
+                            slots.append(projection)
+                else:
+                    slots=self.read(st.value,fn,parent,env,guard,depth,seen)
+                n=self.add("Return","Call","Function return","return value","Actual return branch is runtime-dependent.",fn,st,parent,"source_return",condition=guard)
+                for p in slots:self.edge(p,n)
             elif isinstance(st,ast.Expr):self.read(st.value,fn,parent,env,guard,depth,seen)
             elif isinstance(st,ast.If):
                 self.branches+=1;condition=expr(st.test)
@@ -348,7 +367,13 @@ class Graph:
                 positional,keywords=argument_sources
                 sources=positional[i] if i<len(positional) else keywords.get(p.arg,[])
                 for value_source in sources:self.edge(value_source,n)
+        before=len(self.nodes)
         self.statements(fn.tree.body,fn,parent,env,None,depth,seen)
+        outputs={}
+        for item in self.nodes[before:]:
+            if item["parent"]==parent and "return_slot" in item:
+                outputs.setdefault(item["return_slot"],[]).append(item["id"])
+        return outputs
     def build(self):
         self.function(self.entry,None,0,{self.entry})
         return {"schema":"model-atlas-graph-v1","name":"SOURCE · "+self.entry,
