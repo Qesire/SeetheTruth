@@ -89,6 +89,20 @@ class SourceOperatorIntegrity(unittest.TestCase):
         self.assertEqual(conditional[0]["condition"], "use_score")
         self.assertFalse(g["meta"]["runtime_validated"])
 
+    def test_source_hash_changes_with_source_bytes_not_graph_guess(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/"fingerprint.py"
+            p.write_text("def forward(x):\n    return x @ x\n",encoding="utf8")
+            g1=parse_paths([str(p)],entry="forward")
+            expected=hashlib.sha256(p.read_bytes()).hexdigest()
+            self.assertEqual(g1["meta"]["source_sha256"]["fingerprint.py"],expected)
+            p.write_text("# content changed\ndef forward(x):\n    return x @ x\n",encoding="utf8")
+            g2=parse_paths([str(p)],entry="forward")
+            self.assertNotEqual(g1["meta"]["source_sha256"]["fingerprint.py"],g2["meta"]["source_sha256"]["fingerprint.py"])
+            self.assertEqual(len([n for n in g1["nodes"] if n["label"]=="MatMult"]),
+                             len([n for n in g2["nodes"] if n["label"]=="MatMult"]))
+
     def test_all_edges_reference_real_nodes_and_deterministic(self):
         a = self.parse("OperatorCases.forward")
         b = self.parse("OperatorCases.forward")
