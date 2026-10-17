@@ -1,0 +1,28 @@
+name: Real-model Static Concordance
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  deterministic-semantics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -p 'test_tuple_sequential_semantics.py' -v
+  pinned-real-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compare with pinned upstream Python AST, never importing models
+        env:
+          SEETHTRUTH_AUDIT_UPSTREAM: '1'
+        run: python -m unittest discover -s tests -p 'test_pinned_llama_mixtral_dit.py' -v
