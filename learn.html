@@ -83,14 +83,14 @@ input[type="file"]{display:none}
 </style></head><body>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
-  <div class="sub">从“看懂模型”到“亲手拼搭计算” · BLOCK-BASED TENSOR LAB</div></div>
- <div class="head-actions"><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn primary" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 实测性能</a></div>
+  <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
+ <div class="head-actions"><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn primary" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
   <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
   <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
-  <p class="hint">先搜索或按类别筛选，再拖动到画布。全部积木均有可执行数值实现、公式、形状约束与反例测试。</p>
+  <p class="hint">先搜索或按类别筛选，再拖动到画布。积木优先展示数学含义、形状约束和计算逻辑；小矩阵数值可选。</p>
   <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
   <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
   <div class="palette" id="palette"></div>
@@ -209,7 +209,7 @@ function renderBlocks(){
     const wired=connected.has(n.id+":"+p);
     return '<div class="port-row"><button class="port '+(wired?'connected':'')+'" data-in="'+esc(n.id)+'" data-port="'+esc(p)+'" aria-label="'+esc(n.id+' '+p)+' 输入"><span class="socket"></span>'+esc(p)+(wired?' · '+esc(connected.get(n.id+":"+p)):' · ?')+'</button>'+(wired?'<button class="port-clear" data-unlink="'+esc(n.id)+'" data-port="'+esc(p)+'" title="断开连接">×</button>':'')+'</div>';
   }).join("");
-  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>SIMULATED</span></div></div>';
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+'</span></div></div>';
  }).join("");
  document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。现在点击目标输入圆点。");};});
  document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
@@ -275,7 +275,7 @@ function inspect(){
  $("#formula").textContent=d?d.formula:"Y=F(X)";
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
- $("#caution").textContent=d?d.caution:"本工具是确定性数值教学模拟，非真实模型运行。";
+ $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
   '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
