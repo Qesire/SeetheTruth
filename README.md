@@ -43,3 +43,14 @@ SeetheTruth 是一个面向大模型学习与研究的交互式全息计算图�
 - `tests/`: 一致性与安全测试
 
 当前为研究原型，并非模型执行引擎。
+
+## 运行效率与代表性张量可视化
+
+新增 [Performance & Tensor Observatory](telemetry.html)：真实 PyTorch profiler 的 ATen self time、模块 Host 时间与 tensor shape/stride/dtype；显式开启数值采样可展示热力图（带符号/幅值/零值）、直方图、矩阵切片。
+
+```bash
+python examples/telemetry_demo.py
+python atlas_server.py --port 8765
+```
+
+打开 http://127.0.0.1:8765/telemetry.html 并导入生成的 JSON。**默认不采集数值；性能测量与数值采样建议分成两次运行。** [技术与隐私说明](docs/telemetry.md)。
