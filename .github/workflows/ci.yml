@@ -71,6 +71,7 @@ jobs:
       - name: Smoke demo and validate graph schema
         run: |
           python examples/runtime_trace_demo.py
+          python examples/same_pass_demo.py
           python - <<'PY'
           import json
           from pathlib import Path
