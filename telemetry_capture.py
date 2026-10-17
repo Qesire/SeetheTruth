@@ -284,19 +284,17 @@ class TelemetrySession:
             if self._gpu:
                 record["self_device_us"] += _event_number(
                     event, ("self_device_time_total", "self_cuda_time_total"))
+        # Forward post-hooks append children before parents. Accumulate
+        # inclusive work bottom-up in one pass, rather than O(n^2) searching.
+        inclusive = {key: dict(value) for key, value in cost.items()}
+        for key, row in rows.items():
+            parent = row["parent_invocation_key"]
+            if parent in inclusive:
+                for metric in inclusive[key]:
+                    inclusive[parent][metric] += inclusive[key][metric]
         result = {}
         for key, row in rows.items():
-            incl = dict(cost[key])
-            for child_key, child in rows.items():
-                ancestor = child["parent_invocation_key"]
-                limit = 0
-                while ancestor is not None and limit <= len(rows):
-                    if ancestor == key:
-                        for k in incl:
-                            incl[k] += cost[child_key][k]
-                        break
-                    ancestor = rows[ancestor]["parent_invocation_key"] if ancestor in rows else None
-                    limit += 1
+            incl = inclusive[key]
             result[key] = {
                 "exclusive_operator_events": cost[key]["operator_events"],
                 "inclusive_operator_events": incl["operator_events"],
