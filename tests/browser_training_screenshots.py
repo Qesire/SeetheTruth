@@ -55,6 +55,15 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
         self.assertLess(data["bottom"],data["viewportBottom"],data)
         self.assertGreaterEqual(data["activeTop"],data["bottom"]-4,data)
         self.assertLessEqual(data["activeBottom"],data["viewportBottom"]+2,data)
+        # Only the state *status bar* may be sticky. Ordinary state-category
+        # blocks must not inherit that positioning by CSS class collision.
+        self.assertTrue(p.evaluate("""() => {
+           const bar=document.querySelector('.workspace > .state');
+           const blocks=[...document.querySelectorAll('#sequence .step')];
+           return getComputedStyle(bar).position==='sticky' &&
+             blocks.every(b=>getComputedStyle(b).position!=='sticky' &&
+                              getComputedStyle(b).display==='flex');
+        }"""),"Only the state snapshot strip may be sticky; all event blocks retain flex layout")
 
     def shot(self,name):
         p=self.p
