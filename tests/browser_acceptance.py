@@ -108,6 +108,69 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.goto(self.base + "/", wait_until="domcontentloaded")
         self.page.wait_for_function("document.querySelector('#scene')?.width>0")
 
+    def load_lab(self):
+        self.page.goto(self.base + "/learn.html", wait_until="domcontentloaded")
+        self.page.wait_for_function("document.querySelectorAll('#blocks .block').length > 0")
+
+    def test_learning_lab_ffn_and_attention_stepwise_numeric_execution(self):
+        self.load_lab()
+        self.assertIn("TEACHING SIMULATION", self.page.locator("body").inner_text())
+        self.assertEqual(self.page.locator("#blocks .block").count(), 4)
+        self.page.locator("#run").click()
+        self.assertIn("1 / 4", self.page.locator("#stepInfo").inner_text())
+        self.assertIn("shape = [3, 4]", self.page.locator("#shape").inner_text())
+        self.page.locator("#next").click()
+        self.assertIn("2 / 4", self.page.locator("#stepInfo").inner_text())
+        self.assertIn("shape = [3, 8]", self.page.locator("#shape").inner_text())
+        self.assertGreater(self.page.locator("#matrix .cell").count(), 0)
+        self.page.locator('[data-preset="attention"]').click()
+        self.assertEqual(self.page.locator("#blocks .block").count(), 6)
+        self.page.locator("#run").click()
+        for _ in range(4):
+            self.page.locator("#next").click()
+        self.assertIn("5 / 6", self.page.locator("#stepInfo").inner_text())
+        self.assertIn("缩放点积注意力", self.page.locator("#inspectorTitle").inner_text())
+        self.assertIn("3×3", self.page.locator("#intermediates").inner_text())
+        self.page.locator("#intermediates details").first.click()
+        self.assertEqual(self.page.locator("#intermediates details").first.locator(".cell").count(), 9)
+
+    def test_learning_lab_palette_connection_and_parameter_edit(self):
+        self.load_lab()
+        self.page.locator('[data-preset="blank"]').click()
+        self.assertEqual(self.page.locator("#blocks .block").count(), 1)
+        self.page.locator('[data-add="linear"]').click()
+        self.assertEqual(self.page.locator("#blocks .block").count(), 2)
+        self.page.locator("#run").click()
+        self.assertIn("还没有连接", self.page.locator("#status").inner_text())
+        self.page.locator('[data-out="x"]').click()
+        self.page.locator('[data-node^="lab"] [data-in][data-port="x"]').click()
+        self.page.locator("#run").click()
+        self.assertIn("1 / 2", self.page.locator("#stepInfo").inner_text())
+        self.page.locator("#next").click()
+        self.assertIn("shape = [3, 4]", self.page.locator("#shape").inner_text())
+        self.page.locator('[data-node^="lab"] .block-head').click()
+        self.page.locator('[data-param="out"]').fill("6")
+        self.page.locator('[data-param="out"]').dispatch_event("change")
+        self.page.locator("#run").click()
+        self.page.locator("#next").click()
+        self.assertIn("shape = [3, 6]", self.page.locator("#shape").inner_text())
+        self.page.locator("#undo").click()
+        self.page.locator("#run").click()
+        self.page.locator("#next").click()
+        self.assertIn("shape = [3, 4]", self.page.locator("#shape").inner_text())
+
+    def test_learning_lab_import_rejects_untrusted_shapes_transactionally(self):
+        self.load_lab()
+        good = self.page.locator("#blocks .block").count()
+        self.attach("#load", "unsafe.json", {
+            "schema": "seethetruth-learning-lab-v1", "title": "<script>alert(1)</script>",
+            "nodes": [{"id": "evil", "kind": "<img src=x onerror=alert(1)>",
+                       "x": 3, "y": 5, "params": {}}],
+            "edges": []})
+        self.assertIn("导入被拒绝", self.page.locator("#status").inner_text())
+        self.assertEqual(self.page.locator("#blocks .block").count(), good)
+        self.assertIn("任务 01", self.page.locator("#workspaceTitle").inner_text())
+
     def test_five_level_presets_render_and_inspector(self):
         self.load_atlas()
         for architecture in ("gqa", "gpt", "moe", "dit"):
