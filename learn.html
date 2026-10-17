@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · Model Learning Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#08111e;--line:#24465e;--muted:#8daec4;--text:#e7f7ff;--cyan:#63e2f1;--mint:#6feac2;--amber:#f4ba7b;--violet:#b8a2ff;--surface:#0e2132}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#14364b 0%,#08111e 46%,#060c16 100%);color:var(--text);font:13px/1.55 "Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.37;cursor:not-allowed}
+a{color:#9eebfa;text-decoration:none}a:hover{text-decoration:underline}
+.header{min-height:78px;padding:13px 22px;display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid var(--line);background:#081521d9}
+.brand{font-weight:750;letter-spacing:.17em;font-size:15px}.brand b{color:var(--cyan)}
+.sub{color:var(--muted);font-size:11px;margin-top:3px;letter-spacing:.015em}
+.head-actions,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{background:#10273b;color:#d6eef7;border:1px solid #38566d;padding:9px 12px;border-radius:9px;min-height:36px;font-weight:580}
+.btn:hover:not(:disabled){background:#1a3d53;border-color:#7edced}.btn.primary{background:#126879;border-color:#3dc7d9;color:white}
+.btn.ghost{background:transparent}.btn.small{font-size:11px;padding:5px 8px;min-height:28px}
+.app{height:calc(100vh - 78px);min-height:650px;display:grid;grid-template-columns:246px minmax(420px,1fr) 342px}
+.rail,.inspector{overflow:auto;background:linear-gradient(#0e2030,#091723);padding:18px;border-color:var(--line)}
+.rail{border-right:1px solid var(--line)}.inspector{border-left:1px solid var(--line)}
+.kicker{font:700 10px/1.5 ui-monospace,Consolas,monospace;letter-spacing:.18em;color:#78cbda;text-transform:uppercase}
+h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;margin:4px 0 12px}h3{font-size:14px}
+.mission{width:100%;text-align:left;display:flex;gap:12px;align-items:center;background:#102538;border:1px solid #29465e;border-radius:12px;margin:8px 0;padding:10px;color:var(--text)}
+.mission.active{border-color:#7fdbd9;background:#163c50}.mission .num{font:700 14px ui-monospace,monospace;color:#77e7e5;min-width:22px}
+.mission .desc{font-size:10px;color:var(--muted);display:block}
+.rule{height:1px;background:var(--line);margin:19px 0}
+.palette{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.palette button{border-radius:10px;border:1px solid #36516a;min-height:71px;background:#13283a;color:var(--text);text-align:left;padding:9px;display:flex;flex-direction:column;justify-content:space-between}
+.palette button:hover{border-color:var(--cyan);background:#193b4e}
+.palette .glyph{font-size:17px;font-weight:750}.palette .name{font-size:11px}
+.palette [data-kind="attention"]{border-color:#7468bd}.palette [data-kind="mse"]{border-color:#bf9864}
+.hint{color:var(--muted);font-size:11px;line-height:1.75}.hint strong{color:#b4eafb}
+.badge{display:inline-flex;align-items:center;gap:5px;background:#153146;color:#9ddcea;border:1px solid #316079;border-radius:30px;padding:4px 9px;font:700 10px ui-monospace,monospace}
+.badge.warning{color:#f4cf9e;border-color:#8a6e48;background:#302818}
+.stage{min-width:0;display:flex;flex-direction:column;overflow:hidden;background:#071320}
+.stage-top{padding:16px 20px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;border-bottom:1px solid #1f455e;flex-wrap:wrap}
+.stage-title{font-size:18px;font-weight:750}.stage-top .help{font-size:11px;color:#9bb8cd}
+.board-viewport{flex:1;min-height:300px;overflow:auto;position:relative;background:linear-gradient(90deg,transparent 23px,#18364c50 24px),linear-gradient(transparent 23px,#18364c50 24px);background-size:24px 24px}
+.board-viewport::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 38% 48%,#19506b45,transparent 65%);z-index:0}
+#board{width:1290px;height:800px;position:relative;z-index:1}
+#wires{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.block{position:absolute;width:220px;min-height:124px;background:#0d2233;border:1px solid #34566d;border-top:3px solid var(--accent,#57cee0);border-radius:12px;box-shadow:0 10px 30px #0005;z-index:2;user-select:none}
+.block.selected{box-shadow:0 0 0 2px #68d8ed,0 12px 32px #0007}.block.executing{box-shadow:0 0 0 3px #ffcb83,0 0 32px #db9d5d6e}
+.block.category-data{--accent:#7ec6fc}.block.category-compute{--accent:#61e3c7}.block.category-norm{--accent:#b7a4ff}.block.category-activate{--accent:#d8a1ee}.block.category-combine{--accent:#f4ba7b}.block.category-attention{--accent:#ae94fc}.block.category-loss{--accent:#f5a4ae}
+.block-head{padding:9px 11px;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:grab;border-bottom:1px solid #244154}
+.block-head:active{cursor:grabbing}.block-name{font-weight:700;font-size:12px}.block-kind{font:600 9px ui-monospace,monospace;color:#a0c2d6}
+.block-mid{padding:9px 12px 10px}.block-formula{font:11px/1.5 Cambria,Georgia,serif;color:#b3d8e9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.block-ports{display:flex;flex-direction:column;gap:5px;margin-top:7px}.port-row{display:flex;align-items:center;justify-content:space-between;height:23px;color:#a5c3d5;font:11px ui-monospace,monospace}
+.port{display:flex;align-items:center;gap:7px;border:0;background:transparent;color:inherit;padding:3px;font:inherit;min-height:23px}
+.socket{width:13px;height:13px;border:2px solid #689bb6;background:#112b3c;border-radius:50%;display:inline-block;flex-shrink:0}
+.port[data-type="out"] .socket{background:#2cb5c8;border-color:#8de6ed}
+.port.connected .socket{background:#53c7a9;border-color:#b4f1d5}
+.port.pending .socket{outline:3px solid #ffd08a}.port:hover .socket{outline:2px solid #adf1fb}
+.port-clear{border:0;background:transparent;color:#b9a0a0;font-size:14px}
+.block-foot{display:flex;justify-content:space-between;padding:5px 11px 9px;color:#8bb4c3;font-size:10px}
+.block-delete{background:none;border:0;color:#afcbd3;font-size:15px}
+.block-delete:hover{color:#ffc2a5}
+.playbar{border-top:1px solid #21445b;padding:13px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:#0c1c2b}
+.status{font-size:11px;color:#a6c8d7;flex:1;max-width:440px}.status.error{color:#ffb6a3}
+#stepInfo{color:#a6cfe1;font:11px ui-monospace,monospace}
+.inspector h2{margin-bottom:7px}.section{border:1px solid #294a60;background:#10283b;border-radius:11px;padding:13px;margin:13px 0}
+.section h3{color:#ccedf7;margin-bottom:7px}.section p{font-size:12px;color:#b3cfdf;line-height:1.8}
+.equation{padding:10px;background:#061827;border:1px solid #254c62;border-radius:8px;margin:10px 0;font:13px Cambria,Georgia,serif;color:#c9edf5;overflow-wrap:anywhere}
+.metric{display:flex;justify-content:space-between;border-bottom:1px solid #233e50;padding:7px 0;font-size:11px;color:#b4d3e2}
+.metric b{color:#e7fcff;font-family:ui-monospace,monospace}
+.param{display:flex;flex-direction:column;gap:5px;margin-top:10px;font-size:11px;color:#c2deec}
+.param input{width:100%;border:1px solid #365970;border-radius:8px;background:#081b2c;color:white;padding:9px}
+#matrix{display:grid;gap:3px;margin:9px 0}.cell{display:flex;align-items:center;justify-content:center;min-height:25px;border:1px solid #284759;border-radius:4px;font:10px ui-monospace,monospace;color:#f5f8ff}
+#trace{max-height:155px;overflow:auto}.trace-row{display:flex;justify-content:space-between;gap:4px;padding:5px 7px;border-bottom:1px solid #244154;color:#a8c4d5;font-size:11px}
+.trace-row.current{background:#184358;color:white}.trace-row button{background:none;border:0;color:inherit;text-align:left;flex:1}
+details{border-top:1px solid #34516b;margin-top:10px;padding-top:9px}summary{cursor:pointer;color:#9fdae4;font-size:11px}
+input[type="file"]{display:none}
+#courseProgress{margin-top:9px;color:#a9d6bd;font-size:11px}
+@media(max-width:1120px){.app{grid-template-columns:210px minmax(380px,1fr)}.inspector{grid-column:1/-1;max-height:320px;border-left:0;border-top:1px solid var(--line)}.rail{grid-row:1}.app{height:auto;min-height:calc(100vh - 78px)}.stage{min-height:600px}}
+@media(max-width:680px){.header{flex-wrap:wrap}.app{display:flex;flex-direction:column}.rail,.inspector{max-height:none}.palette{grid-template-columns:repeat(3,1fr)}.stage{min-height:600px}}
+</style></head><body>
+<header class="header">
+ <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
+  <div class="sub">从“看懂模型”到“亲手拼搭计算” · BLOCK-BASED TENSOR LAB</div></div>
+ <div class="head-actions"><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 实测性能</a></div>
+</header>
+<div class="app">
+ <aside class="rail">
+  <div class="kicker">01 / GUIDED MISSIONS</div><h2>课程任务</h2>
+  <button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
+  <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
+  <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
+  <button class="mission" data-preset="loss"><span class="num">04</span><span>训练从哪里开始？<span class="desc">预测、目标、Loss（仅前向）</span></span></button>
+  <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
+  <div id="courseProgress">选择积木，运行后逐步观察。</div>
+  <div class="rule"></div>
+  <div class="kicker">02 / DRAG BLOCKS</div><h2>运算积木</h2>
+  <p class="hint">拖到画布中，或<strong>点击积木</strong>直接添加。先点击一个输出圆点，再点击目标输入圆点建立连线。</p>
+  <div class="palette" id="palette"></div>
+  <div class="rule"></div>
+  <p class="hint">支持本地 JSON 保存、导入、撤销和重做。没有外部代码执行、后台训练或数据上传。</p>
+ </aside>
+ <main class="stage">
+  <div class="stage-top">
+   <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · 点击节点查看解释</div></div>
+   <div class="row">
+    <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
+    <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
+   </div>
+  </div>
+  <div class="board-viewport" id="viewport"><div id="board" role="region" aria-label="可拖动积木与交互连线的微型神经网络工作台"><svg id="wires" aria-hidden="true"></svg><div id="blocks"></div></div></div>
+  <div class="playbar">
+   <div class="row"><button class="btn primary" id="run">▶ 运行微型计算</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
+   <div class="status" id="status" role="status" aria-live="polite">所有计算仅在浏览器使用小型确定性矩阵执行。</div>
+  </div>
+ </main>
+ <aside class="inspector">
+  <div class="kicker">04 / EXPLORE THE MATH</div><h2 id="inspectorTitle">选择一个积木</h2>
+  <div class="badge" id="evidence">SYMBOLIC + DEMONSTRATION</div>
+  <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
+  <div class="section"><div class="kicker">实验参数</div><div id="parameters"><p class="hint">输入和线性层可调维度。</p></div></div>
+  <div class="section"><div class="kicker">RUN TRACE / 每步变化</div><div id="trace"><p class="hint">运行后出现逐步计算轨迹。</p></div><div id="metrics"></div></div>
+  <div class="section"><div class="kicker">TENSOR MICROSCOPY</div><div id="shape">shape: —</div><div id="matrix"><p class="hint">运行并选择一步以查看数值矩阵。</p></div><div id="intermediates"></div></div>
+  <div class="section"><div class="kicker">学习提示与证据界限</div><p id="lesson"></p><div class="equation" id="caution"></div></div>
+ </aside>
+</div>
+<script src="learning_lab.js"></script>
+<script>
+(()=>{"use strict";
+const L=window.SeetheTruthLearning,$=q=>document.querySelector(q);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑"};
+let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
+const clone=x=>JSON.parse(JSON.stringify(x));
+const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
+function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
+function mutate(fn){
+ const before=clone(graph);
+ try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;render();
+ }catch(e){say(e.message,true);}
+}
+function setPreset(name){
+ try{graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+  document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
+  say("任务已加载；可以运行，也可以修改参数和连线。");
+ }catch(e){say(e.message,true);}
+}
+function newId(g){let id;do{id="lab"+(++seq);}while(g.nodes.some(n=>n.id===id));return id;}
+function addBlock(kind,x=480,y=360){
+ mutate(g=>{const id=newId(g);
+   g.nodes.push({id,kind,x:Math.max(8,Math.min(1060,Math.round(x))),y:Math.max(8,Math.min(650,Math.round(y))),params:{}});
+   selected=id;return g;
+ });
+ say("已添加 "+L.defs[kind].title+"。用输出和输入插口建立连接。");
+}
+function renderPalette(){
+ $("#palette").innerHTML=L.KINDS.map(k=>{const d=L.defs[k];return '<button type="button" draggable="true" data-add="'+esc(k)+'" data-kind="'+esc(k)+'" title="拖入画布或单击添加"><span class="glyph">'+(categories[d.category]||"◇")+'</span><span class="name">'+esc(d.title)+'</span></button>'}).join("");
+ document.querySelectorAll("[data-add]").forEach(b=>{
+  b.addEventListener("click",()=>addBlock(b.dataset.add,380+Math.random()*80,350+Math.random()*80));
+  b.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",b.dataset.add);e.dataTransfer.effectAllowed="copy";});
+ });
+}
+function renderBlocks(){
+ const connected=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
+ $("#blocks").innerHTML=graph.nodes.map(n=>{
+  const d=L.defs[n.kind],ports=d.ports.map(p=>{
+    const wired=connected.has(n.id+":"+p);
+    return '<div class="port-row"><button class="port '+(wired?'connected':'')+'" data-in="'+esc(n.id)+'" data-port="'+esc(p)+'" aria-label="'+esc(n.id+' '+p)+' 输入"><span class="socket"></span>'+esc(p)+(wired?' · '+esc(connected.get(n.id+":"+p)):' · ?')+'</button>'+(wired?'<button class="port-clear" data-unlink="'+esc(n.id)+'" data-port="'+esc(p)+'" title="断开连接">×</button>':'')+'</div>';
+  }).join("");
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>SIMULATED</span></div></div>';
+ }).join("");
+ document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。现在点击目标输入圆点。");};});
+ document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
+  if(!from){say("先点击上游模块的 OUT，再点击该输入端口。",true);return;}
+  const src=from;from=null;mutate(g=>L.connect(g,src,b.dataset.in,b.dataset.port));say("连接已更新。再次运行以验证形状。");
+ };});
+ document.querySelectorAll("[data-unlink]").forEach(b=>{b.onclick=()=>mutate(g=>{g.edges=g.edges.filter(e=>!(e.to===b.dataset.unlink&&e.port===b.dataset.port));return g;});});
+ document.querySelectorAll("[data-delete]").forEach(b=>{b.onclick=()=>mutate(g=>{g.nodes=g.nodes.filter(n=>n.id!==b.dataset.delete);g.edges=g.edges.filter(e=>e.from!==b.dataset.delete&&e.to!==b.dataset.delete);if(selected===b.dataset.delete)selected=g.nodes[0]?.id||null;return g;});});
+ document.querySelectorAll("[data-grab]").forEach(h=>h.addEventListener("pointerdown",startDrag));
+ document.querySelectorAll("[data-node]").forEach(el=>el.addEventListener("click",e=>{
+  if(e.target.closest("button"))return;
+  if(selected!==el.dataset.node){selected=el.dataset.node;render(); }
+ }));
+ updatePending();requestAnimationFrame(drawWires);
+}
+function updatePending(){document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("pending",b.dataset.out===from));}
+function startDrag(e){
+ if(e.target.closest("button"))return;
+ const h=e.currentTarget,id=h.dataset.grab,n=graph.nodes.find(q=>q.id===id);
+ if(!n)return;
+ e.preventDefault();selected=id;
+ const initial={x:n.x,y:n.y},original=clone(graph),sx:e.clientX,sy=e.clientY;
+ h.setPointerCapture(e.pointerId);
+ dragging={id,h,original};
+ const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+ev.clientX-sx)),
+ sy2=Math.max(8,Math.min(650,initial.y+ev.clientY-sy));n.x=Math.round(sx2);n.y=Math.round(sy2);
+ const el=document.querySelector('[data-node="'+id+'"]');if(el){el.style.left=n.x+"px";el.style.top=n.y+"px";}
+ drawWires();
+ };
+ const finish=()=>{h.removeEventListener("pointermove",move);h.removeEventListener("pointerup",finish);
+ h.removeEventListener("pointercancel",finish);
+ if(dragging&& (n.x!==initial.x||n.y!==initial.y)){undo.push(dragging.original);redo=[];if(undo.length>40)undo.shift();}
+ dragging=null;render();};
+ h.addEventListener("pointermove",move);h.addEventListener("pointerup",finish);h.addEventListener("pointercancel",finish);
+}
+function drawWires(){
+ const board=$("#board"),box=board.getBoundingClientRect(),svg=$("#wires");
+ svg.setAttribute("viewBox","0 0 "+board.clientWidth+" "+board.clientHeight);
+ const r=(id,attr)=>document.querySelector('[data-node="'+CSS.escape(id)+'"] '+attr)?.getBoundingClientRect();
+ const paths=graph.edges.map(e=>{
+  const o=r(e.from,'[data-out] .socket'),i=r(e.to,'[data-in][data-port="'+CSS.escape(e.port)+'"] .socket');
+  if(!o||!i)return "";
+  const x1=o.left+o.width/2-box.left,y1=o.top+o.height/2-box.top,
+    x2=i.left+i.width/2-box.left,y2=i.top+i.height/2-box.top,
+    bend=Math.max(70,Math.abs(x2-x1)*.47);
+  return '<path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#14334a" stroke-width="9" stroke-linecap="round"/><path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#65dadd" stroke-opacity=".9" stroke-width="2.3"/>';
+ }).join("");
+ svg.innerHTML=paths;
+}
+function matrixHTML(matrix,label){
+ const m=matrix;if(!Array.isArray(m)||!m.length)return "";
+ const cols=m[0].length, vals=m.flat(),max=Math.max(.1,...vals.map(x=>Math.abs(x)));
+ return '<div class="kicker" style="margin-top:12px">'+esc(label)+' · '+m.length+'×'+cols+'</div><div style="display:grid;grid-template-columns:repeat('+cols+',minmax(24px,1fr));gap:3px;margin-top:7px">'+m.map(row=>row.map(v=>{
+  const alpha=(.12+.54*Math.min(1,Math.abs(v)/max)).toFixed(3);
+  return '<div class="cell" style="background:'+(v>=0?'rgba(58,199,190,':'rgba(242,152,109,')+alpha+')">'+Number(v).toFixed(2)+'</div>';
+ }).join("")).join("")+'</div>';
+}
+function inspect(){
+ const n=graph.nodes.find(x=>x.id===selected),d=n&&L.defs[n.kind];
+ $("#inspectorTitle").textContent=d?d.title:"选择一个积木";
+ $("#formula").textContent=d?d.formula:"Y=F(X)";
+ $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
+ $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
+ $("#caution").textContent=d?d.caution:"本工具是确定性数值教学模拟，非真实模型运行。";
+ $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
+  '<label class="param">'+esc(k)+'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'"></label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
+ document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
+   const name=input.dataset.param,v=Number(input.value),id=selected;
+   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params[name]=v;return g;});
+ }));
+ $("#trace").innerHTML=run?run.steps.map((s,i)=>
+  '<div class="trace-row '+(i===step?'current':'')+'"><button data-step="'+i+'">'+(i===step?'▶ ':'')+(i+1)+'. '+esc(L.defs[s.kind].title)+'</button><span>'+s.shape.join("×")+'</span></div>').join(""):'<p class="hint">运行后可以逐步检查每个算子的数值输出。</p>';
+ document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{step=Number(b.dataset.step);selected=run.steps[step].id;render();});
+ const active=run&&run.steps.find(t=>t.id===selected&&run.steps.indexOf(t)<=step);
+ $("#metrics").innerHTML=active?'<div class="metric"><span>Output shape</span><b>'+active.shape.join(' × ')+'</b></div>'+
+  (active.flops!==null?'<div class="metric"><span>已计 GEMM FLOPs</span><b>'+active.flops+'</b></div>':'')+
+  '<div class="hint">总 GEMM 部分：'+run.totalKnownFlops+' FLOPs；未包含非线性或控制开销。</div>':
+  '<div class="hint">暂无该积木的逐步输出；运行后向前单步执行。</div>';
+ $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · float64 teaching matrix":"shape: —";
+ $("#matrix").innerHTML=active?matrixHTML(active.values,"输出数值"):'<p class="hint">单步运行后，此处显示实际计算的微型矩阵。</p>';
+ $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>
+   '<details><summary>'+esc(key)+' · '+val.shape.join("×")+'</summary>'+matrixHTML(val.values,key)+'</details>').join(""):"";
+}
+function render(){
+ $("#workspaceTitle").textContent=graph.title;
+ $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
+ $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
+ $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
+ $("#courseProgress").textContent=run?(step===run.steps.length-1?"✓ 本次前向微型计算已完成。":"当前已展示第 "+(step+1)+" 步；继续观察输出。"):"运行后查看每一步真实的微型数值计算。";
+ renderBlocks();inspect();
+}
+$("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
+$("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
+ if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();addBlock(kind,e.clientX-box.left-100,e.clientY-box.top-45);
+});
+document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
+$("#run").onclick=()=>{try{run=L.evaluate(graph);step=0;selected=run.steps[0].id;say("✓ 完成 "+run.steps.length+" 个微型算子计算。单步查看张量形状与数值。");render();}
+ catch(e){run=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
+$("#prev").onclick=()=>{if(!run||step<1)return;step--;selected=run.steps[step].id;render();};
+$("#next").onclick=()=>{if(!run||step>=run.steps.length-1)return;step++;selected=run.steps[step].id;render();};
+$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
+$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
+$("#save").onclick=()=>{
+ const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="seethetruth-learning-project.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ say("已导出学习工程 JSON，数值由相同 seed 在本地重新计算。");
+};
+$("#load").addEventListener("change",async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{if(file.size>65536)throw Error("文件大于 64 KiB，不允许导入");
+  graph=L.validateGraph(JSON.parse(await file.text()));L.order(graph);
+  undo=[];redo=[];run=null;step=-1;selected=graph.nodes[0].id;from=null;render();say("已导入学习工程，内容未经执行。");
+ }catch(err){say("导入被拒绝："+err.message,true);}finally{e.target.value="";}
+});
+window.addEventListener("resize",drawWires);
+$("#viewport").addEventListener("scroll",drawWires,{passive:true});
+renderPalette();render();
+})();
+</script></body></html>
