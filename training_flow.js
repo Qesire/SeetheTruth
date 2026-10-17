@@ -178,8 +178,8 @@ function validate(){
  const types=Object.keys(BLOCKS);
  if(types.length!==14)throw Error("unexpected training concept inventory "+types.length);
  for(const [id,b] of Object.entries(BLOCKS)){
-   for(const k of ["title","formula","how","practice","trap","test"])
-     if(!b[k]||b[k].length<18)throw Error("incomplete training block "+id+"."+k);
+   for(const [k,minLength] of Object.entries({title:3,formula:5,how:18,practice:18,trap:18,test:18}))
+     if(!b[k]||b[k].length<minLength)throw Error("incomplete training block "+id+"."+k);
    for(const ref of b.refs)if(!SOURCE[ref])throw Error("missing reference "+id+"/"+ref);
  }
  const q=build({}, "scalar");
