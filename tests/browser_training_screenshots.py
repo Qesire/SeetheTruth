@@ -42,6 +42,20 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
         self.assertEqual(self.errors,[])
         self.p.close()
 
+    def assert_training_state_visible(self):
+        p=self.p
+        data=p.evaluate("""() => {
+          const w=document.querySelector('.workspace').getBoundingClientRect();
+          const s=document.querySelector('.state').getBoundingClientRect();
+          const active=document.querySelector('#sequence .step.active').getBoundingClientRect();
+          return {top:s.top,bottom:s.bottom,viewportTop:w.top,viewportBottom:w.bottom,
+                  activeTop:active.top,activeBottom:active.bottom};
+        }""")
+        self.assertGreaterEqual(data["top"],data["viewportTop"]-2,data)
+        self.assertLess(data["bottom"],data["viewportBottom"],data)
+        self.assertGreaterEqual(data["activeTop"],data["bottom"]-4,data)
+        self.assertLessEqual(data["activeBottom"],data["viewportBottom"]+2,data)
+
     def shot(self,name):
         p=self.p
         p.evaluate("document.fonts.ready")
@@ -79,11 +93,13 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
         self.assertIn("0.2992",p.locator("#thetaState").inner_text())
         self.assertIn("2.000000",p.locator("#gradState").inner_text()) if False else None
         self.assertIn("1.000000",p.locator("#gradState").inner_text())
+        self.assert_training_state_visible()
         photos.append(self.shot("03-first-adamw-real-scalar-update.png"))
         p.locator("#sequence .step").filter(has_text="AdamW 参数更新").last.click()
         self.assertIn("2 /",p.locator("#stepCount").inner_text()) if False else None
         self.assertIn("m=",p.locator("#momentState").inner_text())
         self.assertNotEqual(p.locator("#thetaState").inner_text(),"0.400000")
+        self.assert_training_state_visible()
         photos.append(self.shot("04-second-adamw-optimizer-state.png"))
         p.locator("#compare").click()
         c=p.locator("#comparison").inner_text()
@@ -97,6 +113,7 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
         self.assertIn("SGD · no m/v",p.locator("#momentState").inner_text())
         p.locator("#sequence .step").filter(has_text="SGD 参数更新").first.click()
         self.assertIn("0.300000",p.locator("#thetaState").inner_text())
+        self.assert_training_state_visible()
         photos.append(self.shot("06-sgd-different-update-rule.png"))
         (OUT/"manifest.json").write_text(json.dumps({
            "schema":"seethetruth-training-curriculum-real-chromium-v1",
