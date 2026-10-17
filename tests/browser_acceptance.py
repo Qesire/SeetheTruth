@@ -41,7 +41,7 @@ def synthetic_telemetry():
                 "nonfinite_count": 1, "sample_zero_fraction": 1/6,
                 "statistics": {"min": -2.0, "max": 2.0, "mean": 0.0,
                                "std": 1.41421356237},
-                "histogram": {"bins": [1] + [0]*11 + [1] + [0]*10 + [2],
+                "histogram": {"bins": [1] + [0]*5 + [1] + [0]*5 + [1] + [0]*5 + [1] + [0]*4 + [1],
                               "domain": [-2.0, 2.0]},
                 "matrix": matrix,
                 "matrix_original_shape": [2, 3],
@@ -158,9 +158,9 @@ class BrowserAcceptance(unittest.TestCase):
         self.page.locator("#jsonText").fill(json.dumps(fixture))
         self.page.locator("#importApply").click()
         self.assertIn("Known structure", self.page.locator("#stageTitle").inner_text())
-        self.page.locator('[data-scope="root"]').click()
+        self.page.locator('[data-nav="node"][data-scope="root"]').click()
         self.assertIn("Root", self.page.locator("#stageTitle").inner_text())
-        self.page.locator('[data-scope="back"]').click()
+        self.page.locator('[data-nav="back"]').click()
         self.assertIn("Known structure", self.page.locator("#stageTitle").inner_text())
         self.page.locator("#importOpen").click()
         corrupt = synthetic_graph()
