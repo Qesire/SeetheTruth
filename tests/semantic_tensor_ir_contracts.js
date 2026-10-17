@@ -83,6 +83,8 @@ for(const lesson of ['gqa','decode']){
  n.params.heads=3;n.params.kvHeads=2;fails(()=>L.evaluate(g),/整除/);
  n.params.heads=2;n.params.rope=1;fails(()=>L.evaluate(g),/布尔/);
  n.params.rope=false;n.params.kvHeads=2;
+ g.nodes.find(x=>x.id==='k').params.out=8;
+ g.nodes.find(x=>x.id==='v').params.out=8;
  assert.deepEqual(L.evaluate(g).steps.find(x=>x.kind==='gqa').shape,[3,8]);
 }
 console.log('Semantic tensor IR: named axes, transpose, GQA, causal, RoPE, decode and error oracles PASS');
