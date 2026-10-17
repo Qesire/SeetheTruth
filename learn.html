@@ -232,9 +232,9 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"本工具是确定性数值教学模拟，非真实模型运行。";
  $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
-  ''<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
+  '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
-   :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>'').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
+   :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
  document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
    const name=input.dataset.param, v=input.tagName==="SELECT"?input.value==="true":Number(input.value),id=selected;
    mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params[name]=v;return g;});
