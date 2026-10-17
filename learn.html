@@ -13,7 +13,7 @@ a{color:#9eebfa;text-decoration:none}a:hover{text-decoration:underline}
 .btn{background:#10273b;color:#d6eef7;border:1px solid #38566d;padding:9px 12px;border-radius:9px;min-height:36px;font-weight:580}
 .btn:hover:not(:disabled){background:#1a3d53;border-color:#7edced}.btn.primary{background:#126879;border-color:#3dc7d9;color:white}
 .btn.ghost{background:transparent}.btn.small{font-size:11px;padding:5px 8px;min-height:28px}
-.app{height:calc(100vh - 78px);min-height:650px;display:grid;grid-template-columns:246px minmax(420px,1fr) 342px}
+.app{height:calc(100vh - 78px);min-height:650px;display:grid;grid-template-columns:246px minmax(420px,1fr) 410px}
 .rail,.inspector{overflow:auto;background:linear-gradient(#0e2030,#091723);padding:18px;border-color:var(--line)}
 .rail{border-right:1px solid var(--line)}.inspector{border-left:1px solid var(--line)}
 .kicker{font:700 10px/1.5 ui-monospace,Consolas,monospace;letter-spacing:.18em;color:#78cbda;text-transform:uppercase}
@@ -66,7 +66,22 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .study-mode-label select{background:#112c3d;border:1px solid #4b7789;border-radius:8px;color:#d9f9fe;padding:8px;min-height:36px}.status.error{color:#ffb6a3}
 #stepInfo{color:#a6cfe1;font:11px ui-monospace,monospace}
 .inspector h2{margin-bottom:7px}.section{border:1px solid #294a60;background:#10283b;border-radius:11px;padding:13px;margin:13px 0}
-.section h3{color:#ccedf7;margin-bottom:7px}.section p{font-size:12px;color:#b3cfdf;line-height:1.8}
+.section h3{color:#ccedf7;margin-bottom:7px}
+.knowledge-card{padding:13px 15px;border:1px solid #306279;border-radius:11px;background:linear-gradient(155deg,#123248,#0d1f34);margin:13px 0}
+.knowledge-card .kicker{color:#9ce8e7}
+.knowledge-card p{font-size:12px;color:#d0e3ed;line-height:1.85}
+.knowledge-part{border-top:1px solid #345569;margin:9px 0 0;padding:9px 0 0}
+.knowledge-part summary{color:#c9eef3;font-size:12px;font-weight:690}
+.knowledge-part p{margin:7px 0 0}
+.knowledge-category{font:700 9px ui-monospace,monospace;color:#8ddcc1;border:1px solid #397668;border-radius:16px;padding:3px 7px}
+.knowledge-trap{border-left:2px solid #eab17a;padding-left:10px;margin:9px 0}
+.knowledge-sources{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.knowledge-sources a{font-size:11px;line-height:1.5;color:#9adeee;text-decoration:underline;text-decoration-color:#54899e;text-underline-offset:3px}
+.knowledge-basis{color:#9ab6c4;font-size:10px;line-height:1.6;margin:8px 0}
+.knowledge-compare{margin-top:11px;border:1px solid #486581;background:#102339;border-radius:8px;padding:9px}
+.knowledge-compare strong{font-size:11px;color:#f1d6a2}
+.knowledge-compare p{margin-top:5px}
+@media(max-width:1250px){.app{grid-template-columns:220px minmax(370px,1fr)}.inspector{grid-column:1/-1;max-height:500px;border-left:0;border-top:1px solid var(--line)}}.section p{font-size:12px;color:#b3cfdf;line-height:1.8}
 .equation{padding:10px;background:#061827;border:1px solid #254c62;border-radius:8px;margin:10px 0;font:13px Cambria,Georgia,serif;color:#c9edf5;overflow-wrap:anywhere}
 .metric{display:flex;justify-content:space-between;border-bottom:1px solid #233e50;padding:7px 0;font-size:11px;color:#b4d3e2}
 .metric b{color:#e7fcff;font-family:ui-monospace,monospace}
@@ -135,6 +150,10 @@ input[type="file"]{display:none}
   <div class="kicker">04 / EXPLORE THE MATH</div><h2 id="inspectorTitle">选择一个积木</h2>
   <div class="badge" id="evidence">QUALITATIVE CONTRACT · 无矩阵执行</div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
+  <section class="knowledge-card" aria-label="积木深度讲解">
+    <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
+    <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
+  </section>
   <div class="section"><div class="kicker">实验参数</div><div id="parameters"><p class="hint">输入和线性层可调维度。</p></div></div>
   <div class="section"><div class="kicker">RUN TRACE / 每步变化</div><div id="trace"><p class="hint">运行后出现逐步计算轨迹。</p></div><div id="metrics"></div></div>
   <div class="section"><div class="kicker">TENSOR & SEMANTIC FLOW / 张量与机制</div><div id="shape">shape: —</div><div id="matrix"><p class="hint">运行并选择一步以查看数值矩阵。</p></div><div id="intermediates"></div></div>
@@ -144,10 +163,13 @@ input[type="file"]{display:none}
 <script src="tensor_ir.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
+<script src="consensus_knowledge.js"></script>
+<script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
 <script>
 (()=>{"use strict";
-const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,$=q=>document.querySelector(q);
+const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧"};
@@ -269,6 +291,59 @@ function matrixHTML(matrix,label){
   return '<div class="cell" style="background:'+(v>=0?'rgba(58,199,190,':'rgba(242,152,109,')+alpha+')">'+Number(v).toFixed(2)+'</div>';
  }).join("")).join("")+'</div>';
 }
+const comparisons={
+ rmsnorm:["LayerNorm ↔ RMSNorm","LayerNorm 减均值并除标准差；RMSNorm 只依据均方根控制尺度。不能仅从公式证明某后端一定更快。"],
+ layernorm:["LayerNorm ↔ RMSNorm","去中心化意味着共同平移通常被消去，而 RMSNorm 不消去均值；两者都可能带独立学习的 scale。"],
+ swiglu:["SwiGLU ↔ GEGLU ↔ GELU MLP","两路门控 FFN 和单路 GELU MLP 的投影结构不同；SwiGLU 使用 SiLU gate，GEGLU 使用 GELU gate。"],
+ geglu:["GEGLU ↔ SwiGLU","都用 gate/up 双分支，具体不同在激活函数和参数约定，性能结论必须在可比宽度与训练设定下验证。"],
+ attention:["数学 Attention ↔ FlashAttention 实现","FlashAttention 优化显存 IO 与在线归一化，不是将精确 Softmax Attention 换成另一种相似度公式。"],
+ gqa:["MHA ↔ GQA ↔ MQA","区别主要是 KV Head 数：Hkv=Hq 对应 MHA，1<Hkv<Hq 对应 GQA，Hkv=1 是 MQA；质量和延迟随任务而变。"],
+ rope2d:["加性位置编码 ↔ RoPE","绝对正弦位置编码给特征加向量，RoPE 对 Q/K 特征按位置旋转，不能在计算图中互换。"],
+ pos_encoding:["正弦位置编码 ↔ RoPE","前者将位置向量加进隐藏状态；后者通过 Q/K 旋转修改 Attention 点积的相对位置关系。"],
+ softmax:["Softmax ↔ Sigmoid","Softmax 在指定轴内竞争并归一化；Sigmoid 对元素独立作用，多维输出之和无须等于 1。"],
+ sigmoid:["Sigmoid ↔ Softmax","Sigmoid 每个坐标独立为 0 到 1；Softmax 则在一个维度内进行相互竞争。"],
+ matmul:["MatMul ↔ Elementwise Mul","MatMul 沿共享 K 轴累加；Hadamard 乘法同位置相乘，不做通道聚合。"],
+ mul:["逐元素乘 ↔ 矩阵乘","相同形状逐元素门控不会减少维度；真正 GEMM 需匹配收缩轴并求和。"],
+ causal_mask:["方阵 causal mask ↔ KV decode","有缓存时 Query 长度可以为 1，Key 长度很长；非方阵掩码的绝对位置对齐需明确约定。"],
+ cross_entropy:["Softmax → NLL ↔ CrossEntropy","交叉熵通常直接接受未归一化 logits，稳定实现可融合 LogSoftmax 与负对数似然。"],
+ kl_prob:["KL(P∥Q) ↔ KL(Q∥P)","KL 有方向，且 PyTorch KLDivLoss 的 input/target 与 reduction 约定可能和手写数学式不同。"]
+};
+const consensusIds={linear:"linear",attention:"scaled_attention",gqa:"gqa",
+  rmsnorm:"rmsnorm",layernorm:"layernorm",swiglu:"swiglu",
+  geglu:"swiglu",rope2d:"rope",cross_entropy:"cross_entropy"};
+function renderKnowledge(d,n){
+ const item=n&&K?.get(n.kind);
+ if(!item)return '<p class="hint">当前模块尚无知识卡。</p>';
+ const part=(title,value,open)=>'<details class="knowledge-part"'+(open?' open':'')+'><summary>'+esc(title)+'</summary><p>'+esc(value)+'</p></details>';
+ const common=consensusIds[n.kind]?Consensus?.byId?.[consensusIds[n.kind]]:null;
+ const cmp=comparisons[n.kind];
+ const sourceLinks=item.refs.map(key=>{
+   const info=K.sources[key];
+   return '<a href="'+esc(info[1])+'" target="_blank" rel="noopener noreferrer">↗ '+esc(info[0])+'</a>';
+ }).join("");
+ let additional='';
+ if(common){
+   additional='<details class="knowledge-part"><summary>共识到效果：机制链、成立条件、如何判断</summary>'+
+   '<p><strong>预期作用：</strong>'+esc(common.objective)+'</p>'+
+   '<p><strong>作用链：</strong>'+esc(common.chain.join(' → '))+'</p>'+
+   '<p><strong>必须满足：</strong>'+esc(common.assumptions)+'</p>'+
+   '<p><strong>如何检查：</strong>'+esc(common.measure)+'</p>'+
+   '<p><strong>同类区别：</strong>'+esc(common.contrast)+'</p></details>';
+ }
+ return '<div class="knowledge-basis"><span class="knowledge-category">公开学术 / 工业惯例</span> '+
+   '以下描述来自公开文献和框架合同；不是本模型的源码验证、经验加速或质量保证。</div>'+
+   '<div class="knowledge-part"><div class="kicker">一眼理解 / INTUITION</div>'+
+   '<p>'+esc(item.intuition)+'</p></div>'+
+   part('拆解每一步 · 计算流',item.flow,true)+
+   part('行业惯例与实用经验（有前提）',item.practice,true)+
+   '<div class="knowledge-trap"><div class="kicker">常见误判 / PITFALL</div><p>'+esc(item.trap)+'</p></div>'+
+   (cmp?'<div class="knowledge-compare"><strong>与相近模块的区别 · '+esc(cmp[0])+'</strong><p>'+esc(cmp[1])+'</p></div>':'')+
+   part('动手验证与反例',d.lesson,false)+additional+
+   '<details class="knowledge-part"><summary>公开论文与官方文档（'+item.refs.length+'）</summary>'+
+   '<div class="knowledge-sources">'+sourceLinks+'</div>'+
+   '<p class="knowledge-basis">引用支持通用原理或公开 API 约定，不等于已检查你当前导入的模型实现。</p></details>';
+}
+
 function inspect(){
  const n=graph.nodes.find(x=>x.id===selected),d=n&&L.defs[n.kind];
  $("#inspectorTitle").textContent=d?d.title:"选择一个积木";
@@ -276,6 +351,7 @@ function inspect(){
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
+ $("#blockKnowledge").innerHTML=renderKnowledge(d,n);
  $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
   '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
