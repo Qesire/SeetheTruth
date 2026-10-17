@@ -60,3 +60,7 @@ python atlas_server.py --port 8765
 选择模块节点后，右侧新增 **ACADEMIC CONSENSUS** 知识层：典型数学公式 → 局部机制 → 预期终端效果 → 适用前提与测量建议，并提供原始论文链接。涵盖 Attention、GQA、RoPE、FFN、归一化、MoE、AdaLN、FlashAttention、语言模型损失、AdamW、PPO、GRPO。**与 AST 的源码事实和 Runtime Trace 的观测事实分离；不保证目标模型获得文献里的效果。**
 
 知识条目见 [`consensus_knowledge.js`](./consensus_knowledge.js)，说明见 [机制共识文档](./docs/mechanism-consensus.md)，验证命令 `node tests/consensus_contracts.js`。
+
+## 真实源码的矩阵与张量证据视图（实验性）
+
+用 `python atlas_server.py --port 8765` 分析本地 Python 源码目录，再切换整体 / Block / 算子 / 矩阵 / 张量：源码导入后可以在当前调用层级和其嵌套模块中筛选有源码依据的运算（不再仅依赖教学模板）。已加载的显式绝对 `from module import Class as Alias` 可以解析同名类冲突及真实跨文件 `forward`，未知或未加载依赖会保留未解析证据。矩阵标签只识别明确的线性/GEMM 调用，不把自定义类名称臆断为 GEMM；所有源码图的张量 shape 仍标记为**未经运行验证**。完整范围、外部库限制、投影容量和验证方式见 [Source evidence drill](docs/source-evidence-drill.md)。
