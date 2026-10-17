@@ -69,7 +69,7 @@ fails(()=>IR.gqa([[1,2],[3,4]],[[1,2]],[[1,2]],{heads:1,kvHeads:1,causal:true}),
 fails(()=>IR.gqa([[1,2]],[[1]],[[1]],{heads:2,kvHeads:1,rope:true}),/even Dk/);
 // Feature switches must actually change the numeric computation.
 {
- const q=[[1,2,3,4],[2,-1,0,3],[4,0,-2,1]];
+ const q=[[1,2,3,4, -1,2,0,1],[2,-1,0,3, 2,1,-3,4],[4,0,-2,1, 0,-1,2,3]];
  const k=[[2,0,1,-3],[1,2,-2,0],[0,-2,1,2]];
  const v=[[1,2,-3,4],[4,2,1,0],[-1,3,2,5]];
  const common={heads:2,kvHeads:1};
