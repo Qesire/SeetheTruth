@@ -11,6 +11,7 @@
   "use strict";
   const SCHEMA="seethetruth-learning-lab-v1";
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
+  const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const MAX_NODES=48,MAX_EDGES=96;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -62,7 +63,8 @@
       formula:"L = mean((prediction−target)²)",
       why:"将预测和目标张量的差异化为标量优化目标。",
       caution:"这里只计算前向 Loss；梯度、反向传播和优化器尚未实现。",
-      lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"}
+      lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"},
+    ...BlockCatalog.defs
   });
   const KINDS=Object.keys(defs);
   function fail(message,node){const e=new Error(message);e.nodeId=node||null;throw e;}
@@ -100,6 +102,7 @@
         for(const flag of ["causal","rope"])if(typeof params[flag]!=="boolean")fail(flag+" 必须是布尔值",n.id);
       }
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
+      if(Object.hasOwn(BlockCatalog.defs,type)){try{BlockCatalog.validate(type,params)}catch(err){fail(err.message,n.id);}}
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
     const targetPorts=new Set(),edges=[];
@@ -200,7 +203,12 @@
         value=[[sq.flat().reduce((u,v)=>u+v,0)/(sq.length*sq[0].length)]];
         break;
       }
-      default:fail("尚不支持该积木",n.id);
+      default:{
+        if(!Object.hasOwn(BlockCatalog.defs,n.kind))fail("尚不支持该积木",n.id);
+        let r;try{r=BlockCatalog.execute(n,inputs)}catch(err){fail(err.message,n.id);}
+        value=r.values;flops=r.flops;internals=r.internals;
+        break;
+      }
     }
     if(!value.every(row=>row.every(Number.isFinite)))fail("计算产生了 NaN 或 Inf",n.id);
     return {shape:shape(value),values:value,flops,internals};
@@ -262,6 +270,34 @@
       edges=[["xq","q","x"],["xkv","k","x"],["xkv","v","x"],
              ["q","gqa","q"],["k","gqa","k"],["v","gqa","v"],
              ["gqa","out","x"]];
+    }else if(name==="swiglu"){
+      title="任务 07 · SwiGLU 门控 FFN";
+      nodes=[N("x","input",25,190,{rows:3,width:4,seed:2}),
+        N("gate","linear",280,75,{out:8}),N("up","linear",280,345,{out:8}),
+        N("sw","swiglu",575,195),N("down","linear",860,195,{out:4})];
+      edges=[["x","gate","x"],["x","up","x"],["gate","sw","gate"],
+        ["up","sw","up"],["sw","down","x"]];
+    }else if(name==="norm"){
+      title="任务 08 · LayerNorm 与 RMSNorm";
+      nodes=[N("x","input",25,190,{rows:3,width:4,seed:3}),
+        N("ln","layernorm",310,75),N("rms","rmsnorm",310,330),
+        N("ln_var","row_var",650,75),N("rms_var","row_var",650,330)];
+      edges=[["x","ln","x"],["x","rms","x"],["ln","ln_var","x"],["rms","rms_var","x"]];
+    }else if(name==="embedding"){
+      title="任务 09 · Token ID → Embedding → 位置编码";
+      nodes=[N("ids","token_ids",30,200,{rows:3,vocab:8,seed:1}),
+        N("embed","embedding",310,200,{vocab:8,width:4}),
+        N("pos","pos_encoding",620,200)];
+      edges=[["ids","embed","ids"],["embed","pos","x"]];
+    }else if(name==="classifier"){
+      title="任务 10 · Classifier / Cross Entropy";
+      nodes=[N("x","input",25,80,{rows:3,width:4,seed:2}),
+        N("label","token_ids",30,375,{rows:3,vocab:8,seed:4}),
+        N("logits","linear",320,80,{out:8}),
+        N("soft","softmax",600,65),
+        N("ce","cross_entropy",855,230)];
+      edges=[["x","logits","x"],["logits","soft","x"],["logits","ce","logits"],
+        ["label","ce","labels"]];
     }else if(name==="loss"){
       title="任务 04 · 识别训练目标";
       nodes=[N("x","input",30,100,{rows:3,width:4,seed:1}),
