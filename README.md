@@ -129,3 +129,11 @@ Learning Studio 现在包含 **45 种真的进行有限二维 Float64 数值计�
 数值验证：`node tests/block_catalog_contracts.js`；真实截图与交互验证：`python tests/browser_catalog_screenshots.py`。GitHub Actions 会产生可查看的 Chromium PNG 截图，包括全部目录、SwiGLU 搜索、损失分类、SwiGLU 数值链、分类交叉熵及因果 Mask 计算。每张截图源自真实浏览器内联计算，而非概念效果图。
 
 本版本仍为教学微型数值执行器；自动微分/反向传播、Optimizer、真实模型权重与 GPU 计时尚未实现，不属于 45 个积木。
+
+## 45 种积木的深入解读与业界经验
+
+学习工作台现在为全部 45 种积木提供逐项的 **数学机制、分步计算流、业界常见实现习惯、易混淆断言、亲手验证问题及公开来源链接**。重点模块还会进一步显示“机制→下游效果→成立条件→判别观察”的学术论证路径；这些知识不依赖 GPU 或大模型执行。
+
+打开 [Learning Studio](learn.html)，选择例如 **GQA、SwiGLU、LayerNorm 或 CrossEntropy**，在右侧“积木深度讲解”展开各部分。知识来源标明为公共论文或 PyTorch/Hugging Face 官方文档，不代表已经审查你打开的某个真实模型。会明确区分 GQA 的缓存收益与真实加速、FlashAttention 的 IO 优化与数学公式、GELU 精确/近似形式、标签 shift、Dropout 的真实训练随机性等。
+
+知识体系的原则与证据边界见 [积木深度讲解设计](docs/block-knowledge-deep-dives.md)。验证：`node tests/block_knowledge_contracts.js`，以及 `python tests/browser_block_knowledge.py`（真实 Chromium，截图会随 CI 上传）。
