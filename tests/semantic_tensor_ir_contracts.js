@@ -66,7 +66,7 @@ fails(()=>IR.rotary(IR.headPack([[1,2,3]],1,'Tq','Hq','Dk')),/even Dk/);
 fails(()=>IR.gqa([[1,2,3,4]],[[1,2]],[[1,2]],{heads:3,kvHeads:1}),/divisible/);
 fails(()=>IR.gqa([[1,2]],[[1,2],[2,3]],[[1,2]],{heads:1,kvHeads:1}),/K\/V token/);
 fails(()=>IR.gqa([[1,2],[3,4]],[[1,2]],[[1,2]],{heads:1,kvHeads:1,causal:true}),/cannot exceed/);
-fails(()=>IR.gqa([[1,2]],[[1,2]],[[1,2]],{heads:2,kvHeads:1,rope:true}),/even Dk/);
+fails(()=>IR.gqa([[1,2]],[[1]],[[1]],{heads:2,kvHeads:1,rope:true}),/even Dk/);
 for(const lesson of ['gqa','decode']){
  const g=L.preset(lesson), result=L.evaluate(g),step=result.steps.find(x=>x.kind==='gqa');
  assert.ok(step,'GQA executable learning block');
