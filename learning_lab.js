@@ -289,7 +289,7 @@
         N("mask","group_topk_mask",800,35,{groups:2,keepGroups:1}),
         N("select","masked_router_topk",1060,215,{k:2}),
         N("experts","input",795,490,{rows:4,width:4,seed:7}),
-        N("gather","gather_rows",1310,290),
+        N("gather","gather_routed_bank",1310,290),
         N("gates","router_gate_weights",1320,50,{mode:"identity",normalize:true}),
         N("mix","expert_bank_mix",1600,240)
       ];
