@@ -248,7 +248,27 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="nd_attention_lesson"){
+    if(name==="nd_causal_attention"){
+      title="任务 26 · 真正逐积木四轴因果多头 Attention";
+      nodes=[
+       N("query","nd_input",30,40,{b:1,h:2,t:3,d:4,seed:2}),
+       N("key","nd_input",30,320,{b:1,h:2,t:3,d:4,seed:4}),
+       N("value","nd_input",30,620,{b:1,h:2,t:3,d:4,seed:6}),
+       N("key_transpose","nd_permute",325,310,{axis0:0,axis1:1,axis2:3,axis3:2}),
+       N("scores","nd_batched_matmul",625,130),
+       N("scale_scores","nd_scale",930,130,{factor:0.5}),
+       N("causal","nd_causal_mask",1235,130,{queryStart:0,keyStart:0}),
+       N("probabilities","nd_softmax_last",1540,130),
+       N("context","nd_batched_matmul",1845,290)
+      ];
+      edges=[
+       ["key","key_transpose","x"],
+       ["query","scores","a"],["key_transpose","scores","b"],
+       ["scores","scale_scores","x"],["scale_scores","causal","x"],
+       ["causal","probabilities","x"],
+       ["probabilities","context","a"],["value","context","b"]
+      ];
+    }else if(name==="nd_attention_lesson"){
       title="任务 25 · 四轴自由组合 · B/H/T/D、广播与多头矩阵乘";
       nodes=[
         N("queries","nd_input",40,80,{b:1,h:2,t:3,d:4,seed:1}),
