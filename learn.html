@@ -539,7 +539,7 @@ function inspect(){
    grade.innerHTML='<p class="hint">选择已经运行过的积木以检查其 dLoss/dOutput。</p>';
  }else{
    const adjoint=backwardTrace.gradients[n.id],isActive=backwardTrace.pathIds.includes(n.id),
-         cuts=backwardTrace.cutEdges.filter(e=>e.from===n.id),
+         cuts=backwardTrace.cutEdges.filter(e=>e.from===n.id||e.nodeId===n.id),
          local=backwardTrace.local[n.id],sat=local?.clipSaturated;
    grade.innerHTML='<p class="hint">'+(isActive?'参与可求导的策略计算路径。':'无策略损失的梯度路径；此处展示零矩阵（或固定输入）。')+'</p>'+
       matrixHTML(adjoint,'∂Loss / ∂ 本积木输出')+
