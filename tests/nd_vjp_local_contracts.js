@@ -39,7 +39,11 @@ for(const e of examples){
     const h=1e-6;
     const before=e.forward({...e.input,[port]:perturb(x,idx,-h)}),
           after=e.forward({...e.input,[port]:perturb(x,idx,h)});
-    approx(ND.at(g,idx),(dot(after,upstream)-dot(before,upstream))/(2*h),5e-6);
+    // Compare perturbation deltas before weighted reduction: masked score values
+    // include -1e9 and would otherwise cause cancellation in the oracle.
+    const delta=(trial)=>ND.build(ND.shape(output),at=>ND.at(trial,at)-ND.at(output,at));
+    try{approx(ND.at(g,idx),(dot(delta(after),upstream)-dot(delta(before),upstream))/(2*h),5e-6);}
+    catch(err){throw Error(e.kind+'.'+port+'['+idx.join(',')+']: '+err.message);}
     count++;
   });
  }
