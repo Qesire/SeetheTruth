@@ -243,7 +243,32 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="grpo_objective"){
+    if(name==="autodiff_core"){
+      title="任务 19 · 通用反向图 · 共享参数、RMSNorm、SwiGLU、Attention 与 MSE";
+      nodes=[
+        N("features","input",25,35,{rows:2,width:2,seed:1}),
+        N("shared_weight","input",25,245,{rows:2,width:2,seed:3}),
+        N("project","matmul",325,55),
+        N("normalized","rmsnorm",600,65,{epsilon:0.00001}),
+        N("gate","matmul",885,40),
+        N("up","matmul",885,280),
+        N("swiglu","swiglu",1180,145),
+        N("attend","attention",1465,175),
+        N("residual","add",1760,165),
+        N("target","input",1465,475,{rows:2,width:2,seed:7}),
+        N("loss","mse",2050,200)
+      ];
+      edges=[
+        ["features","project","a"],["shared_weight","project","b"],
+        ["project","normalized","x"],
+        ["normalized","gate","a"],["shared_weight","gate","b"],
+        ["normalized","up","a"],["shared_weight","up","b"],
+        ["gate","swiglu","gate"],["up","swiglu","up"],
+        ["swiglu","attend","q"],["swiglu","attend","k"],["swiglu","attend","v"],
+        ["attend","residual","a"],["project","residual","b"],
+        ["residual","loss","prediction"],["target","loss","target"]
+      ];
+    }else if(name==="grpo_objective"){
       title="任务 18 · GRPO 完整教学目标 · Token Logprob → Clip → Reference KL → Masked Loss";
       nodes=[
         N("new_logits","input",20,40,{rows:4,width:4,seed:2}),
