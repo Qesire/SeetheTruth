@@ -44,6 +44,7 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .board-viewport::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 38% 48%,#19506b45,transparent 65%);z-index:0}
 #board{width:1290px;height:800px;position:relative;z-index:1}
 #wires{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.graph-readiness{display:flex;gap:11px;flex-wrap:wrap;align-items:center;padding:5px 12px;background:#09202c;border-top:1px solid #254858;color:#a3c7d7;font-size:11px}.graph-readiness strong{color:#b0f9d7}.graph-readiness .readiness-issue{border:1px solid #a38357;background:#33281e;color:#ffe2af;padding:2px 8px;border-radius:6px}.block[data-readiness="shape-error"]{outline:2px solid #eaa05b;outline-offset:2px}.block[data-readiness="missing"]{border-color:#b99562}.block[data-readiness="blocked"]{border-style:dashed}
 .block{position:absolute;width:220px;min-height:124px;background:#0d2233;border:1px solid #34566d;border-top:3px solid var(--accent,#57cee0);border-radius:12px;box-shadow:0 10px 30px #0005;z-index:2;user-select:none}
 .block.selected{box-shadow:0 0 0 2px #68d8ed,0 12px 32px #0007}.block.executing{box-shadow:0 0 0 3px #ffcb83,0 0 32px #db9d5d6e}
 .block.category-data{--accent:#7ec6fc}.block.category-compute{--accent:#61e3c7}.block.category-norm{--accent:#b7a4ff}.block.category-activate{--accent:#d8a1ee}.block.category-combine{--accent:#f4ba7b}.block.category-attention{--accent:#ae94fc}.block.category-loss{--accent:#f5a4ae}
@@ -187,7 +188,7 @@ input[type="file"]{display:none}
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
-    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button>
+    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button><button class="btn small" id="checkGraph" type="button" title="检查当前自由搭建计算图的输入端口、张量形状与可执行性，不要求任何固定模型结构">检查可运行性</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
@@ -211,6 +212,7 @@ input[type="file"]{display:none}
   <label class="study-mode-label" for="trainWeightDecay">权重衰减 <select id="trainWeightDecay" aria-label="AdamW 权重衰减"><option value="0">0</option><option value="0.01" selected>0.01</option><option value="0.1">0.1</option></select></label>
   <label class="study-mode-label" for="trainCount">步数 <select id="trainCount" aria-label="连续训练步数"><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></label>
   <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 小矩阵 AdamW 更新、逐步重新执行 Forward 与 Backward，并保存新参数状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
+   <div class="graph-readiness" id="graphReadiness" aria-label="自由计算图的张量形状与连线就绪状态"></div>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
   </div>
  </main>
@@ -235,6 +237,7 @@ input[type="file"]{display:none}
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
+<script src="graph_readiness.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
@@ -246,7 +249,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -254,7 +257,7 @@ const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕
 const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null;
+let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -262,9 +265,9 @@ function mutate(fn){
  const before=clone(graph);
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
   // Duplicate change events and idempotent connections must not consume history.
-  if(JSON.stringify(before)===JSON.stringify(valid)){render();return;}
-  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;backwardTrace=null;trainStatus=null;render();
- }catch(e){render();say(e.message,true);}
+  if(JSON.stringify(before)===JSON.stringify(valid)){render();return false;}
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
+ }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
  try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
@@ -347,7 +350,7 @@ $("#compositeBack").onclick=()=>{
 function newId(g){let id;do{id="lab"+(++seq);}while(g.nodes.some(n=>n.id===id));return id;}
 function addBlock(kind,x=480,y=360){
  mutate(g=>{const id=newId(g);
-   g.nodes.push({id,kind,x:Math.max(8,Math.min(1060,Math.round(x))),y:Math.max(8,Math.min(650,Math.round(y))),params:{}});
+   g.nodes.push({id,kind,x:Math.max(8,Math.min(9600,Math.round(x))),y:Math.max(8,Math.min(9600,Math.round(y))),params:{}});
    selected=id;return g;
  });
  say("已添加 "+L.defs[kind].title+"。用输出和输入插口建立连接。");
@@ -376,18 +379,21 @@ function renderCategoryButtons(){
  });
 }
 function renderBlocks(){
+ const nodeReadiness=new Map((readinessSnapshot?.nodes||[]).map(item=>[item.id,item]));
  const connected=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
  $("#blocks").innerHTML=graph.nodes.map(n=>{
   const d=L.defs[n.kind],ports=d.ports.map(p=>{
     const wired=connected.has(n.id+":"+p);
     return '<div class="port-row"><button class="port '+(wired?'connected':'')+'" data-in="'+esc(n.id)+'" data-port="'+esc(p)+'" aria-label="'+esc(n.id+' '+p)+' 输入"><span class="socket"></span>'+esc(p)+(wired?' · '+esc(connected.get(n.id+":"+p)):' · ?')+'</button>'+(wired?'<button class="port-clear" data-unlink="'+esc(n.id)+'" data-port="'+esc(p)+'" title="断开连接">×</button>':'')+'</div>';
   }).join("");
-  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+'</span></div></div>';
+  const readiness=nodeReadiness.get(n.id),state=readiness?.status||"unknown";
+  const shapeLabel=readiness?.shape?.join("×")||(state==="missing"?"待连线":state==="blocked"?"待上游":state==="shape-error"?"形状错误":"—");
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
  }).join("");
  document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。现在点击目标输入圆点。");};});
  document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
   if(!from){say("先点击上游模块的 OUT，再点击该输入端口。",true);return;}
-  const src=from;from=null;mutate(g=>L.connect(g,src,b.dataset.in,b.dataset.port));say("连接已更新。再次运行以验证形状。");
+  const src=from;from=null;if(mutate(g=>L.connect(g,src,b.dataset.in,b.dataset.port)))say("连线已更新。无需遵循任何预设架构；形状实时验证，数值运行时再检查具体值。");
  };});
  document.querySelectorAll("[data-unlink]").forEach(b=>{b.onclick=()=>mutate(g=>{g.edges=g.edges.filter(e=>!(e.to===b.dataset.unlink&&e.port===b.dataset.port));return g;});});
  document.querySelectorAll("[data-delete]").forEach(b=>{b.onclick=()=>mutate(g=>{g.nodes=g.nodes.filter(n=>n.id!==b.dataset.delete);g.edges=g.edges.filter(e=>e.from!==b.dataset.delete&&e.to!==b.dataset.delete);if(selected===b.dataset.delete)selected=g.nodes[0]?.id||null;return g;});});
@@ -408,8 +414,8 @@ function startDrag(e){
  const scale=Number($("#board").style.zoom)||1;
  h.setPointerCapture(e.pointerId);
  dragging={id,h,original};
- const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+(ev.clientX-sx)/scale)),
- sy2=Math.max(8,Math.min(650,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
+ const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(9600,initial.x+(ev.clientX-sx)/scale)),
+ sy2=Math.max(8,Math.min(9600,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
  const el=document.querySelector('[data-node="'+id+'"]');if(el){el.style.left=n.x+"px";el.style.top=n.y+"px";}
  drawWires();
  };
@@ -587,7 +593,17 @@ function inspect(){
    el.closest("details").querySelector(".tensor-stage-preview").innerHTML=matrixHTML(matrix,el.dataset.stage+" · head "+head);
  });
 }
+function renderReadiness(){
+ const info=readinessSnapshot,root=$("#graphReadiness");
+ if(info.structuralError){root.textContent="结构检查失败："+info.structuralError;return;}
+ root.innerHTML='<strong>自由搭建 · '+info.readyCount+'/'+info.nodes.length+' 个积木形状已确定</strong>'+
+  (info.executable?'<span>输入完整 · 形状通过 · 可运行</span>':'<span>缺少输入 '+info.missingCount+' · 形状错误 '+info.errorCount+' · 等待上游 '+info.blockedCount+'</span>')+
+  info.nodes.filter(n=>["missing","shape-error"].includes(n.status)).slice(0,2)
+  .map(n=>'<button class="readiness-issue" data-readiness-node="'+esc(n.id)+'">'+esc(n.id)+'：'+esc(n.reason)+'</button>').join("");
+ root.querySelectorAll("[data-readiness-node]").forEach(b=>b.onclick=()=>{selected=b.dataset.readinessNode;render();focusGraphNode(selected);});
+}
 function render(){
+ readinessSnapshot=Readiness.check(graph);
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
@@ -608,7 +624,7 @@ function render(){
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
- renderBlocks();inspect();
+ renderBlocks();renderReadiness();inspect();
 }
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
@@ -620,6 +636,18 @@ $("#challenge").onclick=()=>{
  let last=graph.edges[graph.edges.length-1];
  mutate(g=>{g.edges=g.edges.slice(0,-1);selected=last.to;return g;});
  say("挑战：已拆除 "+last.from+" → "+last.to+"."+last.port+"。试着重新连接，修复形状依赖后运行。");
+};
+$("#checkGraph").onclick=()=>{
+ const proof=Readiness.check(graph,{numeric:studyMode()==="numeric"});
+ if(proof.executable){
+   say("✓ 当前任意组合通过"+(proof.numeric?.ok?"实际 CPU 小张量执行":"张量形状及端口")+"检查；不要求模型模板。");
+ }else{
+   const problem=proof.firstError;
+   if(problem?.nodeId)selected=problem.nodeId;
+   render();
+   say("尚不可运行："+(problem?.reason||proof.structuralError||"未知原因")+"。连线可保留并继续修正。",true);
+   if(problem?.nodeId)focusGraphNode(problem.nodeId);
+ }
 };
 $("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
