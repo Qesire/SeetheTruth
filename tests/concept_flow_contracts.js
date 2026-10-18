@@ -31,7 +31,8 @@ function perKind(k){
    else if(k==='low_rank_project')inputs[port]=port==='x'?[2,4]:port==='down'?[4,2]:[2,4];
    else if(k==='row_bias_add')inputs[port]=port==='bias'?[1,4]:[2,4];
    else if(k==='weighted_sum')inputs[port]=port==='weights'?[2,2]:[2,4];
-   else if(['gather_rows','scatter_add'].includes(k)&&port==='indices')inputs[port]=[2,1];
+   else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')inputs[port]=[2,1];
+   else if(k==='expert_bank_mix'&&port==='gates')inputs[port]=[2,1];
    else if(k==='sliding_window_mask')inputs[port]=[2,2];
    else inputs[port]=[2,4];
  }
@@ -43,7 +44,7 @@ function perKind(k){
    if(port==='ids'||port==='labels')values[port]=mock(sh,()=>0);
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
    else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
-   else if((k==='gather_rows'||k==='scatter_add')&&port==='indices')values[port]=[[0],[1]];
+   else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')values[port]=[[0],[1]];
    else if(k==='kl_prob')values[port]=mock(sh,()=>1/sh[1]);
    else values[port]=mock(sh);
  }
