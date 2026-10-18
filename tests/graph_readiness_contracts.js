@@ -47,4 +47,12 @@ assert.equal(partial.nodes.find(n=>n.id==='unused').status,'missing');
 assert.equal(partial.executable,false);
 free.edges.push(E('x','unused','x'));
 assert.equal(R.check(free).executable,true);
+const valueDependent={schema:L.SCHEMA,title:'Shape valid, illegal runtime token ID',
+ nodes:[N('ids','token_ids',{rows:3,vocab:16,seed:1}),N('embedding','embedding',{vocab:2,width:4})],
+ edges:[E('ids','embedding','ids')]};
+assert.equal(R.check(valueDependent).executable,true,'shape validity alone cannot evaluate concrete token indices');
+const invalidNumeric=R.check(valueDependent,{numeric:true});
+assert.equal(invalidNumeric.executable,false);
+assert.equal(invalidNumeric.numeric.ok,false);
+assert.match(invalidNumeric.numeric.reason,/Embedding ID|类别|范围/);
 console.log('Free graph readiness PASS: arbitrary untemplated shapes, staged wiring, recovery, blocked propagation and no semantic gates');
