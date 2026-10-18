@@ -95,6 +95,24 @@
       const [scores,indices]=ports(n,inputs,"scores","indices");by(scores[0]===indices[0],"Router weights token count mismatch",n.id);
       output=indices.slice();rule="从原始 score 中按选中 index 提取亲和度，sigmoid 或 softmax 门控；normalize 可选";
       conditions.push("每个路由下标必须指向有效专家；数学模式不检查整数取值");
+    }else if(kind==="dispatch_routed_tokens"){
+      const [x,idx]=ports(n,inputs,"x","indices");
+      by(x[0]===idx[0],"Dispatch token rows and route rows mismatch",n.id);
+      by(idx[0]*idx[1]<=8,"Dispatch exceeds bounded token count",n.id);
+      output=[idx[0]*idx[1],x[1]];
+      rule="将 X[T,D] 按路由重复 K 次为 [T·K,D]，后续 Expert Linear 会使用对应专家的独立参数";
+      conditions.push("展平顺序为 t·K+k，不重排实际计算批次，不计算分布式交换");
+    }else if(kind==="expert_linear_bank"){
+      const [x,idx,w]=ports(n,inputs,"x","indices","weights");
+      by(x[0]===idx[0]*idx[1],"Expert Linear token-major rows mismatch",n.id);
+      by(w[0]%x[1]===0,"Expert Linear weights need E·D rows",n.id);
+      output=[x[0],w[1]];rule="从展平 E·D×H 权重中按专家 ID 选择 D×H 子矩阵后逐路 MatMul";
+      conditions.push("同一专家共享一套参数，反向时多 Token 对其梯度必须汇合；数学模式不验证 index 的整数范围");
+    }else if(kind==="routed_weighted_reduce"){
+      const [v,g]=ports(n,inputs,"values","gates");
+      by(v[0]===g[0]*g[1],"Route Reduce requires [T·K,D] and [T,K]",n.id);
+      output=[g[0],v[1]];rule="每个 Token 的 K 个专家输出按其 Gate 权重相加，恢复 [T,D]";
+      conditions.push("仅沿固定 Token-major 次序归约，后续可与 Shared Expert 输出做 Add");
     }else if(kind==="expert_bank_mix"){
       const [indices,gates,experts]=ports(n,inputs,"indices","gates","experts");
       by(equal(indices,gates),"Expert gate/index shapes must match",n.id);
