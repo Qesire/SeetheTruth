@@ -54,4 +54,19 @@ const nonScalar=L.preset('autodiff_core');
 assert.throws(()=>A.backward(nonScalar,original,{targetId:'project'}),/scalar/);
 const broken=L.preset('autodiff_core');broken.nodes.find(n=>n.id==='attend').kind='gqa';
 assert.throws(()=>A.backward(broken,original),/stale|invalid|trace/);
+const repeatGraph={schema:L.SCHEMA,title:'repeat-vjp',
+ nodes:[
+  {id:'x',kind:'input',x:0,y:0,params:{rows:2,width:2,seed:1}},
+  {id:'target',kind:'input',x:0,y:250,params:{rows:4,width:2,seed:2}},
+  {id:'repeat',kind:'repeat_rows',x:280,y:0,params:{times:2}},
+  {id:'loss',kind:'mse',x:560,y:0,params:{}}
+ ],
+ edges:[{from:'x',to:'repeat',port:'x'},{from:'repeat',to:'loss',port:'prediction'},{from:'target',to:'loss',port:'target'}]};
+const rpt=L.evaluate(repeatGraph),rgrad=A.backward(repeatGraph,rpt),vmap=Object.fromEntries(rpt.steps.map(x=>[x.id,x.values]));
+for(let i=0;i<2;i++)for(let j=0;j<2;j++){
+ const a=(vmap.repeat[i][j]-vmap.target[i][j])*2/8,
+       b=(vmap.repeat[i+2][j]-vmap.target[i+2][j])*2/8;
+ eq(rgrad.gradients.x[i][j],a+b,1e-12);
+}
+assert.deepEqual(rgrad.gradients.target,[[0,0],[0,0],[0,0],[0,0]]);
 console.log('Unified graph autodiff PASS: 8 central differences, shared-weight gradient accumulation, Norm/SwiGLU/Attention and target barrier');
