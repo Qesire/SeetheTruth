@@ -15,6 +15,8 @@ on:
       - 'tests/graph_layout_contracts.js'
       - 'tests/model_gate_composition.js'
       - 'tests/expert_ffn_composition.js'
+      - 'expert_ffn_vjp.js'
+      - 'tests/expert_ffn_vjp.js'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
       - 'tests/model_family_primitives.js'
@@ -53,3 +55,4 @@ jobs:
       - run: node --check graph_layout.js && node tests/graph_layout_contracts.js
       - run: node tests/model_gate_composition.js
       - run: node tests/expert_ffn_composition.js
+      - run: node --check expert_ffn_vjp.js && node tests/expert_ffn_vjp.js
