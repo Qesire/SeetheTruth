@@ -172,6 +172,48 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_parameter_train_two_steps_undo_and_json_resume(self):
+        import json
+        p=self.page
+        p.locator('[data-preset="trainable_core"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),11)
+        self.assertTrue(p.locator("#trainStep").is_disabled())
+        p.locator("#studyMode").select_option("numeric")
+        self.assertFalse(p.locator("#trainStep").is_disabled())
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 1",p.locator("#trainSummary").inner_text())
+        self.assertIn("Loss",p.locator("#trainSummary").inner_text())
+        p.locator("#trainSummary").scroll_into_view_if_needed()
+        self.shot("29-parameter-persisted-train-step-one.png")
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+        self.shot("30-parameter-persisted-train-step-two.png")
+        with p.expect_download() as downloaded:
+            p.locator("#save").click()
+        raw=json.loads(open(downloaded.value.path(),encoding="utf-8").read())
+        W=next(n for n in raw["nodes"] if n["id"]=="shared_weight")
+        self.assertEqual(W["kind"],"parameter")
+        self.assertEqual(W["params"]["optimizer"]["t"],2)
+        self.assertEqual(len(W["params"]["values"]),2)
+        self.assertEqual(len(W["params"]["optimizer"]["m"]),2)
+        self.assertEqual(len(W["params"]["optimizer"]["v"]),2)
+        p.locator("#undo").click()
+        self.assertTrue(p.locator("#trainSummary").is_hidden())
+        with p.expect_download() as d1:
+            p.locator("#save").click()
+        restored_previous=json.loads(open(d1.value.path(),encoding="utf-8").read())
+        self.assertEqual(next(n for n in restored_previous["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]["t"],1)
+        p.locator("#load").set_input_files(downloaded.value.path())
+        self.assertTrue(p.locator("#trainSummary").is_hidden())
+        with p.expect_download() as d2:
+            p.locator("#save").click()
+        resumed=json.loads(open(d2.value.path(),encoding="utf-8").read())
+        self.assertEqual(next(n for n in resumed["nodes"] if n["id"]=="shared_weight")["params"],W["params"])
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 3",p.locator("#trainSummary").inner_text())
+        p.locator("#trainSummary").scroll_into_view_if_needed()
+        self.shot("31-parameter-resumed-third-step.png")
+
     def test_moe_unified_weight_and_router_gate_backward(self):
         p=self.page
         p.locator('[data-preset="moe_backward"]').click()
