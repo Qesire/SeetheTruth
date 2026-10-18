@@ -125,7 +125,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
           "viewport":[1600,1000],"catalogue_count":size,
-          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"10-mla-auto-layout-readable.png"},{"file":"14-mla-cache-input-and-writes.png"},{"file":"15-mla-absorbed-vs-rebuild-numeric.png"},{"file":"16-mla-absorb-paper-hover.png"},{"file":"07-qualitative-gqa-no-matrix.png",
+          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"10-mla-auto-layout-readable.png"},{"file":"14-mla-cache-input-and-writes.png"},{"file":"15-mla-absorbed-vs-rebuild-numeric.png"},{"file":"16-mla-absorb-paper-hover.png"},{"file":"17-mla-final-zero-difference.png"},{"file":"07-qualitative-gqa-no-matrix.png",
             "description":"No numeric matrices or hardware measurements; GQA dimensions only"}],
           "tests":"qualitative GQA without numeric cells, opt-in numeric SwiGLU/CE/Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
@@ -185,6 +185,11 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertNotIn("无法运行",p.locator("#status").inner_text())
         p.locator("#viewport").evaluate("(e)=>{e.scrollLeft=e.scrollWidth;e.scrollTop=0;}")
         self.shot("15-mla-absorbed-vs-rebuild-numeric.png")
+        self.assertEqual(p.locator("#matrix .cell").count(),2)
+        vals=[float(v) for v in p.locator("#matrix .cell").all_inner_texts()]
+        self.assertTrue(all(abs(v)<0.005 for v in vals),"MLA explicit/absorbed output difference must display zero")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("17-mla-final-zero-difference.png")
         p.locator("#blockSearch").fill("Absorb K Projection")
         card=p.locator('#palette [data-add="query_weight_absorb"]')
         self.assertEqual(card.count(),1)
