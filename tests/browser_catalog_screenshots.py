@@ -172,6 +172,47 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_grpo_gradient_trace_clip_and_stop_boundaries(self):
+        p=self.page
+        self.assertTrue(p.locator("#backward").is_disabled())
+        p.locator('[data-preset="grpo_objective"]').click()
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertFalse(p.locator("#backward").is_disabled())
+        p.locator("#backward").click()
+        self.assertIn("20 / 20",p.locator("#stepInfo").inner_text())
+        self.assertIn("∂Loss",p.locator("#gradientInspector").inner_text())
+        self.shot("21-grpo-reverse-final-loss-gradient.png")
+        p.locator('#trace [data-step="0"]').click()
+        self.assertEqual(p.locator("#gradientInspector .cell").count(),16)
+        self.assertIn("参与可求导",p.locator("#gradientInspector").inner_text())
+        trace=p.evaluate("""() => {
+            const g=window.SeetheTruthLearning.preset('grpo_objective'),
+                f=window.SeetheTruthLearning.evaluate(g),
+                b=window.SeetheTruthGRPOBackward.backward(g,f);
+            return {policyGrad:b.gradients.new_logits,
+                    oldGrad:b.gradients.old_logits,
+                    refGrad:b.gradients.ref_logits,
+                    cutEdges:b.cutEdges,clip:b.local.surrogate.clipSaturated.values};
+        }""")
+        self.assertEqual(trace["policyGrad"][3],[0,0,0,0])
+        self.assertTrue(any(abs(z)>1e-8 for row in trace["policyGrad"][:3] for z in row))
+        self.assertTrue(all(z==0 for row in trace["oldGrad"] for z in row))
+        self.assertTrue(all(z==0 for row in trace["refGrad"] for z in row))
+        self.assertIn("old",[e["port"] for e in trace["cutEdges"]])
+        self.assertIn("reference",[e["port"] for e in trace["cutEdges"]])
+        self.assertIn("advantage",[e["port"] for e in trace["cutEdges"]])
+        self.shot("22-grpo-backward-current-policy-gradients.png")
+        i=p.evaluate("""() => window.SeetheTruthLearning.order(
+             window.SeetheTruthLearning.preset('grpo_objective')).findIndex(n=>n.id==='surrogate')""")
+        p.locator('#trace [data-step="'+str(i)+'"]').click()
+        self.assertIn("clip",p.locator("#gradientInspector").inner_text().lower())
+        self.assertIn("停止梯度",p.locator("#gradientInspector").inner_text())
+        self.shot("23-grpo-clip-vjp-detach-explanation.png")
+        p.locator('[data-preset="ffn"]').click()
+        self.assertTrue(p.locator("#backward").is_disabled())
+        self.assertNotIn("∂Loss",p.locator("#gradientInspector").inner_text())
+
     def test_grpo_full_loss_as_composable_workbench_graph(self):
         p=self.page
         p.locator('[data-preset="grpo_objective"]').click()
