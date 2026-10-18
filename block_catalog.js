@@ -235,7 +235,9 @@
      else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
      else fail('unknown N-D operator '+kind);
-     return {values:value,shape:ND.shape(value),internals:null,flops:null};
+     const flopCount=kind==='nd_batched_matmul'
+       ?2*ND.product(ND.shape(value).slice(0,3))*ND.shape(value)[3]*ND.shape(inputs.a)[3]:null;
+     return {values:value,shape:ND.shape(value),internals:null,flops:flopCount};
    }
    for(const [port,value] of Object.entries(inputs))ensure(value,port);
    let value,internals=null;
