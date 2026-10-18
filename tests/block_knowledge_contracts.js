@@ -4,7 +4,7 @@ const L=require('../learning_lab.js');
 const K=require('../block_knowledge.js');
 const C=require('../consensus_knowledge.js');
 const status=K.validate();
-assert.equal(status.cards,45);
+assert.equal(status.cards,L.KINDS.length);
 assert.ok(status.references>=18);
 assert.deepEqual(Object.keys(K.sources).length,status.references);
 const seen=new Set(),refs=new Set();
@@ -27,7 +27,7 @@ for(const kind of L.KINDS){
  }
  seen.add(kind);
 }
-assert.equal(seen.size,45);
+assert.equal(seen.size,L.KINDS.length);
 for(const id of ['linear','rmsnorm','layernorm','attention','gqa','swiglu','geglu',
  'rope2d','masked_softmax','causal_mask','cross_entropy','kl_prob','dropout_demo']){
  const k=K.get(id);
@@ -47,4 +47,4 @@ assert.equal(K.get('__proto__'),null);
 assert.equal(K.get('<img onerror=alert(1)>'),null);
 const checks=C.validate();
 assert.ok(checks.entries>10,'Mechanism atlas still available');
-console.log('Deep mechanism knowledge PASS: 45 distinct cards, grounded sources, model-evidence boundaries and named confusions');
+console.log('Deep mechanism knowledge PASS: '+L.KINDS.length+' distinct cards, grounded sources, evidence boundaries and named confusions');
