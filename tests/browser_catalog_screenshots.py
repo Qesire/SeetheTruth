@@ -125,7 +125,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
           "viewport":[1600,1000],"catalogue_count":size,
-          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"07-qualitative-gqa-no-matrix.png",
+          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"10-mla-auto-layout-readable.png"},{"file":"07-qualitative-gqa-no-matrix.png",
             "description":"No numeric matrices or hardware measurements; GQA dimensions only"}],
           "tests":"qualitative GQA without numeric cells, opt-in numeric SwiGLU/CE/Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
