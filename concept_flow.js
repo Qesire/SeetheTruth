@@ -100,6 +100,12 @@
       by(equal(indices,gates),"Expert gate/index shapes must match",n.id);
       output=[indices[0],experts[1]];rule="用每个 token 的离散专家索引和对应门控权重从演示专家向量池中加权汇聚";
       conditions.push("这是静态专家向量池，不是 token 条件 FFN；数值模式检查 index 有效");
+    }else if(kind==="gather_routed_bank"){
+      const [x,idx]=ports(n,inputs,"x","indices");
+      by(idx[0]*idx[1]<=8,"Top-k Gather teaching rows exceed limit",n.id);
+      output=[idx[0]*idx[1],x[1]];
+      rule="按 token-major 顺序展开每个 token 的 K 个离散专家索引，输出 [T·K,D] 的示例专家向量";
+      conditions.push("概念模式不检查每个索引实际是否有效；不执行真正的专家 FFN");
     }else if(kind==="gather_rows"){
       const [x,idx]=ports(n,inputs,"x","indices");by(idx[1]===1,"Gather indices must be [T,1]",n.id);
       output=[idx[0],x[1]];rule="整数行索引收集输入行；重复索引意味着重复读取相同张量";
