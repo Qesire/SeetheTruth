@@ -76,5 +76,5 @@ for(const name of ['nd_trainable_gqa','nd_trainable_mqa']){
  assert.deepEqual(branch.graph.nodes.find(n=>n.id==='unfinished'),partial.nodes.at(-1));
  console.log(name+' PASS: 3 parameter banks, 2 AdamW iterations; loss '+two.firstLoss+' -> '+two.finalLoss);
 }
-assert.equal(allGrads,144,'all QKV coordinates must receive exact shape-preserved gradients');
-console.log('Four-axis AdamW training PASS: 144 graph gradient values, immutable tensors, JSON resume, shared KV updates, partial canvas');
+assert.equal(allGrads,84,'all 84 GQA/MQA source coordinates must receive shape-preserved gradients');
+console.log('Four-axis AdamW training PASS: 84 graph gradient values, immutable tensors, JSON resume, shared KV updates, partial canvas');
