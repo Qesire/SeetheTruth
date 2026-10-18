@@ -113,6 +113,11 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("4 / 4",p.locator("#stepInfo").inner_text())
         self.assertIn("✓ 已运行",p.locator("#status").inner_text())
         p.locator("#autoLayout").click()
+        p.locator("#run").click()
+        for _ in range(3):p.locator("#next").click()
+        self.assertIn("4 / 4",p.locator("#stepInfo").inner_text())
+        self.assertEqual(p.locator("#matrix .cell").count(),9)
+        p.locator("#matrix").scroll_into_view_if_needed()
         self.shot("36-free-wiring-arbitrary-valid.png")
 
     def test_search_filter_circuits_and_evidence_screens(self):
