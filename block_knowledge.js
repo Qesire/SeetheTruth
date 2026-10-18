@@ -6,6 +6,9 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ tensor_views:["PyTorch tensor views / reshape / permute","https://docs.pytorch.org/docs/stable/tensor_view.html"],
+ broadcasting:["PyTorch broadcasting semantics","https://docs.pytorch.org/docs/stable/notes/broadcasting.html"],
+ torch_matmul:["PyTorch torch.matmul batched dimensions","https://docs.pytorch.org/docs/stable/generated/torch.matmul.html"],
  adamw:["Decoupled Weight Decay Regularization","https://arxiv.org/abs/1711.05101"],
  pytorch:["PyTorch Parameter","https://docs.pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html"],
  qwen3:["Qwen3 Technical Report","https://arxiv.org/abs/2505.09388"],
@@ -46,6 +49,15 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ nd_input:["显式生成轴次序 [B,H,T,D] 的 4D 合成张量，按行主序储存。形状如 [1,2,3,4] 表示一个批次、两个头、三个时间坐标、每个四维通道。","常见 Transformer 计算会把批次、头、Token 与通道作为独立轴；不同实现实际轴顺序可能不同。","轴名仅是当前课程约定，形状数值不意味着真实模型参数。全部数值有 512 元素上限。","独立改变 H 与 T，看 MatMul 是否受内维约束。","transformer,tensor_views"],
+ nd_permute:["Permute 按 π 指定的新轴索引取旧轴位置；例如 [B,H,T,D] → [B,T,H,D] 对应 π=(0,2,1,3)。数据地址意义改变，而不是随意改标签。","PyTorch permute/view 的 stride 与可能的连续化区别非常重要；本教学内核执行真实值重排，未模拟真实 stride 或物理显存。","轴值必须构成完整的 0、1、2、3 置换；reshape 不等于 permute。","设置 0,2,1,3，再反向设置 0,2,1,3，检查输出与输入逐元素一致。","tensor_views"],
+ nd_reshape:["Reshape 在行主序下保留每个元素的线性顺序，把数量不变的元素重新组织到 [B,H,T,D]。","真实模型中常把合并特征维重新解释为 Head × HeadDim，但此前必须保证维度积可整除。","reshape 不移动 Head/Token 的逻辑轴；和 transpose 不可交换。","把 [6,4] 改为 [1,2,3,4]，再 Flatten，比较一维展开次序。","tensor_views"],
+ nd_flatten:["把 [B,H,T,D] 依次展开为 [B·H·T,D]，各元素仍保持行主序。","常见批处理会 flatten leading dimensions 交给二维矩阵算子；之后要恢复维度边界。","不能推断被合并的 B/H/T 原始边界，它们需要作为显式元数据或由另一个 reshape 提供。","先 Flatten 接传统 2D MatMul，验证从四轴模块进入旧积木是否成功。","tensor_views"],
+ nd_expand4d:["为 [T,D] 的二维矩阵增添 B=1,H=1 的前导轴，得到 [1,1,T,D]，内容没有重复。","广播和批处理需要理解长度为 1 的轴；singleton 轴与真正的多头数据不同。","Expand 此处实际上只是有界 reshape 插入两个 singleton 轴，不是任意重复数据。","把旧 2D Input 接 Expand，之后接四轴 Broadcast Add。","tensor_views,broadcasting"],
+ nd_broadcast_add:["两个张量先右对齐维度，相等或为 1 的轴可以广播，逐元素求和；例如 [1,2,3,4]+[1,1,3,4]。","广播是 PyTorch/NumPy 张量运算常识，在多头 Attention 的 Head 轴添加共享 bias 时尤为常见。","不匹配的非 singleton 维度不能相加；不会自动转置或推断正确的轴语义。","用 B=1,H=1 的 Bias 加到 B=1,H=2 的 Score，检查两个 Head 都收到正确值。","broadcasting,transformer"],
+ nd_reduce_sum:["给定轴 axis 的元素求和，输出 keepdim=1 的张量。例：沿 T 求和 [1,2,3,4]→[1,2,1,4]。","按 Token 聚合、按 Head 聚合、按通道统计的科学意义不同；必须明确 reduce 哪一轴。","Sum 不等于 Mean；若要平均须再显式 Scale。本积木固定 keepdim 以方便继续广播。","在 Token 轴求和，把输入每个 Token 的同通道数值手算相加。","tensor_views"],
+ nd_batched_matmul:["计算 A[B,H,M,K]·B[B,H,K,N]，沿 K 轴累加，仅对 B/H 的 singleton 轴允许广播。","Scaled dot-product Attention 的 QKᵀ 和 PV 可以分解为两个批量 MatMul，中间还需缩放、Mask 与 Softmax。","该积木不自动执行 Kᵀ，也不冒充完整 Attention；Q/K 轴如何排列由使用者显式决定。","对两组 Head 独立手算一次点积，检查不能把不同 Head 错混在一起。","torch_matmul,transformer"],
+
  parameter:["这块独立矩阵的节点 ID 是参数身份，多个 MatMul 可以从其同一个输出端口取值并累加权重梯度；params.values、optimizer.{t,m,v} 随学习工程 JSON 一起保存。","对应常见 PyTorch Parameter 与 AdamW optimizer.state 的关键区别：数值张量和一阶/二阶动量属于训练状态，节点位置或渲染顺序不是参数身份。","本课程仅用微型 Float64 CPU 张量表达优化的状态转换；不能把单步 Loss 下降等同于模型泛化或真实 GPU 训练。","先用两个 MatMul 共用该节点，改变一条连线后检查梯度变化；执行两步 AdamW，导出 JSON 再导入检查参数与动量保留。","adamw,pytorch"],
  response_token_reshape:["把 G×T 条展平 token 记录 [G*T,1] 恢复成回答-Token 矩阵 [G,T]。输出行 g、列 t 与原第 g*T+t 行严格同位。","PPO/GRPO 按采样回答及生成 token 组织旧/新策略 log probabilities；训练代码通常还需 attention/completion masks 和 padding 对齐。","这只是把布局显式化，不会在 Token 之间执行求和，不会恢复隐藏的对话或采样信息。","用 [0,1,2,3] 四个标量重排为两回答各两 Token，验证原次序。","deepseekmath,ppo"],
  response_advantage_broadcast:["把 [G,1] 的组内回答优势 A[g] 复制到每个有效 token 的位置；完整目标的 Mask 在后续积木处理。","DeepSeekMath GRPO 把同题多回答的 reward 相对优势用于采样回答的 token 级 surrogate，无独立 critic value baseline。","这里 A 按回答常量，不是 PPO 的 token-level GAE，更不能把不同 prompt 的 group 混为同一组。","使两个回答优势一正一负，观察广播后每行相同而行间不同。","deepseekmath,deepseekr1"],
