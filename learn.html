@@ -168,6 +168,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="moe_route"><span class="num">14</span><span>MoE · 专家路由<span class="desc">Bias → 组选择 → Top-k → Gather</span></span></button>
   <button class="mission" data-preset="grpo_signals"><span class="num">15</span><span>GRPO · 训练前置信号<span class="desc">Token Logprob + Group Advantage</span></span></button>
   <button class="mission" data-preset="moe_expert_ffn"><span class="num">16</span><span>MoE · 真实小型专家 FFN<span class="desc">Top-k Token Dispatch → 三层专家投影 → SwiGLU → 汇合 + Shared Expert</span></span></button>
+  <button class="mission" data-preset="mla_cache"><span class="num">17</span><span>MLA · 压缩 KV Cache<span class="desc">写入/读取 + Absorb Query + 数值等价对照</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -250,7 +251,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
