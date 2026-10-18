@@ -203,3 +203,23 @@ A student can, for example, freely connect `Input[3,4] → Transpose[4,3]` while
 
 The number of nodes and numeric tensor dimensions retain bounded in-browser safeguards. Those are resource/safety limits on a teaching implementation, not judgments about whether a novel architecture is academically sound. A mathematically runnable graph may be scientifically ineffective; this tool shows mechanisms and execution, not a quality certification.
 
+
+## Selected-branch execution in a partially built graph
+
+A free-form Scratch workbench often contains experiments that are not yet connected. The **Run selected branch** action resolves the chosen output block's transitive upstream dependency closure and runs only that induced, still independently validated DAG. For example, the user can finish `Input → Transpose + MatMul → Softmax` while leaving an entirely separate `ReLU` block unconnected: running the whole graph reports the missing ReLU input; running the selected Softmax branch succeeds and returns the actual numeric output without deleting or changing the ReLU block.
+
+This is not a relaxation of operator semantics: every selected branch still requires its own inputs, shapes, legal value-dependent indices/masks and an acyclic dependency structure. Incompatible shapes within the selected branch cause normal errors; unrelated errors are excluded from the execution scope. The run trace makes the branch target explicit.
+
+### Nonbinding socket previews
+
+After choosing any output socket, each visible candidate input is decorated with a **predictive** classification: compatible, incompatible, pending (insufficient upstream shape information), or invalid (for example a cycle). The preview is calculated by tentatively replacing only the target input and propagating shape constraints through its affected descendants; existing errors in unrelated branches do not contaminate this prediction.
+
+These colors are **advisory**. Users may connect a shape-incompatible route and correct dimensions later. Structural violations (cycles or invalid ports) remain blocked. This avoids restricting original architectures or nonstandard module order.
+
+### Branch-local training
+
+When a user selects an MSE loss (or a graph has one unambiguous MSE loss), the optimizer can use that scalar's upstream dependency slice. Only reachable Parameter blocks are updated via the same immutable Forward → VJP → AdamW → Forward transactions; **the full graph JSON remains the saved editing project**, including unfinished blocks elsewhere. State export, step history and atomic undo preserve the unfinished branches. If a selected output is not a supported differentiable scalar loss, the optimizer rejects it explicitly instead of claiming it was trained.
+
+### Practical execution boundaries
+
+This does not introduce runtime control-flow cycles, unbounded tensor memory, implicit dimension broadcasting or silent auto-repair. The graph remains a bounded CPU educational DAG. The standard full-graph Run and selected-branch Run remain separate actions, so there is no ambiguity about what was actually evaluated.
