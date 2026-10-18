@@ -76,6 +76,13 @@ h1,h2,h3,p{margin:0}h2{font-size:17px}p{line-height:1.7}
 .alert{font-size:11px;color:#f1bc94;margin-top:12px}
 #comparison{margin-top:13px;font-size:12px;line-height:1.8;color:#c4dfdc}
 #comparison:empty{display:none}
+/* Desktop shell never scrolls as a whole: each panel scrolls independently.
+   Otherwise clicking an optimizer event near the end can hide the title/header. */
+@media(min-width:1191px){
+ html,body{height:100%;overflow:clip}
+ .page{height:calc(100dvh - 82px);min-height:0}
+ .sidebar,.workspace,.details{min-height:0;overscroll-behavior:contain}
+}
 @media(max-width:1190px){.page{grid-template-columns:240px minmax(420px,1fr)}.details{grid-column:1/-1;max-height:520px;border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:690px){.header{padding:12px}.page{display:flex;flex-direction:column;height:auto}.sidebar,.details{max-height:none}.workspace{overflow:visible;padding:16px}.state{grid-template-columns:1fr}.hero h1{font-size:21px}}
 </style></head><body>
@@ -199,7 +206,17 @@ function render(){
   "EVIDENCE: symbolic state contract · no numerical execution or GPU";
  renderCatalog();
 }
-function focus(){const el=document.querySelector('[data-evt="'+current+'"]');el?.scrollIntoView({block:"nearest",inline:"nearest",behavior:"instant"});}
+function focus(){
+ const el=document.querySelector('[data-evt="'+current+'"]'),workspace=document.querySelector(".workspace");
+ if(!el||!workspace)return;
+ // Restrict navigation to the timeline scroller, never the document itself.
+ // Keep the sticky parameter/gradient/optimizer strip visible above the card.
+ const wr=workspace.getBoundingClientRect(),r=el.getBoundingClientRect();
+ const strip=document.querySelector(".workspace > .state").getBoundingClientRect();
+ const minimum=Math.max(wr.top+8,strip.bottom+12),maximum=wr.bottom-16;
+ if(r.top<minimum)workspace.scrollTop+=r.top-minimum;
+ else if(r.bottom>maximum)workspace.scrollTop+=r.bottom-maximum;
+}
 function reset(){
  try{run=T.build(cfg(),by("mode").value);current=0;by("comparison").textContent="";render();
  }catch(err){by("comparison").textContent="配置被拒绝："+err.message;}
