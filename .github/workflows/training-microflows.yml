@@ -19,6 +19,8 @@ on:
       - 'tests/expert_ffn_vjp.js'
       - 'tests/mla_cache_composition.js'
       - 'tests/grpo_objective_contracts.js'
+      - 'grpo_backward.js'
+      - 'tests/grpo_backward_contracts.js'
       - 'tests/mla_two_decode_steps.js'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
@@ -61,4 +63,5 @@ jobs:
       - run: node --check expert_ffn_vjp.js && node tests/expert_ffn_vjp.js
       - run: node tests/mla_cache_composition.js
       - run: node tests/grpo_objective_contracts.js
+      - run: node --check grpo_backward.js && node tests/grpo_backward_contracts.js
       - run: node tests/mla_two_decode_steps.js
