@@ -77,6 +77,42 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_gqa_mqa_four_axis_gradient_and_head_sharing(self):
+        p=self.page
+        for preset,expected_kv,name in [
+            ("nd_gqa_attention",2,"46-gqa-shared-kv-backward.png"),
+            ("nd_mqa_attention",1,"47-mqa-one-kv-head-backward.png")
+        ]:
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator("#blocks .block").count(),13)
+            p.locator("#studyMode").select_option("numeric")
+            p.locator("#run").click()
+            self.assertFalse(p.locator("#backward").is_disabled())
+            p.locator("#backward").click()
+            self.assertIn("13 / 13",p.locator("#stepInfo").inner_text())
+            i=p.evaluate("""(preset)=>window.SeetheTruthLearning.order(
+               window.SeetheTruthLearning.preset(preset)).findIndex(n=>n.id==='key')""",preset)
+            p.locator('#trace [data-step="'+str(i)+'"]').click()
+            self.assertEqual(p.locator("#gradientInspector [data-nd-slice]").count(),2)
+            self.assertEqual(p.locator("#gradientInspector .cell").count(),6)
+            self.assertIn("∂LOSS",p.locator("#gradientInspector").inner_text())
+            self.assertIn("1×"+str(expected_kv)+"×3×2",p.locator("#metrics").inner_text().replace(" ",""))
+            test=p.evaluate("""(preset)=>{
+              const L=window.SeetheTruthLearning,ND=window.SeetheTruthND,A=window.SeetheTruthGraphAutodiff,
+              graph=L.preset(preset),forward=L.evaluate(graph),back=A.backward(graph,forward);
+              const grad=back.gradients.key;
+              return {shape:ND.shape(grad),nonzero:ND.flatten(grad).some(v=>Math.abs(v)>1e-9),
+                targetZero:ND.flatten(back.gradients.target).every(v=>v===0),
+                detached:back.cutEdges.some(e=>e.nodeId==='loss'&&e.port==='target')};
+            }""",preset)
+            self.assertEqual(test["shape"],[1,expected_kv,3,2])
+            self.assertTrue(test["nonzero"])
+            self.assertTrue(test["targetZero"])
+            self.assertTrue(test["detached"])
+            if expected_kv>1:p.locator('#gradientInspector [data-nd-slice="1"]').select_option("1")
+            p.locator("#gradientInspector").scroll_into_view_if_needed()
+            self.shot(name)
+
     def test_composed_causal_multihead_attention_probabilities_and_context(self):
         p=self.page
         p.locator('[data-preset="nd_causal_attention"]').click()
