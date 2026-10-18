@@ -25,4 +25,15 @@ const added=['low_rank_project','partial_rope','row_bias_add','group_topk_mask',
 for(const kind of added){assert.ok(L.defs[kind],kind);assert.ok(K.get(kind)?.refs.length,kind);}
 assert.equal(K.validate().cards,L.KINDS.length);
 assert.deepEqual(C.analyze({id:'p',kind:'low_rank_project',params:{}},{x:[3,8],down:[8,2],up:[2,4]}).shape,[3,4]);
-console.log(added.length+' model-family numerical and paper knowledge primitives PASS');
+
+for(const name of ['mla_lite','moe_route','grpo_signals']){
+  const graph=L.preset(name),numeric=L.evaluate(graph),concept=C.evaluate(graph);
+  assert.equal(numeric.steps.length,graph.nodes.length,name);
+  assert.deepEqual(numeric.steps.map(s=>s.shape),concept.steps.map(s=>s.shape),name);
+}
+const mla=L.evaluate(L.preset('mla_lite'));
+assert.deepEqual(mla.steps.at(-1).shape,[3,4]);
+const moe=L.evaluate(L.preset('moe_route'));
+assert.deepEqual(moe.steps.at(-1).shape,[3,4]);
+assert.deepEqual(L.evaluate(L.preset('grpo_signals')).steps.at(-1).shape,[2,4]);
+console.log(added.length+' model-family primitives + 3 composed graph lessons PASS');
