@@ -1,4 +1,4 @@
-"""Real Chromium evidence of the 45 executable-block Scratch-like learning UI."""
+"""Real Chromium evidence of the extensible executable-block Scratch-like learning UI."""
 import json
 import os
 import struct
@@ -37,7 +37,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.errors=[]
         self.page.on("pageerror",lambda e:self.errors.append(str(e)))
         self.page.goto(self.base+"/learn.html",wait_until="domcontentloaded")
-        self.page.wait_for_function("document.querySelectorAll('#palette [data-add]').length===45")
+        self.page.wait_for_function("window.SeetheTruthLearning && document.querySelectorAll('#palette [data-add]').length===window.SeetheTruthLearning.KINDS.length")
         self.page.locator("#studyMode").select_option("numeric")
 
     def tearDown(self):
@@ -79,8 +79,10 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
 
     def test_search_filter_circuits_and_evidence_screens(self):
         p=self.page
-        self.assertEqual(p.locator("#palette [data-add]").count(),45)
-        self.assertIn("45 / 45",p.locator("#blockCount").inner_text())
+        size=p.evaluate("window.SeetheTruthLearning.KINDS.length")
+        self.assertGreaterEqual(size,64)
+        self.assertEqual(p.locator("#palette [data-add]").count(),size)
+        self.assertIn(f"{size} / {size}",p.locator("#blockCount").inner_text())
         self.assertGreaterEqual(p.locator("#catalogCategories button").count(),10)
         screens=[self.shot("01-library-all-blocks.png")]
         p.locator("#blockSearch").fill("SwiGLU")
@@ -90,7 +92,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#blockSearch").fill("")
         p.locator('[data-catalog="loss"]').click()
         self.assertEqual(p.locator("#palette [data-add]").count(),4)
-        self.assertEqual(p.locator("#blockCount").inner_text(),"4 / 45")
+        self.assertEqual(p.locator("#blockCount").inner_text(),f"4 / {size}")
         screens.append(self.shot("03-library-loss-category.png"))
         p.locator('[data-catalog="all"]').click()
         p.locator('[data-preset="swiglu"]').click()
@@ -122,8 +124,8 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         screens.append(self.shot("06-causal-mask-output.png"))
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
-          "viewport":[1600,1000],"catalogue_count":45,
-          "captures":screens+[{"file":"07-qualitative-gqa-no-matrix.png",
+          "viewport":[1600,1000],"catalogue_count":size,
+          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"07-qualitative-gqa-no-matrix.png",
             "description":"No numeric matrices or hardware measurements; GQA dimensions only"}],
           "tests":"qualitative GQA without numeric cells, opt-in numeric SwiGLU/CE/Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
@@ -142,6 +144,27 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(p.locator("#matrix .cell").count(),0)
         self.assertNotIn("FLOPs",p.locator("#metrics").inner_text())
         self.shot("07-qualitative-gqa-no-matrix.png")
+
+    def test_new_model_family_presets_and_paper_hover(self):
+        p=self.page
+        for mission,count in [("mla_lite",20),("moe_route",8),("grpo_signals",6)]:
+            p.locator('[data-preset="'+mission+'"]').click()
+            self.assertEqual(p.locator("#blocks .block").count(),count)
+            p.locator("#run").click()
+            self.assertIn("1 / "+str(count),p.locator("#stepInfo").inner_text())
+            for _ in range(count-1):
+                p.locator("#next").click()
+            self.assertIn(str(count)+" / "+str(count),p.locator("#stepInfo").inner_text())
+            self.assertNotIn("无法运行",p.locator("#status").inner_text())
+            self.shot("08-"+mission+"-numeric.png")
+        p.locator("#blockSearch").fill("Low-rank")
+        card=p.locator('#palette [data-add="low_rank_project"]')
+        self.assertEqual(card.count(),1)
+        card.hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=4000)
+        self.assertIn("DeepSeek-V3",p.locator("#paperHoverInspector").inner_text())
+        self.assertTrue(p.locator('#paperHoverInspector a[href="https://arxiv.org/abs/2412.19437"]').count())
+        self.shot("09-paper-hover-low-rank.png")
 
     def test_legacy_and_new_preset_numerical_runs(self):
         p=self.page
