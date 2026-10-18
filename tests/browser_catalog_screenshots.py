@@ -77,6 +77,40 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_four_axis_multidimensional_value_slices_and_real_batched_gemm(self):
+        p=self.page
+        p.locator('[data-preset="nd_attention_lesson"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),9)
+        self.assertIn("四轴",p.locator("#workspaceTitle").inner_text())
+        self.assertIn("9/9",p.locator("#graphReadiness").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("1 / 9",p.locator("#stepInfo").inner_text())
+        self.assertEqual(p.locator("#matrix [data-nd-slice]").count(),2)
+        self.assertEqual(p.locator("#matrix .cell").count(),12)
+        self.shot("39-four-axis-tensor-source.png")
+        head=p.locator('#matrix [data-nd-slice="1"]')
+        first=p.locator("#matrix .cell").all_inner_texts()
+        head.select_option("1")
+        second=p.locator("#matrix .cell").all_inner_texts()
+        self.assertNotEqual(first,second,"Head=0 and Head=1 must show different real tensor values")
+        self.assertEqual(p.locator("#matrix .cell").count(),12)
+        self.shot("40-four-axis-head-slice-one.png")
+        # Inspect batched GEMM; mathematical output must contain two Heads.
+        i=p.evaluate("""() => window.SeetheTruthLearning.order(
+           window.SeetheTruthLearning.preset('nd_attention_lesson')).findIndex(n=>n.id==='batch_scores')""")
+        for _ in range(i):p.locator("#next").click()
+        self.assertIn("1×2×3×3",p.locator("#shape").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),9)
+        p.locator('#matrix [data-nd-slice="1"]').select_option("1")
+        self.shot("41-batched-head-matmul-output.png")
+        for _ in range(8-i):p.locator("#next").click()
+        self.assertIn("9 / 9",p.locator("#stepInfo").inner_text())
+        self.assertIn("1×2×1×3",p.locator("#shape").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),3)
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("42-four-axis-permute-numeric-result.png")
+
     def test_training_selected_loss_with_unfinished_side_branch(self):
         p=self.page
         p.locator('[data-preset="trainable_core"]').click()
