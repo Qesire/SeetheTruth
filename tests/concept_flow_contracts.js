@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -22,6 +22,22 @@ for(const name of presetNames){
  }
 }
 function perKind(k){
+ if(k.startsWith('nd_')){
+  const ND=require('../nd_tensor.js'),d=L.defs[k],n={id:k,kind:k,params:d.params};
+  const sample=(sh,seed)=>ND.seedTensor(sh,seed);
+  let inputs={};
+  if(k==='nd_permute'||k==='nd_flatten'||k==='nd_reduce_sum')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_reshape')inputs={x:sample([6,4],2)};
+  else if(k==='nd_expand4d')inputs={x:sample([3,4],2)};
+  else if(k==='nd_broadcast_add')inputs={a:sample([1,2,3,4],2),b:sample([1,1,3,4],3)};
+  else if(k==='nd_batched_matmul')inputs={a:sample([1,2,3,4],2),b:sample([1,2,4,3],3)};
+  const shapes=Object.fromEntries(Object.entries(inputs).map(([port,value])=>[port,ND.shape(value)]));
+  const inferred=C.analyze(n,shapes),actual=B.execute(n,inputs);
+  assert.deepEqual(inferred.shape,actual.shape,k+' multidimensional shape parity');
+  assert.deepEqual(actual.shape,ND.shape(actual.values),k+' runtime shape validity');
+  return;
+ }
+
  const d=L.defs[k],n={id:k,kind:k,params:{...d.params}},inputs={};
  for(const port of d.ports){
    if(port==='ids'||port==='labels')inputs[port]=[2,1];
