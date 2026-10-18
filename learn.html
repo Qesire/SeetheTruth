@@ -183,6 +183,8 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="nd_causal_attention"><span class="num">26</span><span>可组合四轴因果多头 Attention<span class="desc">QKᵀ → Scale → Causal Mask → Softmax → PV，逐 Head 数值验证</span></span></button>
   <button class="mission" data-preset="nd_gqa_attention"><span class="num">27</span><span>GQA · 4Q / 2KV Head</span><span class="desc">KV Head 共享、因果 Attention、四轴反向梯度</span></button>
   <button class="mission" data-preset="nd_mqa_attention"><span class="num">28</span><span>MQA · 4Q / 1KV Head</span><span class="desc">一组 KV Head 服务所有 Query Head，检查梯度汇合</span></button>
+  <button class="mission" data-preset="nd_trainable_gqa"><span class="num">29</span><span>GQA · 四轴参数训练</span><span class="desc">四维 Q/K/V · Forward → VJP → AdamW → Forward</span></button>
+  <button class="mission" data-preset="nd_trainable_mqa"><span class="num">30</span><span>MQA · 四轴参数训练</span><span class="desc">单 KV Head 更新、动量与梯度共享验证</span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -254,6 +256,7 @@ input[type="file"]{display:none}
 <script src="nd_autodiff.js"></script>
 <script src="graph_autodiff.js"></script>
 <script src="adamw_micro.js"></script>
+<script src="nd_adamw_micro.js"></script>
 <script src="train_state.js"></script>
 <script>
 (()=>{"use strict";
@@ -279,7 +282,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -556,17 +559,17 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  $("#blockKnowledge").innerHTML=renderKnowledge(d,n);
- $("#parameters").innerHTML=d?(n.kind==="parameter"?
+ $("#parameters").innerHTML=d?((n.kind==="parameter"||n.kind==="nd_parameter")?
    '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · AdamW step '+esc(n.params.optimizer.t)+'</div>'+
-   '<label class="param">Matrix values (JSON)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
+   '<label class="param">Parameter values (JSON, 2D/4D)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
    '<p class="hint">编辑矩阵后重置该参数的 AdamW 动量。训练步骤保存在 JSON 并随撤销/重做恢复。</p>'
    :Object.keys(d.params).map(k=>
   '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
    :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>'):"";
- if(n?.kind==="parameter")$("#parameterMatrix").addEventListener("change",e=>{try{
+ if(n&&(n.kind==="parameter"||n.kind==="nd_parameter"))$("#parameterMatrix").addEventListener("change",e=>{try{
    const matrix=JSON.parse(e.target.value),id=n.id;
-   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params.values=matrix;target.params.optimizer={t:0,m:matrix.map(row=>row.map(()=>0)),v:matrix.map(row=>row.map(()=>0))};return g;});
+   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params.values=matrix;const zero=target.kind==="nd_parameter"?window.SeetheTruthND.build(window.SeetheTruthND.shape(matrix),()=>0):matrix.map(row=>row.map(()=>0));target.params.optimizer={t:0,m:zero,v:JSON.parse(JSON.stringify(zero))};return g;});
  }catch(err){say("参数矩阵 JSON 无效："+err.message,true);}});
  document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
    const name=input.dataset.param, v=input.tagName==="SELECT"?input.value==="true":Number(input.value),id=selected;
@@ -684,7 +687,7 @@ function render(){
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
  $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse"].includes(n.kind));
  $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
- $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter")||!graph.nodes.some(n=>n.kind==="mse");
+ $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse");
  $("#trainSummary").hidden=!trainStatus;
  if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · AdamW step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
  $("#courseProgress").textContent=activeComposite?
@@ -729,10 +732,10 @@ $("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.eval
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const possibleLosses=graph.nodes.filter(n=>n.kind==="mse");
+ const possibleLosses=graph.nodes.filter(n=>n.kind==="mse"||n.kind==="nd_mse");
  const selectedLoss=possibleLosses.find(n=>n.id===selected)||
    possibleLosses.find(n=>n.id===runScope)||(possibleLosses.length===1?possibleLosses[0]:null);
- if(!selectedLoss)throw Error("请先选择要训练的 MSE 损失积木（有多个损失时必须明确选中）");
+ if(!selectedLoss)throw Error("请先选择要训练的 MSE/四轴 MSE 损失积木（有多个损失时必须明确选中）");
  const previous=clone(graph),options={
    count:Number($("#trainCount").value),lr:Number($("#trainLearningRate").value),
    weightDecay:Number($("#trainWeightDecay").value),targetId:selectedLoss.id
