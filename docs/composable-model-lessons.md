@@ -77,6 +77,50 @@ The routed combine obeys `dV[t*K+k,d]=g[t,k]*dY[t,d]` and `dg[t,k]=sum_d V[t*K+k
 - Browser screenshot shows routed and shared arms; inspector surfaces DeepSeek and Mixtral sources.
 - Record real-model traces only through the separate provenance-controlled capture path, never by relabeling deterministic teaching inputs.
 
+## 17: `mla_cache` — two mathematically equivalent paths through compressed MLA cache
+
+Official implementation: https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py (the `MLA.forward` method, particularly `attn_impl == "naive"` vs optimized `else`). Technical reports: https://arxiv.org/abs/2405.04434 and https://arxiv.org/abs/2412.19437 .
+
+### Independently composable cache operations
+
+- Input old **already normalized** KV latents `C_old:[2,2]` and one new latent `C_new:[1,2]`, representing decode position `start_pos=2`.
+- `cache_write_segment(C_old,C_new,start=2,capacity=8)` yields an **immutable** snapshot `C_cache:[3,2]`; `cache_read_prefix(length=3)` emits the valid history and current-token prefix. The 8-row capacity is an educational bound, **not** a fabricated allocated capacity claim.
+- `pe_old_raw:[2,2]` gets `RoPE(offset=0)`; `pe_new_raw:[1,2]` gets `RoPE(offset=2)`. Both travel through a distinct PE cache write/read path. Q positional features undergo the same offset-2 rotation.
+- The real optimized implementation caches `kv_norm(kv)` and the rotated `k_pe`, not the full materialized K/V tensors. We provide the **already normalized** latent as an input to isolate this mechanism; no transformer checkpoint is loaded.
+
+### Explicit reconstruction vs absorbed matrices
+
+One-query / one-head teaching shapes: `C:[3,2]`, `Q_nope:[1,2]`, `W_k:[2,2]`, `W_v:[2,2]`, `Q_pe:[1,2]`, `PE:[3,2]`. Define:
+
+```
+K_nope = C W_k
+S_explicit = Q_nope K_nope^T
+Q_abs = Q_nope W_k^T
+S_abs = Q_abs C^T
+S_position = Q_pe PE^T
+P_explicit = softmax((S_explicit + S_position)/sqrt(4))
+P_abs = softmax((S_abs + S_position)/sqrt(4))
+V_explicit = C W_v
+O_explicit = P_explicit V_explicit
+O_abs = (P_abs C) W_v
+difference = O_explicit - O_abs
+```
+
+These two paths are **algebraically equal in exact arithmetic**. The graph computes both with identical deterministic small matrices and exposes the score, probability, and output intermediates as separate nodes, with a final difference node expected to be approximately zero. The symbolic `sqrt(4)` is the two-content-plus-two-position channels teaching dimension; long-context YaRN or model-specific scale adjustments are **not** represented.
+
+### Execution semantics and caveats
+
+- Only the single **last-position decode query** is present. All three keys are legal causal predecessors; for multiple simultaneous Prefill queries one additionally needs the correct causal masking per position.
+- Cache write/read are *pure mathematical snapshot blocks*: no mutable process-wide state, cross-run persistence, GPU allocation, page tables, or eviction. The graph explicitly wires one previous snapshot into one updated snapshot.
+- The 2-D plane omits batch and head axes; actual DeepSeek-V3 also supports multiple heads and tensor parallelism. This does **not** reproduce its physical kernel implementation.
+- Associativity can differ slightly under float arithmetic or per-tensor quantization. Therefore the assertion is within a numerical tolerance, not strict bitwise identity.
+- Nonlinearities and RoPE cannot simply be moved across arbitrary projection weights; the positional dot-product stays an independent branch.
+- Source-classification: **SYNTHETIC teaching inputs**, executable forward computation, mathematical relationship grounded in cited source. Do not label these cache contents as sampled model activations.
+
+### Verification
+
+The unit contract checks append, overwrite-with-suffix-preservation, capacity failure, invalid read, immutable old snapshot and a nonsquare query-weight absorption oracle. The full graph test compares every coordinate of content scores, combined scores, probabilities, and outputs. Chromium visual acceptance exercises the freely editable 35-block lesson and checks the primary-paper inspector.
+
 ## Acceptance contract
 
 For every recipe:
