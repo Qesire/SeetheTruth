@@ -6,6 +6,7 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ gqa_paper:["GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints","https://aclanthology.org/2023.emnlp-main.298/"],
  tensor_views:["PyTorch tensor views / reshape / permute","https://docs.pytorch.org/docs/stable/tensor_view.html"],
  broadcasting:["PyTorch broadcasting semantics","https://docs.pytorch.org/docs/stable/notes/broadcasting.html"],
  torch_matmul:["PyTorch torch.matmul batched dimensions","https://docs.pytorch.org/docs/stable/generated/torch.matmul.html"],
@@ -56,6 +57,8 @@ const notes={
  nd_expand4d:["为 [T,D] 的二维矩阵增添 B=1,H=1 的前导轴，得到 [1,1,T,D]，内容没有重复。","广播和批处理需要理解长度为 1 的轴；singleton 轴与真正的多头数据不同。","Expand 此处实际上只是有界 reshape 插入两个 singleton 轴，不是任意重复数据。","把旧 2D Input 接 Expand，之后接四轴 Broadcast Add。","tensor_views,broadcasting"],
  nd_broadcast_add:["两个张量先右对齐维度，相等或为 1 的轴可以广播，逐元素求和；例如 [1,2,3,4]+[1,1,3,4]。","广播是 PyTorch/NumPy 张量运算常识，在多头 Attention 的 Head 轴添加共享 bias 时尤为常见。","不匹配的非 singleton 维度不能相加；不会自动转置或推断正确的轴语义。","用 B=1,H=1 的 Bias 加到 B=1,H=2 的 Score，检查两个 Head 都收到正确值。","broadcasting,transformer"],
  nd_reduce_sum:["给定轴 axis 的元素求和，输出 keepdim=1 的张量。例：沿 T 求和 [1,2,3,4]→[1,2,1,4]。","按 Token 聚合、按 Head 聚合、按通道统计的科学意义不同；必须明确 reduce 哪一轴。","Sum 不等于 Mean；若要平均须再显式 Scale。本积木固定 keepdim 以方便继续广播。","在 Token 轴求和，把输入每个 Token 的同通道数值手算相加。","tensor_views"],
+ nd_repeat_kv:["GQA 让多个 Query Head 共享同一个 KV Head，设 Hq/Hkv=r，教学张量复制遵守 out[b,h,t,d]=in[b,floor(h/r),t,d]。MQA 是 Hkv=1 的特例。","Ainslie 等人的 GQA (EMNLP 2023) 证明在 Query Heads 与 KV Heads 数量之间设置分组，可用较少 KV Head 实现接近多头 Attention 的模型质量。PyTorch SDPA 的 GQA 条件是 Hq%Hkv==0 且 K/V Head 数相同。","这是一种可微的显式教学展开；实际高效 GQA 内核无需物理复制 KV Cache。反向时一个 KV Head 的梯度必须累加全部共享的 Query Head。","先用 Hq=4,Hkv=2 检查 Head 0/1 共享 KV0，再改成 Hkv=1 比较 MQA；使用反向模式观察 K/V 梯度汇合。","gqa_paper,sdpa"],
+ nd_mse:["接受形状完全相同的四轴预测与固定目标，计算全部元素的 mean((prediction-target)^2) 并返回 [1,1] 标量，给多维计算图提供精确损失起点。","训练中损失的选择影响梯度数学含义；该教学标量只验证自动微分，不是自回归语言模型的 token Cross-Entropy。","不隐式广播目标，也不自动引入可训练参数；nd_input 来源只能接收局部 VJP，不相当于完成参数训练。","将 GQA Context 接 prediction，把独立四轴教学源接 target，然后逐个扰动 Q/K/V 值检查有限差分。","gqa_paper,tensor_views"],
  nd_scale:["在每个张量坐标执行 y=factor·x。标准 Attention 常采用 factor=1/√Dk，将 QKᵀ 的点积尺度归一化。","Transformer Scaled Dot-Product Attention 的缩放来自 Key 通道维大小，缩放的位置在 Softmax 之前；数值内核不替用户自动推断 Dk。","factor 是当前积木参数，不代表实际模型配置或测得的 GPU 性能；其他训练网络可以合法使用不同缩放。","先用 Dk=4、factor=0.5，再用 factor=1 对比注意力分布的尖锐程度。","transformer,torch_matmul"],
  nd_softmax_last:["给定任意 [B,H,Tq,Tk] 四轴分数张量，在固定 B、H 和 Tq 后，仅对最后 Tk 轴稳定 Softmax：exp(x-max)/Σexp(x-max)。","PyTorch Scaled Dot-Product Attention 同样沿 Key 维归一化；每个 Head、每条 Query 独立形成注意力概率行。","Softmax 既不是逐元素 sigmoid，也不能跨不同 Head 归一化；对所有 Mask 位置无效的行必须特殊处理。","查看 Head0 与 Head1 两种切片，检查每条 Query 的所有 Key 概率之和为 1。","transformer,sdpa"],
  nd_causal_mask:["将未来 Key 的 score 设为有限大负值 -1e9；未来定义为 keyStart+k > queryStart+q。该输出之后才接 Softmax。","自回归生成采用因果可见性；缓存解码中 Tq 可与 Tk 不同，因此要分清 Query 与 Key 的绝对位置起点。","采用有限大负值是 Float64 教学近似，并非存储负无穷；若第一条 Query 没有有效 Key 则拒绝运行，不能返回误导性的均匀概率。","Tq=Tk=3、offset=0 时第一条 Query 只有 Key0 可见；更改绝对偏移模拟缓存解码。","transformer,sdpa,cache"],
