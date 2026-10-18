@@ -37,6 +37,46 @@ Reference: DeepSeekMath, https://arxiv.org/abs/2402.03300 .
 
 The denominator is `sqrt(populationVariance+epsilon)`, a chosen stable teaching convention. The original equation is a group standardized reward; exact epsilon placement is implementation-specific.
 
+## 16: `moe_expert_ffn` — actual per-token gated FFN arithmetic with shared experts
+
+Primary sources:
+- DeepSeek-V3 technical report: https://arxiv.org/abs/2412.19437
+- DeepSeek-V3 inference `Expert.forward`, `Gate.forward`, `MoE.forward`: https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py
+- Mixtral of Experts: https://arxiv.org/abs/2401.04088
+
+This lesson uses **only bounded deterministic teaching tensors**; "actual" means the expert matrix multiplications are evaluated, **not** checkpoint samples or published-model inference.
+
+1. `X:[3,2]` → `Router Linear:[3,4]` → `Sigmoid Affinity:[3,4]`.
+2. `affinity + selection_bias:[1,4]` → Group-Limited Mask (two groups, keep one) → Top-2 expert indices `I:[3,2]`.
+3. `router_gate_weights(affinity,I,mode=identity,normalize=true):[3,2]` extracts **unbiased affinities** for the selected experts.
+4. `dispatch_routed_tokens(X,I)` produces `Z:[6,2]` with row `n=t·2+k`, without needing a GPU scatter kernel.
+5. Three independent parameter banks `W1,W3,W2:[4·2,2]` each store four disjoint expert-specific `[2,2]` matrices. When several tokens choose expert `e`, they consume the **same W_e** rows.
+6. `ExpertLinear(Z,I,W1):[6,2]` and `ExpertLinear(Z,I,W3):[6,2]` feed an ordinary `SwiGLU:[6,2]`; `ExpertLinear(SwiGLU,I,W2):[6,2]`.
+7. `routed_weighted_reduce(values:[6,2],gates:[3,2])→Y_routed:[3,2]`.
+8. Independently, all input tokens pass through the unconditioned **shared expert** branch `Linear → SwiGLU → Linear`. The final output is `Y_routed + Y_shared:[3,2]`.
+
+This mirrors the **structure of the routed-vs-shared MLP and the multiplicative gating operation** visible in the official implementation. It omits actual source parameters, distributed expert ownership, communication, compressed quantized weights, routing capacity, and kernel-level packing/sorting.
+
+### Local VJP proof, separate from the web canvas
+
+`expert_ffn_vjp.js` provides exact bounded local reverse rules. In particular, for a bank with independent expert weights:
+
+```
+dW[e,d,h] = sum_(t,k: I[t,k]=e) Z[t*K+k,d] * dY[t*K+k,h]
+dZ[t*K+k,d] = sum_h W[e,d,h] * dY[t*K+k,h]
+dX[t,d] = sum_k dZ[t*K+k,d]
+```
+
+The routed combine obeys `dV[t*K+k,d]=g[t,k]*dY[t,d]` and `dg[t,k]=sum_d V[t*K+k,d]*dY[t,d]`. `SwiGLU` applies the true `SiLU` derivative and product rule. Finite-difference checks compare these VJPs to the same forward blocks. **The full page does not yet automatically backpropagate across the entire assembled graph**; no gradients are claimed through discrete Top-k indices.
+
+### Acceptance
+
+- All 22 freely editable nodes have numeric/qualitative shape parity.
+- Every forward route uses the corresponding expert weight bank, not a generic prototype.
+- Shared parameter identities aggregate gradients from repeated expert selections.
+- Browser screenshot shows routed and shared arms; inspector surfaces DeepSeek and Mixtral sources.
+- Record real-model traces only through the separate provenance-controlled capture path, never by relabeling deterministic teaching inputs.
+
 ## Acceptance contract
 
 For every recipe:
