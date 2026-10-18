@@ -147,6 +147,11 @@
       const sum=exp.reduce((x,y)=>x+y,0);return exp.map(v=>v/sum);});
   }
   function calculate(n,inputs){
+    if(n.kind.startsWith("nd_")){
+      const out=BlockCatalog.execute(n,inputs);
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      return {shape:ND.shape(out.values),values:out.values,flops:out.flops??null,internals:out.internals??null};
+    }
     let value,flops=null,internals=null;
     const x=inputs.x,a=inputs.a,b=inputs.b;
     switch(n.kind){
@@ -243,7 +248,29 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="trainable_attention"){
+    if(name==="nd_attention_lesson"){
+      title="任务 25 · 四轴自由组合 · B/H/T/D、广播与多头矩阵乘";
+      nodes=[
+        N("queries","nd_input",40,80,{b:1,h:2,t:3,d:4,seed:1}),
+        N("keys","nd_input",40,360,{b:1,h:2,t:4,d:3,seed:2}),
+        N("batch_scores","nd_batched_matmul",355,200),
+        N("bias","nd_input",40,680,{b:1,h:1,t:3,d:3,seed:3}),
+        N("biased","nd_broadcast_add",660,260),
+        N("summed","nd_reduce_sum",965,220,{axis:2}),
+        N("flat","nd_flatten",1240,220),
+        N("expand","nd_expand4d",1515,220),
+        N("perm","nd_permute",1790,220,{axis0:0,axis1:2,axis2:1,axis3:3})
+      ];
+      // Q:[1,2,3,4], K:[1,2,4,3] => score:[1,2,3,3].
+      // Bias [1,1,3,3] broadcasts over H. Sum over T -> [1,2,1,3],
+      // Flatten [2,3] and expand to [1,1,2,3], then permute [1,2,1,3].
+      edges=[
+       ["queries","batch_scores","a"],["keys","batch_scores","b"],
+       ["batch_scores","biased","a"],["bias","biased","b"],
+       ["biased","summed","x"],["summed","flat","x"],
+       ["flat","expand","x"],["expand","perm","x"]
+      ];
+    }else if(name==="trainable_attention"){
       title="任务 22 · 可训练 Q/K/V 参数 · Attention 梯度与 AdamW";
       const P=(id,x,y,m)=>N(id,"parameter",x,y,{values:m.map(row=>row.slice()),
         optimizer:{t:0,m:m.map(row=>row.map(()=>0)),v:m.map(row=>row.map(()=>0))}});
