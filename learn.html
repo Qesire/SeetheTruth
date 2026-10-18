@@ -173,6 +173,9 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="autodiff_core"><span class="num">19</span><span>统一反向传播 · 共享参数<span class="desc">MatMul → RMSNorm → SwiGLU → Attention → MSE，反向梯度汇合</span></span></button>
   <button class="mission" data-preset="moe_backward"><span class="num">20</span><span>MoE · 专家参数与 Gate 反向<span class="desc">Expert W1/W3/W2 梯度累积 + Router Gate VJP + MSE</span></span></button>
   <button class="mission" data-preset="trainable_core"><span class="num">21</span><span>可训练参数 · 真正闭环<span class="desc">共享 Parameter → Forward → Backward → AdamW → Forward</span></span></button>
+  <button class="mission" data-preset="trainable_attention"><span class="num">22</span><span>Q/K/V · 三组参数训练<span class="desc">Attention 独立投影矩阵 → MSE → AdamW</span></span></button>
+  <button class="mission" data-preset="trainable_swiglu"><span class="num">23</span><span>SwiGLU FFN · 可训练 W1/W3/W2<span class="desc">门控/上投影/下投影共享完整训练机制</span></span></button>
+  <button class="mission" data-preset="trainable_moe"><span class="num">24</span><span>MoE · 可训练专家权重库<span class="desc">固定 Top-k 路由选择 + 独立专家权重 AdamW</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -204,7 +207,10 @@ input[type="file"]{display:none}
     <option value="concept" selected>原理推演 · 默认</option>
     <option value="numeric">小矩阵数值演示 · 可选</option>
   </select>
- </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><button class="btn" id="trainStep" type="button" disabled title="对连接到 MSE Loss 的 Parameter 执行一次实际小矩阵 AdamW 更新，并重新前向">↻ 训练一步</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
+ </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><label class="study-mode-label" for="trainLearningRate">学习率 <select id="trainLearningRate" aria-label="AdamW 学习率"><option value="0.001">0.001</option><option value="0.004">0.004</option><option value="0.01" selected>0.01</option><option value="0.03">0.03</option></select></label>
+  <label class="study-mode-label" for="trainWeightDecay">权重衰减 <select id="trainWeightDecay" aria-label="AdamW 权重衰减"><option value="0">0</option><option value="0.01" selected>0.01</option><option value="0.1">0.1</option></select></label>
+  <label class="study-mode-label" for="trainCount">步数 <select id="trainCount" aria-label="连续训练步数"><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></label>
+  <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 小矩阵 AdamW 更新、逐步重新执行 Forward 与 Backward，并保存新参数状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
   </div>
  </main>
@@ -261,7 +267,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -598,7 +604,7 @@ function render(){
  $("#backward").disabled=!run||run.mode==="concept"||!graph.nodes.some(n=>["masked_grpo_objective","mse"].includes(n.kind));
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter")||!graph.nodes.some(n=>n.kind==="mse");
  $("#trainSummary").hidden=!trainStatus;
- if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · AdamW step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。参数和动量已写入当前工程，可撤销或导出 JSON。</p>';
+ if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · AdamW step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>';
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
@@ -621,11 +627,11 @@ $("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.eval
  catch(e){run=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const previous=clone(graph),result=Train.step(previous,{lr:0.01,weightDecay:0.01});
+ const previous=clone(graph),options={count:Number($("#trainCount").value),lr:Number($("#trainLearningRate").value),weightDecay:Number($("#trainWeightDecay").value)},result=Train.steps(previous,options);
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
- graph=result.graph;run=result.next;backwardTrace=null;step=run.steps.length-1;selected=result.records[0].id;
- trainStatus={id:result.records[0].id,t:result.records[0].optimizerStep,before:result.beforeLoss,after:result.afterLoss};
- render();say("已提交教学 AdamW 更新：Loss "+result.beforeLoss.toFixed(7)+" → "+result.afterLoss.toFixed(7)+"；参数和动量随工程保存。");
+ graph=result.graph;run=result.next;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
+ trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};
+ render();say("已提交 "+result.history.length+" 步 AdamW：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
  }catch(err){say("训练未提交："+err.message,true);}};
 $("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");backwardTrace=graph.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(graph,run):GeneralReverse.backward(graph,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};
 $("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;step=-1;$("#run").textContent=studyMode()==="concept"?
