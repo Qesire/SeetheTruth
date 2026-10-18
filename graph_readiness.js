@@ -69,7 +69,11 @@ function preview(raw,from,to,port){
  const checked=check(candidate),target=checked.nodes.find(n=>n.id===to);
  if(target?.status==="shape-error")return {status:"incompatible",reason:target.reason,sourceShape:source.shape,targetShape:null};
  // Existing downstream consumers may become incompatible after rewiring.
- const descendants=checked.nodes.filter(n=>n.status==="shape-error");
+ const affected=new Set([to]),queue=[to];
+ for(let i=0;i<queue.length;i++)for(const edge of candidate.edges){
+   if(edge.from===queue[i]&&!affected.has(edge.to)){affected.add(edge.to);queue.push(edge.to);}
+ }
+ const descendants=checked.nodes.filter(n=>affected.has(n.id)&&n.status==="shape-error");
  if(descendants.length)return {status:"incompatible",reason:descendants[0].id+": "+descendants[0].reason,sourceShape:source.shape,targetShape:target?.shape||null};
  return {status:target?.status==="ready"?"compatible":"pending",reason:target?.reason||"已知维度匹配",
    sourceShape:source.shape,targetShape:target?.shape||null};
