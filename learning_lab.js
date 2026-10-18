@@ -243,7 +243,48 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="mla_lite"){
+    if(name==="moe_expert_ffn"){
+      title="任务 16 · MoE · 逐 Token 专家 SwiGLU FFN 与共享专家";
+      nodes=[
+        N("x","input",25,50,{rows:3,width:2,seed:4}),
+        N("router","linear",25,240,{out:4}),
+        N("affinity","sigmoid",25,450),
+        N("bias","input",25,670,{rows:1,width:4,seed:9}),
+        N("biased","row_bias_add",310,60),
+        N("groups","group_topk_mask",310,270,{groups:2,keepGroups:1}),
+        N("select","masked_router_topk",310,480,{k:2}),
+        N("gates","router_gate_weights",310,690,{mode:"identity",normalize:true}),
+        N("dispatch","dispatch_routed_tokens",595,70),
+        N("w1","input",595,280,{rows:8,width:2,seed:10}),
+        N("w3","input",595,490,{rows:8,width:2,seed:11}),
+        N("w2","input",595,700,{rows:8,width:2,seed:12}),
+        N("expert_gate","expert_linear_bank",880,50),
+        N("expert_up","expert_linear_bank",880,260),
+        N("expert_swiglu","swiglu",1155,120),
+        N("expert_down","expert_linear_bank",1440,140),
+        N("routed","routed_weighted_reduce",1735,160),
+        N("shared_gate","linear",880,470,{out:2}),
+        N("shared_up","linear",880,700,{out:2}),
+        N("shared_swiglu","swiglu",1165,610),
+        N("shared_down","linear",1450,650,{out:2}),
+        N("out","add",2010,370)
+      ];
+      edges=[
+        ["x","router","x"],["router","affinity","x"],
+        ["affinity","biased","scores"],["bias","biased","bias"],
+        ["biased","groups","scores"],["biased","select","scores"],
+        ["groups","select","mask"],["affinity","gates","scores"],["select","gates","indices"],
+        ["x","dispatch","x"],["select","dispatch","indices"],
+        ["dispatch","expert_gate","x"],["select","expert_gate","indices"],["w1","expert_gate","weights"],
+        ["dispatch","expert_up","x"],["select","expert_up","indices"],["w3","expert_up","weights"],
+        ["expert_gate","expert_swiglu","gate"],["expert_up","expert_swiglu","up"],
+        ["expert_swiglu","expert_down","x"],["select","expert_down","indices"],["w2","expert_down","weights"],
+        ["expert_down","routed","values"],["gates","routed","gates"],
+        ["x","shared_gate","x"],["x","shared_up","x"],
+        ["shared_gate","shared_swiglu","gate"],["shared_up","shared_swiglu","up"],
+        ["shared_swiglu","shared_down","x"],["routed","out","a"],["shared_down","out","b"]
+      ];
+    }else if(name==="mla_lite"){
       title="任务 13 · MLA-inspired · KV/Q 低秩与解耦 RoPE（单头教学）";
       nodes=[
         N("x","input",20,220,{rows:3,width:4,seed:1}),
