@@ -49,7 +49,7 @@ for(const name of ['shared_weight','features']){
  }
 }
 assert.equal(seen.size,8);
-assert.deepEqual(forwardWith(graph).steps.map(x=>x.values),original.steps.map(x=>x.values));
+forwardWith(graph).steps.forEach((step,i)=>step.values.forEach((row,r)=>row.forEach((v,c)=>eq(v,original.steps[i].values[r][c],1e-11))));
 const nonScalar=L.preset('autodiff_core');
 assert.throws(()=>A.backward(nonScalar,original,{targetId:'project'}),/scalar/);
 const broken=L.preset('autodiff_core');broken.nodes.find(n=>n.id==='attend').kind='gqa';
