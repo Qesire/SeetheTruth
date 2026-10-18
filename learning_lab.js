@@ -243,6 +243,15 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
+    if(name==="trainable_core"){
+      const source=preset("autodiff_core");
+      const W=source.nodes.find(n=>n.id==="shared_weight");
+      W.kind="parameter";W.params={
+        values:[[0.35,-0.24],[0.08,0.57]],
+        optimizer:{t:0,m:[[0,0],[0,0]],v:[[0,0],[0,0]]}
+      };
+      return validateGraph({...source,title:"任务 21 · 可训练参数共享 · Forward → Backward → AdamW → Forward"});
+    }
     if(name==="moe_backward"){
       const base=preset("moe_expert_ffn");
       return validateGraph({...base,title:"任务 20 · MoE 反向 · 稀疏专家参数共享与可微 Gate",
