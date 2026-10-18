@@ -268,3 +268,46 @@ The unit test verifies numerical values for every Head via an independent loop, 
 
 Primary implementation-semantics references: [PyTorch Broadcasting](https://docs.pytorch.org/docs/stable/notes/broadcasting.html), [Tensor Views](https://docs.pytorch.org/docs/stable/tensor_view.html), [torch.matmul](https://docs.pytorch.org/docs/stable/generated/torch.matmul.html). The present CPU interpreter intentionally does not model GPU storage strides, autograd through new N-D blocks, CUDA kernels, or hardware latency.
 
+
+## 26: User-assembled causal multi-head attention — no opaque model shortcut
+
+The 26th workbench lesson is an editable nine-node `nd_causal_attention` graph composed from the same free-form N-D blocks. **Nothing requires the architecture to match a known model**; the lesson is a verified example students may rewire.
+
+```text
+Q[1,2,3,4] ----------------------------------+
+                                             v
+K[1,2,3,4] → permute[0,1,3,2] → [1,2,4,3] → BatchedMatMul
+                                              | scores[1,2,3,3]
+                                              v
+                                          Scale by 0.5 (1/√4)
+                                              |
+                                              v
+                                     Causal Score Mask
+                                              |
+                                              v
+                              Last-axis Softmax → P[1,2,3,3]
+                                              |
+V[1,2,3,4] ----------------------------------+→ BatchedMatMul → Context[1,2,3,4]
+```
+
+Exact contracts:
+
+```text
+Q, K, V: [B,H,T,D]
+S[b,h,q,k] = Σ_d Q[b,h,q,d]*K[b,h,k,d] / sqrt(D)
+S_mask[b,h,q,k] = S[b,h,q,k] if (keyStart + k) <= (queryStart + q) else -1e9
+P[b,h,q,k] = exp(S_mask[b,h,q,k] - max_j S_mask[b,h,q,j]) /
+             Σ_j exp(S_mask[b,h,q,j] - max_l S_mask[b,h,q,l])
+Y[b,h,q,d] = Σ_k P[b,h,q,k]*V[b,h,k,d]
+```
+
+In the bounded example `B=1,H=2,T=3,D=4`, the Key permutation swaps time and channel axes, not batch/head axes. `Scale` uses the explicit factor `0.5` corresponding to `D=4`. The first Query can attend only to Key 0; masking rows are checked for exact zero future probabilities. Each head and each Query is normalized independently. Head 0 and Head 1 have different synthetic scores, independently selectable in the inspector.
+
+- `nd_scale`: scalar multiplication, does not infer the model head dimension.
+- `nd_causal_mask`: explicit absolute `queryStart` and `keyStart` offsets; supports different Query/Key sequence lengths when the first Query has at least one valid Key. Uses finite `-1e9` for blocked positions as a small Float64 teaching approximation, not a bitwise implementation of an attention kernel.
+- `nd_softmax_last`: numerical max-subtracted softmax strictly along the last axis (Key dimension), never across Heads.
+
+The new numeric acceptance checks both Heads against an independent Q/K dot-product + masked softmax + weighted V oracle, and separately checks the non-square cached-decoding case with query absolute positions 2–3 and keys 0–3. The expected GEMM arithmetic main-term is `144 + 144 = 288 FLOPs` for this tiny example; it is not a throughput measurement. Chromium validates both Head probability views and the final Context tensor.
+
+Boundaries remain explicit: no K/V cache state machine in this lesson, no automatic Rotary embeddings, no fused FlashAttention kernel, and no N-dimensional backward engine yet. These can be assembled or implemented separately with precisely documented semantics. Relevant published reference: [Attention Is All You Need](https://arxiv.org/abs/1706.03762); implementation semantics: [PyTorch scaled_dot_product_attention](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html).
+
