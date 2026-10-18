@@ -81,6 +81,13 @@
   kl_prob:block("KL(P ∥ Q)","KL Divergence","loss",["p","q"],{},
    "KL(P||Q)=mean_t Σ_c P[t,c] log(P[t,c]/Q[t,c])","比较两组离散概率分布，可以用于蒸馏机制学习。","利用两个 Softmax 输出构造有效 P、Q。","输入必须都是逐行和为 1 的概率，Q 不能在 P>0 处为 0；不等于 PyTorch 默认 kl_div reduction='mean'。")
  };
+  qk_norm:block("Q/K 向量归一化","QK Norm","attention",["x"],{epsilon:0.00001},"y=x/sqrt(mean(x²)+ε)","对 query/key 的每个头特征向量按 RMS 缩放；真实模型是否有可训练增益须查源码。","组合于 QKᵀ 前，与普通 RMSNorm 比较。","教学把每行视为一个 head；γ=1，没有模拟不同头的参数。"),
+  sliding_window_mask:block("滑动窗口因果 Mask","Sliding Window","attention",["x"],{window:2},"M[i,j]=1 iff 0≤i−j<w","局部注意力只允许最近 w 个 token；可接 Masked Softmax。","在每行比较可访问 key 数量；改变窗口宽度。","仅单序列等长自注意力，无 sink token、global token 或 cache offset。"),
+  logit_softcap:block("Logits Softcap","Tanh Softcap","attention",["x"],{cap:5},"y=c·tanh(x/c)","平滑限制 logits 幅值，改变 Softmax 概率尖锐程度。","对比 Softmax 前后数值和梯度饱和区间。","不是裁剪到固定阈值的 hard clamp。"),
+  router_topk:block("Router Top-k 索引","Router Dispatch IDs","routing",["x"],{k:2},"I=TopK(logits,k); w=softmax(selected logits)","按 token 选择专家索引，显式返回稀疏路由权重。","连接专家分派；分析负载与 selected-gate normalization。","输出只有索引供教学；权重保存在内部信息中，没有执行专家计算。"),
+  weighted_sum:block("加权特征汇聚","Weighted Sum","combine",["weights","values"],{},"y_t=Σ_j weights[t,j]·values[j,:]","把加权汇聚拆成独立积木，可用于 Attention 或专家输出的可视化简化。","测试权重归一化是否由上游保障。","无 batch/head 维；不是真实 MoE 的 per-token dynamic gather。"),
+  detach_demo:block("停止梯度","Stop Gradient","training",["x"],{},"y=stop_gradient(x)","前向输出与输入完全一致，但反向不通过此边传播梯度。","与残差路径配合，追踪哪些边仍接收梯度。","当前计算引擎仅执行前向；此处反向边界属于符号契约。"),
+  residual_scale:block("残差支路缩放","Residual Branch Scale","combine",["x"],{factor:0.5},"y=αx","单独配置某条残差支路的系数，可与 Add 组成可视化残差。","改变 α 观察输出与梯度比例。","只改变支路幅度，不代表 DeepNorm 等完整网络初始化配方。"),
  const KINDS=Object.keys(defs);
  const fail=s=>{throw Error(s);};
  const ensure=(m,name)=>{
@@ -112,6 +119,11 @@
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
    if(kind==='bias')float(n.bias,-100,100,'bias');
+   if(kind==='sliding_window_mask')int(n.window,1,8,'window');
+   if(kind==='router_topk')int(n.k,1,8,'routing k');
+   if(kind==='qk_norm')float(n.epsilon,0,1,'epsilon',false);
+   if(kind==='logit_softcap')float(n.cap,0,100,'cap',false);
+   if(kind==='residual_scale')float(n.factor,-100,100,'factor');
    if(kind==='temperature')float(n.temperature,0,100,'temperature',false);
    if(kind==='topk')int(n.k,1,16,'k');
    if(kind==='rope2d')int(n.offset,0,64,'offset');
@@ -189,6 +201,13 @@
         const i=j-j%2,angle=(t+params.offset)/10000**(i/row.length),a=row[i],b=row[i+1];
         return j%2?a*Math.sin(angle)+b*Math.cos(angle):a*Math.cos(angle)-b*Math.sin(angle);
       }));break;
+    case 'qk_norm':value=x.map(row=>{const d=Math.sqrt(row.reduce((a,v)=>a+v*v,0)/row.length+params.epsilon);return row.map(v=>v/d);});break;
+    case 'sliding_window_mask':value=x.map((row,i)=>row.map((_,j)=>Number(j<=i&&i-j<params.window)));if(x.length!==x[0].length)fail('sliding window mask expects square matrix');break;
+    case 'logit_softcap':value=map(x,v=>params.cap*Math.tanh(v/params.cap));break;
+    case 'router_topk':{if(params.k>x[0].length)fail('k exceeds experts');const picks=x.map(row=>row.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v||a.i-b.i).slice(0,params.k));value=picks.map(row=>row.map(z=>z.i));internals={selected_weights:{shape:[x.length,params.k],values:picks.map(row=>softmax(row.map(z=>z.v))),note:'仅对已选专家 logits 重归一化，具体模型的门控方式可能不同'}};break;}
+    case 'weighted_sum':{const w=inputs.weights,v=inputs.values;if(w[0].length!==v.length)fail('weights K must equal values rows');value=w.map(row=>v[0].map((_,j)=>row.reduce((acc,z,k)=>acc+z*v[k][j],0)));break;}
+    case 'detach_demo':value=x.map(row=>row.slice());internals={gradient_boundary:{note:'forward identity; backward VJP = 0 (symbolic only)'}};break;
+    case 'residual_scale':value=map(x,v=>v*params.factor);break;
     case 'temperature':value=map(x,v=>v/params.temperature);break;
     case 'argmax':value=x.map(row=>[row.reduce((best,v,j)=>v>row[best]?j:best,0)]);break;
     case 'topk':
