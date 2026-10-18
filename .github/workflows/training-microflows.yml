@@ -20,6 +20,8 @@ on:
       - 'tests/mla_cache_composition.js'
       - 'tests/grpo_objective_contracts.js'
       - 'grpo_backward.js'
+      - 'graph_autodiff.js'
+      - 'tests/graph_autodiff_contracts.js'
       - 'tests/grpo_backward_contracts.js'
       - 'tests/mla_two_decode_steps.js'
       - 'tests/paper_linked_blocks.js'
@@ -64,4 +66,5 @@ jobs:
       - run: node tests/mla_cache_composition.js
       - run: node tests/grpo_objective_contracts.js
       - run: node --check grpo_backward.js && node tests/grpo_backward_contracts.js
+      - run: node --check graph_autodiff.js && node tests/graph_autodiff_contracts.js
       - run: node tests/mla_two_decode_steps.js
