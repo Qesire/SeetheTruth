@@ -83,3 +83,27 @@ The preview shows `Δθ` and updated parameter *without changing the graph*, its
 - The dedicated `grpo_backward.js` still handles PPO/GRPO policy-specific stop-gradient and clipping semantics. Both modes are available through the same main inspector.
 - MatMul, gated FFN, Attention and gradient flow concepts are grounded in [Attention Is All You Need](https://arxiv.org/abs/1706.03762), source framework documentation, and the block's paper knowledge entries. GPU throughput numbers are not measured or simulated.
 - Browser acceptance must check input and weight gradients, one-step optimizer preview, screenshot visibility, and that modifying/reloading a graph invalidates stale gradients. Unit tests check finite-difference oracle, detachment, shape validity, and immutable optimizer state.
+
+## Trainable Parameter block: closed teaching optimization loop
+
+The `parameter` block is a real, separately addressable source tensor within the small graph. Its **node ID is the stable parameter identity**: moving the node never changes its identity, and any number of consumer MatMul nodes can connect to one parameter output. The graph JSON includes the full bounded Float64 `params.values` and the AdamW state `params.optimizer = {t,m,v}`. These are **not hidden browser-global mutable values**.
+
+One click on `↻ 训练一步` in numerical mode runs an atomic transaction (`train_state.js`):
+
+1. Validate the entire graph and calculate its numeric forward trace.
+2. Compute the scalar MSE gradient using the same graph-autodiff VJP library already validated by finite differences.
+3. Select only `parameter` nodes reachable from the loss. Sum all incoming adjoints for each stable node ID.
+4. Compute a complete AdamW step (first/second moments, bias correction and decoupled weight decay), without mutating the original graph snapshot.
+5. Validate updated tensors and moments, evaluate the next forward pass, and return a **new** graph plus `beforeLoss`, `afterLoss`, gradient/update norms and optimizer step counters.
+6. The workbench only commits a fully successful result to the undo stack, clears stale backward gradients, and displays the new forward values.
+
+### Why this is different from AdamW preview
+
+The earlier preview was intentionally read-only. The new explicit training action **does update** the small project's parameter values, and the new values become the next iteration's forward weights. Undo restores the exact previous parameter **and optimizer moment tensors**; redo restores the newer version. `Save` exports the values and optimizer state into the project JSON. Loading that JSON then continuing training must produce the same next graph as training without the round-trip.
+
+The separate `Matrix values (JSON)` editor allows controlled changes to a selected parameter. Manual replacement resets its moment tensors and step counter; blindly reusing moments from a different tensor would be semantically invalid.
+
+Lesson **21**, `trainable_core`, retains the shared MatMul/RMSNorm/SwiGLU/Attention/MSE graph from lesson 19, but changes the shared matrix source to `parameter`. The initial weights are synthetic small tensors. The loss before/after each step is computed from the actual changed weights, not hardcoded to decrease. An optimizer step may legitimately increase a nonconvex loss; this is a teaching trace, not proof of convergence.
+
+**Verified boundaries:** no stochastic data loader, no real checkpoint, no cross-epoch generalization or GPU, no arbitrary-weight `linear` model training. The system optimizes only explicit `parameter` sources in supported numeric DAGs, using one small batch and a scalar MSE. Source references: [PyTorch Parameter](https://docs.pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html), [AdamW paper](https://arxiv.org/abs/1711.05101).
+
