@@ -704,9 +704,16 @@ $("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.eval
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const previous=clone(graph),options={count:Number($("#trainCount").value),lr:Number($("#trainLearningRate").value),weightDecay:Number($("#trainWeightDecay").value)},result=Train.steps(previous,options);
+ const possibleLosses=graph.nodes.filter(n=>n.kind==="mse");
+ const selectedLoss=possibleLosses.find(n=>n.id===selected)||
+   possibleLosses.find(n=>n.id===runScope)||(possibleLosses.length===1?possibleLosses[0]:null);
+ if(!selectedLoss)throw Error("请先选择要训练的 MSE 损失积木（有多个损失时必须明确选中）");
+ const previous=clone(graph),options={
+   count:Number($("#trainCount").value),lr:Number($("#trainLearningRate").value),
+   weightDecay:Number($("#trainWeightDecay").value),targetId:selectedLoss.id
+ },result=Train.steps(previous,options);
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
- graph=result.graph;run=result.next;runGraph=graph;runScope=null;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
+ graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
  trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};
  render();say("已提交 "+result.history.length+" 步 AdamW：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
  }catch(err){say("训练未提交："+err.message,true);}};
@@ -718,8 +725,8 @@ $("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;runGr
  render();});
 $("#prev").onclick=()=>{if(!run||step<1)return;step--;selected=run.steps[step].id;render();};
 $("#next").onclick=()=>{if(!run||step>=run.steps.length-1)return;step++;selected=run.steps[step].id;render();};
-$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
-$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
+$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
+$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
 $("#save").onclick=()=>{
  const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="seethetruth-learning-project.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
