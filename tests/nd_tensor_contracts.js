@@ -49,7 +49,7 @@ assert.deepEqual(values.perm,ND.permute(values.expand,[0,2,1,3]));
 const ready=R.check(recipe,{numeric:true});
 assert.equal(ready.executable,true);assert.equal(ready.numeric.steps,9);
 const wrong=JSON.parse(JSON.stringify(recipe));
-wrong.nodes.find(n=>n.id==='keys').params.d=4;
+wrong.nodes.find(n=>n.id==='keys').params.t=3;
 assert.equal(R.check(wrong).executable,false);
 assert.equal(R.check(wrong).nodes.find(n=>n.id==='batch_scores').status,'shape-error');
 const extra={schema:L.SCHEMA,title:'Old/new bridging',
