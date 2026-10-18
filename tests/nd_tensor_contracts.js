@@ -91,4 +91,21 @@ for(let h=0;h<2;h++)for(let t=0;t<3;t++){
 }
 assert.throws(()=>ND.causalMask4(cv.scores,0,1),/no legal key/);
 assert.deepEqual(ND.shape(ND.softmaxLast(ND.scale(cv.scores,0.5))),[1,2,3,3]);
-console.log('N-D numerical acceptance PASS: 8 operators, exact 4D permute/broadcast/matmul/reduce, 9-node lesson, legacy 2D interchange and shape errors');
+// A non-square cached-decoding window: query absolute positions [2,3], keys [0..3].
+const cachedScores=ND.seedTensor([1,2,2,4],5);
+const cachedMask=ND.causalMask4(cachedScores,2,0);
+const cachedProb=ND.softmaxLast(cachedMask);
+for(let h=0;h<2;h++)for(let q=0;q<2;q++){
+ let mass=0;
+ for(let k=0;k<4;k++){const p=cachedProb[0][h][q][k];mass+=p;
+   if(k>2+q)assert.equal(p,0,'future Key must be completely masked in a valid row');
+ }
+ close(mass,1);
+}
+assert.throws(()=>ND.causalMask4(cachedScores,0,1),/no legal key/);
+assert.throws(()=>B.execute({kind:'nd_scale',params:{factor:200}},{x:cachedScores}),/factor/);
+assert.throws(()=>B.execute({kind:'nd_causal_mask',params:{queryStart:0,keyStart:1}},{x:cachedScores}),/legal key/);
+const sharp=ND.softmaxLast(ND.scale(cachedScores,2)),soft=ND.softmaxLast(ND.scale(cachedScores,0));
+for(const head of soft[0])for(const row of head)for(const p of row)close(p,.25);
+assert.ok(ND.flatten(sharp).every(Number.isFinite));
+console.log('N-D numerical acceptance PASS: 11 operators, exact 4D permute/broadcast/matmul/reduce, 9-node lesson, legacy 2D interchange and shape errors');
