@@ -177,6 +177,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p=self.page
         p.locator('[data-preset="trainable_core"]').click()
         self.assertEqual(p.locator("#blocks .block").count(),11)
+        p.locator("#studyMode").select_option("concept")
         self.assertTrue(p.locator("#trainStep").is_disabled())
         p.locator("#studyMode").select_option("numeric")
         self.assertFalse(p.locator("#trainStep").is_disabled())
