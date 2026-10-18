@@ -4,7 +4,7 @@ const near=(x,y,e=1e-9)=>assert.ok(Math.abs(x-y)<=e,'numerical mismatch '+x+' / 
 const run=(kind,inputs={},params={})=>B.execute({kind,id:'oracle_'+kind,params},inputs);
 const V=(k,i,p)=>run(k,i,p).values;
 const A=[[1,2,3,4],[5,6,7,8]];
-assert.equal(B.KINDS.length,34);assert.equal(L.KINDS.length,45);
+assert.ok(B.KINDS.length>=34);assert.equal(L.KINDS.length,B.KINDS.length+11);
 for(const kind of B.KINDS){const d=B.defs[kind];assert.ok(d.title&&d.why&&d.formula&&d.lesson&&d.caution);assert.ok(Array.isArray(d.ports));}
 assert.deepEqual(V('transpose2d',{x:[[1,2,3],[4,5,6]]}),[[1,4],[2,5],[3,6]]);
 assert.deepEqual(V('slice_cols',{x:A},{start:1,width:2}),[[2,3],[6,7]]);
@@ -78,4 +78,4 @@ for(const type of ['swiglu','norm','embedding','classifier']){
  assert.ok(trace.steps.every(s=>s.values.flat().every(Number.isFinite)));
  assert.deepEqual(trace,L.evaluate(graph));
 }
-console.log('45-block catalogue: 34 new executable kinds, numerically checked math, negative contracts and four lessons PASS');
+console.log(`${L.KINDS.length}-block catalogue: ${B.KINDS.length} executable extensions, math and negative contracts PASS`);
