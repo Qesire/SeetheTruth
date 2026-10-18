@@ -39,9 +39,23 @@ function step(raw,options={}){
    targetId:reverse.targetId,records,previous:oldForward,next:nextForward,
    evidence:"exact bounded graph VJP + persisted AdamW matrix state; no real pretrained model or GPU execution"};
 }
+function steps(raw,options={}){
+ const count=options.count??1;
+ if(!Number.isSafeInteger(count)||count<1||count>8)throw Error("training step count must be an integer from 1 to 8");
+ const kwargs={...options};delete kwargs.count;
+ let graph=L.validateGraph(raw);const history=[];
+ for(let i=0;i<count;i++){
+   const result=step(graph,kwargs);
+   history.push({iteration:i+1,beforeLoss:result.beforeLoss,afterLoss:result.afterLoss,
+     delta:result.delta,records:result.records});
+   graph=result.graph;
+ }
+ return {graph,history,firstLoss:history[0].beforeLoss,finalLoss:history.at(-1).afterLoss,
+   next:L.evaluate(graph),evidence:"atomic bounded multi-step training, each AdamW iteration recomputes forward and VJP"};
+}
 function inspect(raw){
  const graph=L.validateGraph(raw);
  return graph.nodes.filter(n=>n.kind==="parameter").map(n=>({id:n.id,shape:[n.params.values.length,n.params.values[0].length],optimizerStep:n.params.optimizer.t}));
 }
-return Object.freeze({step,inspect});
+return Object.freeze({step,steps,inspect});
 });
