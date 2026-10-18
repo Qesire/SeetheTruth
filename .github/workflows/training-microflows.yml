@@ -13,6 +13,7 @@ on:
       - 'learn.html'
       - 'graph_layout.js'
       - 'tests/graph_layout_contracts.js'
+      - 'tests/model_gate_composition.js'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
       - 'tests/model_family_primitives.js'
@@ -49,3 +50,4 @@ jobs:
       - run: node tests/advanced_primitives.js
       - run: node tests/model_family_primitives.js
       - run: node --check graph_layout.js && node tests/graph_layout_contracts.js
+      - run: node tests/model_gate_composition.js
