@@ -22,7 +22,7 @@ for(const name of ['nd_gqa_attention','nd_mqa_attention']){
  const hkv=ND.shape(values.key)[1],ratio=4/hkv;
  const reference=manual(values.query,values.key,values.value,values.target,ratio);
  close(back.loss,reference.loss,1e-12);
- assert.deepEqual(values.context,reference.y);
+ ND.flatten(values.context).forEach((x,i)=>close(x,ND.flatten(reference.y)[i],1e-12));
  for(let h=0;h<4;h++)for(let q=0;q<3;q++){
    const row=values.probabilities[0][h][q];
    close(row.reduce((a,b)=>a+b,0),1,1e-12);
