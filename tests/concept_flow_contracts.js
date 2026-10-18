@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
