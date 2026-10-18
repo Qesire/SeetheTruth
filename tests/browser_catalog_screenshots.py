@@ -77,6 +77,35 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_training_selected_loss_with_unfinished_side_branch(self):
+        p=self.page
+        p.locator('[data-preset="trainable_core"]').click()
+        p.locator('[data-add="relu"]').click()
+        stray=p.locator('#blocks .block').last.get_attribute("data-node")
+        self.assertEqual(p.locator('[data-node="'+stray+'"]').get_attribute("data-readiness"),"missing")
+        p.locator("#trainCount").select_option("2")
+        p.locator('[data-node="loss"] .block-foot').click()
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+        self.assertIn("Loss",p.locator("#trainSummary").inner_text())
+        self.assertEqual(p.locator('#blocks .block').count(),12)
+        self.assertEqual(p.locator('[data-node="'+stray+'"]').get_attribute("data-readiness"),"missing")
+        self.assertIn("分支 loss",p.locator("#stepInfo").inner_text())
+        with p.expect_download() as saved:
+            p.locator("#save").click()
+        data=json.loads(open(saved.value.path(),encoding="utf-8").read())
+        self.assertEqual(len(data["nodes"]),12)
+        self.assertEqual(next(n for n in data["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]["t"],2)
+        self.assertEqual(next(n for n in data["nodes"] if n["id"]==stray)["kind"],"relu")
+        p.locator("#trainSummary").scroll_into_view_if_needed()
+        self.shot("38-train-partial-graph-with-side-branch.png")
+        p.locator("#undo").click()
+        with p.expect_download() as prior:
+            p.locator("#save").click()
+        previous=json.loads(open(prior.value.path(),encoding="utf-8").read())
+        self.assertEqual(next(n for n in previous["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]["t"],0)
+        self.assertEqual(len(previous["nodes"]),12)
+
     def test_partial_canvas_branch_execution_and_advisory_port_previews(self):
         p=self.page
         p.locator('[data-preset="blank"]').click()
