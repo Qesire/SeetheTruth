@@ -171,6 +171,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="mla_cache"><span class="num">17</span><span>MLA · 压缩 KV Cache<span class="desc">写入/读取 + Absorb Query + 数值等价对照</span></span></button>
   <button class="mission" data-preset="grpo_objective"><span class="num">18</span><span>GRPO · 完整损失计算流<span class="desc">Logprob → Ratio/Clip → Reference KL → Masked Loss</span></span></button>
   <button class="mission" data-preset="autodiff_core"><span class="num">19</span><span>统一反向传播 · 共享参数<span class="desc">MatMul → RMSNorm → SwiGLU → Attention → MSE，反向梯度汇合</span></span></button>
+  <button class="mission" data-preset="moe_backward"><span class="num">20</span><span>MoE · 专家参数与 Gate 反向<span class="desc">Expert W1/W3/W2 梯度累积 + Router Gate VJP + MSE</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -256,7 +257,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{backwardTrace=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -550,7 +551,7 @@ function inspect(){
       (sat?matrixHTML(sat.values,'策略截断饱和位置：1=无 ratio 梯度'):'')+
       (cuts.length?'<div class="hint">停止梯度：'+cuts.map(x=>esc(x.reason)).join('；')+'</div>':'')+
       '<p class="hint">有界小矩阵 VJP；不等于完整模型训练，离散路由与不支持的模块不伪造梯度。</p>';
-   const weightUse=n.kind==="input"&&isActive&&graph.edges.some(e=>e.from===n.id&&e.port==="b"&&graph.nodes.some(t=>t.id===e.to&&t.kind==="matmul"));
+   const weightUse=n.kind==="input"&&isActive&&graph.edges.some(e=>e.from===n.id&&graph.nodes.some(t=>t.id===e.to&&((e.port==="b"&&t.kind==="matmul")||(e.port==="weights"&&t.kind==="expert_linear_bank"))));
    if(weightUse){
      grade.innerHTML+='<div class="section"><div class="kicker">OPTIMIZER / 仅预览</div><button class="btn small" id="adamwPreview" type="button">预览 AdamW 单步更新</button><div id="adamwResult" class="hint">将此输入暂视为训练参数，不改变 seed 或前向计算图。对应 <a href="https://arxiv.org/abs/1711.05101" target="_blank" rel="noopener noreferrer">AdamW 原始论文</a>：权重衰减与自适应梯度更新解耦。</div></div>';
      $("#adamwPreview").onclick=()=>{try{
