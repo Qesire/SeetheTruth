@@ -36,6 +36,7 @@
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
     if(kind==="input"){output=[p.rows,p.width];rule="输入连续表征，建立 token 轴 T 和特征轴 D";}
+    else if(kind==="parameter"){output=[p.values.length,p.values[0].length];rule="节点 ID 为可训练参数身份；值与 AdamW 状态属于 JSON 工程，每次训练更新产生新版本快照";}
     else if(kind==="token_ids"){output=[p.rows,1];rule="产生每个 token 的离散类别索引 [T,1]";}
     else if(kind==="embedding"){
       const ids=get("ids");by(ids[1]===1,"Embedding ID 必须是 [T,1]",n.id);
