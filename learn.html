@@ -552,7 +552,7 @@ function inspect(){
       '<p class="hint">有界小矩阵 VJP；不等于完整模型训练，离散路由与不支持的模块不伪造梯度。</p>';
    const weightUse=n.kind==="input"&&isActive&&graph.edges.some(e=>e.from===n.id&&e.port==="b"&&graph.nodes.some(t=>t.id===e.to&&t.kind==="matmul"));
    if(weightUse){
-     grade.innerHTML+='<div class="section"><div class="kicker">OPTIMIZER / 仅预览</div><button class="btn small" id="adamwPreview" type="button">预览 AdamW 单步更新</button><div id="adamwResult" class="hint">将此输入作为显式可训练矩阵观察优化器，不改变 seed 或前向计算图。</div></div>';
+     grade.innerHTML+='<div class="section"><div class="kicker">OPTIMIZER / 仅预览</div><button class="btn small" id="adamwPreview" type="button">预览 AdamW 单步更新</button><div id="adamwResult" class="hint">将此输入暂视为训练参数，不改变 seed 或前向计算图。对应 <a href="https://arxiv.org/abs/1711.05101" target="_blank" rel="noopener noreferrer">AdamW 原始论文</a>：权重衰减与自适应梯度更新解耦。</div></div>';
      $("#adamwPreview").onclick=()=>{try{
        const out=AdamW.step(active.values,adjoint,null,{lr:0.01,weightDecay:0.01});
        $("#adamwResult").innerHTML='<p class="hint">AdamW：lr=0.01，β₁=0.9，β₂=0.999，decoupled weight decay=0.01；第一步使用零动量。</p>'+
