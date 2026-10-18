@@ -9,6 +9,7 @@ const sources=Object.freeze({
  qwen3:["Qwen3 Technical Report","https://arxiv.org/abs/2505.09388"],
  gemma3:["Gemma 3 Technical Report","https://arxiv.org/abs/2503.19786"],
  deepseek3:["DeepSeek-V3 Technical Report","https://arxiv.org/abs/2412.19437"],
+ deepseek3code:["DeepSeek-V3 official Gate.forward","https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py"],
  deepseekmath:["DeepSeekMath: GRPO","https://arxiv.org/abs/2402.03300"],
  deepseekv2:["DeepSeek-V2: MLA / DeepSeekMoE","https://arxiv.org/abs/2405.04434"],
  softcap:["Gemma 2 Technical Report","https://arxiv.org/abs/2408.00118"],
