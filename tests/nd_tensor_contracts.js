@@ -37,6 +37,7 @@ const recipe=L.preset("nd_attention_lesson");
 assert.equal(recipe.nodes.length,9);
 const concept=C.evaluate(recipe),numeric=L.evaluate(recipe);
 assert.deepEqual(concept.steps.map(s=>s.shape),numeric.steps.map(s=>s.shape));
+assert.equal(numeric.totalKnownFlops,144,"two-head batched GEMM count 2*B*H*M*N*K");
 const shapes=Object.fromEntries(numeric.steps.map(s=>[s.id,s.shape]));
 assert.deepEqual(shapes.batch_scores,[1,2,3,3]);
 assert.deepEqual(shapes.biased,[1,2,3,3]);
