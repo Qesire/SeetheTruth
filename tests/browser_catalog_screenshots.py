@@ -77,6 +77,42 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_free_wiring_shape_repair_without_model_template(self):
+        p=self.page
+        p.locator('[data-preset="blank"]').click()
+        p.locator('[data-add="transpose2d"]').click()
+        t=p.locator('#blocks .block').last.get_attribute("data-node")
+        self.assertEqual(p.locator('[data-node="'+t+'"]').get_attribute("data-readiness"),"missing")
+        p.locator('[data-out="x"]').click()
+        p.locator('[data-in="'+t+'"][data-port="x"]').click()
+        self.assertEqual(p.locator('[data-node="'+t+'"]').get_attribute("data-readiness"),"ready")
+        p.locator('[data-add="matmul"]').click()
+        mm=p.locator('#blocks .block').last.get_attribute("data-node")
+        for port in ("a","b"):
+            p.locator('[data-out="x"]').click()
+            p.locator('[data-in="'+mm+'"][data-port="'+port+'"]').click()
+        self.assertEqual(p.locator('[data-node="'+mm+'"]').get_attribute("data-readiness"),"shape-error")
+        self.assertIn("形状错误 1",p.locator("#graphReadiness").inner_text())
+        self.shot("35-free-wiring-shape-error.png")
+        p.locator("#checkGraph").click()
+        self.assertIn("尚不可运行",p.locator("#status").inner_text())
+        p.locator('[data-out="'+t+'"]').click()
+        p.locator('[data-in="'+mm+'"][data-port="b"]').click()
+        p.locator('[data-add="softmax"]').click()
+        soft=p.locator('#blocks .block').last.get_attribute("data-node")
+        p.locator('[data-out="'+mm+'"]').click()
+        p.locator('[data-in="'+soft+'"][data-port="x"]').click()
+        self.assertEqual(p.locator('[data-node="'+soft+'"]').get_attribute("data-readiness"),"ready")
+        self.assertIn("3×3",p.locator('[data-node="'+soft+'"]').inner_text())
+        self.assertIn("输入完整",p.locator("#graphReadiness").inner_text())
+        p.locator("#checkGraph").click()
+        self.assertIn("CPU 小张量执行",p.locator("#status").inner_text())
+        p.locator("#run").click()
+        self.assertIn("4 / 4",p.locator("#stepInfo").inner_text())
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator("#autoLayout").click()
+        self.shot("36-free-wiring-arbitrary-valid.png")
+
     def test_search_filter_circuits_and_evidence_screens(self):
         p=self.page
         size=p.evaluate("window.SeetheTruthLearning.KINDS.length")
