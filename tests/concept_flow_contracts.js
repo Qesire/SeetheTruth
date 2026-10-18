@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const L=require('../learning_lab.js'),C=require('../concept_flow.js'),B=require('../block_catalog.js');
-assert.equal(C.coveredKinds.length,45);
+assert.equal(C.coveredKinds.length,L.KINDS.length);
 assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
@@ -28,6 +28,11 @@ function perKind(k){
    else if(k==='gqa')inputs[port]=[2,port==='q'?8:4];
    else if(k==='masked_softmax')inputs[port]=[2,2];
    else if(k==='matmul')inputs[port]=port==='a'?[2,4]:[4,4];
+   else if(k==='low_rank_project')inputs[port]=port==='x'?[2,4]:port==='down'?[4,2]:[2,4];
+   else if(k==='row_bias_add')inputs[port]=port==='bias'?[1,4]:[2,4];
+   else if(k==='weighted_sum')inputs[port]=port==='weights'?[2,2]:[2,4];
+   else if(['gather_rows','scatter_add'].includes(k)&&port==='indices')inputs[port]=[2,1];
+   else if(k==='sliding_window_mask')inputs[port]=[2,2];
    else inputs[port]=[2,4];
  }
  const result=C.analyze(n,inputs);
@@ -37,6 +42,8 @@ function perKind(k){
  for(const [port,sh] of Object.entries(inputs)){
    if(port==='ids'||port==='labels')values[port]=mock(sh,()=>0);
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
+   else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
+   else if((k==='gather_rows'||k==='scatter_add')&&port==='indices')values[port]=[[0],[1]];
    else if(k==='kl_prob')values[port]=mock(sh,()=>1/sh[1]);
    else values[port]=mock(sh);
  }
@@ -69,4 +76,4 @@ assert.throws(()=>C.analyze({id:'bad',kind:'gqa',params:{heads:3,kvHeads:2,causa
 const broken=L.preset('ffn');broken.edges.pop();assert.throws(()=>C.evaluate(broken),/未连接/);
 assert.ok(C.evaluate(L.preset('classifier')).steps.find(s=>s.kind==='cross_entropy')
  .conditions.some(x=>x.includes('标签')));
-console.log('QUALITATIVE / all 45 block contracts, 12 lessons + free build, large abstract shape PASS');
+console.log('QUALITATIVE / all '+L.KINDS.length+' block contracts, presets + free build, large abstract shape PASS');
