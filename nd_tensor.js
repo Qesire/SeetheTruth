@@ -73,9 +73,27 @@ function matmul4(a,b){
   return z;
  });
 }
+function scale(x,factor){if(!Number.isFinite(factor)||Math.abs(factor)>100)fail("N-D scale factor invalid");
+ const sh=shape(x);return build(sh,index=>at(x,index)*factor);}
+function softmaxLast(x){
+ const sh=shape(x);
+ return build(sh,index=>{
+   const row=at(x,index.slice(0,-1)),peak=Math.max(...row);
+   const terms=row.map(v=>Math.exp(v-peak)),z=terms.reduce((a,b)=>a+b,0);
+   if(!Number.isFinite(z)||z<=0)fail("N-D softmax invalid normalization");
+   return terms[index.at(-1)]/z;
+ });
+}
+function causalMask4(x,queryStart=0,keyStart=0){
+ const sh=shape(x);if(sh.length!==4)fail("N-D causal mask expects [B,H,Tq,Tk]");
+ if(!Number.isSafeInteger(queryStart)||queryStart<0||queryStart>64||
+    !Number.isSafeInteger(keyStart)||keyStart<0||keyStart>64)fail("causal absolute offsets must be 0–64");
+ if(queryStart<keyStart)fail("causal mask would contain a row with no legal key");
+ return build(sh,idx=>(keyStart+idx[3]<=queryStart+idx[2]?at(x,idx):-1e9));
+}
 function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4});
 });
