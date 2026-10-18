@@ -41,8 +41,7 @@ const notes={
  gather_rows:["依据每个整数索引选择源矩阵的一整行；重复索引形成多个下游读者，不修改原张量。","Embedding 查表与稀疏专家 token dispatch 都会用到 gather 类操作，但其轴与批量组织不同。","Gather 不等于自动赋予概率权重，也不能用输出 shape 猜测源轴。","用 indices=[2,0,2] 收集三行，检查首尾两行是否相等。","embed,topk"],
  scatter_add:["对每个源行按整数目标位置执行加法；相同目标索引的贡献必须累加。","Embedding 稀疏梯度、MoE expert outputs 回填和一些并行规约都依赖 scatter/add 的数学语义。","重复目的索引时不能覆盖旧值；并行浮点加法的顺序可能影响最低位。","把两行送到相同目标位置，检验输出是否为向量和。","embed,matmul"],
  row_logsumexp:["计算 m=max(x)，随后得到 m+log(sum(exp(x-m)))，避免直接 exp(很大值) 上溢。","Softmax 和 CrossEntropy 在数值稳定实现中常使用 log-sum-exp；论文与框架可能融合多个操作。","它不是单独 Softmax：输出是逐行标量而非概率矩阵。","设置 [1000,1001] 与 [-1000,-999]，验证结果仍有限。","ce,softmax"],
- repeat_kv_rows:["把每个 KV head 对应向量重复到同组的多个 Query Head；在二维切片里以行复制演示。","GQA 采用更少 KV head 服务更多 query heads；在真实实现中既可能物理复制也可能通过索引视图广播。","不能将 head 复制当作 token 复制；反向若有多个读者，KV 梯度需沿重复分支求和。","两个 KV head、每个复制两次，预测前向输出行数与反向汇合位置。","gqa"]
-
+ repeat_kv_rows:["把每个 KV head 对应向量重复到同组的多个 Query Head；在二维切片里以行复制演示。","GQA 采用更少 KV head 服务更多 query heads；在真实实现中既可能物理复制也可能通过索引视图广播。","不能将 head 复制当作 token 复制；反向若有多个读者，KV 梯度需沿重复分支求和。","两个 KV head、每个复制两次，预测前向输出行数与反向汇合位置。","gqa"],
  qk_norm:["沿每个 head 的特征维计算均方根并归一化，输入输出维度不变；这是 Q/K 投影后的计算而不是 attention score 的归一化。","Qwen3 等模型使用 QK normalization；参数缩放、RoPE 顺序以及应用轴应以具体配置和源码为准。","不能从 QK Norm 推断整个模型使用 LayerNorm，也不能推断所有 Attention 头共享一个 gamma。","把它放在 MatMul(Q,K^T) 前，与仅对 logits 缩放的温度积木对比。","qwen3,gemma3"],
  sliding_window_mask:["逐个查询位置 i 建立可见集合 {j|max(0,i-w+1)≤j≤i}，再由 Masked Softmax 把不可见项置零。","Gemma 3 使用局部/全局注意力交错；窗口长度和 cache 位置语义与模型实现相关。","滑动窗口不是硬裁剪掉整张 KV Cache，也不表示模型不存在全局层。","将窗口设为 1、2 与 T，观察允许的键数与 Masked Softmax 的效果。","gemma3"],
  logit_softcap:["对每个 score 计算 c·tanh(score/c)，在大幅值区域压缩分数而保留平滑性。","Gemma 2 描述过 attention logits soft-capping；它与 QK Norm 是不同的机制，也不能推断 Gemma 3 一样采用该形式。","Softcap 不等于 clamp；也不保证损失或注意力熵总是单调改善。","构造极大正负 logits，比对原始 Softmax、softcap 后 Softmax。","softcap,gemma3"],
