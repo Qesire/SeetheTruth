@@ -6,9 +6,10 @@
 (function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphReadiness=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
 const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):root.SeetheTruthLearning;
 const C=typeof module==="object"&&module.exports?require("./concept_flow.js"):root.SeetheTruthConceptFlow;
+const Branch=typeof module==="object"&&module.exports?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 function check(raw,options={}){
  let graph,seq;
- try{graph=L.validateGraph(raw);seq=L.order(graph);}
+ try{graph=options.targetId?Branch.slice(raw,options.targetId):L.validateGraph(raw);seq=L.order(graph);}
  catch(err){return {executable:false,structuralError:err.message,firstError:{nodeId:err.nodeId||null,reason:err.message},nodes:[],readyCount:0,missingCount:0,errorCount:1,blockedCount:0};}
  const results=new Map(),edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
  let missingCount=0,errorCount=0,blockedCount=0,readyCount=0;
@@ -51,7 +52,27 @@ function check(raw,options={}){
  }
  return {executable:executable&&numeric?.ok!==false,structuralError:null,firstError:numeric?.ok===false?{nodeId:numeric.nodeId,reason:numeric.reason}:firstError,
     nodes:list,readyCount,missingCount,errorCount,blockedCount,numeric,
+    targetId:options.targetId||null,scope:options.targetId?"selected_upstream_dependency_slice":"full_graph",
     note:"只要求图无环、输入完整且每块积木的真实张量/数值合同成立；不要求符合任何预设模型结构"};
 }
-return Object.freeze({check});
+
+/* Advisory only. Even an incompatible preview must never silently refuse wiring. */
+function preview(raw,from,to,port){
+ let before;
+ try{before=check(raw);}catch(err){return {status:"invalid",reason:err.message};}
+ const source=before.nodes.find(n=>n.id===from),previous=before.nodes.find(n=>n.id===to);
+ if(!source||!previous)return {status:"invalid",reason:"source or destination not found"};
+ if(source.status!=="ready")return {status:"pending",reason:"上游积木尚未得到合法形状",sourceShape:null,targetShape:null};
+ let candidate;
+ try{candidate=L.connect(raw,from,to,port);}
+ catch(err){return {status:"invalid",reason:err.message,sourceShape:source.shape};}
+ const checked=check(candidate),target=checked.nodes.find(n=>n.id===to);
+ if(target?.status==="shape-error")return {status:"incompatible",reason:target.reason,sourceShape:source.shape,targetShape:null};
+ // Existing downstream consumers may become incompatible after rewiring.
+ const descendants=checked.nodes.filter(n=>n.status==="shape-error");
+ if(descendants.length)return {status:"incompatible",reason:descendants[0].id+": "+descendants[0].reason,sourceShape:source.shape,targetShape:target?.shape||null};
+ return {status:target?.status==="ready"?"compatible":"pending",reason:target?.reason||"已知维度匹配",
+   sourceShape:source.shape,targetShape:target?.shape||null};
+}
+return Object.freeze({check,preview});
 });
