@@ -172,6 +172,41 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_configurable_qkv_ffn_and_moe_parameter_training(self):
+        import json
+        p=self.page
+        cases=[
+            ("trainable_attention",10,["wq","wk","wv"],"32-qkv-three-parameter-train.png"),
+            ("trainable_swiglu",10,["w1","w3","w2"],"33-swiglu-three-parameter-train.png"),
+            ("trainable_moe",24,["w1","w3","w2"],"34-moe-three-parameter-train.png")
+        ]
+        for lesson,nodes,weight_ids,screenshot in cases:
+            p.locator('[data-preset="'+lesson+'"]').click()
+            self.assertEqual(p.locator("#blocks .block").count(),nodes)
+            p.locator("#studyMode").select_option("numeric")
+            p.locator("#trainLearningRate").select_option("0.004")
+            p.locator("#trainWeightDecay").select_option("0")
+            p.locator("#trainCount").select_option("2")
+            p.locator("#trainStep").click()
+            self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+            self.assertIn("Learning rate 0.004",p.locator("#trainSummary").inner_text())
+            self.assertIn("weight decay 0",p.locator("#trainSummary").inner_text())
+            self.assertIn("Step 2:",p.locator("#trainSummary").inner_text())
+            with p.expect_download() as d:
+                p.locator("#save").click()
+            state=json.loads(open(d.value.path(),encoding="utf-8").read())
+            param={n["id"]:n for n in state["nodes"] if n["kind"]=="parameter"}
+            self.assertEqual(set(param),set(weight_ids))
+            self.assertTrue(all(param[id]["params"]["optimizer"]["t"]==2 for id in weight_ids))
+            p.locator("#trainSummary").scroll_into_view_if_needed()
+            self.shot(screenshot)
+            p.locator("#undo").click()
+            with p.expect_download() as previous:
+                p.locator("#save").click()
+            old=json.loads(open(previous.value.path(),encoding="utf-8").read())
+            self.assertTrue(all(n["params"]["optimizer"]["t"]==0 for n in old["nodes"] if n["kind"]=="parameter"),
+                            "all parameter moments must atomically roll back after batched training")
+
     def test_parameter_train_two_steps_undo_and_json_resume(self):
         import json
         p=self.page
