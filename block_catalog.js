@@ -100,6 +100,13 @@
   masked_router_topk:block("带 Mask 的专家 Top-k","Masked Router Top-k","routing",["scores","mask"],{k:2},"I=TopK(scores restricted by mask)","将分组约束与专家候选排序实际接起来；输出离散专家 ID。","连接 Group Top-k Mask，观察被选专家全部属于允许的组。","教学权重仅在选中 logits 上做 softmax；不直接复现 DeepSeek-V3 sigmoid gate。"),
   log_softmax:block("稳定 LogSoftmax","Log Softmax","activate",["x"],{},"log p_j=x_j−logsumexp(x)","在 log 域计算归一化概率，训练 CE、PPO/DPO log-prob 均可复用。","比较与 Softmax 后再取 log 的数值稳定性。","只沿二维矩阵最后一个维度归一化，不带 mask 或跨 token loss reduction。"),
   selected_logprob:block("目标 Token 对数概率","Selected Log Probability","training",["logits","labels"],{},"log π(y|x)=logits_y−logsumexp(logits)","用逐位置 token 的真实类别索引取 log probability，作为偏好/RL 目标的前置积木。","与 CrossEntropy 每 token 值比较，应当符号相反。","仅计算已给定动作 ID 的前向 log-prob；未进行采样、序列 mask 或奖励计算。"),
+  response_token_reshape:block("按回答拆分 Token","Response Token Reshape","training",["x"],{responses:2},"[G·T,1] → [G,T]","把展平的回答 Token 对数概率恢复成回答 × Token 网格，不允许无理由重新排序。","与 Selected Log Probability 连接，比较各回答各 Token 位置。","仅一列输入；行数能被回答数整除；不是 PyTorch 通用 reshape。"),
+  response_advantage_broadcast:block("将回答优势广播至 Token","Broadcast Response Advantage","training",["advantage","tokenGrid"],{},"A[g,t]=A[g,0]","按回答把 scalar group-relative advantage 广播给该回答所有 Token；不跨样本混合。","观察不同回答的 Token 拥有相同 A，但不同回答 A 可以相反。","回答内常数 Advantage 是本教学 GRPO 约定，并不定义 token-level GAE。"),
+  policy_importance_ratio:block("新旧策略重要性比率","Policy Importance Ratio","training",["current","old"],{maxDelta:20},"r=exp(logπθ−logπold)","从同一已选动作的新旧 Token 对数概率计算策略比率。","检查 old=current 时 r=1，及大于、小于 1 的情况。","仅有限教学数值；差异超过 maxDelta 则拒绝而不是静默溢出。"),
+  ppo_clipped_surrogate:block("PPO/GRPO 截断替代目标","Clipped Policy Surrogate","training",["ratio","advantage"],{epsilon:0.2},"min(r A,clip(r,1−ε,1+ε) A)","逐 Token 计算具有正确正/负 Advantage 方向的保守截断策略目标。","对正负 Advantage 分别改变 ratio；检查 clip 不应误用 max。","只计算逐 Token surrogate，不暗含 KL、Mask 或策略更新。"),
+  sampled_reference_kl:block("采样参考 KL 惩罚","Sampled Reference KL","training",["current","reference"],{maxDelta:20},"KLest=exp(logπref−logπθ)−(logπref−logπθ)−1","根据被采样动作的参考/当前策略对数概率计算非负的逐 Token KL 惩罚估计。","参考与当前相同时值为 0；单个样本的值不等于全词表解析 KL。","这是 DeepSeekMath/DeepSeek-R1 一类参考 KL estimator，不是严格逐 token KL 分布求和。"),
+  completion_length_mask:block("回答有效 Token Mask","Completion Validity Mask","training",[],{responses:2,tokens:2,firstLength:2,secondLength:1},"M[g,t]=1 iff t<length[g]","生成小型回答长度 Mask，保证 padding Token 不参与归约。","比较第二回答有效长度 1、2 时相同 Token loss 的归约差异。","用于二维教学；只支持最多两个回答且每个回答至少一个有效 Token。"),
+  masked_grpo_objective:block("按回答归约 GRPO 目标","Masked GRPO Objective","training",["surrogate","kl","mask"],{beta:0.04},"J=(1/G)Σ_g [Σ_t mask·(surrogate−βKL)/Σ_t mask]","先对每个回答的有效 Token 平均，再对组中回答平均，输出最大化目标 J。","把不同回答长度的 Mask 接进来，观察平均归约避免长回答隐式加权。","这是明确选择的 response-mean 归约；不表示所有实现采用相同 token/response 权重，也不执行优化器。"),
   group_advantage:block("组内奖励标准化","Group-relative Advantage","training",["rewards"],{epsilon:0.00001},"A=(R−mean_group(R))/sqrt(var_group(R)+ε)","沿每行候选回答组对奖励中心化和缩放，展示 GRPO 所用的相对基线思想。","比较奖励同值、离散值、数值平移与正尺度变化。","使用平滑 epsilon 的特定教学约定，不包含 PPO clipping、KL 项或完整 GRPO 目标。"),
   router_gate_weights:block("被选专家门控权重","Selected Router Gates","routing",["scores","indices"],{mode:"sigmoid",normalize:true},"g_t,k=f(score_t,index_t,k) / Σ_k f(score_t,index_t,k)","先由离散路由选专家，再从未加偏置的 affinity 计算实际 gate。可选 identity（已计算 affinity）、sigmoid 或 selected-softmax。","刻意分别连接 biased 选择分数与 raw gate 分数，观察权重路径差异。","使用连续门控值；专家索引不可微，且不是完整 DeepSeek-V3 端到端路由器。"),
   dispatch_routed_tokens:block("Top-k Token Dispatch","Route Token Copies","routing",["x","indices"],{},"Z[t·K+k,d]=X[t,d]","对每个 Token 按路由选中数量复制输入，输出 [T·K,D]；此阶段尚不计算专家网络。","与独立专家投影、SwiGLU 和加权 Combine 组成完整小型 MoE 计算路径。","仅将复制位置对应到选中专家，不进行容量裁剪或分布式 All-to-All；T·K≤8。"),
@@ -148,6 +155,15 @@
    if(kind==='partial_rope'){int(n.rotaryDim,2,16,'rotary dimension');int(n.offset,0,64,'offset');if(n.rotaryDim%2)fail('rotary dimension must be even');}
    if(kind==='group_topk_mask'){int(n.groups,1,8,'groups');int(n.keepGroups,1,8,'keepGroups');if(n.keepGroups>n.groups)fail('keepGroups cannot exceed groups');}
    if(kind==='masked_router_topk')int(n.k,1,16,'k');
+   if(kind==='response_token_reshape')int(n.responses,1,8,'responses');
+   if(kind==='policy_importance_ratio'||kind==='sampled_reference_kl')float(n.maxDelta,0,50,'maxDelta',false);
+   if(kind==='ppo_clipped_surrogate')float(n.epsilon,0,1,'epsilon');
+   if(kind==='masked_grpo_objective')float(n.beta,0,10,'beta');
+   if(kind==='completion_length_mask'){
+      int(n.responses,1,2,'responses');int(n.tokens,1,8,'tokens');
+      int(n.firstLength,1,8,'firstLength');int(n.secondLength,1,8,'secondLength');
+      if(n.firstLength>n.tokens||n.secondLength>n.tokens)fail('completion length exceeds tokens');
+   }
    if(kind==='group_advantage')float(n.epsilon,0,1,'epsilon',false);
    if(kind==='scatter_add')int(n.rows,1,8,'scatter rows');
    if(kind==='repeat_kv_rows')int(n.groups,1,8,'KV groups');
@@ -259,6 +275,37 @@
     case 'selected_logprob':{const S=inputs.logits,I=inputs.labels;if(S.length!==I.length||I[0].length!==1)fail('selected logprob labels must be [T,1]');
       value=S.map((row,t)=>{const id=I[t][0];if(!Number.isSafeInteger(id)||id<0||id>=row.length)fail('selected logprob label out of range');
         const m=Math.max(...row),z=m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0));return [row[id]-z];});break;}
+    case 'response_token_reshape':{
+      if(x[0].length!==1||x.length%params.responses)fail('response reshape needs [G*T,1] with divisible G');
+      const T=x.length/params.responses;
+      value=Array.from({length:params.responses},(_,g)=>Array.from({length:T},(_,t)=>x[g*T+t][0]));break;}
+    case 'response_advantage_broadcast':{
+      const A=inputs.advantage,P=inputs.tokenGrid;
+      if(A.length!==P.length||A[0].length!==1)fail('advantage broadcast expects [G,1] and [G,T]');
+      value=P.map((row,g)=>row.map(()=>A[g][0]));break;}
+    case 'policy_importance_ratio':{
+      const A=inputs.current,O=inputs.old;same(A,O);
+      value=map(A,(v,g,t)=>{const delta=v-O[g][t];
+        if(Math.abs(delta)>params.maxDelta)fail('policy logprob delta exceeds limit');return Math.exp(delta);});break;}
+    case 'ppo_clipped_surrogate':{
+      const R=inputs.ratio,A=inputs.advantage;same(R,A);
+      value=map(R,(v,g,t)=>{if(v<=0)fail('importance ratio must be positive');
+        const clipped=Math.min(1+params.epsilon,Math.max(1-params.epsilon,v));
+        return Math.min(v*A[g][t],clipped*A[g][t]);});break;}
+    case 'sampled_reference_kl':{
+      const C=inputs.current,R=inputs.reference;same(C,R);
+      value=map(C,(v,g,t)=>{const delta=R[g][t]-v;if(Math.abs(delta)>params.maxDelta)fail('reference logprob delta exceeds limit');
+        return Math.expm1(delta)-delta;});break;}
+    case 'completion_length_mask':{
+      value=Array.from({length:params.responses},(_,g)=>Array.from({length:params.tokens},(_,t)=>+(t<(g?params.secondLength:params.firstLength))));break;}
+    case 'masked_grpo_objective':{
+      const A=inputs.surrogate,K=inputs.kl,M=inputs.mask;same(A,K);same(A,M);requireBinary(M);
+      let objective=0;
+      const each=A.map((row,g)=>{let count=0,sum=0;row.forEach((v,t)=>{if(M[g][t]){count++;sum+=v-params.beta*K[g][t];}});
+        if(!count)fail('GRPO mask has empty response');const mean=sum/count;objective+=mean;return [mean];});
+      value=[[objective/A.length]];
+      internals={per_response:{shape:[A.length,1],values:each,note:'each response uses its own nonzero mask count'}};
+      break;}
     case 'group_advantage':{value=inputs.rewards.map(row=>{const mu=row.reduce((a,v)=>a+v,0)/row.length;
       const variance=row.reduce((a,v)=>a+(v-mu)**2,0)/row.length;
       return row.map(v=>(v-mu)/Math.sqrt(variance+params.epsilon));});break;}
