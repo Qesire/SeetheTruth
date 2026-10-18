@@ -298,14 +298,14 @@
       if(params.start+S.length>params.capacity||C.length>params.capacity)fail('cache write exceeds fixed capacity');
       value=C.map(row=>row.slice());
       S.forEach((row,t)=>{value[params.start+t]=row.slice();});
-      internals={cache_state:{startPos:params.start,endPos:params.start+S.length,capacity:params.capacity,oldLength:C.length,newLength:value.length,updatedTokenCount:S.length,note:'immutable snapshot, old cache input remains unchanged'}};break;}
+      internals={cache_state:{shape:[1,6],values:[[params.start,params.start+S.length,params.capacity,C.length,value.length,S.length]],note:'startPos, endPos, capacity, oldLength, newLength, updatedTokens — immutable cache snapshot'}};break;}
     case 'cache_read_prefix':{const cache=inputs.cache;if(params.length>cache.length)fail('cache read exceeds committed prefix');
       value=cache.slice(0,params.length).map(row=>row.slice());
-      internals={cache_view:{endPos:params.length,availableLength:cache.length,note:'read-only prefix, not an allocation claim for a real GPU cache'}};break;}
+      internals={cache_view:{shape:[1,2],values:[[params.length,cache.length]],note:'[endPos, availableLength] read-only prefix; not a GPU allocation measurement'}};break;}
     case 'query_weight_absorb':{const Q=inputs.query,W=inputs.keyWeight;
       if(Q[0].length!==W[0].length)fail('query absorb needs Q features == projected K features');
       value=Q.map(row=>W.map(wrow=>row.reduce((sum,v,j)=>sum+v*wrow[j],0)));
-      internals={projection:{inputQuery:[Q.length,Q[0].length],keyWeight:[W.length,W[0].length],outputQuery:[value.length,value[0].length],note:'Q W_K^T, not W_K Q'}};break;}
+      internals={projection:{shape:[1,6],values:[[Q.length,Q[0].length,W.length,W[0].length,value.length,value[0].length]],note:'[Q T,Q Dk,W R,W Dk,result T,result R] — Q W_K^T'}};break;}
     case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
     case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
     case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
