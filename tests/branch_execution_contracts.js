@@ -67,5 +67,5 @@ assert.deepEqual(updated.next.steps.at(-1).shape,[1,1]);
 const resume=Train.steps(L.validateGraph(JSON.parse(JSON.stringify(updated.graph))),{targetId:"loss",count:1,lr:0.004});
 const direct=Train.steps(updated.graph,{targetId:"loss",count:1,lr:0.004});
 assert.deepEqual(resume.graph,direct.graph,"resumed branch optimizer state must match uninterrupted training");
-assert.throws(()=>Train.steps(train,{targetId:"unfinishedMatMul",count:1}),/还没有连接|未连接/);
+assert.throws(()=>Train.steps(train,{targetId:"unfinishedMatMul",count:1}),/trainable Parameter|还没有连接|未连接/);
 console.log('Arbitrary branch execution & advisory port preview PASS: partial canvas, target slice, shapes, softmax and cycles');
