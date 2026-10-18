@@ -10,8 +10,9 @@ const models=[
 ];
 let checks=0;
 for(const [preset,ids,nodeCount] of models){
- const graph=L.preset(preset),before=JSON.stringify(graph),a=L.evaluate(graph),
-       grad=G.backward(graph,a),shape=C.evaluate(graph);
+ const graph=L.preset(preset),before=JSON.stringify(graph),a=L.evaluate(graph);
+ console.log('trainable model',preset,'nodes',graph.nodes.map(n=>n.id+':'+n.kind).join(','),'last',a.steps.at(-1).id,a.steps.at(-1).shape);
+ const grad=G.backward(graph,a),shape=C.evaluate(graph);
  assert.equal(graph.nodes.length,nodeCount);
  assert.deepEqual(a.steps.map(s=>s.shape),shape.steps.map(s=>s.shape));
  for(const id of ids){
