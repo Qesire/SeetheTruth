@@ -102,6 +102,9 @@
   selected_logprob:block("目标 Token 对数概率","Selected Log Probability","training",["logits","labels"],{},"log π(y|x)=logits_y−logsumexp(logits)","用逐位置 token 的真实类别索引取 log probability，作为偏好/RL 目标的前置积木。","与 CrossEntropy 每 token 值比较，应当符号相反。","仅计算已给定动作 ID 的前向 log-prob；未进行采样、序列 mask 或奖励计算。"),
   group_advantage:block("组内奖励标准化","Group-relative Advantage","training",["rewards"],{epsilon:0.00001},"A=(R−mean_group(R))/sqrt(var_group(R)+ε)","沿每行候选回答组对奖励中心化和缩放，展示 GRPO 所用的相对基线思想。","比较奖励同值、离散值、数值平移与正尺度变化。","使用平滑 epsilon 的特定教学约定，不包含 PPO clipping、KL 项或完整 GRPO 目标。"),
   router_gate_weights:block("被选专家门控权重","Selected Router Gates","routing",["scores","indices"],{mode:"sigmoid",normalize:true},"g_t,k=f(score_t,index_t,k) / Σ_k f(score_t,index_t,k)","先由离散路由选专家，再从未加偏置的 affinity 计算实际 gate。可选 identity（已计算 affinity）、sigmoid 或 selected-softmax。","刻意分别连接 biased 选择分数与 raw gate 分数，观察权重路径差异。","使用连续门控值；专家索引不可微，且不是完整 DeepSeek-V3 端到端路由器。"),
+  dispatch_routed_tokens:block("Top-k Token Dispatch","Route Token Copies","routing",["x","indices"],{},"Z[t·K+k,d]=X[t,d]","对每个 Token 按路由选中数量复制输入，输出 [T·K,D]；此阶段尚不计算专家网络。","与独立专家投影、SwiGLU 和加权 Combine 组成完整小型 MoE 计算路径。","仅将复制位置对应到选中专家，不进行容量裁剪或分布式 All-to-All；T·K≤8。"),
+  expert_linear_bank:block("按专家权重投影","Expert-specific Linear","routing",["x","indices","weights"],{},"Y[tK+k,h]=Σ_d X[tK+k,d] W[expert[t,k]·D+d,h]","参数矩阵按 Expert 分块，每个专家维护独立投影权重；同一专家处理多个 Token 时重复读取同一块权重。","分别作为 W1/W3/W2 投影，与 SwiGLU 组合成 token-dependent Expert FFN。","权重行为教学中显式输入；无 Bias、量化、跨设备通信，训练反向由单独 VJP 合同验证。"),
+  routed_weighted_reduce:block("专家贡献加权归约","Weighted Route Reduce","routing",["values","gates"],{},"Y[t,d]=Σ_k G[t,k]·V[t·K+k,d]","把 token-major 的专家输出按原 Token 的 Top-k 门控重新归约为 [T,D]。","比较 Shared Expert 的独立支路及路由门控是否改变输出。","严格依赖 Dispatch 的 token-major 排列，不隐含专家容量或任意排序置换。"),
   expert_bank_mix:block("专家贡献加权回填","Expert Bank Mix","routing",["indices","gates","experts"],{},"Y_t=Σ_k g_t,k · ExpertBank[index_t,k,:]","把选中专家的教学向量按 gate 加权求和，清楚展示多专家聚合。","与 Top-k、Selected Gates、共享专家残差 Add 组合。","experts 是静态向量矩阵，不是 token 条件 Expert FFN；尚无 GPU dispatch 或完整反向传播。"),
   repeat_kv_rows:block("分组 KV 复制","KV Group Repeat","attention",["x"],{groups:2},"Y=repeat_interleave(X,groups,axis=rows)","以二维教学切片展示 GQA 中 KV head 向更多 query head 对齐的重复映射。","观察共享 KV 的多条消费路径以及反向应求和的语义。","此积木把行视为 Head，而非 Token；必须在真实多轴模型中校准轴含义。")
  };
@@ -263,6 +266,21 @@
         const sum=vals.reduce((a,b)=>a+b,0);if(params.mode==='identity'&&vals.some(v=>v<0))fail('identity gate affinities must be nonnegative');if(params.normalize&&sum<=0)fail('router gates all zero');
         return params.normalize?vals.map(v=>v/sum):vals;});
       break;}
+    case 'dispatch_routed_tokens':{const I=inputs.indices;if(I.length!==x.length)fail('dispatch tokens and index rows mismatch');
+      if(I.length*I[0].length>8)fail('dispatch exceeds 8 routed rows');
+      value=I.flatMap((row,t)=>row.map(id=>{if(!Number.isSafeInteger(id)||id<0)fail('dispatch expert id must be nonnegative integer');return x[t].slice();}));break;}
+    case 'expert_linear_bank':{const I=inputs.indices,W=inputs.weights,Z=x;
+      const T=I.length,K=I[0].length,D=Z[0].length;if(T*K!==Z.length)fail('expert linear selected rows must equal T*K');
+      if(W.length%D!==0)fail('expert weight rows must equal Experts*D');
+      const E=W.length/D;
+      const counts=Array(E).fill(0);
+      value=Z.map((row,n)=>{const t=Math.floor(n/K),k=n%K,id=I[t][k];
+        if(!Number.isSafeInteger(id)||id<0||id>=E)fail('expert linear index out of range');counts[id]++;
+        return W[0].map((_,h)=>row.reduce((v,x,d)=>v+x*W[id*D+d][h],0));});
+      internals={expert_load:{shape:[E,1],values:counts.map(v=>[v]),note:'每个专家收到的 token 贡献数；重复使用同一组专家参数'}};break;}
+    case 'routed_weighted_reduce':{const V=inputs.values,G=inputs.gates,T=G.length,K=G[0].length;
+      if(V.length!==T*K)fail('weighted route reduce expects values [T*K,D]');
+      value=G.map((g,t)=>V[0].map((_,d)=>g.reduce((sum,w,k)=>sum+w*V[t*K+k][d],0)));break;}
     case 'expert_bank_mix':{const I=inputs.indices,G=inputs.gates,E=inputs.experts;same(I,G);
       value=I.map((row,t)=>E[0].map((_,d)=>row.reduce((sum,id,k)=>{
         if(!Number.isSafeInteger(id)||id<0||id>=E.length)fail('expert bank index out of range');
