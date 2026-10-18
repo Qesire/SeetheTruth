@@ -35,7 +35,40 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(kind==="input"){output=[p.rows,p.width];rule="输入连续表征，建立 token 轴 T 和特征轴 D";}
+    if(kind==="nd_input"){
+      output=[p.b,p.h,p.t,p.d];rule="生成显式 [B,H,T,D] 的小型四轴张量，实际数值仍是确定性 CPU 合成数据";
+    }else if(kind==="nd_permute"){
+      const x=get("x"),order=[p.axis0,p.axis1,p.axis2,p.axis3];
+      by(x.length===4,"N-D permute requires rank 4",n.id);
+      output=order.map(i=>x[i]);rule="按指定轴的完整置换重排每个元素；保留元素总量但不保留原轴顺序";
+    }else if(kind==="nd_reshape"){
+      const x=get("x"),out=[p.b,p.h,p.t,p.d];
+      by(x.reduce((a,b)=>a*b,1)===out.reduce((a,b)=>a*b,1),"N-D reshape element count mismatch",n.id);
+      output=out;rule="行主序顺次保留所有元素，只重新解释四轴布局";
+    }else if(kind==="nd_flatten"){
+      const x=get("x");by(x.length===4,"N-D flatten requires 4 axes",n.id);
+      output=[x[0]*x[1]*x[2],x[3]];rule="合并前三轴为二维矩阵的行轴，最后通道轴不变";
+    }else if(kind==="nd_expand4d"){
+      const x=get("x");by(x.length===2,"N-D expand requires 2 axes",n.id);
+      output=[1,1,x[0],x[1]];rule="给二维矩阵的两个前导维增加 singleton axes，不复制内容";
+    }else if(kind==="nd_broadcast_add"){
+      const [a,b]=ports(n,inputs,"a","b");
+      const k=Math.max(a.length,b.length),out=[];
+      for(let i=0;i<k;i++){const x=a[a.length-1-i]??1,y=b[b.length-1-i]??1;
+       by(x===y||x===1||y===1,"N-D broadcast axes incompatible",n.id);out.unshift(Math.max(x,y));}
+      output=out;rule="末尾轴右对齐的 singleton 广播加法；不自动转置轴";
+    }else if(kind==="nd_reduce_sum"){
+      const x=get("x");by(p.axis<x.length,"N-D reduce axis out of range",n.id);
+      output=x.map((d,i)=>i===p.axis?1:d);rule="在指定轴求和而非取平均，keepdim 保留长度为 1 的轴";
+    }else if(kind==="nd_batched_matmul"){
+      const [a,b]=ports(n,inputs,"a","b");
+      by(a.length===4&&b.length===4,"N-D Batched MatMul requires rank 4",n.id);
+      by(a[3]===b[2],"N-D Batched MatMul contracted K dimensions mismatch",n.id);
+      by((a[0]===b[0]||a[0]===1||b[0]===1)&&(a[1]===b[1]||a[1]===1||b[1]===1),
+        "N-D MatMul batch/head axes cannot broadcast",n.id);
+      output=[Math.max(a[0],b[0]),Math.max(a[1],b[1]),a[2],b[3]];
+      rule="在每个批次和头中只沿 K 轴收缩；B/H 轴允许 singleton 广播";
+    }else if(kind==="input"){output=[p.rows,p.width];rule="输入连续表征，建立 token 轴 T 和特征轴 D";}
     else if(kind==="parameter"){output=[p.values.length,p.values[0].length];rule="节点 ID 为可训练参数身份；值与 AdamW 状态属于 JSON 工程，每次训练更新产生新版本快照";}
     else if(kind==="token_ids"){output=[p.rows,1];rule="产生每个 token 的离散类别索引 [T,1]";}
     else if(kind==="embedding"){
@@ -263,6 +296,7 @@
     }else{
       fail("尚无显式的定性形状合同："+kind,n.id);
     }
+    by(output.length>=2&&output.length<=4&&output.every(x=>Number.isSafeInteger(x)&&x>=1&&x<=8)&&output.reduce((a,b)=>a*b,1)<=512,"N-D inferred tensor exceeds rank/axis/512-element bound",n.id);
     return {shape:output,rule,conditions,stages,meaning:groups[L.defs[kind].category]||"数学计算"};
   }
   function evaluate(raw){
