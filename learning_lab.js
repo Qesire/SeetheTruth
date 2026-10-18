@@ -243,7 +243,59 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="trainable_core"){
+    if(name==="trainable_attention"){
+      title="任务 22 · 可训练 Q/K/V 参数 · Attention 梯度与 AdamW";
+      const P=(id,x,y,m)=>N(id,"parameter",x,y,{values:m.map(row=>row.slice()),
+        optimizer:{t:0,m:m.map(row=>row.map(()=>0)),v:m.map(row=>row.map(()=>0))}});
+      nodes=[
+        N("tokens","input",30,160,{rows:2,width:2,seed:2}),
+        P("wq",35,420,[[.4,-.2],[.1,.6]]),
+        P("wk",35,630,[[-.3,.5],[.7,.2]]),
+        P("wv",35,830,[[.2,.7],[-.4,.3]]),
+        N("q_proj","matmul",340,60),N("k_proj","matmul",340,290),
+        N("v_proj","matmul",340,520),N("attend","attention",660,260),
+        N("target","input",660,600,{rows:2,width:2,seed:6}),
+        N("loss","mse",980,300)
+      ];
+      edges=[
+        ["tokens","q_proj","a"],["wq","q_proj","b"],
+        ["tokens","k_proj","a"],["wk","k_proj","b"],
+        ["tokens","v_proj","a"],["wv","v_proj","b"],
+        ["q_proj","attend","q"],["k_proj","attend","k"],["v_proj","attend","v"],
+        ["attend","loss","prediction"],["target","loss","target"]
+      ];
+    }else if(name==="trainable_swiglu"){
+      title="任务 23 · 可训练 SwiGLU FFN · W1/W3/W2 优化";
+      const P=(id,x,y,m)=>N(id,"parameter",x,y,{values:m.map(row=>row.slice()),
+        optimizer:{t:0,m:m.map(row=>row.map(()=>0)),v:m.map(row=>row.map(()=>0))}});
+      nodes=[
+        N("tokens","input",40,170,{rows:2,width:2,seed:4}),
+        P("w1",40,390,[[.7,-.1],[.2,.5]]),
+        P("w3",40,620,[[.3,.4],[-.5,.6]]),
+        P("w2",360,690,[[.8,-.2],[.1,.4]]),
+        N("gate","matmul",360,90),N("up","matmul",360,320),
+        N("activated","swiglu",650,220),
+        N("down","matmul",950,200),
+        N("target","input",650,520,{rows:2,width:2,seed:7}),
+        N("loss","mse",1230,290)
+      ];
+      edges=[
+        ["tokens","gate","a"],["w1","gate","b"],
+        ["tokens","up","a"],["w3","up","b"],
+        ["gate","activated","gate"],["up","activated","up"],
+        ["activated","down","a"],["w2","down","b"],
+        ["down","loss","prediction"],["target","loss","target"]
+      ];
+    }else if(name==="trainable_moe"){
+      const base=preset("moe_backward"),ids=["w1","w2","w3"];
+      for(const n of base.nodes.filter(n=>ids.includes(n.id))){
+        const numerical=calculate(n,{});
+        const matrix=numerical.values.map(row=>row.slice());
+        n.kind="parameter";n.params={values:matrix,
+          optimizer:{t:0,m:matrix.map(row=>row.map(()=>0)),v:matrix.map(row=>row.map(()=>0))}};
+      }
+      return validateGraph({...base,title:"任务 24 · 可训练 MoE Expert W1/W3/W2 · 稀疏共享参数更新"});
+    }else if(name==="trainable_core"){
       const source=preset("autodiff_core");
       const W=source.nodes.find(n=>n.id==="shared_weight");
       W.kind="parameter";W.params={
