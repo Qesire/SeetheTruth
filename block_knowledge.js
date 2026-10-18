@@ -6,6 +6,8 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ adamw:["Decoupled Weight Decay Regularization","https://arxiv.org/abs/1711.05101"],
+ pytorch:["PyTorch Parameter","https://docs.pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html"],
  qwen3:["Qwen3 Technical Report","https://arxiv.org/abs/2505.09388"],
  gemma3:["Gemma 3 Technical Report","https://arxiv.org/abs/2503.19786"],
  deepseek3:["DeepSeek-V3 Technical Report","https://arxiv.org/abs/2412.19437"],
