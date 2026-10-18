@@ -88,6 +88,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("1 / 9",p.locator("#stepInfo").inner_text())
         self.assertEqual(p.locator("#matrix [data-nd-slice]").count(),2)
         self.assertEqual(p.locator("#matrix .cell").count(),12)
+        p.locator("#matrix").scroll_into_view_if_needed()
         self.shot("39-four-axis-tensor-source.png")
         head=p.locator('#matrix [data-nd-slice="1"]')
         first=p.locator("#matrix .cell").all_inner_texts()
@@ -95,6 +96,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         second=p.locator("#matrix .cell").all_inner_texts()
         self.assertNotEqual(first,second,"Head=0 and Head=1 must show different real tensor values")
         self.assertEqual(p.locator("#matrix .cell").count(),12)
+        p.locator("#matrix").scroll_into_view_if_needed()
         self.shot("40-four-axis-head-slice-one.png")
         # Inspect batched GEMM; mathematical output must contain two Heads.
         i=p.evaluate("""() => window.SeetheTruthLearning.order(
@@ -103,6 +105,8 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("1×2×3×3",p.locator("#metrics").inner_text().replace(" ",""))
         self.assertEqual(p.locator("#matrix .cell").count(),9)
         p.locator('#matrix [data-nd-slice="1"]').select_option("1")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.assertIn("144 FLOPs",p.locator("#metrics").inner_text())
         self.shot("41-batched-head-matmul-output.png")
         for _ in range(8-i):p.locator("#next").click()
         self.assertIn("9 / 9",p.locator("#stepInfo").inner_text())
