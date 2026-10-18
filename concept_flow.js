@@ -22,13 +22,13 @@
     attention:"跨 token 信息汇聚",loss:"训练目标（前向定义）",
     shape:"张量轴与布局改变",reduce:"跨特征聚合",position:"位置信息注入",
     gated:"门控 FFN 的逐通道信息控制",sampling:"输出决策或候选筛选",
-    regularize:"训练/推理行为差异"
+    regularize:"训练/推理行为差异",routing:"离散路由与专家集合",training:"策略概率/奖励与梯度语义"
   });
   const unary=new Set(["rmsnorm","silu","softmax","layernorm","l2norm",
     "relu","gelu_tanh","sigmoid","tanh","softplus","scale","bias","square",
-    "dropout_demo","pos_encoding","rope2d","temperature"]);
+    "dropout_demo","pos_encoding","rope2d","temperature","qk_norm","logit_softcap","detach_demo","residual_scale","partial_rope","log_softmax"]);
   const binary=new Set(["add","mul","subtract","divide","swiglu","geglu"]);
-  const reduced=new Set(["row_mean","row_sum","row_var"]);
+  const reduced=new Set(["row_mean","row_sum","row_var","row_logsumexp"]);
   const losses=new Set(["mse","mae_loss","kl_prob"]);
   const ports=(n,inputs,...keys)=>keys.map(k=>{by(inputs[k],n.kind+" 缺少 "+k+" 输入",n.id);return inputs[k];});
   function analyze(n,inputs){
@@ -74,6 +74,8 @@
       }[kind]||"保持输入输出形状不变，在元素或各行上应用 "+L.defs[kind].en;
       if(["pos_encoding","rope2d"].includes(kind))
         by(x[1]%2===0,"位置编码在本教学实现中要求偶数 D",n.id);
+      if(kind==="partial_rope")by(p.rotaryDim<=x[1]&&p.rotaryDim%2===0,"Partial RoPE 维度必须不超过 D 且为偶数",n.id);
+      if(kind==="detach_demo")conditions.push("Stop Gradient 前向恒等；反向 VJP=0，不是冻结参数所有路径");
       if(kind==="dropout_demo")conditions.push("本概念推演不生成随机 Mask，也不报告实际屏蔽位置");
     }else if(binary.has(kind)){
       const names=["swiglu","geglu"].includes(kind)?["gate","up"]:["a","b"];
@@ -89,6 +91,52 @@
       by(a[1]===b[0],"MatMul 内部收缩维不相同："+pretty(a)+" × "+pretty(b),n.id);
       by(b[1]<=16,"MatMul 输出特征宽度超出界限",n.id);
       output=[a[0],b[1]];rule="A[T,K] × B[K,D] 在 K 上求和，输出 [T,D]";
+    }else if(kind==="gather_rows"){
+      const [x,idx]=ports(n,inputs,"x","indices");by(idx[1]===1,"Gather indices must be [T,1]",n.id);
+      output=[idx[0],x[1]];rule="整数行索引收集输入行；重复索引意味着重复读取相同张量";
+      conditions.push("概念模式不检查每个整数 index 是否越界");
+    }else if(kind==="scatter_add"){
+      const [idx,v]=ports(n,inputs,"indices","values");by(idx[1]===1&&idx[0]===v[0],"Scatter index and values rows mismatch",n.id);
+      output=[p.rows,v[1]];rule="按目标 index 将多个源行加和，重复索引不能覆盖之前的贡献";
+      conditions.push("概念模式不检查 index 合法性");
+    }else if(kind==="repeat_kv_rows"){
+      const x=get("x");by(x[0]*p.groups<=8,"KV repeat exceeds bounded heads",n.id);
+      output=[x[0]*p.groups,x[1]];rule="示例将行视作 KV Head，复制每行给多个 Query Head；真实张量应保持 Head/Token 轴区分";
+    }else if(kind==="sliding_window_mask"){
+      const x=get("x");by(x[0]===x[1],"Sliding window mask needs square logits",n.id);
+      output=x.slice();rule="窗口 w 内因果可见性布尔矩阵，不进行概率归一化";
+    }else if(kind==="router_topk"){
+      const x=get("x");by(p.k<=x[1],"Router TopK k exceeds number of experts",n.id);
+      output=[x[0],p.k];rule="按每行专家 logits 取最大 k 个 index；选中权重在额外内部张量中";
+    }else if(kind==="weighted_sum"){
+      const [w,v]=ports(n,inputs,"weights","values");by(w[1]===v[0],"Weighted sum reduce axis mismatch",n.id);
+      output=[w[0],v[1]];rule="沿键/来源索引维加权聚合，注意权重不自动归一化";
+    }else if(kind==="low_rank_project"){
+      const [x,a,b]=ports(n,inputs,"x","down","up");
+      by(x[1]===a[0]&&a[1]===b[0],"Low-rank projection contracted dimensions mismatch",n.id);
+      output=[x[0],b[1]];rule="X·Down => latent [T,R] => Up => [T,Dout]";
+      stages={latent:[x[0],a[1]]};
+    }else if(kind==="row_bias_add"){
+      const [score,bias]=ports(n,inputs,"scores","bias");
+      by(bias[0]===1&&bias[1]===score[1],"Row Bias requires [1,E]",n.id);
+      output=score.slice();rule="广播专家选择 bias，不改变原始 gate 分数的数学定义";
+    }else if(kind==="group_topk_mask"){
+      const score=get("scores");by(score[1]%p.groups===0&&p.keepGroups<=p.groups,"Group topk partition invalid",n.id);
+      output=score.slice();rule="组内两最高分聚合后选组，输出专家维 0/1 允许集合";
+    }else if(kind==="masked_router_topk"){
+      const [score,mask]=ports(n,inputs,"scores","mask");by(equal(score,mask),"Masked Router shape mismatch",n.id);
+      by(p.k<=score[1],"Masked Router k exceeds experts",n.id);
+      output=[score[0],p.k];rule="在布尔 mask 允许的专家中按分数排序选择 k 个离散索引";
+      conditions.push("每行允许专家的数量不得少于 k；概念模式不检查实际 mask 值");
+    }else if(kind==="selected_logprob"){
+      const [logits,labels]=ports(n,inputs,"logits","labels");
+      by(labels[0]===logits[0]&&labels[1]===1,"Selected Logprob labels must be [T,1]",n.id);
+      output=[logits[0],1];rule="对每个 token 的指定动作计算 logits_y − logsumexp(logits)";
+      conditions.push("labels 必须是合法整数类别；概念模式不检查实际类别");
+    }else if(kind==="group_advantage"){
+      const rewards=get("rewards");output=rewards.slice();
+      rule="每行 reward 组分别中心化并按组方差尺度标准化；等值组的优势全部为零";
+      conditions.push("教学 epsilon 定义；不是完整 GRPO 的 clipped objective");
     }else if(kind==="attention"){
       const [q,k,v]=ports(n,inputs,"q","k","v");
       by(q[1]===k[1],"Attention Q/K 特征宽度 d_k 不一致",n.id);
