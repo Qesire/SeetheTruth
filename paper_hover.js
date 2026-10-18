@@ -16,7 +16,7 @@ panel.addEventListener("pointerenter",()=>clearTimeout(timer));panel.addEventLis
 panel.addEventListener("click",e=>{if(e.target.closest("[data-phi-close]")){pinned=false;panel.hidden=true;active=null;}});
 doc.addEventListener("keydown",e=>{if(e.key==="Escape"){pinned=false;panel.hidden=true;active=null;}});
 doc.addEventListener("focusin",e=>{const el=e.target.closest?.("[data-add],[data-node]");if(el){const kind=kindFrom(el);if(kind&&!pinned)show(kind,el);}});
-doc.addEventListener("click",e=>{if(!e.target.closest("[data-add],[data-node]")&&!panel.contains(e.target))hide();});
+doc.addEventListener("click",e=>{if(!panel.contains(e.target))hide();});
 doc.addEventListener("dragstart",hide);
 return {show,hide,resolve};}
 return Object.freeze({install,resolve});
