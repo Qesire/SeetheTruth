@@ -12,6 +12,10 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  parameter:block("可训练参数矩阵","Trainable Parameter","data",[],{
+      values:[[0.35,-0.24],[0.08,0.57]],
+      optimizer:{t:0,m:[[0,0],[0,0]],v:[[0,0],[0,0]]}
+    },"θ ∈ ℝ^{R×D}; θ_next=AdamW(θ,∇θ,m,v)","该积木的节点 ID 就是稳定参数身份；数值及 AdamW 动量状态保存在工程 JSON 中，多个下游消费者共享同一参数。","连接到多个 MatMul 权重端口，执行 Forward → VJP → AdamW → Forward 并比较每步 Loss。","仅有界教学 Float64 数据；不会加载/更新真实模型；不得将它和生成的固定 Input 混同。"),
   token_ids:block("Token ID 序列","Token IDs","data",[],{rows:3,vocab:8,seed:1},
    "ids[t] ∈ {0,…,V−1}","生成离散 token 下标而非连续隐藏向量。","连接 Embedding 并检查索引范围。","仅生成教学用整数，不执行真实 tokenizer。"),
   embedding:block("Embedding 查表","Embedding","data",["ids"],{width:4,vocab:8},
@@ -143,6 +147,15 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(kind==='parameter'){
+      const check=(value,name)=>{if(!Array.isArray(value)||!value.length||value.length>8||!Array.isArray(value[0])||!value[0].length||value[0].length>16||value.some(row=>!Array.isArray(row)||row.length!==value[0].length||row.some(x=>typeof x!=='number'||!Number.isFinite(x)||Math.abs(x)>1000)))fail('invalid '+name+' matrix');};
+      check(n.values,'parameter');
+      const opt=n.optimizer;
+      if(!opt||typeof opt!=='object'||Array.isArray(opt)||!Number.isSafeInteger(opt.t)||opt.t<0||opt.t>10000)fail('invalid optimizer step');
+      check(opt.m,'optimizer m');check(opt.v,'optimizer v');
+      if(opt.m.length!==n.values.length||opt.v.length!==n.values.length||opt.m[0].length!==n.values[0].length||opt.v[0].length!==n.values[0].length)fail('optimizer moment dimensions mismatch');
+      if(opt.v.some(row=>row.some(x=>x<0)))fail('AdamW second moment must be nonnegative');
+   }
    if(kind==='token_ids'){int(n.rows,1,8,'rows');int(n.vocab,2,16,'vocab');int(n.seed,-10000,10000,'seed');}
    if(kind==='embedding'){int(n.width,1,16,'width');int(n.vocab,2,16,'vocab');}
    if(kind==='slice_cols'){int(n.start,0,15,'start');int(n.width,1,16,'width');}
@@ -188,6 +201,7 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'parameter':value=params.values.map(row=>row.slice());internals={optimizer_step:{shape:[1,1],values:[[params.optimizer.t]],note:'AdamW step stored within this stable node ID; not a measured training run'}};break;
     case 'token_ids':
       value=Array.from({length:params.rows},(_,i)=>[(Math.abs((Math.imul(i+1,1103515245) + params.seed*12345)|0))%params.vocab]);break;
     case 'embedding':
