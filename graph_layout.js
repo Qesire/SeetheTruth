@@ -21,7 +21,7 @@ function layout(raw,options={}){
   const candidates=groups.get(depth);const rank=new Map(candidates.map((id,i)=>[id,i]));
   candidates.sort((a,b)=>{
    const score=id=>{const ps=parents.get(id).map(v=>placements.get(v)).filter(Boolean);return ps.length?ps.reduce((sum,x)=>sum+x.column*perCol+x.slot,0)/ps.length:Infinity;};
-   const sa=score(a),sb=score(b);return sa-sb||(byId.get(a).y-byId.get(b).y)||rank.get(a)-rank.get(b);
+   const sa=score(a),sb=score(b);return (Number.isFinite(sa)&&Number.isFinite(sb)?sa-sb:(Number.isFinite(sa)?-1:Number.isFinite(sb)?1:0))||rank.get(a)-rank.get(b);
   });
   candidates.forEach((id,i)=>placements.set(id,{column:nextColumn+Math.floor(i/perCol),slot:i%perCol,depth}));
   nextColumn+=Math.ceil(candidates.length/perCol);
