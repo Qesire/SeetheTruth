@@ -84,6 +84,26 @@ The preview shows `Δθ` and updated parameter *without changing the graph*, its
 - MatMul, gated FFN, Attention and gradient flow concepts are grounded in [Attention Is All You Need](https://arxiv.org/abs/1706.03762), source framework documentation, and the block's paper knowledge entries. GPU throughput numbers are not measured or simulated.
 - Browser acceptance must check input and weight gradients, one-step optimizer preview, screenshot visibility, and that modifying/reloading a graph invalidates stale gradients. Unit tests check finite-difference oracle, detachment, shape validity, and immutable optimizer state.
 
+## Trainable open-model building blocks: Q/K/V, SwiGLU, MoE
+
+The same `parameter`, `matmul`, `swiglu`, `attention`, `expert_linear_bank`, `mse`, graph VJP, and AdamW primitives provide **three additional reusable recipes**, not three new opaque executable model types.
+
+| Lesson | Explicit trainable tensors | Forward path | Gradient semantics |
+|---|---|---|---|
+| 22 · `trainable_attention` | `Wq`, `Wk`, `Wv` (each 2×2) | `XWq,XWk,XWv → SDP Attention → MSE` | independent per-matrix VJP through Q/K/V, including row Softmax |
+| 23 · `trainable_swiglu` | `W1`, `W3`, `W2` (each 2×2) | `SiLU(XW1)⊙(XW3) → W2 → MSE` | SiLU product rule and three explicit matrix derivatives |
+| 24 · `trainable_moe` | expert banks `W1`, `W3`, `W2` (each 8×2 for four 2×2 experts) | top-k indices → token dispatch → expert SwiGLU → weighted combine → shared expert + MSE | same expert receives gradients summed over every selected token; discrete index selection is detached |
+
+These are generic mathematical structures used by attention and FFN architectures such as [Qwen3](https://arxiv.org/abs/2505.09388), [DeepSeek-V3](https://arxiv.org/abs/2412.19437), and [Mixtral](https://arxiv.org/abs/2401.04088), **not full architecture or checkpoint reproductions**. Real models have additional dimensions, normalization, masking, positional treatment, capacity handling, quantization, expert parallelism and other details. In lesson 24, the shared expert's deterministic `linear` blocks remain fixed; only routed expert banks are explicit trainable Parameter nodes.
+
+### Configurable bounded optimizer transactions
+
+The workbench exposes `trainLearningRate`, `trainWeightDecay`, and `trainCount`. A training transaction can run 1, 2, 4 or 8 sequential CPU teaching steps; the entire selection is a single undoable operation. On **every** step it recomputes the actual forward trace and full reverse graph gradients before updating all active parameter nodes, so the second step cannot accidentally reuse the first step's gradient.
+
+The in-project JSON stores the exact `values` and `optimizer = {t,m,v}` for *each stable node ID*, and all three architecture recipes use the same state layout. The UI shows per-step before/after loss, allows the student to compare hyperparameters, and does not assert monotonic improvement or claim actual large-model learning.
+
+**Verification:** 33 whole-model finite-difference parameter coordinates across the Q/K/V, SwiGLU and routed MoE configurations, 2-step update for every parameter, JSON save/restore equivalence of the subsequent update, invalid count and LR rejection, and Chromium clicks through all three architecture lessons. The teaching input seeds are deterministic and no GPU or real model inference is required.
+
 ## Trainable Parameter block: closed teaching optimization loop
 
 The `parameter` block is a real, separately addressable source tensor within the small graph. Its **node ID is the stable parameter identity**: moving the node never changes its identity, and any number of consumer MatMul nodes can connect to one parameter output. The graph JSON includes the full bounded Float64 `params.values` and the AdamW state `params.optimizer = {t,m,v}`. These are **not hidden browser-global mutable values**.
