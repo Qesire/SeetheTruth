@@ -109,5 +109,5 @@ function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError});
 });
