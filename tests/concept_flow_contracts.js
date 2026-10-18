@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -28,6 +28,9 @@ function perKind(k){
    else if(k==='gqa')inputs[port]=[2,port==='q'?8:4];
    else if(k==='masked_softmax')inputs[port]=[2,2];
    else if(k==='matmul')inputs[port]=port==='a'?[2,4]:[4,4];
+   else if(k==='cache_read_prefix'&&port==='cache')inputs[port]=[3,4];
+   else if(k==='cache_write_segment'&&port==='cache')inputs[port]=[2,4];
+   else if(k==='cache_write_segment'&&port==='segment')inputs[port]=[1,4];
    else if(k==='low_rank_project')inputs[port]=port==='x'?[2,4]:port==='down'?[4,2]:[2,4];
    else if(k==='row_bias_add')inputs[port]=port==='bias'?[1,4]:[2,4];
    else if(k==='weighted_sum')inputs[port]=port==='weights'?[2,2]:[2,4];
