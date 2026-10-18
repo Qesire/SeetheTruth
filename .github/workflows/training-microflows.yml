@@ -1,0 +1,26 @@
+name: Training Microflows Contracts
+on:
+  pull_request:
+    paths:
+      - 'micro_training_flows.js'
+      - 'micro_training.html'
+      - 'tests/micro_training_flows_contracts.js'
+      - '.github/workflows/training-microflows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'micro_training_flows.js'
+      - 'micro_training.html'
+      - 'tests/micro_training_flows_contracts.js'
+      - '.github/workflows/training-microflows.yml'
+jobs:
+  numerical-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check micro_training_flows.js
+      - run: node tests/micro_training_flows_contracts.js
