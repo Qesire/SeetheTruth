@@ -172,6 +172,29 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_grpo_full_loss_as_composable_workbench_graph(self):
+        p=self.page
+        p.locator('[data-preset="grpo_objective"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),20)
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("1 / 20",p.locator("#stepInfo").inner_text())
+        self.shot("18-grpo-new-old-reference-and-rewards.png")
+        for _ in range(19):p.locator("#next").click()
+        self.assertIn("20 / 20",p.locator("#stepInfo").inner_text())
+        self.assertEqual(p.locator("#matrix .cell").count(),1)
+        self.assertIn("1 × 1",p.locator("#metrics").inner_text())
+        self.assertNotIn("无法运行",p.locator("#status").inner_text())
+        p.locator("#viewport").evaluate("(e)=>{e.scrollLeft=e.scrollWidth;e.scrollTop=0;}")
+        self.shot("19-grpo-final-clipped-masked-loss.png")
+        p.locator("#blockSearch").fill("Clipped Policy Surrogate")
+        card=p.locator('#palette [data-add="ppo_clipped_surrogate"]')
+        self.assertEqual(card.count(),1)
+        card.hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=4000)
+        self.assertIn("PPO",p.locator("#paperHoverInspector").inner_text())
+        self.shot("20-grpo-clipped-paper-hover.png")
+
     def test_mla_compressed_cache_and_absorbed_scores(self):
         p=self.page
         p.locator('[data-preset="mla_cache"]').click()
