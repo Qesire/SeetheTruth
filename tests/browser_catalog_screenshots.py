@@ -228,6 +228,9 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             self.assertIn("Learning rate 0.004",p.locator("#trainSummary").inner_text())
             self.assertIn("weight decay 0",p.locator("#trainSummary").inner_text())
             self.assertIn("Step 2:",p.locator("#trainSummary").inner_text())
+            self.assertEqual(p.locator("#trainSummary svg").count(),1)
+            self.assertIn("‖∇θ‖₂",p.locator("#trainSummary").inner_text())
+            self.assertIn("‖Δθ‖₂",p.locator("#trainSummary").inner_text())
             with p.expect_download() as d:
                 p.locator("#save").click()
             state=json.loads(open(d.value.path(),encoding="utf-8").read())
