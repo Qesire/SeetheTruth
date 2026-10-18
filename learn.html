@@ -56,7 +56,8 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .socket{width:13px;height:13px;border:2px solid #689bb6;background:#112b3c;border-radius:50%;display:inline-block;flex-shrink:0}
 .port[data-type="out"] .socket{background:#2cb5c8;border-color:#8de6ed}
 .port.connected .socket{background:#53c7a9;border-color:#b4f1d5}
-.port.pending .socket{outline:3px solid #ffd08a}.port:hover .socket{outline:2px solid #adf1fb}
+.port.pending .socket{outline:3px solid #ffd08a}.port.preview-compatible .socket{outline:2px solid #66e2c4}.port.preview-incompatible .socket{outline:2px solid #f3a06d}.port.preview-pending .socket{outline:2px dashed #eac284}.port.preview-invalid .socket{outline:2px solid #f18589}
+.port.preview-compatible{color:#adf6d9}.port.preview-incompatible{color:#ffc59e}.port:hover .socket{outline:2px solid #adf1fb}
 .port-clear{border:0;background:transparent;color:#b9a0a0;font-size:14px}
 .block-foot{display:flex;justify-content:space-between;padding:5px 11px 9px;color:#8bb4c3;font-size:10px}
 .block-delete{background:none;border:0;color:#afcbd3;font-size:15px}
@@ -208,7 +209,7 @@ input[type="file"]{display:none}
     <option value="concept" selected>原理推演 · 默认</option>
     <option value="numeric">小矩阵数值演示 · 可选</option>
   </select>
- </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><label class="study-mode-label" for="trainLearningRate">学习率 <select id="trainLearningRate" aria-label="AdamW 学习率"><option value="0.001">0.001</option><option value="0.004">0.004</option><option value="0.01" selected>0.01</option><option value="0.03">0.03</option></select></label>
+ </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="runBranch" type="button" title="只运行所选积木及其全部上游依赖；画布其他未完成的积木不影响该分支">▶ 运行选中分支</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><label class="study-mode-label" for="trainLearningRate">学习率 <select id="trainLearningRate" aria-label="AdamW 学习率"><option value="0.001">0.001</option><option value="0.004">0.004</option><option value="0.01" selected>0.01</option><option value="0.03">0.03</option></select></label>
   <label class="study-mode-label" for="trainWeightDecay">权重衰减 <select id="trainWeightDecay" aria-label="AdamW 权重衰减"><option value="0">0</option><option value="0.01" selected>0.01</option><option value="0.1">0.1</option></select></label>
   <label class="study-mode-label" for="trainCount">步数 <select id="trainCount" aria-label="连续训练步数"><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></label>
   <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 小矩阵 AdamW 更新、逐步重新执行 Forward 与 Backward，并保存新参数状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
@@ -237,6 +238,7 @@ input[type="file"]{display:none}
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
+<script src="branch_execution.js"></script>
 <script src="graph_readiness.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_hover.js"></script>
@@ -249,7 +251,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -257,7 +259,7 @@ const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕
 const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null;
+let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -266,11 +268,11 @@ function mutate(fn){
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
   // Duplicate change events and idempotent connections must not consume history.
   if(JSON.stringify(before)===JSON.stringify(valid)){render();return false;}
-  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -280,7 +282,7 @@ function openComposite(id,history){
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
   activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
-  run=null;step=-1;from=null;selected=g.nodes[0].id;
+  run=null;runGraph=null;runScope=null;step=-1;from=null;selected=g.nodes[0].id;
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.remove("active"));
   render();say("已打开 "+next.title+"。可逐层展开或执行符号推演；不要求 GPU。");
  }catch(e){say(e.message,true);}
@@ -418,7 +420,18 @@ function renderBlocks(){
  }));
  updatePending();requestAnimationFrame(drawWires);
 }
-function updatePending(){document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("pending",b.dataset.out===from));}
+function updatePending(){
+ document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("pending",b.dataset.out===from));
+ document.querySelectorAll("[data-in]").forEach(b=>{
+   for(const cls of ["preview-compatible","preview-incompatible","preview-pending","preview-invalid"])b.classList.remove(cls);
+   b.removeAttribute("data-preview");b.removeAttribute("title");
+   if(!from)return;
+   const result=Readiness.preview(graph,from,b.dataset.in,b.dataset.port);
+   b.classList.add("preview-"+result.status);b.dataset.preview=result.status;
+   b.title=(result.sourceShape?result.sourceShape.join("×")+" → ":"")+result.reason+
+      "。这是建议，不会禁止您自由接线。";
+ });
+}
 function startDrag(e){
  if(e.target.closest("button"))return;
  const h=e.currentTarget,id=h.dataset.grab,n=graph.nodes.find(q=>q.id===id);
@@ -642,9 +655,10 @@ function render(){
  $("#fitLabel").textContent=(zoomMode==="fit"?"自动适配 ":zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
- $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
+ $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length+(runScope?" · 分支 "+runScope:""):"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
- $("#backward").disabled=!run||run.mode==="concept"||!graph.nodes.some(n=>["masked_grpo_objective","mse"].includes(n.kind));
+ $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse"].includes(n.kind));
+ $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter")||!graph.nodes.some(n=>n.kind==="mse");
  $("#trainSummary").hidden=!trainStatus;
  if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · AdamW step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
@@ -676,20 +690,28 @@ $("#checkGraph").onclick=()=>{
    if(problem?.nodeId)focusGraphNode(problem.nodeId);
  }
 };
-$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);step=0;selected=run.steps[0].id;
+$("#runBranch").onclick=()=>{try{
+ if(!selected)throw Error("请选择需要运行的输出积木");
+ const targetId=selected,outcome=Branch.execute(graph,targetId,studyMode());
+ run=outcome.trace;runGraph=outcome.graph;runScope=targetId;step=run.steps.length-1;backwardTrace=null;
+ render();
+ say("✓ 仅运行 "+targetId+" 的 "+run.steps.length+" 个上游积木；画布保留 "+outcome.omittedCount+" 个未参与本次分支的积木。");
+ }catch(err){say("当前分支尚不可运行："+err.message,true);if(err.nodeId){selected=err.nodeId;render();focusGraphNode(selected);}}
+};
+$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
- catch(e){run=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
+ catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
  const previous=clone(graph),options={count:Number($("#trainCount").value),lr:Number($("#trainLearningRate").value),weightDecay:Number($("#trainWeightDecay").value)},result=Train.steps(previous,options);
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
- graph=result.graph;run=result.next;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
+ graph=result.graph;run=result.next;runGraph=graph;runScope=null;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
  trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};
  render();say("已提交 "+result.history.length+" 步 AdamW：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
  }catch(err){say("训练未提交："+err.message,true);}};
-$("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");backwardTrace=graph.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(graph,run):GeneralReverse.backward(graph,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};
-$("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;step=-1;$("#run").textContent=studyMode()==="concept"?
+$("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");const target=runGraph||graph;backwardTrace=target.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(target,run):GeneralReverse.backward(target,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};
+$("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;runGraph=null;runScope=null;step=-1;$("#run").textContent=studyMode()==="concept"?
  "▶ 推演计算逻辑":"▶ 运行小矩阵示例";
  say(studyMode()==="concept"?"已切换到原理推演：只分析模块依赖、形状与功能，不执行矩阵计算。":
    "已切换到可选小矩阵实验：使用固定教学数值，无需 GPU 或真实权重。");
