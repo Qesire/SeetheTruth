@@ -60,6 +60,15 @@
     }else if(kind==="nd_reduce_sum"){
       const x=get("x");by(p.axis<x.length,"N-D reduce axis out of range",n.id);
       output=x.map((d,i)=>i===p.axis?1:d);rule="在指定轴求和而非取平均，keepdim 保留长度为 1 的轴";
+    }else if(kind==="nd_scale"){
+      output=get("x").slice();rule="对所有轴中的每个浮点元素按显式 factor 缩放；不混淆独立 Head";
+    }else if(kind==="nd_softmax_last"){
+      output=get("x").slice();rule="每个前导轴坐标下独立沿最后的 Key 轴做稳定 Softmax";
+      conditions.push("输入包含有限数值，归一化结果每行和约等于 1");
+    }else if(kind==="nd_causal_mask"){
+      const x=get("x");by(x.length===4,"Causal scores need [B,H,Tq,Tk] 4D",n.id);
+      by(p.queryStart>=p.keyStart,"Causal first query has no legal key",n.id);
+      output=x.slice();rule="只把未来 Key 位置置为有限的大负数；Query 和 Key 使用绝对起点偏移";
     }else if(kind==="nd_batched_matmul"){
       const [a,b]=ports(n,inputs,"a","b");
       by(a.length===4&&b.length===4,"N-D Batched MatMul requires rank 4",n.id);
