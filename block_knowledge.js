@@ -10,6 +10,7 @@ const sources=Object.freeze({
  gemma3:["Gemma 3 Technical Report","https://arxiv.org/abs/2503.19786"],
  deepseek3:["DeepSeek-V3 Technical Report","https://arxiv.org/abs/2412.19437"],
  deepseek3code:["DeepSeek-V3 official Gate.forward","https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py"],
+ mixtral:["Mixtral of Experts","https://arxiv.org/abs/2401.04088"],
  deepseekmath:["DeepSeekMath: GRPO","https://arxiv.org/abs/2402.03300"],
  deepseekv2:["DeepSeek-V2: MLA / DeepSeekMoE","https://arxiv.org/abs/2405.04434"],
  softcap:["Gemma 2 Technical Report","https://arxiv.org/abs/2408.00118"],
@@ -41,8 +42,8 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
- dispatch_routed_tokens:["把 X[T,D] 的每行按路由宽度 K 复制为 X_selected[T·K,D]；新行索引 n=t·K+k。专家 ID 由独立的 indices[T,K] 给出。","Mixtral 与 DeepSeek 等稀疏 MoE 都是先选专家再把相应 Token 送到专家网络；真实实现往往还包含按 expert 排序、负载限制或 All-to-All 通信。","复制 Token 不等于执行专家；不要把被选择的专家参数与门控系数混在这个节点里。","对 T=3,K=2，检查原始第 1 行是否成为新矩阵第 2、3 行；修改 indices 不应改变复制的 X 数值。","deepseek3,deepseek3code,switch"],
- expert_linear_bank:["将多个专家的权重 W_e[D,H] 按 e·D+d 展平成 W[E·D,H]；对 route n=t·K+k 使用 indices[t,k]=e 指向的独立子矩阵，计算 Y[n,h]=Σ_d X[n,d] W[e·D+d,h]。","DeepSeek-V3 官方 Expert 含 w1/w2/w3 三套 Linear，经过 SiLU(w1(x))⊙w3(x) 与 w2 输出；Mixtral 专家也有 token-dependent 的 gated FFN。","权重按专家区分但同一专家跨 Token 共享；其梯度必须把全部命中它的 Token/路由贡献相加。这里没有 bias 与设备通信，也没有模型真实权重。","把所有专家的 W 设不同，将 indices 从 0 改成 1，输入相同时输出应不同；对重复命中专家的两次路线推导权重梯度求和。","deepseek3,deepseek3code"],
+ dispatch_routed_tokens:["把 X[T,D] 的每行按路由宽度 K 复制为 X_selected[T·K,D]；新行索引 n=t·K+k。专家 ID 由独立的 indices[T,K] 给出。","Mixtral 与 DeepSeek 等稀疏 MoE 都是先选专家再把相应 Token 送到专家网络；真实实现往往还包含按 expert 排序、负载限制或 All-to-All 通信。","复制 Token 不等于执行专家；不要把被选择的专家参数与门控系数混在这个节点里。","对 T=3,K=2，检查原始第 1 行是否成为新矩阵第 2、3 行；修改 indices 不应改变复制的 X 数值。","deepseek3,deepseek3code,mixtral,switch"],
+ expert_linear_bank:["将多个专家的权重 W_e[D,H] 按 e·D+d 展平成 W[E·D,H]；对 route n=t·K+k 使用 indices[t,k]=e 指向的独立子矩阵，计算 Y[n,h]=Σ_d X[n,d] W[e·D+d,h]。","DeepSeek-V3 官方 Expert 含 w1/w2/w3 三套 Linear，经过 SiLU(w1(x))⊙w3(x) 与 w2 输出；Mixtral 专家也有 token-dependent 的 gated FFN。","权重按专家区分但同一专家跨 Token 共享；其梯度必须把全部命中它的 Token/路由贡献相加。这里没有 bias 与设备通信，也没有模型真实权重。","把所有专家的 W 设不同，将 indices 从 0 改成 1，输入相同时输出应不同；对重复命中专家的两次路线推导权重梯度求和。","deepseek3,deepseek3code,mixtral"],
  routed_weighted_reduce:["将 V[T·K,D] 按 token-major 顺序恢复为 T 组，每组 K 行，用门控 G[T,K] 加权求和：Y[t,d]=Σ_k G[t,k]·V[t·K+k,d]。","DeepSeek-V3 和 Mixtral 的 routed expert 汇合都需要 per-token gated reduction；DeepSeek 还叠加不经 Router 的 shared-expert 支路。","权重不必自动等于概率，其合法性来自门控上游；这种归约必须与 Dispatch 排列一致，不会重排任意打包后的专家输出。","把权重设为 [1,0]、[0,1] 或 [0.2,0.8]，检查导数 dY/dV、dY/dG 和重排敏感性。","deepseek3,deepseek3code,switch"],
 
  gather_routed_bank:["输入专家池 E[Experts,D] 与每个 token 的路由索引 I[T,K]，沿 token-major 顺序生成 Y[t·K+k,:]=E[I[t,k],:]。","对应 MoE 的选择/分派前置操作；实际专家通常对路由 token 做不同的可训练 FFN，此处仅展示静态专家向量的 Gather。","这个算子不等同执行真实专家，输出 [T·K,D] 而不是 [T,D]，必须另用门控加权和规约恢复 token 维度。","令三个 token 分别选两个专家，手算第 4 行来自哪个专家索引。","deepseek3,deepseek3code"],
