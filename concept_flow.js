@@ -60,6 +60,15 @@
     }else if(kind==="nd_reduce_sum"){
       const x=get("x");by(p.axis<x.length,"N-D reduce axis out of range",n.id);
       output=x.map((d,i)=>i===p.axis?1:d);rule="在指定轴求和而非取平均，keepdim 保留长度为 1 的轴";
+    }else if(kind==="nd_repeat_kv"){
+      const x=get("x");by(x.length===4,"GQA KV Repeat requires [B,Hkv,T,D]",n.id);
+      by(p.queryHeads%x[1]===0,"GQA Query head count must divide KV head count exactly",n.id);
+      output=[x[0],p.queryHeads,x[2],x[3]];
+      rule="将每组 Query Heads 映射到一个共享的 KV Head，Hq/Hkv 整数比；实际 4D 输出是逐头复用数据";
+    }else if(kind==="nd_mse"){
+      const [a,b]=ports(n,inputs,"prediction","target");
+      by(a.length===b.length&&a.every((d,i)=>d===b[i]),"N-D MSE requires identical tensor shapes",n.id);
+      output=[1,1];rule="对所有真实多轴元素执行平均平方误差，target 是固定监督，输出可求导的标量 Loss";
     }else if(kind==="nd_scale"){
       output=get("x").slice();rule="对所有轴中的每个浮点元素按显式 factor 缩放；不混淆独立 Head";
     }else if(kind==="nd_softmax_last"){
