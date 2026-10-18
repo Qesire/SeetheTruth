@@ -100,6 +100,8 @@
   log_softmax:block("稳定 LogSoftmax","Log Softmax","activate",["x"],{},"log p_j=x_j−logsumexp(x)","在 log 域计算归一化概率，训练 CE、PPO/DPO log-prob 均可复用。","比较与 Softmax 后再取 log 的数值稳定性。","只沿二维矩阵最后一个维度归一化，不带 mask 或跨 token loss reduction。"),
   selected_logprob:block("目标 Token 对数概率","Selected Log Probability","training",["logits","labels"],{},"log π(y|x)=logits_y−logsumexp(logits)","用逐位置 token 的真实类别索引取 log probability，作为偏好/RL 目标的前置积木。","与 CrossEntropy 每 token 值比较，应当符号相反。","仅计算已给定动作 ID 的前向 log-prob；未进行采样、序列 mask 或奖励计算。"),
   group_advantage:block("组内奖励标准化","Group-relative Advantage","training",["rewards"],{epsilon:0.00001},"A=(R−mean_group(R))/sqrt(var_group(R)+ε)","沿每行候选回答组对奖励中心化和缩放，展示 GRPO 所用的相对基线思想。","比较奖励同值、离散值、数值平移与正尺度变化。","使用平滑 epsilon 的特定教学约定，不包含 PPO clipping、KL 项或完整 GRPO 目标。"),
+  router_gate_weights:block("被选专家门控权重","Selected Router Gates","routing",["scores","indices"],{mode:"sigmoid",normalize:true},"g_t,k=f(score_t,index_t,k) / Σ_k f(score_t,index_t,k)","先由离散路由选专家，再从原始未加偏置分数计算实际 gate。可选 sigmoid 或 selected-softmax。","刻意分别连接 biased 选择分数与 raw gate 分数，观察权重路径差异。","使用连续门控值；专家索引不可微，且不是完整 DeepSeek-V3 端到端路由器。"),
+  expert_bank_mix:block("专家贡献加权回填","Expert Bank Mix","routing",["indices","gates","experts"],{},"Y_t=Σ_k g_t,k · ExpertBank[index_t,k,:]","把选中专家的教学向量按 gate 加权求和，清楚展示多专家聚合。","与 Top-k、Selected Gates、共享专家残差 Add 组合。","experts 是静态向量矩阵，不是 token 条件 Expert FFN；尚无 GPU dispatch 或完整反向传播。"),
   repeat_kv_rows:block("分组 KV 复制","KV Group Repeat","attention",["x"],{groups:2},"Y=repeat_interleave(X,groups,axis=rows)","以二维教学切片展示 GQA 中 KV head 向更多 query head 对齐的重复映射。","观察共享 KV 的多条消费路径以及反向应求和的语义。","此积木把行视为 Head，而非 Token；必须在真实多轴模型中校准轴含义。")
  };
  const KINDS=Object.keys(defs);
@@ -133,6 +135,7 @@
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
    if(kind==='bias')float(n.bias,-100,100,'bias');
+   if(kind==='router_gate_weights'&&(!['sigmoid','softmax'].includes(n.mode)||typeof n.normalize!=='boolean'))fail('router gate mode or normalize invalid');
    if(kind==='partial_rope'){int(n.rotaryDim,2,16,'rotary dimension');int(n.offset,0,64,'offset');if(n.rotaryDim%2)fail('rotary dimension must be even');}
    if(kind==='group_topk_mask'){int(n.groups,1,8,'groups');int(n.keepGroups,1,8,'keepGroups');if(n.keepGroups>n.groups)fail('keepGroups cannot exceed groups');}
    if(kind==='masked_router_topk')int(n.k,1,16,'k');
@@ -250,6 +253,19 @@
     case 'group_advantage':{value=inputs.rewards.map(row=>{const mu=row.reduce((a,v)=>a+v,0)/row.length;
       const variance=row.reduce((a,v)=>a+(v-mu)**2,0)/row.length;
       return row.map(v=>(v-mu)/Math.sqrt(variance+params.epsilon));});break;}
+    case 'router_gate_weights':{const S=inputs.scores,I=inputs.indices;
+      if(S.length!==I.length)fail('router gates require same token rows');
+      value=I.map((row,t)=>{const picked=row.map(j=>{
+        if(!Number.isSafeInteger(j)||j<0||j>=S[t].length)fail('router gate expert index out of range');
+        return S[t][j];});
+        const vals=params.mode==='sigmoid'?picked.map(sigmoid):softmax(picked);
+        const sum=vals.reduce((a,b)=>a+b,0);if(params.normalize&&sum<=0)fail('router gates all zero');
+        return params.normalize?vals.map(v=>v/sum):vals;});
+      break;}
+    case 'expert_bank_mix':{const I=inputs.indices,G=inputs.gates,E=inputs.experts;same(I,G);
+      value=I.map((row,t)=>E[0].map((_,d)=>row.reduce((sum,id,k)=>{
+        if(!Number.isSafeInteger(id)||id<0||id>=E.length)fail('expert bank index out of range');
+        return sum+G[t][k]*E[id][d];},0)));break;}
     case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
     case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
     case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
