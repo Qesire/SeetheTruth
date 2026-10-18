@@ -50,6 +50,7 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ nd_parameter:["四轴 Parameter 不是每次重播种子的输入，而是 JSON 工程中具有稳定节点身份的张量值 θ[B,H,T,D]。同一个参数输出可以同时连到多个消费者，反向传播按节点 ID 汇合 VJP。","训练状态保存 θ 以及独立的 AdamW m/v 张量和 t 步数；每一步都重新运行当前 DAG Forward，再计算反向梯度和下一次权重数值。PyTorch Parameter 和 AdamW 是标准来源。","仅有界 Float64 CPU 教学；这并不是 GPU 上真实的大模型训练。修改参数值后必须重置矩阵形状一致的动量，不能沿用原状态。","将课程 29/30 中的 Q/K/V 从多个输入替换为共享 Parameter，观察各 Head 梯度总和、两步 AdamW、导出再恢复第三步。","pytorch,adamw,gqa_paper"],
  nd_input:["显式生成轴次序 [B,H,T,D] 的 4D 合成张量，按行主序储存。形状如 [1,2,3,4] 表示一个批次、两个头、三个时间坐标、每个四维通道。","常见 Transformer 计算会把批次、头、Token 与通道作为独立轴；不同实现实际轴顺序可能不同。","轴名仅是当前课程约定，形状数值不意味着真实模型参数。全部数值有 512 元素上限。","独立改变 H 与 T，看 MatMul 是否受内维约束。","transformer,tensor_views"],
  nd_permute:["Permute 按 π 指定的新轴索引取旧轴位置；例如 [B,H,T,D] → [B,T,H,D] 对应 π=(0,2,1,3)。数据地址意义改变，而不是随意改标签。","PyTorch permute/view 的 stride 与可能的连续化区别非常重要；本教学内核执行真实值重排，未模拟真实 stride 或物理显存。","轴值必须构成完整的 0、1、2、3 置换；reshape 不等于 permute。","设置 0,2,1,3，再反向设置 0,2,1,3，检查输出与输入逐元素一致。","tensor_views"],
  nd_reshape:["Reshape 在行主序下保留每个元素的线性顺序，把数量不变的元素重新组织到 [B,H,T,D]。","真实模型中常把合并特征维重新解释为 Head × HeadDim，但此前必须保证维度积可整除。","reshape 不移动 Head/Token 的逻辑轴；和 transpose 不可交换。","把 [6,4] 改为 [1,2,3,4]，再 Flatten，比较一维展开次序。","tensor_views"],
