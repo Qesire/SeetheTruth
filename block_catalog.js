@@ -88,6 +88,7 @@
   weighted_sum:block("加权特征汇聚","Weighted Sum","combine",["weights","values"],{},"y_t=Σ_j weights[t,j]·values[j,:]","把加权汇聚拆成独立积木，可用于 Attention 或专家输出的可视化简化。","测试权重归一化是否由上游保障。","无 batch/head 维；不是真实 MoE 的 per-token dynamic gather。"),
   detach_demo:block("停止梯度","Stop Gradient","training",["x"],{},"y=stop_gradient(x)","前向输出与输入完全一致，但反向不通过此边传播梯度。","与残差路径配合，追踪哪些边仍接收梯度。","当前计算引擎仅执行前向；此处反向边界属于符号契约。"),
   residual_scale:block("残差支路缩放","Residual Branch Scale","combine",["x"],{factor:0.5},"y=αx","单独配置某条残差支路的系数，可与 Add 组成可视化残差。","改变 α 观察输出与梯度比例。","只改变支路幅度，不代表 DeepNorm 等完整网络初始化配方。"),
+  gather_routed_bank:block("多路专家向量 Gather","Top-k Expert Gather","routing",["x","indices"],{},"Y[t·K+k,:]=X[I[t,k],:]","按 Token 顺序把每个 token 的 K 个所选专家向量展平成 [T·K,D]，适配多专家路由。","连接 Top-k Router 和专家向量池，观察输出顺序和重复专家行。","这里只 Gather 静态演示向量，不执行每 token 的专家 FFN；T·K 不得超过教学张量上限。"),
   gather_rows:block("按索引收集行","Gather Rows","shape",["x","indices"],{},"Y[t,:]=X[indices[t,0],:]","按 token/专家索引收集输入矩阵行，供离散路由或检索组合。","观察重复索引如何复用同一行。","索引必须是 [T,1] 整数，输出行数受教学上限约束。"),
   scatter_add:block("按索引累加行","Scatter Add","combine",["indices","values"],{rows:3},"Y[index[t],:]+=values[t,:]","把多路贡献按目标行索引聚合，是专家输出回填和共享梯度汇合的基础。","用重复 index 检查真实加法聚合而非覆盖。","输出初始化为零，未实现指定 base tensor 上的 scatter_add。"),
   row_logsumexp:block("逐行 LogSumExp","LogSumExp","reduce",["x"],{},"y[t]=m+log Σ_d exp(x[t,d]−m)","稳定计算归一化常数，用于交叉熵、Softmax 和策略 log probability。","比较大幅 logits 的稳定性。","只沿最后的特征维归约，不包含 mask。"),
@@ -266,6 +267,8 @@
       value=I.map((row,t)=>E[0].map((_,d)=>row.reduce((sum,id,k)=>{
         if(!Number.isSafeInteger(id)||id<0||id>=E.length)fail('expert bank index out of range');
         return sum+G[t][k]*E[id][d];},0)));break;}
+    case 'gather_routed_bank':{const ids=inputs.indices;if(ids.length*ids[0].length>8)fail('routed gather exceeds eight rows');
+      value=ids.flatMap(row=>row.map(i=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('routed gather index out of bounds');return x[i].slice();}));break;}
     case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
     case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
     case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
