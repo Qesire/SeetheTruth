@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -27,6 +27,8 @@ function perKind(k){
   const sample=(sh,seed)=>ND.seedTensor(sh,seed);
   let inputs={};
   if(k==='nd_permute'||k==='nd_flatten'||k==='nd_reduce_sum'||k==='nd_scale'||k==='nd_softmax_last'||k==='nd_causal_mask')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_repeat_kv')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_mse')inputs={prediction:sample([1,2,3,4],2),target:sample([1,2,3,4],3)};
   else if(k==='nd_reshape')inputs={x:sample([6,4],2)};
   else if(k==='nd_expand4d')inputs={x:sample([3,4],2)};
   else if(k==='nd_broadcast_add')inputs={a:sample([1,2,3,4],2),b:sample([1,1,3,4],3)};
