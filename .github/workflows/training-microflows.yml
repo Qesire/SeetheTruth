@@ -7,6 +7,8 @@ on:
       - 'paper_lab.html'
       - 'paper_hover.js'
       - 'block_catalog.js'
+      - 'nd_tensor.js'
+      - 'tests/nd_tensor_contracts.js'
       - 'block_knowledge.js'
       - 'concept_flow.js'
       - 'learning_lab.js'
