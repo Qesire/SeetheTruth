@@ -44,6 +44,7 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ parameter:["这块独立矩阵的节点 ID 是参数身份，多个 MatMul 可以从其同一个输出端口取值并累加权重梯度；params.values、optimizer.{t,m,v} 随学习工程 JSON 一起保存。","对应常见 PyTorch Parameter 与 AdamW optimizer.state 的关键区别：数值张量和一阶/二阶动量属于训练状态，节点位置或渲染顺序不是参数身份。","本课程仅用微型 Float64 CPU 张量表达优化的状态转换；不能把单步 Loss 下降等同于模型泛化或真实 GPU 训练。","先用两个 MatMul 共用该节点，改变一条连线后检查梯度变化；执行两步 AdamW，导出 JSON 再导入检查参数与动量保留。","adamw,pytorch"],
  response_token_reshape:["把 G×T 条展平 token 记录 [G*T,1] 恢复成回答-Token 矩阵 [G,T]。输出行 g、列 t 与原第 g*T+t 行严格同位。","PPO/GRPO 按采样回答及生成 token 组织旧/新策略 log probabilities；训练代码通常还需 attention/completion masks 和 padding 对齐。","这只是把布局显式化，不会在 Token 之间执行求和，不会恢复隐藏的对话或采样信息。","用 [0,1,2,3] 四个标量重排为两回答各两 Token，验证原次序。","deepseekmath,ppo"],
  response_advantage_broadcast:["把 [G,1] 的组内回答优势 A[g] 复制到每个有效 token 的位置；完整目标的 Mask 在后续积木处理。","DeepSeekMath GRPO 把同题多回答的 reward 相对优势用于采样回答的 token 级 surrogate，无独立 critic value baseline。","这里 A 按回答常量，不是 PPO 的 token-level GAE，更不能把不同 prompt 的 group 混为同一组。","使两个回答优势一正一负，观察广播后每行相同而行间不同。","deepseekmath,deepseekr1"],
  policy_importance_ratio:["输入同一 token 的新策略与采样时旧策略 logprob，计算 exp(logπθ−logπold)。比率定义依赖固定的已生成 token 动作。","PPO/GRPO 以旧策略的生成样本为条件，对新策略做重要性校正；不能把参考模型概率误用成 old policy 分母。","old/reference 是角色不同的两套策略，ratio 本身不等于优势目标或 KL 惩罚。数值示例拒绝过大 logp 差异。","令 current=old 验证 r=1，并分别施加正负偏移检查 r 的变化方向。","ppo,deepseekmath"],
