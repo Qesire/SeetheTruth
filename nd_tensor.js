@@ -91,9 +91,23 @@ function causalMask4(x,queryStart=0,keyStart=0){
  if(queryStart<keyStart)fail("causal mask would contain a row with no legal key");
  return build(sh,idx=>(keyStart+idx[3]<=queryStart+idx[2]?at(x,idx):-1e9));
 }
+function repeatKVHeads(x,queryHeads){
+ const sh=shape(x);
+ if(sh.length!==4)fail("GQA KV Repeat requires four axes [B,Hkv,T,D]");
+ if(!Number.isSafeInteger(queryHeads)||queryHeads<1||queryHeads>MAX_DIM||
+    queryHeads%sh[1]!==0)fail("GQA Query head count must be an integer multiple of KV heads");
+ const group=queryHeads/sh[1];
+ return build([sh[0],queryHeads,sh[2],sh[3]],([b,h,t,d])=>x[b][Math.floor(h/group)][t][d]);
+}
+function meanSquaredError(x,y){
+ const a=shape(x),b=shape(y);
+ if(a.length!==b.length||a.some((d,i)=>d!==b[i]))fail("N-D MSE requires identical tensor shapes");
+ const xf=flatten(x),yf=flatten(y);
+ return [[xf.reduce((sum,v,i)=>sum+(v-yf[i])**2,0)/xf.length]];
+}
 function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError});
 });
