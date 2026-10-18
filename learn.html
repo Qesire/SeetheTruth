@@ -590,8 +590,13 @@ function inspect(){
      (active.flops!==null?'<div class="metric"><span>教学 GEMM 运算量</span><b>'+active.flops+'</b></div>':'')+
      '<div class="hint">可统计 GEMM 主项：'+run.totalKnownFlops+' FLOPs；未包含非线性或控制开销，非真实硬件测量。</div>':
      '<div class="hint">暂无该积木的逐步输出；运行后向前单步执行。</div>';
-   $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · float64 teaching matrix":"shape: —";
+   $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · Float64 教学张量":"shape: —";
    $("#matrix").innerHTML=active?matrixHTML(active.values,"输出数值"):'<p class="hint">单步运行后，此处显示真实计算的微型矩阵。</p>';
+   $("#matrix").querySelectorAll("[data-nd-slice]").forEach(control=>control.onchange=()=>{
+     const values=[...$("#matrix").querySelectorAll("[data-nd-slice]")].map(el=>Number(el.value));
+     let view=active.values;for(const index of values)view=view[index];
+     $("#matrix .nd-plane").innerHTML=matrixHTML(view,"轴切片 "+values.join("/"));
+   });
    $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>{
      const axes=Array.isArray(val.axes)?' [ '+val.axes.map((axis,i)=>axis+'='+val.shape[i]).join(' · ')+' ]':'';
      const options=val.tensor&&val.tensor.shape.length===4&&val.tensor.shape[1]>1?
