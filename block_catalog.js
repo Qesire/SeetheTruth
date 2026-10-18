@@ -26,6 +26,10 @@
    "Y = broadcast(A)+broadcast(B)","按 NumPy/PyTorch 风格从右对齐，只有相等或为 1 的轴可以广播。","把 [1,2,3,4] 与 [1,1,3,4] 相加，查看 Head 广播。","不会自动转置轴，也不会任意重复不兼容的维度。"),
   nd_reduce_sum:block("指定轴求和","N-D Axis Sum","combine",["x"],{axis:2},
    "Y = Σ_axis X (keepdim=1)","只沿给定轴聚合，同时保留长度为 1 的轴，便于后续广播。","比较在 Token 轴求和前后的 [B,H,T,D]。","这是 sum 不是 mean；除以轴长度必须额外连 Scale。"),
+  nd_repeat_kv:block("GQA/MQA KV 头重用","Repeat KV Heads","attention",["x"],{queryHeads:4},
+   "[B,Hkv,T,D] → [B,Hq,T,D]","按 Hq/Hkv 分组连续映射 Query Head 至同一 KV Head；GQA/MQA 的显式教学视图。","比较 Hq=4,Hkv=2 的分组 KV，与 Hq=4,Hkv=1 的 MQA。","重复是计算视图，不代表真实推理必须物理复制 KV cache；需满足 Hq % Hkv = 0。"),
+  nd_mse:block("四轴均方误差","N-D Scalar MSE","loss",["prediction","target"],{},
+   "mean((X−Y)²) ∈ R¹×¹","对相同形状的两个多轴张量求所有元素的均方误差，输出 [1,1] 以衔接训练反向图。","与四轴 Attention Context 连接后，检查每个 Q/K/V 来源的梯度。","不隐式广播或容忍长度不同的张量；target 作为固定教学监督值。"),
   nd_scale:block("多维缩放","N-D Scale","compute",["x"],{factor:0.5},
    "Y=X·factor","对真实多维张量的每一个元素乘常数。","连接 QKᵀ 到本积木，用 1/√HeadDim 缩放，再送入 Softmax。","factor 是显式参数；不会自动推断真实模型 HeadDim。"),
   nd_softmax_last:block("最后轴 Softmax","N-D Last-Axis Softmax","attention",["x"],{},
@@ -180,6 +184,7 @@
    }
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
+   if(kind==='nd_repeat_kv')int(n.queryHeads,1,8,'GQA Query head count');
    if(kind==='nd_causal_mask'){int(n.queryStart,0,64,'queryStart');int(n.keyStart,0,64,'keyStart');if(n.queryStart<n.keyStart)fail('Causal mask no legal key at first query');}
    if(kind==='parameter'){
       const check=(value,name)=>{if(!Array.isArray(value)||!value.length||value.length>8||!Array.isArray(value[0])||!value[0].length||value[0].length>16||value.some(row=>!Array.isArray(row)||row.length!==value[0].length||row.some(x=>typeof x!=='number'||!Number.isFinite(x)||Math.abs(x)>1000)))fail('invalid '+name+' matrix');};
@@ -242,6 +247,8 @@
      else if(kind==='nd_broadcast_add')value=ND.broadcastBinary(inputs.a,inputs.b,(a,b)=>a+b);
      else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
+     else if(kind==='nd_repeat_kv')value=ND.repeatKVHeads(inputs.x,params.queryHeads);
+     else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
      else if(kind==='nd_scale')value=ND.scale(inputs.x,params.factor);
      else if(kind==='nd_softmax_last')value=ND.softmaxLast(inputs.x);
      else if(kind==='nd_causal_mask')value=ND.causalMask4(inputs.x,params.queryStart,params.keyStart);
