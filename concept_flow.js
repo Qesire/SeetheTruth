@@ -35,7 +35,8 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(kind==="nd_input"){
+    if(kind==="nd_parameter"){const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):globalThis.SeetheTruthND;output=ND.shape(p.values);rule="节点 ID 是真实小张量参数身份，JSON 存放 θ 及 AdamW 的 m/v/t，多个下游共享同一可求导来源";
+    }else if(kind==="nd_input"){
       output=[p.b,p.h,p.t,p.d];rule="生成显式 [B,H,T,D] 的小型四轴张量，实际数值仍是确定性 CPU 合成数据";
     }else if(kind==="nd_permute"){
       const x=get("x"),order=[p.axis0,p.axis1,p.axis2,p.axis3];
