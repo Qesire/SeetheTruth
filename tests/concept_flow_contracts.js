@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','nd_trainable_gqa','nd_trainable_mqa','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -23,6 +23,11 @@ for(const name of presetNames){
 }
 function perKind(k){
  if(k.startsWith('nd_')){
+  if(k==='nd_parameter'){
+   const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
+   const expected=ND.shape(n.params.values),sym=C.analyze(n,{}),num=B.execute(n,{});
+   assert.deepEqual(sym.shape,expected);assert.deepEqual(num.shape,expected);return;
+  }
   const ND=require('../nd_tensor.js'),d=L.defs[k],n={id:k,kind:k,params:d.params};
   const sample=(sh,seed)=>ND.seedTensor(sh,seed);
   let inputs={};
