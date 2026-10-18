@@ -62,4 +62,33 @@ const extra={schema:L.SCHEMA,title:'Old/new bridging',
 const evalOld=L.evaluate(extra),step=Object.fromEntries(evalOld.steps.map(s=>[s.id,s.values]));
 assert.deepEqual(step.old,step.back);
 assert.deepEqual(ND.flatten(step.new),ND.flatten(step.lossless));
+const casual=L.preset("nd_causal_attention"),causalCon=C.evaluate(casual),causalNum=L.evaluate(casual);
+assert.equal(casual.nodes.length,9);
+assert.deepEqual(causalCon.steps.map(s=>s.shape),causalNum.steps.map(s=>s.shape));
+const cv=Object.fromEntries(causalNum.steps.map(s=>[s.id,s.values]));
+assert.deepEqual(ND.shape(cv.key_transpose),[1,2,4,3]);
+assert.deepEqual(ND.shape(cv.scores),[1,2,3,3]);
+assert.deepEqual(ND.shape(cv.probabilities),[1,2,3,3]);
+assert.deepEqual(ND.shape(cv.context),[1,2,3,4]);
+assert.equal(causalNum.totalKnownFlops,2*2*1*3*3*4+2*2*1*3*4*3);
+for(let h=0;h<2;h++)for(let t=0;t<3;t++){
+ let rowSum=0;
+ for(let k=0;k<3;k++){
+   const prob=cv.probabilities[0][h][t][k];rowSum+=prob;
+   if(k>t)assert.equal(prob,0,"causal attention prohibits future keys");
+ }
+ close(rowSum,1);
+ for(let d=0;d<4;d++){
+   let oracle=0;for(let k=0;k<=t;k++){
+     let dot=0;for(let c=0;c<4;c++)dot+=cv.query[0][h][t][c]*cv.key[0][h][k][c];
+     // independent normalized softmax weights from explicit causal row
+     const scores=Array.from({length:t+1},(_,j)=>cv.query[0][h][t].reduce((v,x,c)=>v+x*cv.key[0][h][j][c]*.5,0));
+     const max=Math.max(...scores),weights=scores.map(x=>Math.exp(x-max)),den=weights.reduce((x,y)=>x+y,0);
+     oracle+=weights[k]/den*cv.value[0][h][k][d];
+   }
+   close(cv.context[0][h][t][d],oracle);
+ }
+}
+assert.throws(()=>ND.causalMask4(cv.scores,0,1),/no legal key/);
+assert.deepEqual(ND.shape(ND.softmaxLast(ND.scale(cv.scores,0.5))),[1,2,3,3]);
 console.log('N-D numerical acceptance PASS: 8 operators, exact 4D permute/broadcast/matmul/reduce, 9-node lesson, legacy 2D interchange and shape errors');
