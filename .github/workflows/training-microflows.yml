@@ -2,7 +2,7 @@ name: Training Microflows Contracts
 on:
   pull_request:
     paths:
-      - 'micro_training_flows.js'
+      - 'micro_training_flows.js'\n      - 'paper_patches.js'\n      - 'tests/paper_patches_contracts.js'
       - 'micro_training.html'
       - 'tests/micro_training_flows_contracts.js'
       - '.github/workflows/training-microflows.yml'
@@ -23,4 +23,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --check micro_training_flows.js
-      - run: node tests/micro_training_flows_contracts.js
+      - run: node tests/micro_training_flows_contracts.js\n      - run: node --check paper_patches.js\n      - run: node tests/paper_patches_contracts.js
