@@ -87,7 +87,11 @@
   router_topk:block("Router Top-k 索引","Router Dispatch IDs","routing",["x"],{k:2},"I=TopK(logits,k); w=softmax(selected logits)","按 token 选择专家索引，显式返回稀疏路由权重。","连接专家分派；分析负载与 selected-gate normalization。","输出只有索引供教学；权重保存在内部信息中，没有执行专家计算。"),
   weighted_sum:block("加权特征汇聚","Weighted Sum","combine",["weights","values"],{},"y_t=Σ_j weights[t,j]·values[j,:]","把加权汇聚拆成独立积木，可用于 Attention 或专家输出的可视化简化。","测试权重归一化是否由上游保障。","无 batch/head 维；不是真实 MoE 的 per-token dynamic gather。"),
   detach_demo:block("停止梯度","Stop Gradient","training",["x"],{},"y=stop_gradient(x)","前向输出与输入完全一致，但反向不通过此边传播梯度。","与残差路径配合，追踪哪些边仍接收梯度。","当前计算引擎仅执行前向；此处反向边界属于符号契约。"),
-  residual_scale:block("残差支路缩放","Residual Branch Scale","combine",["x"],{factor:0.5},"y=αx","单独配置某条残差支路的系数，可与 Add 组成可视化残差。","改变 α 观察输出与梯度比例。","只改变支路幅度，不代表 DeepNorm 等完整网络初始化配方。")
+  residual_scale:block("残差支路缩放","Residual Branch Scale","combine",["x"],{factor:0.5},"y=αx","单独配置某条残差支路的系数，可与 Add 组成可视化残差。","改变 α 观察输出与梯度比例。","只改变支路幅度，不代表 DeepNorm 等完整网络初始化配方。"),
+  gather_rows:block("按索引收集行","Gather Rows","shape",["x","indices"],{},"Y[t,:]=X[indices[t,0],:]","按 token/专家索引收集输入矩阵行，供离散路由或检索组合。","观察重复索引如何复用同一行。","索引必须是 [T,1] 整数，输出行数受教学上限约束。"),
+  scatter_add:block("按索引累加行","Scatter Add","combine",["indices","values"],{rows:3},"Y[index[t],:]+=values[t,:]","把多路贡献按目标行索引聚合，是专家输出回填和共享梯度汇合的基础。","用重复 index 检查真实加法聚合而非覆盖。","输出初始化为零，未实现指定 base tensor 上的 scatter_add。"),
+  row_logsumexp:block("逐行 LogSumExp","LogSumExp","reduce",["x"],{},"y[t]=m+log Σ_d exp(x[t,d]−m)","稳定计算归一化常数，用于交叉熵、Softmax 和策略 log probability。","比较大幅 logits 的稳定性。","只沿最后的特征维归约，不包含 mask。"),
+  repeat_kv_rows:block("分组 KV 复制","KV Group Repeat","attention",["x"],{groups:2},"Y=repeat_interleave(X,groups,axis=rows)","以二维教学切片展示 GQA 中 KV head 向更多 query head 对齐的重复映射。","观察共享 KV 的多条消费路径以及反向应求和的语义。","此积木把行视为 Head，而非 Token；必须在真实多轴模型中校准轴含义。")
  };
  const KINDS=Object.keys(defs);
  const fail=s=>{throw Error(s);};
@@ -120,6 +124,8 @@
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
    if(kind==='bias')float(n.bias,-100,100,'bias');
+   if(kind==='scatter_add')int(n.rows,1,8,'scatter rows');
+   if(kind==='repeat_kv_rows')int(n.groups,1,8,'KV groups');
    if(kind==='sliding_window_mask')int(n.window,1,8,'window');
    if(kind==='router_topk')int(n.k,1,8,'routing k');
    if(kind==='qk_norm')float(n.epsilon,0,1,'epsilon',false);
@@ -202,6 +208,10 @@
         const i=j-j%2,angle=(t+params.offset)/10000**(i/row.length),a=row[i],b=row[i+1];
         return j%2?a*Math.sin(angle)+b*Math.cos(angle):a*Math.cos(angle)-b*Math.sin(angle);
       }));break;
+    case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
+    case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
+    case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
+    case 'repeat_kv_rows':if(x.length*params.groups>8)fail('KV repeat rows exceed 8');value=x.flatMap(row=>Array.from({length:params.groups},()=>row.slice()));break;
     case 'qk_norm':value=x.map(row=>{const d=Math.sqrt(row.reduce((a,v)=>a+v*v,0)/row.length+params.epsilon);return row.map(v=>v/d);});break;
     case 'sliding_window_mask':value=x.map((row,i)=>row.map((_,j)=>Number(j<=i&&i-j<params.window)));if(x.length!==x[0].length)fail('sliding window mask expects square matrix');break;
     case 'logit_softcap':value=map(x,v=>params.cap*Math.tanh(v/params.cap));break;
