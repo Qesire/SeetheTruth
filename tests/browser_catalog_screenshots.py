@@ -172,6 +172,35 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_moe_unified_weight_and_router_gate_backward(self):
+        p=self.page
+        p.locator('[data-preset="moe_backward"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),24)
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        p.locator("#backward").click()
+        self.assertIn("24 / 24",p.locator("#stepInfo").inner_text())
+        i=p.evaluate("""() => window.SeetheTruthLearning.order(
+           window.SeetheTruthLearning.preset('moe_backward')).findIndex(n=>n.id==='w1')""")
+        p.locator('#trace [data-step="'+str(i)+'"]').click()
+        self.assertEqual(p.locator("#gradientInspector .cell").count(),16)
+        self.assertEqual(p.locator("#adamwPreview").count(),1)
+        p.locator("#gradientInspector").scroll_into_view_if_needed()
+        self.shot("27-moe-expert-weight-bank-gradients.png")
+        p.locator("#adamwPreview").click()
+        self.assertEqual(p.locator("#adamwResult .cell").count(),32)
+        p.locator("#adamwResult").scroll_into_view_if_needed()
+        self.shot("28-moe-expert-bank-adamw-preview.png")
+        trace=p.evaluate("""() => {
+           const g=window.SeetheTruthLearning.preset('moe_backward'),
+                 f=window.SeetheTruthLearning.evaluate(g),
+                 b=window.SeetheTruthGraphAutodiff.backward(g,f);
+           return {gate:b.gradients.affinity,
+                   discrete:b.gradients.select,stop:b.cutEdges};}""")
+        self.assertTrue(any(abs(v)>1e-8 for row in trace["gate"] for v in row))
+        self.assertTrue(all(v==0 for row in trace["discrete"] for v in row))
+        self.assertIn("indices",[e["port"] for e in trace["stop"]])
+
     def test_unified_graph_autodiff_shared_weight_attention_gradient(self):
         p=self.page
         p.locator('[data-preset="autodiff_core"]').click()
