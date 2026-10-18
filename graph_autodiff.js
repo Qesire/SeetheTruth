@@ -3,6 +3,7 @@
  */
 (function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphAutodiff=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
 const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):root.SeetheTruthLearning;
+const Expert=typeof module==="object"&&module.exports?require("./expert_ffn_vjp.js"):root.SeetheTruthExpertVJP;
 const finite=a=>Array.isArray(a)&&a.length>0&&a.length<=16&&Array.isArray(a[0])&&a[0].length>0&&a[0].length<=16&&a.every(row=>Array.isArray(row)&&row.length===a[0].length&&row.every(Number.isFinite));
 const z=a=>a.map(row=>row.map(()=>0)),tr=a=>a[0].map((_,j)=>a.map(row=>row[j]));
 const mm=(a,b)=>{if(a[0].length!==b.length)throw Error("VJP matrix dimensions mismatch");return a.map(row=>b[0].map((_,j)=>row.reduce((s,v,k)=>s+v*b[k][j],0)));};
@@ -84,6 +85,39 @@ function backward(raw,forward,opts={}){
     send(id,"gate",g.map((row,i)=>row.map((v,j)=>d[i][j]*u[i][j]*dsilu(v))));
     send(id,"up",g.map((row,i)=>row.map((v,j)=>d[i][j]*v/(1+Math.exp(-v)))));
     continue;
+  }
+  if(kind==="expert_linear_bank"){
+    const out=Expert.expertLinear(inp(id,"x"),inp(id,"indices"),inp(id,"weights"),d);
+    send(id,"x",out.gradSelected);send(id,"weights",out.gradWeights);
+    cut(id,"indices","integer route choice is fixed; expert ID is not differentiable");
+    local[id]={vjp:"dW[e]=Σ_{routes using e} X_routeᵀ·dY_route; dX_route=dY_route·W[e]ᵀ",expertLoad:{shape:[out.load.length,1],values:out.load.map(v=>[v])}};continue;
+  }
+  if(kind==="dispatch_routed_tokens"){
+    const out=Expert.dispatch(inp(id,"indices"),d);
+    send(id,"x",out.gradInput);cut(id,"indices","discrete route ID selects copies, no index derivative");
+    local[id]={vjp:"dX[t,:]=Σ_{k=0}^{K−1} dZ[tK+k,:]"};continue;
+  }
+  if(kind==="routed_weighted_reduce"){
+    const out=Expert.weightedReduce(inp(id,"values"),inp(id,"gates"),d);
+    send(id,"values",out.gradValues);send(id,"gates",out.gradGates);
+    local[id]={vjp:"dV[tK+k,:]=gate[t,k]·dY[t,:]; dGate[t,k]=dot(dY[t,:],V[tK+k,:])"};continue;
+  }
+  if(kind==="router_gate_weights"){
+    const scores=inp(id,"scores"),indices=inp(id,"indices"),ds=z(scores),eps=1e-15;
+    const sigmoid=x=>x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
+    for(let t=0;t<indices.length;t++){
+      const sel=indices[t],v=sel.map(idx=>scores[t][idx]);
+      const pval=p.mode==="identity"?v:p.mode==="sigmoid"?v.map(sigmoid):
+        (()=>{const mx=Math.max(...v),ex=v.map(x=>Math.exp(x-mx)),sm=ex.reduce((a,b)=>a+b,0);return ex.map(x=>x/sm);})();
+      const total=pval.reduce((a,b)=>a+b,0);
+      if(p.normalize&&total<=eps)throw Error("router gate normalization denominator underflow");
+      const dP=p.normalize?d[t].map((v,k)=>(v-d[t].reduce((sum,g,j)=>sum+g*(pval[j]/total),0))/total):d[t];
+      const dSelected=p.mode==="identity"?dP:p.mode==="sigmoid"?dP.map((v,k)=>v*pval[k]*(1-pval[k])):
+         dP.map((v,k)=>pval[k]*(v-dP.reduce((sum,g,j)=>sum+g*pval[j],0)));
+      sel.forEach((expert,k)=>{ds[t][expert]+=dSelected[k];});
+    }
+    send(id,"scores",ds);cut(id,"indices","Top-k discrete selected IDs are fixed; gradient flows only through selected gate affinities");
+    local[id]={vjp:"g=selectedAffinity/sum(selectedAffinity); dAffinity_i=(dG_i−Σ_j dG_j·g_j)/sum; duplicate selected IDs accumulate"};continue;
   }
   if(kind==="attention"){
     const q=inp(id,"q"),k=inp(id,"k"),v=inp(id,"v"),
