@@ -178,7 +178,7 @@ input[type="file"]{display:none}
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
-    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button>
+    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
@@ -224,11 +224,12 @@ input[type="file"]{display:none}
 <script src="concept_flow.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_hover.js"></script>
+<script src="graph_layout.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,
-  A=window.SeetheTruthComposites,$=q=>document.querySelector(q);
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
@@ -248,7 +249,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{activeComposite=null;compositeHistory=[];zoomOverride=null;graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{activeComposite=null;compositeHistory=[];zoomOverride=null;graph=(["mla_lite","moe_route","grpo_signals"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -319,6 +320,7 @@ $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
 $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
 $("#zoomFit").onclick=()=>adjustZoom(null);
+$("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
  else setPreset("ffn");
@@ -537,12 +539,12 @@ function render(){
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const fit=Math.max(.22,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const fit=Math.max(.46,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
  const factor=zoomOverride===null?fit:zoomOverride;
  $("#board").style.width=extent+"px";
  $("#board").style.height=Math.max(800,...graph.nodes.map(n=>n.y+175))+30+"px";
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
- $("#fitLabel").textContent=(zoomOverride===null?"自动适配 ":"手动放大 ")+Math.round(factor*100)+"% · 点击节点查看解释";
+ $("#fitLabel").textContent=(zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
