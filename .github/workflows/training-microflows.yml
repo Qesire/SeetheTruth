@@ -2,7 +2,8 @@ name: Training Microflows Contracts
 on:
   pull_request:
     paths:
-      - 'micro_training_flows.js'\n      - 'paper_patches.js'\n      - 'tests/paper_patches_contracts.js'
+      - 'micro_training_flows.js'\n      - 'paper_patches.js'
+      - 'paper_lab.html'\n      - 'tests/paper_patches_contracts.js'
       - 'micro_training.html'
       - 'tests/micro_training_flows_contracts.js'
       - '.github/workflows/training-microflows.yml'
