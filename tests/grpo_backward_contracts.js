@@ -1,0 +1,44 @@
+'use strict';
+const assert=require('node:assert/strict');
+const L=require('../learning_lab.js'),B=require('../block_catalog.js'),G=require('../grpo_backward.js');
+const graph=L.preset('grpo_objective'),forward=L.evaluate(graph),back=G.backward(graph,forward);
+const v=Object.fromEntries(forward.steps.map(s=>[s.id,s.values]));
+const calc=(kind,inputs,params={})=>B.execute({id:'finite_diff',kind,params},inputs).values;
+const near=(a,b,eps=3e-6)=>assert.ok(Math.abs(a-b)<=eps,'expected '+a+' approx '+b);
+assert.equal(back.targetId,'loss');
+assert.ok(back.pathIds.includes('ratio')&&back.pathIds.includes('reference_kl'));
+assert.ok(back.pathIds.includes('surrogate')&&back.pathIds.includes('new_logp'));
+assert.deepEqual(back.gradients.old_logits,v.old_logits.map(row=>row.map(()=>0)));
+assert.deepEqual(back.gradients.ref_logits,v.ref_logits.map(row=>row.map(()=>0)));
+assert.deepEqual(back.gradients.rewards,v.rewards.map(row=>row.map(()=>0)));
+assert.ok(back.cutEdges.some(e=>e.port==='old'&&e.from==='old_grid'));
+assert.ok(back.cutEdges.some(e=>e.port==='reference'&&e.from==='ref_grid'));
+assert.ok(back.cutEdges.some(e=>e.port==='advantage'&&e.from==='adv_per_token'));
+const manualLoss=logits=>{
+  const newLogp=calc('selected_logprob',{logits,labels:v.actions});
+  const current=calc('response_token_reshape',{x:newLogp},{responses:2});
+  const ratio=calc('policy_importance_ratio',{current,old:v.old_grid},{maxDelta:20});
+  const surrogate=calc('ppo_clipped_surrogate',{ratio,advantage:v.adv_per_token},{epsilon:.2});
+  const kl=calc('sampled_reference_kl',{current,reference:v.ref_grid},{maxDelta:20});
+  const target=calc('masked_grpo_objective',{surrogate,kl,mask:v.valid_mask},{beta:.04});
+  return -target[0][0];
+};
+near(manualLoss(v.new_logits),v.loss[0][0],1e-11);
+for(let t=0;t<4;t++)for(let d=0;d<4;d++){
+  const plus=v.new_logits.map(row=>row.slice()),minus=v.new_logits.map(row=>row.slice());
+  plus[t][d]+=1e-6;minus[t][d]-=1e-6;
+  near((manualLoss(plus)-manualLoss(minus))/2e-6,back.gradients.new_logits[t][d],3e-6);
+}
+assert.ok(back.gradients.new_logits.slice(0,3).flat().some(x=>Math.abs(x)>1e-9));
+assert.ok(back.gradients.new_logits[3].every(x=>x===0),'padded last answer token must receive zero gradient');
+let d=G.clipDerivative(1.5,+2,.2);assert.equal(d.dr,0);assert.equal(d.clipped,true);
+d=G.clipDerivative(1.5,-2,.2);assert.equal(d.dr,-2);assert.equal(d.clipped,false);
+d=G.clipDerivative(.5,+2,.2);assert.equal(d.dr,2);assert.equal(d.clipped,false);
+d=G.clipDerivative(.5,-2,.2);assert.equal(d.dr,0);assert.equal(d.clipped,true);
+d=G.clipDerivative(1,+2,.2);assert.equal(d.dr,2);
+assert.throws(()=>G.backward(graph,{mode:'concept',steps:forward.steps}),/numeric/);
+const mutated=JSON.parse(JSON.stringify(graph));mutated.nodes.find(n=>n.id==='objective').params.beta=0.1;
+const next=L.evaluate(mutated),newGrad=G.backward(mutated,next);
+assert.notDeepEqual(newGrad.gradients.new_logits,back.gradients.new_logits);
+const all=Object.values(back.gradients).flatMap(t=>t.flat());assert.ok(all.every(Number.isFinite));
+console.log('GRPO scoped reverse-mode PASS: all 16 current-logit finite differences, mask zeros, stop edges, signed clipping, beta dependence');
