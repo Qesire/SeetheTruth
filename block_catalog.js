@@ -12,6 +12,22 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  nd_input:block("四轴张量输入","4-Axis Tensor Source","data",[],{b:1,h:2,t:3,d:4,seed:1},
+   "X ∈ ℝ^{B×H×T×D}","显式生成有界 [Batch, Head, Token, Channel] 教学张量，各轴独立可调。","修改 Head 或 Token 数，观察后续形状推导和数值运算。","仅独立的合成 Float64 数据；B/H/T/D 是默认含义，不是强制模型架构。"),
+  nd_permute:block("四轴重排","Permute Tensor Axes","compute",["x"],{axis0:0,axis1:2,axis2:1,axis3:3},
+   "Y[i,j,k,l] = X[π⁻¹(i,j,k,l)]","按用户选择的完整轴置换移动数据，严格保留元素。","把 [B,H,T,D] 转成 [B,T,H,D] 再逆置换恢复。","这是实际数据重排，不是只改标签；必须提供不重复的 0,1,2,3。"),
+  nd_reshape:block("二维转四维变形","Reshape To 4D","compute",["x"],{b:1,h:2,t:3,d:4},
+   "reshape(X,[B,H,T,D])","按行主序保持元素总数并重解释四轴维度，支持二维到四维及四维到四维。","输入 [6,4] 后得到 [1,2,3,4]，逐个确认坐标顺序。","必须保证元素总数完全相同，不执行转置或隐式复制填充。"),
+  nd_flatten:block("四轴展平为二维","Flatten 4D To Matrix","compute",["x"],{},
+   "[B,H,T,D] → [B·H·T,D]","将多个前导轴合并，接入原有 MatMul 等二维积木。","比较原四维张量与展平矩阵的线性存储次序。","原始轴划分会丢失，必须明确 reshape 参数才能复原。"),
+  nd_expand4d:block("二维嵌入四轴","Expand Matrix To 4D","compute",["x"],{},
+   "[T,D] → [1,1,T,D]","给二维矩阵增加批次、头的长度为 1 的轴，以接入多轴积木。","连接旧二维 Input 和新四维算子，观察形状兼容性。","不重复 Token、不创造新的有效头内容；只有 singleton 轴。"),
+  nd_broadcast_add:block("多维广播相加","N-D Broadcast Add","combine",["a","b"],{},
+   "Y = broadcast(A)+broadcast(B)","按 NumPy/PyTorch 风格从右对齐，只有相等或为 1 的轴可以广播。","把 [1,2,3,4] 与 [1,1,3,4] 相加，查看 Head 广播。","不会自动转置轴，也不会任意重复不兼容的维度。"),
+  nd_reduce_sum:block("指定轴求和","N-D Axis Sum","combine",["x"],{axis:2},
+   "Y = Σ_axis X (keepdim=1)","只沿给定轴聚合，同时保留长度为 1 的轴，便于后续广播。","比较在 Token 轴求和前后的 [B,H,T,D]。","这是 sum 不是 mean；除以轴长度必须额外连 Scale。"),
+  nd_batched_matmul:block("多头批量矩阵乘","N-D Batched MatMul","compute",["a","b"],{},
+   "Y[b,h,m,n]=Σₖ A[b,h,m,k] B[b,h,k,n]","对四轴张量的末两维执行矩阵乘，在 B/H 上广播独立批次和头。","对 [1,2,3,4] 和 [1,2,4,2] 执行 2 头矩阵乘并检查每个数值。","不自动转置 K；批次/头轴只能相同或 singleton；不包含 Softmax 或 RoPE。"),
   parameter:block("可训练参数矩阵","Trainable Parameter","data",[],{
       values:[[0.35,-0.24],[0.08,0.57]],
       optimizer:{t:0,m:[[0,0],[0,0]],v:[[0,0],[0,0]]}
@@ -147,6 +163,16 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(kind==='nd_input'||kind==='nd_reshape'){
+     for(const axis of ['b','h','t','d'])int(n[axis],1,8,'N-D '+axis);
+     if(n.b*n.h*n.t*n.d>512)fail('N-D shape exceeds bounded CPU budget');
+     if(kind==='nd_input')int(n.seed,-10000,10000,'N-D seed');
+   }
+   if(kind==='nd_permute'){
+     const p=['axis0','axis1','axis2','axis3'].map(x=>n[x]);
+     if(p.some(x=>!Number.isSafeInteger(x)||x<0||x>3)||new Set(p).size!==4)fail('N-D permutation requires each axis 0,1,2,3 exactly once');
+   }
+   if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='parameter'){
       const check=(value,name)=>{if(!Array.isArray(value)||!value.length||value.length>8||!Array.isArray(value[0])||!value[0].length||value[0].length>16||value.some(row=>!Array.isArray(row)||row.length!==value[0].length||row.some(x=>typeof x!=='number'||!Number.isFinite(x)||Math.abs(x)>1000)))fail('invalid '+name+' matrix');};
       check(n.values,'parameter');
@@ -197,6 +223,20 @@
  function execute(node,inputs){
    const kind=node.kind,params={...defs[kind].params,...node.params};
    validate(kind,params);
+   if(kind.startsWith('nd_')){
+     const ND=typeof module==='object'&&module.exports?require('./nd_tensor.js'):globalThis.SeetheTruthND;
+     let value;
+     if(kind==='nd_input')value=ND.seedTensor([params.b,params.h,params.t,params.d],params.seed);
+     else if(kind==='nd_permute')value=ND.permute(inputs.x,[params.axis0,params.axis1,params.axis2,params.axis3]);
+     else if(kind==='nd_reshape')value=ND.reshape(inputs.x,[params.b,params.h,params.t,params.d]);
+     else if(kind==='nd_flatten'){const sh=ND.shape(inputs.x);if(sh.length!==4)fail('N-D flatten expects rank 4');value=ND.reshape(inputs.x,[sh[0]*sh[1]*sh[2],sh[3]]);}
+     else if(kind==='nd_expand4d'){const sh=ND.shape(inputs.x);if(sh.length!==2)fail('N-D expand expects rank 2');value=ND.reshape(inputs.x,[1,1,sh[0],sh[1]]);}
+     else if(kind==='nd_broadcast_add')value=ND.broadcastBinary(inputs.a,inputs.b,(a,b)=>a+b);
+     else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
+     else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
+     else fail('unknown N-D operator '+kind);
+     return {values:value,internals:null,flops:null};
+   }
    for(const [port,value] of Object.entries(inputs))ensure(value,port);
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
