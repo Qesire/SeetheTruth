@@ -77,6 +77,44 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_trainable_gqa_mqa_nd_adamw_roundtrip_and_loss_curve(self):
+        import json
+        p=self.page
+        for preset,heads,name in [
+            ("nd_trainable_gqa",2,"48-trainable-gqa-4d-adamw.png"),
+            ("nd_trainable_mqa",1,"49-trainable-mqa-4d-adamw.png")
+        ]:
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator("#blocks .block").count(),13)
+            self.assertIn("13/13",p.locator("#graphReadiness").inner_text())
+            p.locator("#studyMode").select_option("numeric")
+            p.locator("#trainLearningRate").select_option("0.004")
+            p.locator("#trainCount").select_option("2")
+            p.locator("#trainStep").click()
+            self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+            self.assertIn("Loss",p.locator("#trainSummary").inner_text())
+            self.assertEqual(p.locator("#trainSummary svg").count(),1)
+            self.assertEqual(p.locator("#trainSummary strong").count(),3)
+            self.assertIn("分支 loss",p.locator("#stepInfo").inner_text())
+            with p.expect_download() as saved:
+                p.locator("#save").click()
+            graph=json.loads(open(saved.value.path(),encoding="utf-8").read())
+            params={n["id"]:n["params"] for n in graph["nodes"] if n["kind"]=="nd_parameter"}
+            self.assertEqual(set(params),{"query","key","value"})
+            self.assertEqual(len(params["query"]["values"][0]),4)
+            self.assertEqual(len(params["key"]["values"][0]),heads)
+            self.assertTrue(all(v["optimizer"]["t"]==2 for v in params.values()))
+            p.locator("#trainSummary").scroll_into_view_if_needed()
+            self.shot(name)
+            p.locator("#undo").click()
+            with p.expect_download() as previous:
+                p.locator("#save").click()
+            earlier=json.loads(open(previous.value.path(),encoding="utf-8").read())
+            self.assertTrue(all(n["params"]["optimizer"]["t"]==0 for n in earlier["nodes"] if n["kind"]=="nd_parameter"))
+            p.locator("#load").set_input_files(saved.value.path())
+            p.locator("#trainStep").click()
+            self.assertIn("AdamW step 4",p.locator("#trainSummary").inner_text())
+
     def test_gqa_mqa_four_axis_gradient_and_head_sharing(self):
         p=self.page
         for preset,expected_kv,name in [
