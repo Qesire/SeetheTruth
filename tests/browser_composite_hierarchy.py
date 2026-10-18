@@ -89,7 +89,7 @@ class CompositeHierarchyChromium(unittest.TestCase):
         for _ in range(3):
             p.locator("#zoomIn").click()
         self.assertGreaterEqual(float(p.locator("#board").evaluate("(e) => e.style.zoom")),0.9)
-        self.assertIn("手动放大",p.locator("#fitLabel").inner_text())
+        self.assertIn("手动缩放",p.locator("#fitLabel").inner_text())
         visible=p.evaluate("""() => {
             const vp=document.querySelector('#viewport').getBoundingClientRect();
             const qk=document.querySelector('[data-node="qk"]').getBoundingClientRect();
