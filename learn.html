@@ -319,7 +319,7 @@ function renderComposite(){
 $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
 $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
-$("#zoomFit").onclick=()=>adjustZoom(null);
+$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;const width=Math.max(480,$("#viewport").clientWidth)-24;adjustZoom(Math.max(.25,Math.min(1,width/extent)),false);};
 $("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
@@ -539,7 +539,7 @@ function render(){
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const fit=Math.max(.46,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const fit=Math.max(.72,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
  const factor=zoomOverride===null?fit:zoomOverride;
  $("#board").style.width=extent+"px";
  $("#board").style.height=Math.max(800,...graph.nodes.map(n=>n.y+175))+30+"px";
