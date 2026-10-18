@@ -138,6 +138,38 @@ This **20-block executable lesson** treats two sampled responses (`G=2`) of two 
 6. `completion_length_mask:[2,2]` emits two tokens in the first response, one valid token in the second; the last token of the second response is treated as padding.
 7. `masked_grpo_objective(surrogate,KL,mask,beta=.04):[1,1]` computes **a mean of per-response valid-token means**, so one longer response is not implicitly counted as extra independent response evidence. The separate `scale(factor=-1)` block produces the optimization loss `L=-J`.
 
+### Reverse-mode analysis: exact gradients and explicit gradient barriers
+
+The main Scratch-style workbench provides **opt-in** `∂ GRPO 反向梯度` after a successful *numeric* 20-block lesson run. It calls `grpo_backward.js` on the **current** assembled graph, without changing the graph or performing an optimizer step. Each selected block's inspector displays `dLoss/dOutput` and, for clipped surrogate nodes, the binary saturation map. Moving/rewiring the graph invalidates its cached forward and backward traces.
+
+For a sampled action `y`, a current policy logit vector `z`, and `l=log softmax(z)_y`:
+
+```
+d l / d z_j = [j==y] - softmax(z)_j
+r = exp(l_current - l_old)               => dr/dl_current = r
+d = l_reference - l_current
+KL_sample = exp(d) - d - 1               => dKL_sample/dl_current = 1-exp(d)
+
+s(r,A) = min(r*A, clip(r,1-eps,1+eps)*A)
+ds/dr = A when unclipped is selected, or inside interval
+      = 0 when the clipped branch wins outside the interval
+L = -(1/G) Σ_g [ Σ_t mask[g,t]·(s[g,t]-β KL[g,t])/validTokens[g] ]
+dL/ds[g,t] = -mask[g,t] / (G*validTokens[g])
+dL/dKL[g,t] = β·mask[g,t] / (G*validTokens[g])
+```
+
+At a nondifferentiable clipping breakpoint the microscopic derivative convention chooses the raw `rA` branch; central finite difference tests deliberately avoid this breakpoint. The **same current logprob** receives contributions from the ratio and sampled KL branches, so reverse-mode accumulation **adds both gradients** before the selected-logprob VJP. The unit tests perform independent central finite difference perturbations to *each of the 16 current-policy logits* to check the complete composed loss and confirm the masked padding token has exactly zero gradient.
+
+**Stop-gradient boundaries are part of the algorithm, not a numerical side effect:**
+
+- The `old` input to the policy ratio is the policy that sampled the completion; its gradient is stopped.
+- The `reference` input to the sampled KL estimator is frozen. It is not the same as `old`.
+- Reward and group advantage are sampled rollout information; no policy gradient passes through them. The `advantage` input to clipped surrogate is detached.
+- Discrete `labels` specify chosen token IDs and do not have a gradient.
+- All unused/blocked branches display zero adjoint matrices; this is not a general proof that parameters elsewhere in a full network should be frozen.
+
+**Scope boundary:** This is **scoped reverse-mode autodiff for compatible GRPO/PPO teaching DAGs**. It is not arbitrary-block autograd, differentiable sampling, backpropagation through model weights, or an optimizer update. If the user rewires the loss through an unsupported differentiable operation, the module rejects the graph rather than silently fabricating a gradient. The UI displays the proven subset; the earlier expert local VJP contracts remain separate.
+
 ### Explicit reductions and differences between research implementations
 
 - The selected reduction is `J=(1/G) Σ_g ((Σ_t mask_g,t·[surrogate_g,t−β KL_g,t]) / Σ_t mask_g,t)`. Some contemporary systems normalize tokens across the entire batch, use different clipping ranges, vary KL handling, or omit the reference KL. Those variants require modifying/rewiring the corresponding blocks, **not** calling them identical GRPO.
