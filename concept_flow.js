@@ -183,6 +183,28 @@
       by(labels[0]===logits[0]&&labels[1]===1,"Selected Logprob labels must be [T,1]",n.id);
       output=[logits[0],1];rule="对每个 token 的指定动作计算 logits_y − logsumexp(logits)";
       conditions.push("labels 必须是合法整数类别；概念模式不检查实际类别");
+    }else if(kind==="response_token_reshape"){
+      const x=get("x");by(x[1]===1&&x[0]%p.responses===0,"Response Token Reshape expects [G*T,1]",n.id);
+      output=[p.responses,x[0]/p.responses];rule="按照原 Token 顺序把展平 G*T 条动作对数概率组织成 G 个回答，每个 T 个 Token";
+    }else if(kind==="response_advantage_broadcast"){
+      const [a,x]=ports(n,inputs,"advantage","tokenGrid");
+      by(a[0]===x[0]&&a[1]===1,"Advantage broadcast expects [G,1]",n.id);
+      output=x.slice();rule="每个回答内对各 Token 重复同一个组相对 Advantage，不跨回答混合";
+    }else if(["policy_importance_ratio","ppo_clipped_surrogate","sampled_reference_kl"].includes(kind)){
+      const pairNames=kind==="policy_importance_ratio"?["current","old"]:kind==="ppo_clipped_surrogate"?["ratio","advantage"]:["current","reference"];
+      const [a,b]=ports(n,inputs,...pairNames);
+      by(equal(a,b),"Policy ratio / surrogate / KL inputs must match",n.id);
+      output=a.slice();
+      rule=kind==="policy_importance_ratio"?"同一已选 Token 动作的新旧 logprob 差取指数":kind==="ppo_clipped_surrogate"?"对带正负号 Advantage 的策略贡献取两个备选表达式的 min":"以 exp(ref-current)−(ref-current)−1 计算采样 KL 惩罚估计";
+      conditions.push("数值模式另行检查指数范围、比率合法性与数值有限性");
+    }else if(kind==="completion_length_mask"){
+      output=[p.responses,p.tokens];rule="每个回答依实际有效长度产生二值 completion Token Mask，禁止 padding 参与目标归约";
+    }else if(kind==="masked_grpo_objective"){
+      const [a,b,m]=ports(n,inputs,"surrogate","kl","mask");
+      by(equal(a,b)&&equal(a,m),"GRPO surrogate/KL/mask shapes must match",n.id);
+      output=[1,1];rule="逐回答按有效 Token 数求均值，再对 G 个回答取均值，减去 β 倍采样参考 KL";
+      stages={per_response:[a[0],1]};
+      conditions.push("Mask 每行必须含至少一个有效 Token；数值模式检查实际二值取值");
     }else if(kind==="group_advantage"){
       const rewards=get("rewards");output=rewards.slice();
       rule="每行 reward 组分别中心化并按组方差尺度标准化；等值组的优势全部为零";
