@@ -91,6 +91,15 @@
       by(a[1]===b[0],"MatMul 内部收缩维不相同："+pretty(a)+" × "+pretty(b),n.id);
       by(b[1]<=16,"MatMul 输出特征宽度超出界限",n.id);
       output=[a[0],b[1]];rule="A[T,K] × B[K,D] 在 K 上求和，输出 [T,D]";
+    }else if(kind==="router_gate_weights"){
+      const [scores,indices]=ports(n,inputs,"scores","indices");by(scores[0]===indices[0],"Router weights token count mismatch",n.id);
+      output=indices.slice();rule="从原始 score 中按选中 index 提取亲和度，sigmoid 或 softmax 门控；normalize 可选";
+      conditions.push("每个路由下标必须指向有效专家；数学模式不检查整数取值");
+    }else if(kind==="expert_bank_mix"){
+      const [indices,gates,experts]=ports(n,inputs,"indices","gates","experts");
+      by(equal(indices,gates),"Expert gate/index shapes must match",n.id);
+      output=[indices[0],experts[1]];rule="用每个 token 的离散专家索引和对应门控权重从演示专家向量池中加权汇聚";
+      conditions.push("这是静态专家向量池，不是 token 条件 FFN；数值模式检查 index 有效");
     }else if(kind==="gather_rows"){
       const [x,idx]=ports(n,inputs,"x","indices");by(idx[1]===1,"Gather indices must be [T,1]",n.id);
       output=[idx[0],x[1]];rule="整数行索引收集输入行；重复索引意味着重复读取相同张量";
