@@ -17,6 +17,8 @@ near(soft[0][0]+soft[0][1],1);
 assert.throws(()=>run('router_gate_weights',{scores,indices:[[3]]}),/out of range/);
 assert.throws(()=>run('expert_bank_mix',{indices:[[3]],gates:[[1]],experts}),/out of range/);
 for(const kind of ['router_gate_weights','expert_bank_mix'])assert.ok(K.get(kind).refs.length);
+assert.deepEqual(run('gather_routed_bank',{x:[[1,2],[3,4]],indices:[[1,0],[0,1]]}),[[3,4],[1,2],[1,2],[3,4]]);
+assert.throws(()=>run('gather_routed_bank',{x:[[1]],indices:[[1]]}),/out of bounds/);
 const preset=L.preset('moe_route');
 assert.equal(preset.nodes.length,11);
 const trace=L.evaluate(preset),contract=C.evaluate(preset);
