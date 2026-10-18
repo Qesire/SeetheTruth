@@ -186,6 +186,8 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("1 × 1",p.locator("#metrics").inner_text())
         self.assertNotIn("无法运行",p.locator("#status").inner_text())
         p.locator("#viewport").evaluate("(e)=>{e.scrollLeft=e.scrollWidth;e.scrollTop=0;}")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.assertEqual(p.locator("#matrix .cell").count(),1)
         self.shot("19-grpo-final-clipped-masked-loss.png")
         p.locator("#blockSearch").fill("Clipped Policy Surrogate")
         card=p.locator('#palette [data-add="ppo_clipped_surrogate"]')
