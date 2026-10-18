@@ -231,11 +231,12 @@ input[type="file"]{display:none}
 <script src="graph_layout.js"></script>
 <script src="grpo_backward.js"></script>
 <script src="graph_autodiff.js"></script>
+<script src="adamw_micro.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,
-  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,$=q=>document.querySelector(q);
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
@@ -543,12 +544,22 @@ function inspect(){
    const adjoint=backwardTrace.gradients[n.id],isActive=backwardTrace.pathIds.includes(n.id),
          cuts=backwardTrace.cutEdges.filter(e=>e.from===n.id||e.nodeId===n.id),
          local=backwardTrace.local[n.id],sat=local?.clipSaturated;
-   grade.innerHTML='<p class="hint">'+(isActive?'参与可求导的策略计算路径。':'无策略损失的梯度路径；此处展示零矩阵（或固定输入）。')+'</p>'+
+   grade.innerHTML='<p class="hint">'+(isActive?'参与可求导的计算路径。':'未连接到损失反向路径，显示零梯度（或固定输入）。')+'</p>'+
       matrixHTML(adjoint,'∂Loss / ∂ 本积木输出')+
       (local?.vjp?'<div class="equation">'+esc(local.vjp)+'</div>':'')+
       (sat?matrixHTML(sat.values,'策略截断饱和位置：1=无 ratio 梯度'):'')+
       (cuts.length?'<div class="hint">停止梯度：'+cuts.map(x=>esc(x.reason)).join('；')+'</div>':'')+
       '<p class="hint">有界小矩阵 VJP；不等于完整模型训练，离散路由与不支持的模块不伪造梯度。</p>';
+   const weightUse=n.kind==="input"&&isActive&&graph.edges.some(e=>e.from===n.id&&e.port==="b"&&graph.nodes.some(t=>t.id===e.to&&t.kind==="matmul"));
+   if(weightUse){
+     grade.innerHTML+='<div class="section"><div class="kicker">OPTIMIZER / 仅预览</div><button class="btn small" id="adamwPreview" type="button">预览 AdamW 单步更新</button><div id="adamwResult" class="hint">将此输入作为显式可训练矩阵观察优化器，不改变 seed 或前向计算图。</div></div>';
+     $("#adamwPreview").onclick=()=>{try{
+       const out=AdamW.step(active.values,adjoint,null,{lr:0.01,weightDecay:0.01});
+       $("#adamwResult").innerHTML='<p class="hint">AdamW：lr=0.01，β₁=0.9，β₂=0.999，decoupled weight decay=0.01；第一步使用零动量。</p>'+
+         matrixHTML(out.update,"参数更新 Δθ（从参数减去）")+matrixHTML(out.parameter,"AdamW 更新后的参数预览")+
+         '<p class="hint">仅一次独立计算；没有将参数写回积木工程，也没有触发第二次 Forward。</p>';
+     }catch(err){$("#adamwResult").textContent="优化器预览失败："+err.message;}};
+   }
  }
  document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
    const entry=active.internals[el.dataset.stage];if(!entry?.tensor)return;
