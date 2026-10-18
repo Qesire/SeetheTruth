@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -32,6 +32,12 @@ function perKind(k){
    else if(k==='row_bias_add')inputs[port]=port==='bias'?[1,4]:[2,4];
    else if(k==='weighted_sum')inputs[port]=port==='weights'?[2,2]:[2,4];
    else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')inputs[port]=[2,1];
+   else if(['dispatch_routed_tokens','expert_linear_bank'].includes(k)&&port==='indices')inputs[port]=[2,2];
+   else if(k==='dispatch_routed_tokens'&&port==='x')inputs[port]=[2,2];
+   else if(k==='expert_linear_bank'&&port==='x')inputs[port]=[4,2];
+   else if(k==='expert_linear_bank'&&port==='weights')inputs[port]=[4,2];
+   else if(k==='routed_weighted_reduce'&&port==='values')inputs[port]=[4,2];
+   else if(k==='routed_weighted_reduce'&&port==='gates')inputs[port]=[2,2];
    else if(k==='gather_routed_bank'&&port==='indices')inputs[port]=[2,2];
    else if(k==='expert_bank_mix'&&port==='gates')inputs[port]=[2,1];
    else if(k==='sliding_window_mask')inputs[port]=[2,2];
@@ -46,6 +52,7 @@ function perKind(k){
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
    else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
    else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')values[port]=[[0],[1]];
+   else if(['dispatch_routed_tokens','expert_linear_bank'].includes(k)&&port==='indices')values[port]=[[0,1],[1,0]];
    else if(k==='gather_routed_bank'&&port==='indices')values[port]=[[0,1],[1,0]];
    else if(k==='kl_prob')values[port]=mock(sh,()=>1/sh[1]);
    else values[port]=mock(sh);
