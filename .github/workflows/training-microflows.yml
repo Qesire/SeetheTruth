@@ -9,6 +9,8 @@ on:
       - 'block_catalog.js'
       - 'nd_tensor.js'
       - 'nd_autodiff.js'
+      - 'nd_adamw_micro.js'
+      - 'tests/nd_train_state_contracts.js'
       - 'tests/nd_gqa_autodiff_contracts.js'
       - 'tests/nd_vjp_local_contracts.js'
       - 'tests/nd_tensor_contracts.js'
@@ -70,6 +72,7 @@ jobs:
       - run: node tests/concept_flow_contracts.js
       - run: node --check nd_tensor.js && node tests/nd_tensor_contracts.js
       - run: node --check nd_autodiff.js && node tests/nd_gqa_autodiff_contracts.js
+      - run: node --check nd_adamw_micro.js && node tests/nd_train_state_contracts.js
       - run: node tests/nd_vjp_local_contracts.js
       - run: node tests/micro_training_flows_contracts.js
       - run: node tests/paper_patches_contracts.js
