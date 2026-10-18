@@ -299,9 +299,9 @@
       value=C.map(row=>row.slice());
       S.forEach((row,t)=>{value[params.start+t]=row.slice();});
       internals={cache_state:{startPos:params.start,endPos:params.start+S.length,capacity:params.capacity,oldLength:C.length,newLength:value.length,updatedTokenCount:S.length,note:'immutable snapshot, old cache input remains unchanged'}};break;}
-    case 'cache_read_prefix':{if(params.length>x.length)fail('cache read exceeds committed prefix');
-      value=x.slice(0,params.length).map(row=>row.slice());
-      internals={cache_view:{endPos:params.length,availableLength:x.length,note:'read-only prefix, not an allocation claim for a real GPU cache'}};break;}
+    case 'cache_read_prefix':{const cache=inputs.cache;if(params.length>cache.length)fail('cache read exceeds committed prefix');
+      value=cache.slice(0,params.length).map(row=>row.slice());
+      internals={cache_view:{endPos:params.length,availableLength:cache.length,note:'read-only prefix, not an allocation claim for a real GPU cache'}};break;}
     case 'query_weight_absorb':{const Q=inputs.query,W=inputs.keyWeight;
       if(Q[0].length!==W[0].length)fail('query absorb needs Q features == projected K features');
       value=Q.map(row=>W.map(wrow=>row.reduce((sum,v,j)=>sum+v*wrow[j],0)));
