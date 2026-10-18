@@ -180,6 +180,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="trainable_swiglu"><span class="num">23</span><span>SwiGLU FFN · 可训练 W1/W3/W2<span class="desc">门控/上投影/下投影共享完整训练机制</span></span></button>
   <button class="mission" data-preset="trainable_moe"><span class="num">24</span><span>MoE · 可训练专家权重库<span class="desc">固定 Top-k 路由选择 + 独立专家权重 AdamW</span></span></button>
   <button class="mission" data-preset="nd_attention_lesson"><span class="num">25</span><span>四轴自由张量 · Multi-Head GEMM<span class="desc">[B,H,T,D] → MatMul → Head 广播 → Token 归约 → 2D/4D 转换</span></span></button>
+  <button class="mission" data-preset="nd_causal_attention"><span class="num">26</span><span>可组合四轴因果多头 Attention<span class="desc">QKᵀ → Scale → Causal Mask → Softmax → PV，逐 Head 数值验证</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -275,7 +276,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
