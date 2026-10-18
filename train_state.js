@@ -7,12 +7,14 @@ const isNode=typeof module==="object"&&module.exports;
 const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Grad=isNode?require("./graph_autodiff.js"):root.SeetheTruthGraphAutodiff;
 const AdamW=isNode?require("./adamw_micro.js"):root.SeetheTruthAdamW;
+const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 function step(raw,options={}){
  const graph=L.validateGraph(raw);
- const parameters=graph.nodes.filter(n=>n.kind==="parameter");
+ const scope=options.targetId?Branch.slice(graph,options.targetId):graph;
+ const parameters=scope.nodes.filter(n=>n.kind==="parameter");
  if(!parameters.length)throw Error("training requires a connected trainable Parameter block");
- const oldForward=L.evaluate(graph);
- const reverse=Grad.backward(graph,oldForward,{targetId:options.targetId});
+ const oldForward=L.evaluate(scope);
+ const reverse=Grad.backward(scope,oldForward,{targetId:options.targetId});
  const active=parameters.filter(n=>reverse.pathIds.includes(n.id));
  if(!active.length)throw Error("no trainable parameter is reachable from the selected loss");
  if(active.length>12)throw Error("too many parameter nodes for bounded optimizer");
@@ -31,7 +33,7 @@ function step(raw,options={}){
       gradientNorm:Math.hypot(...grad.flat()),updateNorm:Math.hypot(...update.update.flat()),optimizerStep:update.state.t});
  }
  const validated=L.validateGraph(next);
- const nextForward=L.evaluate(validated);
+ const nextForward=L.evaluate(options.targetId?Branch.slice(validated,options.targetId):validated);
  const before=oldForward.steps.find(s=>s.id===reverse.targetId).values[0][0];
  const after=nextForward.steps.find(s=>s.id===reverse.targetId).values[0][0];
  if(!Number.isFinite(before)||!Number.isFinite(after))throw Error("non-finite loss in training step");
@@ -51,7 +53,7 @@ function steps(raw,options={}){
    graph=result.graph;
  }
  return {graph,history,firstLoss:history[0].beforeLoss,finalLoss:history.at(-1).afterLoss,
-   next:L.evaluate(graph),evidence:"atomic bounded multi-step training, each AdamW iteration recomputes forward and VJP"};
+   next:L.evaluate(options.targetId?Branch.slice(graph,options.targetId):graph),evidence:"atomic bounded multi-step training, each AdamW iteration recomputes forward and VJP"};
 }
 function inspect(raw){
  const graph=L.validateGraph(raw);
