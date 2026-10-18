@@ -125,7 +125,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         (DEST/"manifest.json").write_text(json.dumps({
           "schema":"seethetruth-catalog-visual-evidence-v1","browser":"Playwright Chromium",
           "viewport":[1600,1000],"catalogue_count":size,
-          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"10-mla-auto-layout-readable.png"},{"file":"07-qualitative-gqa-no-matrix.png",
+          "captures":screens+[{"file":"08-mla_lite-numeric.png"},{"file":"08-moe_route-numeric.png"},{"file":"08-grpo_signals-numeric.png"},{"file":"09-paper-hover-low-rank.png"},{"file":"10-mla-auto-layout-readable.png"},{"file":"14-mla-cache-input-and-writes.png"},{"file":"15-mla-absorbed-vs-rebuild-numeric.png"},{"file":"16-mla-absorb-paper-hover.png"},{"file":"07-qualitative-gqa-no-matrix.png",
             "description":"No numeric matrices or hardware measurements; GQA dimensions only"}],
           "tests":"qualitative GQA without numeric cells, opt-in numeric SwiGLU/CE/Masked Softmax, search and category",
           "limit":"browser teaching simulation, not checkpoint or GPU execution"
@@ -171,6 +171,28 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#undo").click()
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
+
+    def test_mla_compressed_cache_and_absorbed_scores(self):
+        p=self.page
+        p.locator('[data-preset="mla_cache"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),35)
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("1 / 35",p.locator("#stepInfo").inner_text())
+        self.shot("14-mla-cache-input-and-writes.png")
+        for _ in range(34):p.locator("#next").click()
+        self.assertIn("35 / 35",p.locator("#stepInfo").inner_text())
+        self.assertNotIn("无法运行",p.locator("#status").inner_text())
+        p.locator("#viewport").evaluate("(e)=>{e.scrollLeft=e.scrollWidth;e.scrollTop=0;}")
+        self.shot("15-mla-absorbed-vs-rebuild-numeric.png")
+        p.locator("#blockSearch").fill("Absorb K Projection")
+        card=p.locator('#palette [data-add="query_weight_absorb"]')
+        self.assertEqual(card.count(),1)
+        card.hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=4000)
+        self.assertIn("DeepSeek-V3",p.locator("#paperHoverInspector").inner_text())
+        self.assertIn("W",p.locator("#paperHoverInspector").inner_text())
+        self.shot("16-mla-absorb-paper-hover.png")
 
     def test_routed_expert_swiglu_shared_expert_and_research_hover(self):
         p=self.page
