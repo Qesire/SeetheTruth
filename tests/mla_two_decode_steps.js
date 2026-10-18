@@ -13,6 +13,7 @@ for(const step of [
  {pos:2,c:[[.7,-.1]],rawKey:[[.5,.4]],q:[[.4,.8]],qpe:[[.6,-.5]]},
  {pos:3,c:[[.2,.9]],rawKey:[[-.3,.1]],q:[[-.3,.7]],qpe:[[.4,.2]]}
 ]){
+ const previousLatent=latent,previousKeys=keys;
  const oldC=copy(latent),oldP=copy(keys);
  const rotated=run('rope2d',{x:step.rawKey},{offset:step.pos});
  latent=run('cache_write_segment',{cache:latent,segment:step.c},{start:step.pos,capacity:6});
@@ -31,8 +32,11 @@ for(const step of [
  const vExplicit=mul(C,Wv),outDirect=mul([sDirect],vExplicit)[0],outAbs=mul(mul([sAbs],C),Wv)[0];
  for(let i=0;i<step.pos+1;i++){close(contentScores[i],absorbedScores[i]);close(sDirect[i],sAbs[i]);}
  for(let d=0;d<2;d++)close(outDirect[d],outAbs[d]);
- // the previous stage remains an independent immutable snapshot
- assert.deepEqual(oldC,oldC.map(x=>x.slice()));
+ // Prior snapshots are independent objects, unaffected by later writes and reads.
+ assert.deepEqual(previousLatent,oldC);
+ assert.deepEqual(previousKeys,oldP);
+ assert.notStrictEqual(previousLatent,latent);
+ assert.notStrictEqual(previousKeys,keys);
 }
 assert.deepEqual(latent.length,4);assert.deepEqual(keys.length,4);
 assert.throws(()=>run('cache_read_prefix',{cache:latent},{length:5}),/committed prefix/);
