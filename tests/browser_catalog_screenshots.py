@@ -181,7 +181,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertFalse(p.locator("#backward").is_disabled())
         p.locator("#backward").click()
         self.assertIn("20 / 20",p.locator("#stepInfo").inner_text())
-        self.assertIn("∂Loss",p.locator("#gradientInspector").inner_text())
+        self.assertIn("∂LOSS",p.locator("#gradientInspector").inner_text())
         self.shot("21-grpo-reverse-final-loss-gradient.png")
         p.locator('#trace [data-step="0"]').click()
         self.assertEqual(p.locator("#gradientInspector .cell").count(),16)
@@ -211,7 +211,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.shot("23-grpo-clip-vjp-detach-explanation.png")
         p.locator('[data-preset="ffn"]').click()
         self.assertTrue(p.locator("#backward").is_disabled())
-        self.assertNotIn("∂Loss",p.locator("#gradientInspector").inner_text())
+        self.assertNotIn("∂LOSS",p.locator("#gradientInspector").inner_text())
 
     def test_grpo_full_loss_as_composable_workbench_graph(self):
         p=self.page
