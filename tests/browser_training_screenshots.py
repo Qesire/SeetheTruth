@@ -65,9 +65,22 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
                               getComputedStyle(b).display==='flex');
         }"""),"Only the state snapshot strip may be sticky; all event blocks retain flex layout")
 
+    def assert_desktop_header_visible(self):
+        p=self.p
+        details=p.evaluate("""() => {
+          const r=document.querySelector('.header').getBoundingClientRect();
+          return {top:r.top,bottom:r.bottom,scrollY:window.scrollY,
+                  viewportHeight:innerHeight,documentHeight:document.documentElement.scrollHeight};
+        }""")
+        self.assertAlmostEqual(details["top"],0,delta=2,msg=str(details))
+        self.assertGreater(details["bottom"],60,details)
+        self.assertAlmostEqual(details["scrollY"],0,delta=1,msg=str(details))
+        self.assertLessEqual(details["documentHeight"],details["viewportHeight"]+2,details)
+
     def shot(self,name):
         p=self.p
         p.evaluate("document.fonts.ready")
+        self.assert_desktop_header_visible()
         image=p.screenshot(path=str(OUT/name),full_page=True,animations="disabled")
         self.assertTrue(image.startswith(b"\x89PNG\r\n\x1a\n"))
         w,h=struct.unpack(">II",image[16:24])
@@ -103,6 +116,7 @@ class TrainingStudioVisualAcceptance(unittest.TestCase):
         self.assertIn("2.000000",p.locator("#gradState").inner_text()) if False else None
         self.assertIn("1.000000",p.locator("#gradState").inner_text())
         self.assert_training_state_visible()
+        self.assert_desktop_header_visible()
         photos.append(self.shot("03-first-adamw-real-scalar-update.png"))
         p.locator("#sequence .step").filter(has_text="AdamW 参数更新").last.click()
         self.assertIn("2 /",p.locator("#stepCount").inner_text()) if False else None
