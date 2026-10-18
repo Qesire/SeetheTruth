@@ -45,6 +45,21 @@ dK = dSᵀ Q
 
 When Q/K/V come from one node, its final gradient is `dQ+dK+dV`. The `RMSNorm` backward uses the exact row mean square; the SwiGLU backward uses the true SiLU derivative and product rule. Tests verify the entire graph rather than only these subexpressions in isolation.
 
+## Composed MoE reverse flow: `moe_backward` (24 nodes)
+
+This lesson reuses the **same 22 editable routed-Expert-FFN blocks** as lesson 16 and appends an explicit target matrix plus MSE. The unified `graph_autodiff.js` imports the already-tested `expert_ffn_vjp.js` local rules, instead of duplicating a fake Expert backward demonstration.
+
+- `dispatch_routed_tokens(X,indices)`: adjoints of the K token copies add back into one `dX[t,:]`.
+- `expert_linear_bank(Z,indices,W)`: expert IDs are fixed, while each selected token route computes the derivative with respect to its data and that expert's own W1/W3/W2. Multiple routes selecting the same expert **sum into the same weight rows**.
+- `routed_weighted_reduce(V,gates)`: gradients flow to selected expert outputs and their corresponding continuous weights.
+- `router_gate_weights(affinity,indices,mode=identity,normalize=true)`: each selected positive affinity receives the exact normalized-gate derivative; non-selected experts get zero on this path.
+- `indices` routing edges are **detached**, not approximated by straight-through gradients. Bias/group-selection branches affect the forward index choices, but the discrete selection event has no derivative in this teaching rule.
+- The independent shared Expert path also receives gradients through `Linear → SwiGLU → Linear`. Its parameter-less teaching `linear` nodes only propagate gradients to input; they are not presented as trained weights.
+
+**Numerical acceptance:** The test perturbs every element of the three routed expert weight banks (3×8×2 = 48 scalar coordinates) and every entry of the 3×4 affinity tensor (12 more), then recomputes the actual selected route/expert calculations. All 60 scalar derivatives must agree with the full reverse graph gradient under a central finite-difference oracle that **holds discrete expert indices fixed**. The final output of the combined lesson remains a scalar MSE.
+
+The optimizer preview in the same inspector can be invoked on an explicit expert weight bank, treating its accumulated VJP tensor as a parameter gradient. Its values are not committed back into the graph.
+
 ## AdamW optimizer **preview**, not training commit
 
 On a *selected explicit matrix input that feeds the right-hand input of a MatMul* (after numeric forward and backward), the UI offers `预览 AdamW 单步更新`. This calls the standalone pure `adamw_micro.js` on the selected matrix and its accumulated gradient.
