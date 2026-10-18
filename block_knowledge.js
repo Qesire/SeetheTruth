@@ -12,6 +12,8 @@ const sources=Object.freeze({
  deepseek3code:["DeepSeek-V3 official Gate.forward","https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py"],
  mixtral:["Mixtral of Experts","https://arxiv.org/abs/2401.04088"],
  deepseekmath:["DeepSeekMath: GRPO","https://arxiv.org/abs/2402.03300"],
+ ppo:["Proximal Policy Optimization Algorithms","https://arxiv.org/abs/1707.06347"],
+ deepseekr1:["DeepSeek-R1: Incentivizing Reasoning","https://arxiv.org/abs/2501.12948"],
  deepseekv2:["DeepSeek-V2: MLA / DeepSeekMoE","https://arxiv.org/abs/2405.04434"],
  softcap:["Gemma 2 Technical Report","https://arxiv.org/abs/2408.00118"],
  switch:["Switch Transformers","https://arxiv.org/abs/2101.03961"],
@@ -42,6 +44,14 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ response_token_reshape:["把 G×T 条展平 token 记录 [G*T,1] 恢复成回答-Token 矩阵 [G,T]。输出行 g、列 t 与原第 g*T+t 行严格同位。","PPO/GRPO 按采样回答及生成 token 组织旧/新策略 log probabilities；训练代码通常还需 attention/completion masks 和 padding 对齐。","这只是把布局显式化，不会在 Token 之间执行求和，不会恢复隐藏的对话或采样信息。","用 [0,1,2,3] 四个标量重排为两回答各两 Token，验证原次序。","deepseekmath,ppo"],
+ response_advantage_broadcast:["把 [G,1] 的组内回答优势 A[g] 复制到每个有效 token 的位置；完整目标的 Mask 在后续积木处理。","DeepSeekMath GRPO 把同题多回答的 reward 相对优势用于采样回答的 token 级 surrogate，无独立 critic value baseline。","这里 A 按回答常量，不是 PPO 的 token-level GAE，更不能把不同 prompt 的 group 混为同一组。","使两个回答优势一正一负，观察广播后每行相同而行间不同。","deepseekmath,deepseekr1"],
+ policy_importance_ratio:["输入同一 token 的新策略与采样时旧策略 logprob，计算 exp(logπθ−logπold)。比率定义依赖固定的已生成 token 动作。","PPO/GRPO 以旧策略的生成样本为条件，对新策略做重要性校正；不能把参考模型概率误用成 old policy 分母。","old/reference 是角色不同的两套策略，ratio 本身不等于优势目标或 KL 惩罚。数值示例拒绝过大 logp 差异。","令 current=old 验证 r=1，并分别施加正负偏移检查 r 的变化方向。","ppo,deepseekmath"],
+ ppo_clipped_surrogate:["逐位置分别计算 rA 与 clip(r,1−epsilon,1+epsilon)A，取 min 构成 PPO clip 保守策略目标；负优势不能直接采用 max 替代。","PPO 原论文提出 clipped surrogate 限制偏离旧策略的过大改进；GRPO 继承类似形式，但优势来源是组内奖励而非 value model。","这是要最大化的 surrogate，优化器通常最小化其负号。剪裁不保证输出分布必然满足单一 KL 界。","同一 r=1.5 分别测试 A=+1 与 A=−1 的目标，检查 clip 后的分段行为。","ppo,deepseekmath"],
+ sampled_reference_kl:["d=logπref(a)−logπθ(a)，逐采样 Token 计算 exp(d)−d−1；在真实有限值下非负，当前等于参考时为零。","DeepSeekMath/DeepSeek-R1 的 GRPO 可使用参考策略 KL 惩罚估计控制偏离基础模型；不同后训练变体可能省略或改变系数。","这是在被采样 Token 上的 KL 惩罚估计，不是严格对完整词表的 Σp log(p/q)。不能把 KL(ref||current) 和估计器逐值画等号。","令 d=0、±0.5，观察 KL 非负并比较不同符号的不对称幅度。","deepseekmath,deepseekr1"],
+ completion_length_mask:["输出 [G,T] 二值有效标记，每行在实际生成长度内为 1，超出部分为 0，使 padding token 在 loss 里不贡献。","LLM PPO/GRPO 的 response token mask 决定归约口径；长度不同的回答若不处理，会改变优化目标的隐式长度权重。","本教学只参数化至多两个回答，不是 tokenizer/attention_mask，也不会在真实 rollout 自动识别 EOS。","分别设置第一、第二条回答的有效 token 长度为 2 与 1，观察 Mask 和最终 loss。","deepseekmath,ppo"],
+ masked_grpo_objective:["对每个回答只对有效 token 计算 (surrogate−beta·KL) 均值，然后对同组回答均值，输出一个最大化的策略目标标量。","原始 GRPO 一种标准表达按回答内有效 token 归约，再在一组回答之间归约；近年的框架可能采用不同 normalization 或无 KL 变体。","这是最大化 J 而不是最小化损失；假如训练框架要最小化 loss，应显式接负号积木。Mask 不能整行为零。","构造长短两回答同值 token surrogate，改变 padding 数但不改变 valid 平均，验证结果不变。","deepseekmath,deepseekr1,ppo"],
+
  cache_write_segment:["前一个 cache 快照 C[P,D] 与新片段 S[N,D] 组成新的不可变快照：仅在 start_pos..start_pos+N 写入新行，其余已缓存行原样保存。模拟真实缓存写入的前后状态，但不产生隐式跨图生命周期。","DeepSeek-V3 官方 MLA optimized 分支在当前 start_pos:end_pos 写入 kv_cache 与 pe_cache，分别保存 normalized KV latent 和已旋转的位置 Key；两个缓存宽度不同。","严格区分 KV cache 的容量、已写入长度、当前合法 end_pos。不能误以为缓存的是完整 K/V，也不能把 raw position Key 当作已经施加 RoPE。","分别设置 start_pos=2 与 start_pos=1，尝试追加和合法覆盖；确认输入缓存不变，旧 Token 数据未被破坏。","deepseek3,deepseek3code,deepseekv2"],
  cache_read_prefix:["从当前快照读取前 end_pos 行以供本步 Attention 使用；当包含当前 Token 的 K/V 后，读出行数是历史 Token 加当前步新写入 Token。","DeepSeek-V3 MLA optimized 实现从 kv_cache[:end_pos] 与 pe_cache[:end_pos] 计算注意力分数，不等于直接访问全容量缓冲区；因果 Mask 处理未完成片段的未来位。","缓存前缀本身不附带因果 Mask；在单次批量 Prefill 中仅 prefix 读取不足以禁止查询看到同一片段里的未来 Key。","尝试 length>end_pos，确认不允许读取；改变 prefix 长度观察 Attention 的 Score 维。","deepseek3,deepseek3code"],
  query_weight_absorb:["若 Key 的内容部分 K_nope=C·W_K，其中 C[S,R]、W_K[R,Dk]，则 Q[T,Dk]·K_nope^T=(Q·W_K^T)·C^T。权重吸收后的 Q_abs[T,R] 可直接和 cached C 计算内容 Score。","DeepSeek-V3 MLA optimized 分支先将 W_K 转移到 Q_nope 一侧计算低秩 Query，避免每个 decode 步对全部历史 latent 重建非位置 K。","吸收矩阵乘法是精确实数代数等价，但不代表低精度累计顺序完全相等；已旋转的位置分支必须单独处理，不能把 RoPE 随意移过 W_K。","使用 Q、C、W_K 先走显式 K 重建路径，再走 Query 吸收路径，要求两套 Content Score 每项差异在浮点容差内。","deepseek3,deepseek3code,deepseekv2"],
