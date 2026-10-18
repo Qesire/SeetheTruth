@@ -186,3 +186,20 @@ For every recipe:
 3. A hovered paper explanation must cite an appropriate primary source and distinguish textbook mechanics, paper-specific choice, and toy simplification.
 4. No REAL_CAPTURE attribution is permitted for deterministic seeded teaching matrices.
 5. Browser layout, hover accessibility, and screenshots must be validated separately from Node numerical tests.
+
+## Free-form graph authoring: operational validity, not model conventions
+
+The editor is a general-purpose **educational tensor DAG**, not a fixed model assembler or a model-family validator. You may independently combine blocks from Transformer, MLA, MoE, PPO/GRPO, optimization and simple arithmetic into a structure that no published model uses.
+
+**Constraints that matter to execution:**
+
+1. Every graph node must refer to a known executable block and have structurally valid parameters.
+2. The graph must be acyclic, with exactly one source connected to each input socket. An upstream output may feed any number of consumers, including several ports of one consumer.
+3. Before a **complete graph** is executable, all required input sockets must be connected, and operators' declared input and output tensor dimensions must be compatible. Integer indices, masks, exponent limits and other value-dependent contracts are checked by the actual bounded numeric execution.
+4. Incomplete graphs and temporarily incompatible tensor dimensions **remain editable**. They are not rewritten to fit any standard architecture. The live readiness report marks `missing`, `blocked` and `shape-error` nodes, with specific cause and inferred output shape on each ready node. Errors link back to the offending block.
+5. Clicking **检查可运行性** performs the full shape check; in numeric mode it additionally executes the complete CPU micro-tensor graph. It never requires a predefined model name or a specific sequence of blocks.
+
+A student can, for example, freely connect `Input[3,4] → Transpose[4,3]` while sending the same original `Input[3,4]` into one MatMul operand. A temporary `Input[3,4] × Input[3,4]` mismatch is shown but kept on the canvas; replacing only the right-hand input with `Transpose[4,3]` yields a valid output `[3,3]`, which can then feed Softmax. This is a **deliberately non-template-specific example**.
+
+The number of nodes and numeric tensor dimensions retain bounded in-browser safeguards. Those are resource/safety limits on a teaching implementation, not judgments about whether a novel architecture is academically sound. A mathematically runnable graph may be scientifically ineffective; this tool shows mechanisms and execution, not a quality certification.
+
