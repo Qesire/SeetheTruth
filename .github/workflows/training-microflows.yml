@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - 'micro_training_flows.js'\n      - 'paper_patches.js'
-      - 'paper_lab.html'\n      - 'tests/paper_patches_contracts.js'
+      - 'paper_lab.html'
+      - 'paper_hover.js'
+      - 'tests/paper_hover_contracts.js'
+      - 'learn.html'\n      - 'tests/paper_patches_contracts.js'
       - 'micro_training.html'
       - 'tests/micro_training_flows_contracts.js'
       - '.github/workflows/training-microflows.yml'
@@ -25,3 +28,4 @@ jobs:
           node-version: '22'
       - run: node --check micro_training_flows.js
       - run: node tests/micro_training_flows_contracts.js\n      - run: node --check paper_patches.js\n      - run: node tests/paper_patches_contracts.js
+      - run: node tests/paper_hover_contracts.js
