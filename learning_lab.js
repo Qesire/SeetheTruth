@@ -248,7 +248,37 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="nd_causal_attention"){
+    if(name==="nd_mqa_attention"){
+      const base=preset("nd_gqa_attention");
+      base.title="任务 28 · MQA 一组 KV Head 与四组 Query Head 的共享梯度";
+      for(const id of ["key","value"])base.nodes.find(n=>n.id===id).params.h=1;
+      return validateGraph(base);
+    }else if(name==="nd_gqa_attention"){
+      title="任务 27 · GQA 四 Q Head / 两 KV Head · 多轴反向与 MSE";
+      nodes=[
+        N("query","nd_input",30,40,{b:1,h:4,t:3,d:2,seed:2}),
+        N("key","nd_input",30,320,{b:1,h:2,t:3,d:2,seed:4}),
+        N("value","nd_input",30,640,{b:1,h:2,t:3,d:2,seed:6}),
+        N("key_groups","nd_repeat_kv",335,310,{queryHeads:4}),
+        N("value_groups","nd_repeat_kv",335,610,{queryHeads:4}),
+        N("key_transpose","nd_permute",640,295,{axis0:0,axis1:1,axis2:3,axis3:2}),
+        N("scores","nd_batched_matmul",945,145),
+        N("scaled","nd_scale",1245,140,{factor:0.7071067811865475}),
+        N("causal","nd_causal_mask",1545,130,{queryStart:0,keyStart:0}),
+        N("probabilities","nd_softmax_last",1850,130),
+        N("context","nd_batched_matmul",2150,310),
+        N("target","nd_input",1860,620,{b:1,h:4,t:3,d:2,seed:11}),
+        N("loss","nd_mse",2470,345)
+      ];
+      edges=[
+       ["key","key_groups","x"],["value","value_groups","x"],
+       ["key_groups","key_transpose","x"],["query","scores","a"],["key_transpose","scores","b"],
+       ["scores","scaled","x"],["scaled","causal","x"],
+       ["causal","probabilities","x"],
+       ["probabilities","context","a"],["value_groups","context","b"],
+       ["context","loss","prediction"],["target","loss","target"]
+      ];
+    }else if(name==="nd_causal_attention"){
       title="任务 26 · 真正逐积木四轴因果多头 Attention";
       nodes=[
        N("query","nd_input",30,40,{b:1,h:2,t:3,d:4,seed:2}),
