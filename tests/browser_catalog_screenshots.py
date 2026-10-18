@@ -108,6 +108,8 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#checkGraph").click()
         self.assertIn("CPU 小张量执行",p.locator("#status").inner_text())
         p.locator("#run").click()
+        self.assertIn("1 / 4",p.locator("#stepInfo").inner_text())
+        for _ in range(3):p.locator("#next").click()
         self.assertIn("4 / 4",p.locator("#stepInfo").inner_text())
         self.assertIn("✓ 已运行",p.locator("#status").inner_text())
         p.locator("#autoLayout").click()
