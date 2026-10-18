@@ -334,3 +334,22 @@ The existing Scratch reverse engine now accepts rank-4 output gradients and disp
 Verification includes an independent reference formula for masked scores/attention output, *every element* of Q/K/V checked by central finite differences through the full GQA and MQA loss, plus numerical consistency checks for individual N-D local VJPs. The implementation also rejects illegal `Hq/Hkv` ratios, rather than silently repeating incompatible head groups.
 
 Research groundings: Ainslie et al., [GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints](https://aclanthology.org/2023.emnlp-main.298/) (EMNLP 2023); [PyTorch SDPA enable_gqa semantics](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention), notably `Hq % Hkv == 0` and equal K/V Head counts. Physical KV cache savings and fused GPU-kernel performance are not measured by this CPU learning tool.
+
+## 29–30: Persistent N-D Parameter and a real micro-training transaction
+
+Lessons `nd_trainable_gqa` and `nd_trainable_mqa` use the **same 13-node free-form GQA/MQA computation graphs** as lessons 27–28. The only change is replacing their Q/K/V synthetic input sources with three explicit `nd_parameter` nodes that store full nested tensors and AdamW moment state.
+
+The four-axis parameter shape is `[B,H,T,D]` with bounded dimensions. The Parameter JSON includes `params.values` and `params.optimizer={t,m,v}`; the node ID remains its stable identity through undo, redo, save and import. Manual editing of the values resets the AdamW moments. No model-family-based validation is introduced: any well-formed tensor graph using this Parameter node may be optimized when its selected scalar-loss path has supported adjoint rules.
+
+The added `nd_adamw_micro.js` uses the same bias-corrected, decoupled AdamW mathematics as the pre-existing 2D optimizer. Its immutable transaction evaluates a selected MSE/ND-MSE loss, calls the unified reverse graph, applies independent moments to every reachable 2D or 4D Parameter node, re-runs the forward computation, then returns a complete validated new graph. A user can still leave unrelated blocks unconnected on the same canvas.
+
+Example small-CPU losses with `lr=0.005`, `weightDecay=0.01`:
+
+- GQA (4 Query / 2 KV Heads): initial `0.7704344436801055`, after two AdamW steps `0.7549565860316719`.
+- MQA (4 Query / 1 KV Head): initial `0.6479845511236489`, after two AdamW steps `0.63602880824813`.
+
+These are observed numerical outputs for deterministic synthetic tensors, not large-model loss curves, model-quality claims or guarantees of convergence.
+
+Contract tests verify AdamW's first-step and second-step moment/bias correction analytically for every tensor element; zero-gradient decoupled weight decay; three simultaneous parameter updates through full GQA and MQA graphs; immutability of old versions; target/shape safety; serializing a two-step graph and reproducing the identical next update; and an unfinished unrelated side branch surviving a parameter update. Browser tests explicitly perform two-step training, inspect per-parameter optimizer counters and Loss curves, undo, export/reimport and continue training.
+
+The N-D VJP and optimizer features remain deliberately bounded to `Float64` CPU teaching tensors with four axes of 1–8 elements and at most 512 elements. Real trainable-model components still require actual datasets, parameter initialization, backends, optimizer schedule and distributed learning before they can claim full training. Reference: [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101); [PyTorch Parameter](https://docs.pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html).
