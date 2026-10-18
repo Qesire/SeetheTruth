@@ -41,6 +41,8 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ gather_routed_bank:["输入专家池 E[Experts,D] 与每个 token 的路由索引 I[T,K]，沿 token-major 顺序生成 Y[t·K+k,:]=E[I[t,k],:]。","对应 MoE 的选择/分派前置操作；实际专家通常对路由 token 做不同的可训练 FFN，此处仅展示静态专家向量的 Gather。","这个算子不等同执行真实专家，输出 [T·K,D] 而不是 [T,D]，必须另用门控加权和规约恢复 token 维度。","令三个 token 分别选两个专家，手算第 4 行来自哪个专家索引。","deepseek3,deepseek3code"],
+
  router_gate_weights:["先按离散专家 indices[T,K] 从原始 scores[T,E] 收集每个被选中的 score；identity 模式接收上游 sigmoid affinity；sigmoid 模式接收未归一化 logits，softmax 模式仅在选中集合归一化；可选择归一化开关。","DeepSeek-V3 用附加 bias 参与专家选择，但门控权重由原始 affinity 提取；它和传统 selected-softmax 是不同的门控配方。","排序索引不可微；原始分数与加入路由 bias 的选择分数不能无条件混同，也不能假设所有 MoE 使用 sigmoid。","用高 bias 改变选中专家，同时保持原始 logits 不变，检查相应 gate 是从哪一路计算的。","deepseek3,deepseek3code,switch"],
  expert_bank_mix:["令 I[T,K] 为专家索引，G[T,K] 为每个 token 的门控值，E[Experts,D] 为演示用静态专家向量；输出 Y[T,D]=sum_k G[T,K]×E[I,D]。","对应 MoE combine 的加权回填结构；真实 Experts 必须是逐 token 的 FFN 或其他子网络，对所选 token 分别执行。","这不是 DeepSeek/Mixtral 的完整专家计算；Bank 可表达路由与加权数学，但无法反映专家参数、MLP 激活、容量和通信。","设两个专家向量互相正交，改变 gates 并手算输出；再加上 Shared Expert 的 Add 分支。","deepseek3,switch"],
 
