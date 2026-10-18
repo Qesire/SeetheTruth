@@ -148,7 +148,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_layout_is_readable_undoable_and_does_not_cover_blocks(self):
         p=self.page
         p.locator('[data-preset="mla_lite"]').click()
-        self.assertGreaterEqual(float(p.locator("#board").evaluate("(e)=>e.style.zoom")),0.46)
+        self.assertGreaterEqual(float(p.locator("#board").evaluate("(e)=>e.style.zoom")),0.72)
         coords=p.evaluate("""() => [...document.querySelectorAll('#blocks .block')].map(n=>({
           id:n.dataset.node,x:parseFloat(n.style.left),y:parseFloat(n.style.top)
         }))""")
@@ -159,6 +159,10 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#run").click()
         self.assertIn("1 / 20",p.locator("#stepInfo").inner_text())
         self.shot("10-mla-auto-layout-readable.png")
+        before_fit=float(p.locator("#board").evaluate("(e)=>e.style.zoom"))
+        p.locator("#zoomFit").click()
+        after_fit=float(p.locator("#board").evaluate("(e)=>e.style.zoom"))
+        self.assertLess(after_fit,before_fit)
         p.locator('[data-preset="ffn"]').click()
         before=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         p.locator("#autoLayout").click()
