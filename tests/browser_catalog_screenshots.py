@@ -172,6 +172,30 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_routed_expert_swiglu_shared_expert_and_research_hover(self):
+        p=self.page
+        p.locator('[data-preset="moe_expert_ffn"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),22)
+        self.assertGreaterEqual(float(p.locator("#board").evaluate("(e)=>e.style.zoom")),0.72)
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("1 / 22",p.locator("#stepInfo").inner_text())
+        for _ in range(21):p.locator("#next").click()
+        self.assertIn("22 / 22",p.locator("#stepInfo").inner_text())
+        self.assertNotIn("无法运行",p.locator("#status").inner_text())
+        self.assertIn("2",p.locator("#shape").inner_text())
+        self.shot("11-expert-ffn-beginning.png")
+        p.locator("#viewport").evaluate("(e)=>{e.scrollLeft=e.scrollWidth;e.scrollTop=0;}")
+        self.shot("12-expert-ffn-output.png")
+        p.locator("#blockSearch").fill("Expert-specific Linear")
+        card=p.locator('#palette [data-add="expert_linear_bank"]')
+        self.assertEqual(card.count(),1)
+        card.hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=4000)
+        self.assertIn("DeepSeek-V3",p.locator("#paperHoverInspector").inner_text())
+        self.assertIn("W",p.locator("#paperHoverInspector").inner_text())
+        self.shot("13-expert-ffn-paper-hover.png")
+
     def test_new_model_family_presets_and_paper_hover(self):
         p=self.page
         for mission,count in [("mla_lite",20),("moe_route",11),("grpo_signals",6)]:
