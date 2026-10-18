@@ -116,7 +116,7 @@ function backward(raw,forward,opts={}){
   }
   if(kind==="repeat_rows"){
     const x=inp(id,"x"),dx=z(x),times=p.times;
-    for(let i=0;i<d.length;i++)for(let j=0;j<d[0].length;j++)dx[Math.floor(i/times)][j]+=d[i][j];
+    for(let i=0;i<d.length;i++)for(let j=0;j<d[0].length;j++)dx[i%x.length][j]+=d[i][j];
     send(id,"x",dx);continue;
   }
   if(kind==="detach_demo"){cut(id,"x","explicit Detach blocks all adjoints");continue;}
