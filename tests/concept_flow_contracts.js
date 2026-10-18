@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -28,6 +28,8 @@ function perKind(k){
    else if(k==='gqa')inputs[port]=[2,port==='q'?8:4];
    else if(k==='masked_softmax')inputs[port]=[2,2];
    else if(k==='matmul')inputs[port]=port==='a'?[2,4]:[4,4];
+   else if(k==='response_token_reshape'&&port==='x')inputs[port]=[4,1];
+   else if(k==='response_advantage_broadcast'&&port==='advantage')inputs[port]=[2,1];
    else if(k==='cache_read_prefix'&&port==='cache')inputs[port]=[3,4];
    else if(k==='cache_write_segment'&&port==='cache')inputs[port]=[2,4];
    else if(k==='cache_write_segment'&&port==='segment')inputs[port]=[1,4];
@@ -54,6 +56,7 @@ function perKind(k){
    if(port==='ids'||port==='labels')values[port]=mock(sh,()=>0);
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
    else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
+   else if(k==='masked_grpo_objective'&&port==='mask')values[port]=mock(sh,()=>1);
    else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')values[port]=[[0],[1]];
    else if(['dispatch_routed_tokens','expert_linear_bank'].includes(k)&&port==='indices')values[port]=[[0,1],[1,0]];
    else if(k==='gather_routed_bank'&&port==='indices')values[port]=[[0,1],[1,0]];
