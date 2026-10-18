@@ -348,12 +348,26 @@ $("#compositeBack").onclick=()=>{
 };
 
 function newId(g){let id;do{id="lab"+(++seq);}while(g.nodes.some(n=>n.id===id));return id;}
+function freeBlockPosition(nodes,x,y){
+ const originalX=Math.max(8,Math.min(9600,Math.round(x))),originalY=Math.max(8,Math.min(9600,Math.round(y)));
+ const clear=(px,py)=>nodes.every(n=>Math.abs(n.x-px)>=246||Math.abs(n.y-py)>=250);
+ if(clear(originalX,originalY))return {x:originalX,y:originalY};
+ // Search nearby positions rather than imposing a predetermined model layout.
+ for(let radius=1;radius<=30;radius++)for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+   if(Math.max(Math.abs(dx),Math.abs(dy))!==radius)continue;
+   const px=Math.max(8,Math.min(9600,originalX+dx*266)),py=Math.max(8,Math.min(9600,originalY+dy*270));
+   if(clear(px,py))return {x:px,y:py};
+ }
+ throw Error("当前画布没有安全的空余放置位置");
+}
 function addBlock(kind,x=480,y=360){
- mutate(g=>{const id=newId(g);
-   g.nodes.push({id,kind,x:Math.max(8,Math.min(9600,Math.round(x))),y:Math.max(8,Math.min(9600,Math.round(y))),params:{}});
-   selected=id;return g;
+ const ok=mutate(g=>{const id=newId(g),pos=freeBlockPosition(g.nodes,x,y);
+   g.nodes.push({id,kind,...pos,params:{}});selected=id;return g;
  });
- say("已添加 "+L.defs[kind].title+"。用输出和输入插口建立连接。");
+ if(ok){
+   say("已添加 "+L.defs[kind].title+"，已避让现有积木；可任意拖动和连线。");
+   requestAnimationFrame(()=>focusGraphNode(selected));
+ }
 }
 function renderPalette(){
  const matches=L.KINDS.filter(k=>{
