@@ -179,6 +179,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="trainable_attention"><span class="num">22</span><span>Q/K/V · 三组参数训练<span class="desc">Attention 独立投影矩阵 → MSE → AdamW</span></span></button>
   <button class="mission" data-preset="trainable_swiglu"><span class="num">23</span><span>SwiGLU FFN · 可训练 W1/W3/W2<span class="desc">门控/上投影/下投影共享完整训练机制</span></span></button>
   <button class="mission" data-preset="trainable_moe"><span class="num">24</span><span>MoE · 可训练专家权重库<span class="desc">固定 Top-k 路由选择 + 独立专家权重 AdamW</span></span></button>
+  <button class="mission" data-preset="nd_attention_lesson"><span class="num">25</span><span>四轴自由张量 · Multi-Head GEMM<span class="desc">[B,H,T,D] → MatMul → Head 广播 → Token 归约 → 2D/4D 转换</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -274,7 +275,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -471,6 +472,19 @@ function drawWires(){
 }
 function matrixHTML(matrix,label){
  const m=matrix;if(!Array.isArray(m)||!m.length)return "";
+ if(Array.isArray(m[0])&&Array.isArray(m[0][0])){
+   const dims=window.SeetheTruthND.shape(m),axes=dims.slice(0,-2);
+   const menus=axes.map((count,i)=>'<label class="study-mode-label">axis '+i+
+      ' <select data-nd-slice="'+i+'" aria-label="四维张量切片 axis '+i+'">'+
+      Array.from({length:count},(_,j)=>'<option value="'+j+'">'+j+' / '+(count-1)+'</option>').join('')+
+      '</select></label>').join('');
+   let plane=m;for(let i=0;i<axes.length;i++)plane=plane[0];
+   return '<div class="nd-tensor-view"><div class="kicker">'+esc(label)+' · '+dims.join("×")+
+      ' · '+dims.length+'D / 各轴独立选择</div><div class="row" style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">'+menus+
+      '</div><div class="nd-plane">'+matrixHTML(plane,'axis slice '+axes.map(()=>0).join('/'))+'</div>'+
+      '<p class="hint">本视图只展示当前前导轴的二维切片，数值执行仍覆盖完整张量。</p></div>';
+ }
+
  const cols=m[0].length, vals=m.flat(),max=Math.max(.1,...vals.map(x=>Math.abs(x)));
  return '<div class="kicker" style="margin-top:12px">'+esc(label)+' · '+m.length+'×'+cols+'</div><div style="display:grid;grid-template-columns:repeat('+cols+',minmax(24px,1fr));gap:3px;margin-top:7px">'+m.map(row=>row.map(v=>{
   const alpha=(.12+.54*Math.min(1,Math.abs(v)/max)).toFixed(3);
