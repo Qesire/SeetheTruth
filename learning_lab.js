@@ -248,7 +248,19 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="nd_mqa_attention"){
+    if(name==="nd_trainable_mqa"||name==="nd_trainable_gqa"){
+      const isMQA=name==="nd_trainable_mqa";
+      const base=preset(isMQA?"nd_mqa_attention":"nd_gqa_attention");
+      for(const id of ["query","key","value"]){
+        const n=base.nodes.find(n=>n.id===id);
+        const result=calculate(n,{});
+        const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+        const x=result.values,sh=ND.shape(x),zero=ND.build(sh,()=>0);
+        n.kind="nd_parameter";
+        n.params={values:x,optimizer:{t:0,m:zero,v:ND.build(sh,()=>0)}};
+      }
+      return validateGraph({...base,title:isMQA?"任务 30 · MQA 四轴 Parameter + AdamW 完整训练":"任务 29 · GQA 四轴 Parameter + AdamW 完整训练"});
+    }else if(name==="nd_mqa_attention"){
       const base=preset("nd_gqa_attention");
       base.title="任务 28 · MQA 一组 KV Head 与四组 Query Head 的共享梯度";
       for(const id of ["key","value"])base.nodes.find(n=>n.id===id).params.h=1;
