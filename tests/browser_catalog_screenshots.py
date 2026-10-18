@@ -145,6 +145,29 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertNotIn("FLOPs",p.locator("#metrics").inner_text())
         self.shot("07-qualitative-gqa-no-matrix.png")
 
+    def test_layout_is_readable_undoable_and_does_not_cover_blocks(self):
+        p=self.page
+        p.locator('[data-preset="mla_lite"]').click()
+        self.assertGreaterEqual(float(p.locator("#board").evaluate("(e)=>e.style.zoom")),0.46)
+        coords=p.evaluate("""() => [...document.querySelectorAll('#blocks .block')].map(n=>({
+          id:n.dataset.node,x:parseFloat(n.style.left),y:parseFloat(n.style.top)
+        }))""")
+        for i,a in enumerate(coords):
+            for b in coords[i+1:]:
+                self.assertTrue(abs(a["x"]-b["x"])>=220 or abs(a["y"]-b["y"])>=175,
+                                "layout collision "+a["id"]+" / "+b["id"])
+        p.locator("#run").click()
+        self.assertIn("1 / 20",p.locator("#stepInfo").inner_text())
+        self.shot("10-mla-auto-layout-readable.png")
+        p.locator('[data-preset="ffn"]').click()
+        before=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
+        p.locator("#autoLayout").click()
+        after=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
+        self.assertNotEqual(before,after)
+        p.locator("#undo").click()
+        undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
+        self.assertEqual(before,undone)
+
     def test_new_model_family_presets_and_paper_hover(self):
         p=self.page
         for mission,count in [("mla_lite",20),("moe_route",8),("grpo_signals",6)]:
