@@ -6,6 +6,13 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ qwen3:["Qwen3 Technical Report","https://arxiv.org/abs/2505.09388"],
+ gemma3:["Gemma 3 Technical Report","https://arxiv.org/abs/2503.19786"],
+ deepseek3:["DeepSeek-V3 Technical Report","https://arxiv.org/abs/2412.19437"],
+ softcap:["Gemma 2 Technical Report","https://arxiv.org/abs/2408.00118"],
+ switch:["Switch Transformers","https://arxiv.org/abs/2101.03961"],
+ stopgrad:["PyTorch detach API","https://docs.pytorch.org/docs/stable/generated/torch.Tensor.detach.html"],
+
  transformer:["Attention Is All You Need","https://arxiv.org/abs/1706.03762"],
  glu:["GLU Variants Improve Transformer","https://arxiv.org/abs/2002.05202"],
  rms:["RMSNorm paper","https://arxiv.org/abs/1910.07467"],
@@ -31,6 +38,14 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ qk_norm:["沿每个 head 的特征维计算均方根并归一化，输入输出维度不变；这是 Q/K 投影后的计算而不是 attention score 的归一化。","Qwen3 等模型使用 QK normalization；参数缩放、RoPE 顺序以及应用轴应以具体配置和源码为准。","不能从 QK Norm 推断整个模型使用 LayerNorm，也不能推断所有 Attention 头共享一个 gamma。","把它放在 MatMul(Q,K^T) 前，与仅对 logits 缩放的温度积木对比。","qwen3,gemma3"],
+ sliding_window_mask:["逐个查询位置 i 建立可见集合 {j|max(0,i-w+1)≤j≤i}，再由 Masked Softmax 把不可见项置零。","Gemma 3 使用局部/全局注意力交错；窗口长度和 cache 位置语义与模型实现相关。","滑动窗口不是硬裁剪掉整张 KV Cache，也不表示模型不存在全局层。","将窗口设为 1、2 与 T，观察允许的键数与 Masked Softmax 的效果。","gemma3"],
+ logit_softcap:["对每个 score 计算 c·tanh(score/c)，在大幅值区域压缩分数而保留平滑性。","Gemma 2 描述过 attention logits soft-capping；它与 QK Norm 是不同的机制，也不能推断 Gemma 3 一样采用该形式。","Softcap 不等于 clamp；也不保证损失或注意力熵总是单调改善。","构造极大正负 logits，比对原始 Softmax、softcap 后 Softmax。","softcap,gemma3"],
+ router_topk:["按每个 token 的专家 score 降序选择 k 个索引，将其输出为可用于 Gather/Dispatch 的整数张量。","DeepSeek-V3 的路由还涉及动态 bias、分组限制和分数归一化；演示的 selected-softmax 是教学选项，非完整复刻。","离散 index 不直接对 logits 求导；路由选择与被选专家的连续权重梯度要分开。","修改 k 和 router logits，观察专家选择、并列 tie-break、权重分配的变化。","deepseek3,switch"],
+ weighted_sum:["按查询行 t 的权重向量与 values 的行逐项乘积再沿 K 聚合；输出 [T,D]。","可表达 Attention 的 P·V；真实 MoE 组合则需要先为不同 token Gather 对应专家结果。","权重不自动归一化；此积木不说明概率、路由或者因果性。","用两行 weights 连接三行 values，手算一个输出坐标。","transformer,sdpa"],
+ detach_demo:["前向保持张量值不变，反向时把该边的局部 VJP 定义为零，从而隔离一条梯度路径。","现代训练的 target network、teacher distillation 和策略基线经常涉及显式 detach 或 no_grad，具体边界由算法确定。","Stop Gradient 并不停止其他仍可微分路径的梯度，也不必然冻结这个参数在所有路径上的更新。","建立双分支图，只在一支使用 detach，追踪共享参数的梯度贡献。","stopgrad"],
+ residual_scale:["在支路上计算 αX 后再与主支路 Add，从而将支路幅度显式可组合地控制。","残差缩放可能与初始化、深度以及规范化位置联动，不能仅凭一个标量积木声称复现完整稳定化方法。","Residual Scale 是可微常数乘法，不等同可训练门控或 stochastic depth。","设置 α 为 0、1 和 -1 并连接 Add，比较表示与局部梯度。","transformer"]
+
  input:["先区分 token 轴与通道轴，再沿图检查哪个模块真正混合 token，哪个只混合通道。","真实表征通常还包括 Batch、Head、position、mask、dtype；二维仅是教学切片。","不能由同一 shape 推断张量内容语义，也不能把演示数值称为真实 Embedding。","更改输入 D，预测下游哪些算子会因为维度不匹配失效。","transformer,embed"],
  linear:["每个 token 共享同一组权重，沿输入通道求和形成新的输出特征。","QKV 可将多个 Linear 融合为一次投影后分拆；是否有 bias、权重转置和融合由源码决定。","单独看到 Linear 名称，不能断言它是 Q/K/V 或非线性 FFN。","分别构建三条投影支路，核对不同的消费者。","linear,transformer"],
  rmsnorm:["每个 token 先计算 mean(x²)，再取平方根调尺度；不减去均值。","RMSNorm 可少一次中心化，但实际速度仍取决于融合、数据类型与硬件。","RMSNorm 不强制均值为零，当前教学也没有可训练 gamma。","给所有通道同时加 10，对比 LayerNorm 的差异。","rms,ln"],
