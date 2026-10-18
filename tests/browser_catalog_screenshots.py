@@ -77,6 +77,51 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_composed_causal_multihead_attention_probabilities_and_context(self):
+        p=self.page
+        p.locator('[data-preset="nd_causal_attention"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),9)
+        self.assertIn("9/9",p.locator("#graphReadiness").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        steps=p.evaluate("""() => window.SeetheTruthLearning.order(
+            window.SeetheTruthLearning.preset('nd_causal_attention')).map(n=>n.id)""")
+        self.assertEqual(len(steps),9)
+        self.assertEqual(steps[-1],"context")
+        prob=steps.index("probabilities")
+        p.locator('#trace [data-step="'+str(prob)+'"]').click()
+        self.assertIn("1×2×3×3",p.locator("#metrics").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),9)
+        self.assertEqual(p.locator("#matrix .cell").all_inner_texts()[1:3],["0.00","0.00"])
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("43-causal-attention-head0-probability-mask.png")
+        before=p.locator("#matrix .cell").all_inner_texts()
+        p.locator('#matrix [data-nd-slice="1"]').select_option("1")
+        after=p.locator("#matrix .cell").all_inner_texts()
+        self.assertNotEqual(before,after)
+        self.assertEqual(after[1:3],["0.00","0.00"])
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("44-causal-attention-head1-probabilities.png")
+        p.locator('#trace [data-step="'+str(steps.index("context"))+'"]').click()
+        self.assertIn("1×2×3×4",p.locator("#metrics").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),12)
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("45-causal-attention-context-output.png")
+        result=p.evaluate("""() => {
+          const ND=window.SeetheTruthND,L=window.SeetheTruthLearning,
+                run=L.evaluate(L.preset('nd_causal_attention')),
+                data=Object.fromEntries(run.steps.map(s=>[s.id,s.values]));
+          return {prob:data.probabilities,context:data.context,knownFlops:run.totalKnownFlops,
+                  contextShape:ND.shape(data.context)};
+        }""")
+        self.assertEqual(result["contextShape"],[1,2,3,4])
+        self.assertEqual(result["knownFlops"],288)
+        for h in range(2):
+            for t in range(3):
+                probs=result["prob"][0][h][t]
+                self.assertAlmostEqual(sum(probs),1,places=12)
+                self.assertTrue(all(probs[j]==0 for j in range(t+1,3)))
+
     def test_four_axis_multidimensional_value_slices_and_real_batched_gemm(self):
         p=self.page
         p.locator('[data-preset="nd_attention_lesson"]').click()
