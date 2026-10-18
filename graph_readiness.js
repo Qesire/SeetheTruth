@@ -1,0 +1,57 @@
+/* Permissive, incremental graph readiness check.
+ * No architecture whitelist: any catalog blocks may be wired into a DAG.
+ * Incomplete edits are retained; only executable graphs must satisfy each
+ * operator's tensor-shape contract and all required input ports.
+ */
+(function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphReadiness=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
+const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):root.SeetheTruthLearning;
+const C=typeof module==="object"&&module.exports?require("./concept_flow.js"):root.SeetheTruthConceptFlow;
+function check(raw,options={}){
+ let graph,seq;
+ try{graph=L.validateGraph(raw);seq=L.order(graph);}
+ catch(err){return {executable:false,structuralError:err.message,firstError:{nodeId:err.nodeId||null,reason:err.message},nodes:[],readyCount:0,missingCount:0,errorCount:1,blockedCount:0};}
+ const results=new Map(),edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
+ let missingCount=0,errorCount=0,blockedCount=0,readyCount=0;
+ for(const n of seq){
+   const inputs={},missing=[],unavailable=[];
+   for(const port of L.defs[n.kind].ports){
+     const source=edges.get(n.id+":"+port);
+     if(!source){missing.push(port);continue;}
+     const prior=results.get(source);
+     if(prior?.status!=="ready"){unavailable.push({port,source});continue;}
+     inputs[port]=prior.shape;
+   }
+   let result;
+   if(missing.length){
+     result={id:n.id,kind:n.kind,status:"missing",shape:null,reason:"缺少必要输入："+missing.join(", "),ports:missing,unavailable};
+     missingCount+=missing.length;
+   }else if(unavailable.length){
+     result={id:n.id,kind:n.kind,status:"blocked",shape:null,
+       reason:"等待上游："+unavailable.map(x=>x.source+" → "+x.port).join("；"),ports:[],unavailable};
+     blockedCount++;
+   }else{
+     try{
+       const out=C.analyze(n,inputs);
+       result={id:n.id,kind:n.kind,status:"ready",shape:out.shape.slice(),reason:null,ports:[],unavailable:[],rule:out.rule};
+       readyCount++;
+     }catch(err){
+       result={id:n.id,kind:n.kind,status:"shape-error",shape:null,reason:err.message,ports:[],unavailable:[]};
+       errorCount++;
+     }
+   }
+   results.set(n.id,result);
+ }
+ const list=seq.map(n=>results.get(n.id));
+ const firstError=list.find(x=>x.status==="shape-error")||list.find(x=>x.status==="missing")||list.find(x=>x.status==="blocked")||null;
+ const executable=list.length===readyCount;
+ let numeric=null;
+ if(executable&&options.numeric===true){
+   try{const trace=L.evaluate(graph);numeric={ok:true,steps:trace.steps.length};}
+   catch(err){numeric={ok:false,reason:err.message,nodeId:err.nodeId||null};}
+ }
+ return {executable:executable&&numeric?.ok!==false,structuralError:null,firstError:numeric?.ok===false?{nodeId:numeric.nodeId,reason:numeric.reason}:firstError,
+    nodes:list,readyCount,missingCount,errorCount,blockedCount,numeric,
+    note:"只要求图无环、输入完整且每块积木的真实张量/数值合同成立；不要求符合任何预设模型结构"};
+}
+return Object.freeze({check});
+});
