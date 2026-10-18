@@ -243,7 +243,66 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="moe_expert_ffn"){
+    if(name==="mla_cache"){
+      title="任务 17 · DeepSeek MLA · 压缩 KV Cache 与权重吸收的两路等价对照";
+      nodes=[
+        N("c_old","input",20,30,{rows:2,width:2,seed:1}),
+        N("c_new","input",20,230,{rows:1,width:2,seed:2}),
+        N("c_write","cache_write_segment",270,75,{start:2,capacity:8}),
+        N("c_read","cache_read_prefix",530,75,{length:3}),
+        N("pe_old_raw","input",20,440,{rows:2,width:2,seed:3}),
+        N("pe_old_rope","rope2d",260,440,{offset:0}),
+        N("pe_new_raw","input",20,650,{rows:1,width:2,seed:4}),
+        N("pe_new_rope","rope2d",270,650,{offset:2}),
+        N("pe_write","cache_write_segment",530,470,{start:2,capacity:8}),
+        N("pe_read","cache_read_prefix",800,470,{length:3}),
+        N("q_nope","input",20,850,{rows:1,width:2,seed:5}),
+        N("q_pe_raw","input",20,1050,{rows:1,width:2,seed:6}),
+        N("q_pe","rope2d",280,1050,{offset:2}),
+        N("w_k","input",520,850,{rows:2,width:2,seed:7}),
+        N("w_v","input",520,1050,{rows:2,width:2,seed:8}),
+        N("k_explicit","matmul",790,20),
+        N("k_transpose","transpose2d",1050,20),
+        N("score_explicit","matmul",1310,30),
+        N("q_abs","query_weight_absorb",800,250),
+        N("c_transpose","transpose2d",1070,250),
+        N("score_abs","matmul",1320,260),
+        N("pe_transpose","transpose2d",1070,490),
+        N("score_position","matmul",1320,490),
+        N("sum_explicit","add",1600,40),
+        N("sum_abs","add",1600,260),
+        N("scaled_explicit","scale",1840,40,{factor:0.5}),
+        N("scaled_abs","scale",1840,260,{factor:0.5}),
+        N("probs_explicit","softmax",2080,40),
+        N("probs_abs","softmax",2080,260),
+        N("v_explicit","matmul",1050,730),
+        N("out_explicit","matmul",2330,40),
+        N("latent_read","matmul",2330,250),
+        N("out_abs","matmul",2580,250),
+        N("neg_abs","scale",2820,250,{factor:-1}),
+        N("difference","add",3060,130)
+      ];
+      edges=[
+        ["c_old","c_write","cache"],["c_new","c_write","segment"],["c_write","c_read","cache"],
+        ["pe_old_raw","pe_old_rope","x"],["pe_new_raw","pe_new_rope","x"],
+        ["pe_old_rope","pe_write","cache"],["pe_new_rope","pe_write","segment"],["pe_write","pe_read","cache"],
+        ["q_pe_raw","q_pe","x"],
+        ["c_read","k_explicit","a"],["w_k","k_explicit","b"],["k_explicit","k_transpose","x"],
+        ["q_nope","score_explicit","a"],["k_transpose","score_explicit","b"],
+        ["q_nope","q_abs","query"],["w_k","q_abs","keyWeight"],
+        ["c_read","c_transpose","x"],["q_abs","score_abs","a"],["c_transpose","score_abs","b"],
+        ["pe_read","pe_transpose","x"],["q_pe","score_position","a"],["pe_transpose","score_position","b"],
+        ["score_explicit","sum_explicit","a"],["score_position","sum_explicit","b"],
+        ["score_abs","sum_abs","a"],["score_position","sum_abs","b"],
+        ["sum_explicit","scaled_explicit","x"],["sum_abs","scaled_abs","x"],
+        ["scaled_explicit","probs_explicit","x"],["scaled_abs","probs_abs","x"],
+        ["c_read","v_explicit","a"],["w_v","v_explicit","b"],
+        ["probs_explicit","out_explicit","a"],["v_explicit","out_explicit","b"],
+        ["probs_abs","latent_read","a"],["c_read","latent_read","b"],
+        ["latent_read","out_abs","a"],["w_v","out_abs","b"],
+        ["out_abs","neg_abs","x"],["out_explicit","difference","a"],["neg_abs","difference","b"]
+      ];
+    }else if(name==="moe_expert_ffn"){
       title="任务 16 · MoE · 逐 Token 专家 SwiGLU FFN 与共享专家";
       nodes=[
         N("x","input",25,50,{rows:3,width:2,seed:4}),
