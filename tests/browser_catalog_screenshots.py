@@ -170,7 +170,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
 
     def test_new_model_family_presets_and_paper_hover(self):
         p=self.page
-        for mission,count in [("mla_lite",20),("moe_route",10),("grpo_signals",6)]:
+        for mission,count in [("mla_lite",20),("moe_route",11),("grpo_signals",6)]:
             p.locator('[data-preset="'+mission+'"]').click()
             self.assertEqual(p.locator("#blocks .block").count(),count)
             p.locator("#run").click()
