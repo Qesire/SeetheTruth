@@ -26,6 +26,8 @@ on:
       - 'train_state.js'
       - 'tests/train_state_contracts.js'
       - 'tests/trainable_architecture_contracts.js'
+      - 'graph_readiness.js'
+      - 'tests/graph_readiness_contracts.js'
       - 'adamw_micro.js'
       - 'tests/adamw_micro_contracts.js'
       - 'tests/grpo_backward_contracts.js'
@@ -76,5 +78,6 @@ jobs:
       - run: node tests/moe_graph_autodiff_contracts.js
       - run: node --check train_state.js && node tests/train_state_contracts.js
       - run: node tests/trainable_architecture_contracts.js
+      - run: node --check graph_readiness.js && node tests/graph_readiness_contracts.js
       - run: node --check adamw_micro.js && node tests/adamw_micro_contracts.js
       - run: node tests/mla_two_decode_steps.js
