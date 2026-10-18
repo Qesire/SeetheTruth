@@ -243,7 +243,73 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="residual"){
+    if(name==="mla_lite"){
+      title="任务 13 · MLA-inspired · KV/Q 低秩与解耦 RoPE（单头教学）";
+      nodes=[
+        N("x","input",20,220,{rows:3,width:4,seed:1}),
+        N("downkv","input",20,480,{rows:4,width:2,seed:2}),
+        N("downq","input",20,610,{rows:4,width:2,seed:5}),
+        N("kvlatent","matmul",260,270),
+        N("qlatent","matmul",260,560),
+        N("uk","input",280,20,{rows:2,width:2,seed:6}),
+        N("uv","input",290,690,{rows:2,width:4,seed:7}),
+        N("qrweight","input",525,660,{rows:2,width:2,seed:8}),
+        N("krweight","input",280,690,{rows:4,width:2,seed:9}),
+        N("qu","input",525,20,{rows:2,width:2,seed:10}),
+        N("kc","matmul",525,155),
+        N("v","matmul",525,430),
+        N("kr","matmul",525,800),
+        N("krrope","rope2d",780,760,{offset:0}),
+        N("k","concat_cols",1030,340),
+        N("qc","matmul",780,65),
+        N("qr","matmul",780,550),
+        N("qrrope","rope2d",1030,670,{offset:0}),
+        N("q","concat_cols",1290,145),
+        N("attention","attention",1570,230)
+      ];
+      edges=[
+        ["x","kvlatent","a"],["downkv","kvlatent","b"],
+        ["x","qlatent","a"],["downq","qlatent","b"],
+        ["kvlatent","kc","a"],["uk","kc","b"],["kvlatent","v","a"],["uv","v","b"],
+        ["x","kr","a"],["krweight","kr","b"],["kr","krrope","x"],
+        ["kc","k","a"],["krrope","k","b"],
+        ["qlatent","qc","a"],["qu","qc","b"],
+        ["qlatent","qr","a"],["qrweight","qr","b"],["qr","qrrope","x"],
+        ["qc","q","a"],["qrrope","q","b"],
+        ["q","attention","q"],["k","attention","k"],["v","attention","v"]
+      ];
+    }else if(name==="moe_route"){
+      title="任务 14 · MoE 分组路由 · 从 Bias 到专家索引";
+      nodes=[
+        N("x","input",25,160,{rows:3,width:4,seed:4}),
+        N("score","linear",275,160,{out:4}),
+        N("bias","input",275,520,{rows:1,width:4,seed:9}),
+        N("biased","row_bias_add",540,185),
+        N("mask","group_topk_mask",800,35,{groups:2,keepGroups:1}),
+        N("select","masked_router_topk",1060,215,{k:1}),
+        N("experts","input",795,490,{rows:4,width:4,seed:7}),
+        N("gather","gather_rows",1310,290)
+      ];
+      edges=[
+        ["x","score","x"],["score","biased","scores"],["bias","biased","bias"],
+        ["biased","mask","scores"],["biased","select","scores"],
+        ["mask","select","mask"],["select","gather","indices"],["experts","gather","x"]
+      ];
+    }else if(name==="grpo_signals"){
+      title="任务 15 · GRPO 前置信号 · Logprob 与组内优势";
+      nodes=[
+        N("logits","input",25,60,{rows:2,width:4,seed:2}),
+        N("ids","token_ids",25,355,{rows:2,vocab:4,seed:3}),
+        N("logp","selected_logprob",380,195),
+        N("alllogp","log_softmax",380,20),
+        N("rewards","input",25,580,{rows:2,width:4,seed:4}),
+        N("advantages","group_advantage",390,530,{epsilon:0.00001})
+      ];
+      edges=[
+        ["logits","logp","logits"],["ids","logp","labels"],
+        ["logits","alllogp","x"],["rewards","advantages","rewards"]
+      ];
+    }else if(name==="residual"){
       title="任务 02 · 构建残差路径";
       nodes=[N("x","input",40,190,{rows:3,width:4,seed:2}),N("fc","linear",305,75,{out:4}),
              N("act","silu",550,75),N("sum","add",810,205)];
