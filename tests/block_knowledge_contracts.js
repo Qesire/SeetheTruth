@@ -23,7 +23,7 @@ for(const kind of L.KINDS){
  for(const name of k.refs){
    const ref=K.sources[name];refs.add(name);
    assert.ok(ref,kind+' source '+name);
-   assert.ok(/^https:\/\/(docs\.pytorch\.org|arxiv\.org|aclanthology\.org|huggingface\.co)\//.test(ref[1]),'untrusted source '+ref[1]);
+   assert.ok(/^https:\/\/(docs\.pytorch\.org|arxiv\.org|aclanthology\.org|huggingface\.co|github\.com\/deepseek-ai)\//.test(ref[1]),'untrusted source '+ref[1]);
  }
  seen.add(kind);
 }
