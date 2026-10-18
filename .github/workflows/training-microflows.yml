@@ -2,24 +2,30 @@ name: Training Microflows Contracts
 on:
   pull_request:
     paths:
-      - 'micro_training_flows.js'\n      - 'paper_patches.js'
+      - 'micro_training_flows.js'
+      - 'paper_patches.js'
       - 'paper_lab.html'
       - 'paper_hover.js'
       - 'block_catalog.js'
       - 'block_knowledge.js'
+      - 'concept_flow.js'
+      - 'learning_lab.js'
+      - 'learn.html'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
+      - 'tests/model_family_primitives.js'
       - 'tests/paper_hover_contracts.js'
-      - 'learn.html'\n      - 'tests/paper_patches_contracts.js'
-      - 'micro_training.html'
+      - 'tests/paper_patches_contracts.js'
       - 'tests/micro_training_flows_contracts.js'
       - '.github/workflows/training-microflows.yml'
   push:
     branches: [main]
     paths:
       - 'micro_training_flows.js'
-      - 'micro_training.html'
-      - 'tests/micro_training_flows_contracts.js'
+      - 'block_catalog.js'
+      - 'block_knowledge.js'
+      - 'concept_flow.js'
+      - 'tests/**'
       - '.github/workflows/training-microflows.yml'
 jobs:
   numerical-contracts:
@@ -30,8 +36,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check micro_training_flows.js
-      - run: node tests/micro_training_flows_contracts.js\n      - run: node --check paper_patches.js\n      - run: node tests/paper_patches_contracts.js
+      - run: node --check block_catalog.js && node --check block_knowledge.js && node --check concept_flow.js
+      - run: node --check micro_training_flows.js && node --check paper_patches.js && node --check paper_hover.js
+      - run: node tests/block_catalog_contracts.js
+      - run: node tests/concept_flow_contracts.js
+      - run: node tests/micro_training_flows_contracts.js
+      - run: node tests/paper_patches_contracts.js
       - run: node tests/paper_hover_contracts.js
       - run: node tests/paper_linked_blocks.js
       - run: node tests/advanced_primitives.js
+      - run: node tests/model_family_primitives.js
