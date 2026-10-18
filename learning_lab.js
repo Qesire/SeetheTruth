@@ -288,12 +288,16 @@
         N("mask","group_topk_mask",800,35,{groups:2,keepGroups:1}),
         N("select","masked_router_topk",1060,215,{k:1}),
         N("experts","input",795,490,{rows:4,width:4,seed:7}),
-        N("gather","gather_rows",1310,290)
+        N("gather","gather_rows",1310,290),
+        N("gates","router_gate_weights",1320,50,{mode:"sigmoid",normalize:true}),
+        N("mix","expert_bank_mix",1600,240)
       ];
       edges=[
         ["x","score","x"],["score","biased","scores"],["bias","biased","bias"],
         ["biased","mask","scores"],["biased","select","scores"],
-        ["mask","select","mask"],["select","gather","indices"],["experts","gather","x"]
+        ["mask","select","mask"],["select","gather","indices"],["experts","gather","x"],
+        ["score","gates","scores"],["select","gates","indices"],
+        ["select","mix","indices"],["gates","mix","gates"],["experts","mix","experts"]
       ];
     }else if(name==="grpo_signals"){
       title="任务 15 · GRPO 前置信号 · Logprob 与组内优势";
