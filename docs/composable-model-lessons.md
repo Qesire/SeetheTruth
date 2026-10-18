@@ -121,6 +121,31 @@ These two paths are **algebraically equal in exact arithmetic**. The graph compu
 
 The unit contract checks append, overwrite-with-suffix-preservation, capacity failure, invalid read, immutable old snapshot and a nonsquare query-weight absorption oracle. The full graph test compares every coordinate of content scores, combined scores, probabilities, and outputs. Chromium visual acceptance exercises the freely editable 35-block lesson and checks the primary-paper inspector.
 
+## 18: `grpo_objective` — composable PPO clip and DeepSeekMath GRPO training loss
+
+Primary references:
+- PPO: https://arxiv.org/abs/1707.06347
+- DeepSeekMath (introduced GRPO): https://arxiv.org/abs/2402.03300
+- DeepSeek-R1 (GRPO practice): https://arxiv.org/abs/2501.12948
+
+This **20-block executable lesson** treats two sampled responses (`G=2`) of two token actions each (`T=2`). Four rows of seeded teaching logits `[4,V=4]` and one shared integer action-ID vector `[4,1]` feed *three separate* `selected_logprob` blocks: current, rollout-old, reference. The three roles cannot be interchanged.
+
+1. `selected_logprob(logits,actions):[4,1]` → `response_token_reshape(G=2):[2,2]`, separately for current, old and reference. Each value is the log probability of the same sampled action under its corresponding policy.
+2. `rewards:[1,2]` represents the rewards of **two responses to one prompt**. `group_advantage:[1,2]` centers and normalizes only within that prompt's response group. A transpose gives `A:[2,1]`.
+3. `policy_importance_ratio(current,old):[2,2]` computes `r=exp(logπnew−logπold)`. `response_advantage_broadcast(A,tokenGrid):[2,2]` replicates the *response-level* A to each token without inventing token-level GAE.
+4. `ppo_clipped_surrogate(r,A,epsilon=.2):[2,2]` calculates `min(rA,clip(r,0.8,1.2)A)` **including negative-advantage behavior**. It is the *maximization* surrogate, not the final optimizer loss.
+5. `sampled_reference_kl(current,reference):[2,2]` implements `expm1(logπref−logπcurrent)−(logπref−logπcurrent)`. This sampled estimator is **not** the full categorical KL sum.
+6. `completion_length_mask:[2,2]` emits two tokens in the first response, one valid token in the second; the last token of the second response is treated as padding.
+7. `masked_grpo_objective(surrogate,KL,mask,beta=.04):[1,1]` computes **a mean of per-response valid-token means**, so one longer response is not implicitly counted as extra independent response evidence. The separate `scale(factor=-1)` block produces the optimization loss `L=-J`.
+
+### Explicit reductions and differences between research implementations
+
+- The selected reduction is `J=(1/G) Σ_g ((Σ_t mask_g,t·[surrogate_g,t−β KL_g,t]) / Σ_t mask_g,t)`. Some contemporary systems normalize tokens across the entire batch, use different clipping ranges, vary KL handling, or omit the reference KL. Those variants require modifying/rewiring the corresponding blocks, **not** calling them identical GRPO.
+- Reward advantage uses `(R−mean)/sqrt(populationVariance+epsilon)` as a **declared teaching convention**. The exact epsilon and standard-deviation convention can differ across source and paper.
+- The current, old, and reference logits are deterministic **independent synthetic inputs**, not snapshots of a real trained model. This lesson shows the arithmetic as if those three policy forward passes had already happened. No rollout sampling, verifier scoring, training optimizer, full autograd, or actual policy update occurs.
+- The explicit `completion_length_mask` demonstrates reduction semantics, not EOS/tokenizer processing. All valid-response mask rows must contain at least one 1.
+- Numerical tests cover ratios at 1 and 1.5, both signs of advantages, the nonnegative sampled KL estimator, invalid ratio/mask bounds, and a direct hand-summed oracle for the complete 20-node graph.
+
 ## Acceptance contract
 
 For every recipe:
