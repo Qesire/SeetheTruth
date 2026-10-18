@@ -236,7 +236,7 @@ const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕
 const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[],zoomOverride=null;
+let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable";
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -249,7 +249,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);}
 }
 function setPreset(name){
- try{activeComposite=null;compositeHistory=[];zoomOverride=null;graph=(["mla_lite","moe_route","grpo_signals"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -258,7 +258,7 @@ function openComposite(id,history){
  try{
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
-  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;
+  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
   run=null;step=-1;from=null;selected=g.nodes[0].id;
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.remove("active"));
   render();say("已打开 "+next.title+"。可逐层展开或执行符号推演；不要求 GPU。");
@@ -273,7 +273,7 @@ function focusGraphNode(id){
  requestAnimationFrame(drawWires);
 }
 function adjustZoom(next,focus=true){
- zoomOverride=next===null?null:Math.max(.25,Math.min(1.5,Math.round(next*100)/100));
+ zoomOverride=next===null?null:Math.max(.25,Math.min(1.5,Math.round(next*100)/100));zoomMode=next===null?"readable":"manual";
  render();
  if(focus&&zoomOverride!==null)focusGraphNode(selected);
  else {$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;}
@@ -319,8 +319,8 @@ function renderComposite(){
 $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
 $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
-$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;const width=Math.max(480,$("#viewport").clientWidth)-24;adjustZoom(Math.max(.25,Math.min(1,width/extent)),false);};
-$("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
+$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;const width=Math.max(480,$("#viewport").clientWidth)-24;zoomOverride=Math.max(.25,Math.min(1,width/extent));zoomMode="fit";render();$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;};
+$("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;zoomMode="readable";render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
  else setPreset("ffn");
@@ -544,7 +544,7 @@ function render(){
  $("#board").style.width=extent+"px";
  $("#board").style.height=Math.max(800,...graph.nodes.map(n=>n.y+175))+30+"px";
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
- $("#fitLabel").textContent=(zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
+ $("#fitLabel").textContent=(zoomMode==="fit"?"自动适配 ":zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
