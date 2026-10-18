@@ -22,8 +22,8 @@ Reference: DeepSeek-V3 §2.1.2, https://arxiv.org/abs/2412.19437 ; exact officia
 - Input token representations `X:[3,4]` feed a teaching router `S:[3,4]`.
 - First create *affinities* `A = sigmoid(S)` as an explicit, replaceable activation block. Independently input `b:[1,4]`; `S' = A+b` is used for **selection only**.
 - A `group_topk_mask` partitions experts and emits a `[3,4]` eligibility mask.
-- `masked_router_topk(S',mask)` emits `I:[3,1]` integer expert indices.
-- `gather_rows(experts:[4,4],I)` returns illustrative *expert prototype vectors*, **not** outputs of real expert FFNs.
+- `masked_router_topk(S',mask,k=2)` emits `I:[3,2]` integer expert indices.
+- `gather_routed_bank(experts:[4,4],I)` returns `[6,4]` illustrative *expert prototype vectors* (token-major flattened), **not** outputs of real expert FFNs.
 
 The group score sums the top two biased affinities per group. `router_gate_weights(A,I,mode=identity,normalize=true)` takes the selected **unbiased** affinities and normalizes them; `expert_bank_mix` then weights teaching prototype vectors. This reproduces the selection-vs-gating split in the cited inference source, but not its route-scale, genuine expert FFNs, or distributed dispatch.
 
