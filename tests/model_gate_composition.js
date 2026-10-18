@@ -23,4 +23,15 @@ const trace=L.evaluate(preset),contract=C.evaluate(preset);
 assert.deepEqual(trace.steps.map(v=>v.shape),contract.steps.map(v=>v.shape));
 assert.equal(trace.steps.at(-1).id,'mix');
 assert.deepEqual(trace.steps.at(-1).shape,[3,4]);
+const steps=Object.fromEntries(trace.steps.map(step=>[step.id,step.values]));
+assert.deepEqual(trace.steps.find(step=>step.id==='select').shape,[3,2]);
+assert.deepEqual(trace.steps.find(step=>step.id==='gather').shape,[6,4]);
+steps.affinity.forEach((row,t)=>row.forEach((v,e)=>near(v,sigmoid(steps.score[t][e]))));
+steps.biased.forEach((row,t)=>row.forEach((v,e)=>near(v,steps.affinity[t][e]+steps.bias[0][e])));
+steps.gates.forEach((row,t)=>{
+  near(row.reduce((a,b)=>a+b,0),1);
+  const sum=steps.select[t].reduce((v,e)=>v+steps.affinity[t][e],0);
+  row.forEach((w,k)=>near(w,steps.affinity[t][steps.select[t][k]]/sum));
+  steps.mix[t].forEach((v,d)=>near(v,steps.select[t].reduce((acc,e,k)=>acc+row[k]*steps.experts[e][d],0)));
+});
 console.log('MoE independent selection/gate and weighted expert combine PASS');
