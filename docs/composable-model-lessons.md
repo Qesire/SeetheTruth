@@ -223,3 +223,48 @@ When a user selects an MSE loss (or a graph has one unambiguous MSE loss), the o
 ### Practical execution boundaries
 
 This does not introduce runtime control-flow cycles, unbounded tensor memory, implicit dimension broadcasting or silent auto-repair. The graph remains a bounded CPU educational DAG. The standard full-graph Run and selected-branch Run remain separate actions, so there is no ambiguity about what was actually evaluated.
+
+## 25: `nd_attention_lesson` — executable N-dimensional tensor calculations
+
+The Scratch workbench now provides **89 executable block kinds**, including eight explicit multi-axis operators. Four-dimensional teaching tensors are real nested Float64 arrays, not shape-only labels. The bounded CPU interpreter supports rank 2–4, axis sizes 1–8 and at most 512 elements per N-D tensor. This replaces neither real GPU kernels nor framework tensor storage, but reproduces small-scale numerical results.
+
+**Axis semantics are user-defined.** In lesson 25 the chosen convention is `[B,H,T,D]`: Batch, Head, Token and channel. A nonstandard graph can use these axes differently; only sizes and explicit index operations determine execution. Operations never guess which axis is Token or automatically fix incompatible dimensions.
+
+Available N-D blocks:
+
+| Block | Exact math contract |
+|---|---|
+| `nd_input` | Deterministic synthetic source `[B,H,T,D]` |
+| `nd_permute` | Explicit permutation of four axes, e.g. `[B,H,T,D]→[B,T,H,D]` |
+| `nd_reshape` | Row-major reinterpretation (equal element count), from 2D or 4D to 4D |
+| `nd_flatten` | Flatten first three dimensions `[B,H,T,D]→[B·H·T,D]` |
+| `nd_expand4d` | Insert two leading singleton axes `[T,D]→[1,1,T,D]` |
+| `nd_broadcast_add` | Right-aligned broadcasting with equal or singleton axes; explicit elementwise addition |
+| `nd_reduce_sum` | Sum along selected axis, retain dimension of size 1 |
+| `nd_batched_matmul` | Batched `[B,H,M,K]·[B,H,K,N]→[B,H,M,N]`, broadcast on B/H only |
+
+The lesson constructs the following genuine nine-node DAG:
+
+```
+queries: [1,2,3,4] ─┐
+                      ├── batched MatMul [1,2,3,3] ─┐
+keys:    [1,2,4,3] ─┘                                │
+bias:    [1,1,3,3] ─────────────────────── broadcast Add [1,2,3,3]
+                                                      │
+                                token-axis Sum [1,2,1,3]
+                                                      │
+                                   Flatten [2,3]
+                                                      │
+                                   Expand [1,1,2,3]
+                                                      │
+                                Permute [1,2,1,3]
+```
+
+It does **not** claim to be an entire Multi-Head Attention block, because the K transpose, scaling, masking and Softmax must be explicitly added to construct that algorithm. Its purpose is to prove composable multi-axis arithmetic with no fixed model-family template.
+
+The inspector shows each output's complete rank/dimensions and allows selection of leading-axis indices (e.g., Head 0 vs Head 1), displaying the corresponding genuine 2D tensor slice. Choosing another Head does not recalculate or replace the tensor—it changes only the viewer.
+
+The unit test verifies numerical values for every Head via an independent loop, broadcasting correctness, sum vs mean, exact reshape/permute round-trips, 4D→2D→4D value preservation, and intentional shape failures; concept and numeric shapes agree for all 89 kinds and the new composition. The Chromium acceptance exercises the real Head selector and checks that Head 0 and Head 1 display different numbers. The original 81 2D block kinds and 24 existing lessons are preserved.
+
+Primary implementation-semantics references: [PyTorch Broadcasting](https://docs.pytorch.org/docs/stable/notes/broadcasting.html), [Tensor Views](https://docs.pytorch.org/docs/stable/tensor_view.html), [torch.matmul](https://docs.pytorch.org/docs/stable/generated/torch.matmul.html). The present CPU interpreter intentionally does not model GPU storage strides, autograd through new N-D blocks, CUDA kernels, or hardware latency.
+
