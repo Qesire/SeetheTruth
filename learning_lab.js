@@ -243,6 +243,12 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
+    if(name==="moe_backward"){
+      const base=preset("moe_expert_ffn");
+      return validateGraph({...base,title:"任务 20 · MoE 反向 · 稀疏专家参数共享与可微 Gate",
+        nodes:[...base.nodes,N("teacher_target","input",2140,710,{rows:3,width:2,seed:6}),N("loss","mse",2410,360)],
+        edges:[...base.edges,{from:"out",to:"loss",port:"prediction"},{from:"teacher_target",to:"loss",port:"target"}]});
+    }
     if(name==="autodiff_core"){
       title="任务 19 · 通用反向图 · 共享参数、RMSNorm、SwiGLU、Attention 与 MSE";
       nodes=[
