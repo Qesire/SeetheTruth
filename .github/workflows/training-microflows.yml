@@ -17,6 +17,7 @@ on:
       - 'tests/expert_ffn_composition.js'
       - 'expert_ffn_vjp.js'
       - 'tests/expert_ffn_vjp.js'
+      - 'tests/mla_cache_composition.js'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
       - 'tests/model_family_primitives.js'
@@ -56,3 +57,4 @@ jobs:
       - run: node tests/model_gate_composition.js
       - run: node tests/expert_ffn_composition.js
       - run: node --check expert_ffn_vjp.js && node tests/expert_ffn_vjp.js
+      - run: node tests/mla_cache_composition.js
