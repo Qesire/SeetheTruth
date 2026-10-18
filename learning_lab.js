@@ -243,7 +243,44 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="mla_cache"){
+    if(name==="grpo_objective"){
+      title="任务 18 · GRPO 完整教学目标 · Token Logprob → Clip → Reference KL → Masked Loss";
+      nodes=[
+        N("new_logits","input",20,40,{rows:4,width:4,seed:2}),
+        N("old_logits","input",20,240,{rows:4,width:4,seed:3}),
+        N("ref_logits","input",20,440,{rows:4,width:4,seed:4}),
+        N("actions","token_ids",20,640,{rows:4,vocab:4,seed:3}),
+        N("new_logp","selected_logprob",280,40),
+        N("old_logp","selected_logprob",280,240),
+        N("ref_logp","selected_logprob",280,440),
+        N("new_grid","response_token_reshape",540,40,{responses:2}),
+        N("old_grid","response_token_reshape",540,240,{responses:2}),
+        N("ref_grid","response_token_reshape",540,440,{responses:2}),
+        N("rewards","input",20,845,{rows:1,width:2,seed:8}),
+        N("group_adv","group_advantage",280,845,{epsilon:0.00001}),
+        N("adv_per_response","transpose2d",540,845),
+        N("ratio","policy_importance_ratio",820,160,{maxDelta:20}),
+        N("adv_per_token","response_advantage_broadcast",820,680),
+        N("surrogate","ppo_clipped_surrogate",1110,200,{epsilon:0.2}),
+        N("reference_kl","sampled_reference_kl",1110,450,{maxDelta:20}),
+        N("valid_mask","completion_length_mask",1110,700,{responses:2,tokens:2,firstLength:2,secondLength:1}),
+        N("objective","masked_grpo_objective",1400,350,{beta:0.04}),
+        N("loss","scale",1690,360,{factor:-1})
+      ];
+      edges=[
+        ["new_logits","new_logp","logits"],["actions","new_logp","labels"],
+        ["old_logits","old_logp","logits"],["actions","old_logp","labels"],
+        ["ref_logits","ref_logp","logits"],["actions","ref_logp","labels"],
+        ["new_logp","new_grid","x"],["old_logp","old_grid","x"],["ref_logp","ref_grid","x"],
+        ["rewards","group_adv","rewards"],["group_adv","adv_per_response","x"],
+        ["new_grid","ratio","current"],["old_grid","ratio","old"],
+        ["adv_per_response","adv_per_token","advantage"],["ratio","adv_per_token","tokenGrid"],
+        ["ratio","surrogate","ratio"],["adv_per_token","surrogate","advantage"],
+        ["new_grid","reference_kl","current"],["ref_grid","reference_kl","reference"],
+        ["surrogate","objective","surrogate"],["reference_kl","objective","kl"],["valid_mask","objective","mask"],
+        ["objective","loss","x"]
+      ];
+    }else if(name==="mla_cache"){
       title="任务 17 · DeepSeek MLA · 压缩 KV Cache 与权重吸收的两路等价对照";
       nodes=[
         N("c_old","input",20,30,{rows:2,width:2,seed:1}),
