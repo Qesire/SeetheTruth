@@ -32,7 +32,7 @@ function backward(raw,forward,opts={}){
   if(!grads.has(n.id))continue;
   const id=n.id,p=n.params,d=grads.get(id),kind=n.kind;
   routes.push(id);
-  if(kind==="input"||kind==="token_ids")continue;
+  if(kind==="input"||kind==="parameter"||kind==="token_ids")continue;
   if(kind==="add"||kind==="subtract"){
     send(id,"a",d);send(id,"b",kind==="add"?d:scale(d,-1));continue;
   }
