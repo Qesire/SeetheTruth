@@ -43,6 +43,7 @@ function backward(raw,forward,opts={}){
   if(!grads.has(n.id))continue;
   const id=n.id,p=n.params,d=grads.get(id),kind=n.kind;
   routes.push(id);
+  if(kind==="nd_parameter")continue;
   if(kind.startsWith("nd_")){
     const input={};
     for(const port of L.defs[kind].ports)input[port]=inp(id,port);
