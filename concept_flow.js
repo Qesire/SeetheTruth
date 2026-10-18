@@ -95,6 +95,23 @@
       const [scores,indices]=ports(n,inputs,"scores","indices");by(scores[0]===indices[0],"Router weights token count mismatch",n.id);
       output=indices.slice();rule="从原始 score 中按选中 index 提取亲和度，sigmoid 或 softmax 门控；normalize 可选";
       conditions.push("每个路由下标必须指向有效专家；数学模式不检查整数取值");
+    }else if(kind==="cache_write_segment"){
+      const [cache,segment]=ports(n,inputs,"cache","segment");
+      by(cache[1]===segment[1],"Cache write feature width mismatch",n.id);
+      by(p.start<=cache[0],"Cache write cannot skip unwritten positions",n.id);
+      by(p.start+segment[0]<=p.capacity&&cache[0]<=p.capacity,"Cache write capacity overflow",n.id);
+      output=[Math.max(cache[0],p.start+segment[0]),cache[1]];
+      rule="纯函数缓存快照写入 C'[start:start+N]=new，其他行保留；历史源输入不发生修改";
+      conditions.push("KV/PE cache 分别使用不同宽度的积木，start_pos/end_pos 必须匹配；此处不跨执行周期保存状态");
+    }else if(kind==="cache_read_prefix"){
+      const cache=get("cache");by(p.length<=cache[0],"Cache read length exceeds committed positions",n.id);
+      output=[p.length,cache[1]];rule="读取有效位置区间 [0,end_pos) 的 Token 表示，不读取未来或尚未写入的行";
+    }else if(kind==="query_weight_absorb"){
+      const [q,w]=ports(n,inputs,"query","keyWeight");
+      by(q[1]===w[1],"MLA absorbed query expects projected K channels",n.id);
+      output=[q[0],w[0]];
+      rule="Q_nope[T,Dk]·W_K[R,Dk]^T → Q_abs[T,R]，随后才能直接和 latent cache[S,R] 缩并";
+      conditions.push("这是线性代数交换；真实低精度 Kernel 的舍入可能导致极小数值差异");
     }else if(kind==="dispatch_routed_tokens"){
       const [x,idx]=ports(n,inputs,"x","indices");
       by(x[0]===idx[0],"Dispatch token rows and route rows mismatch",n.id);
