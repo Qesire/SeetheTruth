@@ -106,6 +106,9 @@
   expert_linear_bank:block("按专家权重投影","Expert-specific Linear","routing",["x","indices","weights"],{},"Y[tK+k,h]=Σ_d X[tK+k,d] W[expert[t,k]·D+d,h]","参数矩阵按 Expert 分块，每个专家维护独立投影权重；同一专家处理多个 Token 时重复读取同一块权重。","分别作为 W1/W3/W2 投影，与 SwiGLU 组合成 token-dependent Expert FFN。","权重行为教学中显式输入；无 Bias、量化、跨设备通信，训练反向由单独 VJP 合同验证。"),
   routed_weighted_reduce:block("专家贡献加权归约","Weighted Route Reduce","routing",["values","gates"],{},"Y[t,d]=Σ_k G[t,k]·V[t·K+k,d]","把 token-major 的专家输出按原 Token 的 Top-k 门控重新归约为 [T,D]。","比较 Shared Expert 的独立支路及路由门控是否改变输出。","严格依赖 Dispatch 的 token-major 排列，不隐含专家容量或任意排序置换。"),
   expert_bank_mix:block("专家贡献加权回填","Expert Bank Mix","routing",["indices","gates","experts"],{},"Y_t=Σ_k g_t,k · ExpertBank[index_t,k,:]","把选中专家的教学向量按 gate 加权求和，清楚展示多专家聚合。","与 Top-k、Selected Gates、共享专家残差 Add 组合。","experts 是静态向量矩阵，不是 token 条件 Expert FFN；尚无 GPU dispatch 或完整反向传播。"),
+  cache_write_segment:block("KV Cache 写入片段","Cache Segment Write","attention",["cache","segment"],{start:2,capacity:8},"C'[0:start]=C[0:start]; C'[start:start+N]=S; preserve remaining suffix","以前一缓存快照和新 Token 状态为输入，把新片段写入明确位置，输出新的、独立的缓存快照。","连接 KV latent 和独立 RoPE Key 缓存两条支路；观察 Prefill 和 Decode 的 start_pos。","纯函数教学模型：不修改旧缓存，不模拟 batch、实际 device buffer 或连续多步状态自动保存。"),
+  cache_read_prefix:block("读取有效 KV Cache 前缀","Cache Prefix Read","attention",["cache"],{length:3},"Y=C[0:length,:]","读取当前 end_pos 对应的有效历史范围，区分缓存容量和实际可见长度。","修改 length 验证历史 Token 数和 Attention Score 的 K 维变化。","只读取从零开始的前缀，不实现滑动窗口保留、分页地址映射或跨样本缓存。"),
+  query_weight_absorb:block("吸收 Key 投影到 Query","Absorb K Projection","attention",["query","keyWeight"],{},"Q_abs=Q_nope·W_K^T","将 K=C W_K 中原本施加于所有历史 latent 的 Key Projection 转移到当前 Query 一侧。","与显式 K 重建 + Score MatMul 组合后逐元素比较；重点检查转置和缩并维度。","仅线性投影可交换的代数重排；不能越过 RoPE/非线性或任意改变量化舍入顺序。"),
   repeat_kv_rows:block("分组 KV 复制","KV Group Repeat","attention",["x"],{groups:2},"Y=repeat_interleave(X,groups,axis=rows)","以二维教学切片展示 GQA 中 KV head 向更多 query head 对齐的重复映射。","观察共享 KV 的多条消费路径以及反向应求和的语义。","此积木把行视为 Head，而非 Token；必须在真实多轴模型中校准轴含义。")
  };
  const KINDS=Object.keys(defs);
@@ -139,6 +142,8 @@
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
    if(kind==='bias')float(n.bias,-100,100,'bias');
+   if(kind==='cache_write_segment'){int(n.start,0,8,'cache start');int(n.capacity,1,8,'cache capacity');}
+   if(kind==='cache_read_prefix')int(n.length,1,8,'cache length');
    if(kind==='router_gate_weights'&&(!['identity','sigmoid','softmax'].includes(n.mode)||typeof n.normalize!=='boolean'))fail('router gate mode or normalize invalid');
    if(kind==='partial_rope'){int(n.rotaryDim,2,16,'rotary dimension');int(n.offset,0,64,'offset');if(n.rotaryDim%2)fail('rotary dimension must be even');}
    if(kind==='group_topk_mask'){int(n.groups,1,8,'groups');int(n.keepGroups,1,8,'keepGroups');if(n.keepGroups>n.groups)fail('keepGroups cannot exceed groups');}
@@ -287,6 +292,20 @@
         return sum+G[t][k]*E[id][d];},0)));break;}
     case 'gather_routed_bank':{const ids=inputs.indices;if(ids.length*ids[0].length>8)fail('routed gather exceeds eight rows');
       value=ids.flatMap(row=>row.map(i=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('routed gather index out of bounds');return x[i].slice();}));break;}
+    case 'cache_write_segment':{const C=inputs.cache,S=inputs.segment;
+      if(C[0].length!==S[0].length)fail('cache write feature dimension mismatch');
+      if(params.start>C.length)fail('cache write cannot skip unwritten positions');
+      if(params.start+S.length>params.capacity||C.length>params.capacity)fail('cache write exceeds fixed capacity');
+      value=C.map(row=>row.slice());
+      S.forEach((row,t)=>{value[params.start+t]=row.slice();});
+      internals={cache_state:{startPos:params.start,endPos:params.start+S.length,capacity:params.capacity,oldLength:C.length,newLength:value.length,updatedTokenCount:S.length,note:'immutable snapshot, old cache input remains unchanged'}};break;}
+    case 'cache_read_prefix':{if(params.length>x.length)fail('cache read exceeds committed prefix');
+      value=x.slice(0,params.length).map(row=>row.slice());
+      internals={cache_view:{endPos:params.length,availableLength:x.length,note:'read-only prefix, not an allocation claim for a real GPU cache'}};break;}
+    case 'query_weight_absorb':{const Q=inputs.query,W=inputs.keyWeight;
+      if(Q[0].length!==W[0].length)fail('query absorb needs Q features == projected K features');
+      value=Q.map(row=>W.map(wrow=>row.reduce((sum,v,j)=>sum+v*wrow[j],0)));
+      internals={projection:{inputQuery:[Q.length,Q[0].length],keyWeight:[W.length,W[0].length],outputQuery:[value.length,value[0].length],note:'Q W_K^T, not W_K Q'}};break;}
     case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
     case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
     case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
