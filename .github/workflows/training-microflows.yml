@@ -11,6 +11,8 @@ on:
       - 'concept_flow.js'
       - 'learning_lab.js'
       - 'learn.html'
+      - 'graph_layout.js'
+      - 'tests/graph_layout_contracts.js'
       - 'tests/paper_linked_blocks.js'
       - 'tests/advanced_primitives.js'
       - 'tests/model_family_primitives.js'
@@ -46,3 +48,4 @@ jobs:
       - run: node tests/paper_linked_blocks.js
       - run: node tests/advanced_primitives.js
       - run: node tests/model_family_primitives.js
+      - run: node --check graph_layout.js && node tests/graph_layout_contracts.js
