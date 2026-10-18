@@ -26,6 +26,12 @@
    "Y = broadcast(A)+broadcast(B)","按 NumPy/PyTorch 风格从右对齐，只有相等或为 1 的轴可以广播。","把 [1,2,3,4] 与 [1,1,3,4] 相加，查看 Head 广播。","不会自动转置轴，也不会任意重复不兼容的维度。"),
   nd_reduce_sum:block("指定轴求和","N-D Axis Sum","combine",["x"],{axis:2},
    "Y = Σ_axis X (keepdim=1)","只沿给定轴聚合，同时保留长度为 1 的轴，便于后续广播。","比较在 Token 轴求和前后的 [B,H,T,D]。","这是 sum 不是 mean；除以轴长度必须额外连 Scale。"),
+  nd_scale:block("多维缩放","N-D Scale","compute",["x"],{factor:0.5},
+   "Y=X·factor","对真实多维张量的每一个元素乘常数。","连接 QKᵀ 到本积木，用 1/√HeadDim 缩放，再送入 Softmax。","factor 是显式参数；不会自动推断真实模型 HeadDim。"),
+  nd_softmax_last:block("最后轴 Softmax","N-D Last-Axis Softmax","attention",["x"],{},
+   "P[...,k]=exp(X[...,k])/Σⱼexp(X[...,j])","针对任意保留的前导轴分别在最后一维稳定归一化，得到每个头的注意力分布。","在两头的三个 Query 行观察每行概率和恰为 1。","只在最后一轴归一化，不把 Head 混入概率竞争。"),
+  nd_causal_mask:block("四轴因果注意力 Mask","N-D Causal Score Mask","attention",["x"],{queryStart:0,keyStart:0},
+   "S[...,q,k]=−1e9 if keyStart+k>queryStart+q","按 Query/Key 的绝对位置阻止对未来 Key 的注意力，在 Softmax 前执行。","观察三 Token causal Attention 的首 Query 仅能看到第一 Key。","有限 −1e9 是 CPU 演示的遮蔽近似；不能处理无合法 Key 的 Query 行。"),
   nd_batched_matmul:block("多头批量矩阵乘","N-D Batched MatMul","compute",["a","b"],{},
    "Y[b,h,m,n]=Σₖ A[b,h,m,k] B[b,h,k,n]","对四轴张量的末两维执行矩阵乘，在 B/H 上广播独立批次和头。","对 [1,2,3,4] 和 [1,2,4,2] 执行 2 头矩阵乘并检查每个数值。","不自动转置 K；批次/头轴只能相同或 singleton；不包含 Softmax 或 RoPE。"),
   parameter:block("可训练参数矩阵","Trainable Parameter","data",[],{
@@ -173,6 +179,8 @@
      if(p.some(x=>!Number.isSafeInteger(x)||x<0||x>3)||new Set(p).size!==4)fail('N-D permutation requires each axis 0,1,2,3 exactly once');
    }
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
+   if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
+   if(kind==='nd_causal_mask'){int(n.queryStart,0,64,'queryStart');int(n.keyStart,0,64,'keyStart');if(n.queryStart<n.keyStart)fail('Causal mask no legal key at first query');}
    if(kind==='parameter'){
       const check=(value,name)=>{if(!Array.isArray(value)||!value.length||value.length>8||!Array.isArray(value[0])||!value[0].length||value[0].length>16||value.some(row=>!Array.isArray(row)||row.length!==value[0].length||row.some(x=>typeof x!=='number'||!Number.isFinite(x)||Math.abs(x)>1000)))fail('invalid '+name+' matrix');};
       check(n.values,'parameter');
@@ -234,6 +242,9 @@
      else if(kind==='nd_broadcast_add')value=ND.broadcastBinary(inputs.a,inputs.b,(a,b)=>a+b);
      else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
+     else if(kind==='nd_scale')value=ND.scale(inputs.x,params.factor);
+     else if(kind==='nd_softmax_last')value=ND.softmaxLast(inputs.x);
+     else if(kind==='nd_causal_mask')value=ND.causalMask4(inputs.x,params.queryStart,params.keyStart);
      else fail('unknown N-D operator '+kind);
      const flopCount=kind==='nd_batched_matmul'
        ?2*ND.product(ND.shape(value).slice(0,3))*ND.shape(value)[3]*ND.shape(inputs.a)[3]:null;
