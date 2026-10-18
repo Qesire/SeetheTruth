@@ -91,6 +91,15 @@
   gather_rows:block("按索引收集行","Gather Rows","shape",["x","indices"],{},"Y[t,:]=X[indices[t,0],:]","按 token/专家索引收集输入矩阵行，供离散路由或检索组合。","观察重复索引如何复用同一行。","索引必须是 [T,1] 整数，输出行数受教学上限约束。"),
   scatter_add:block("按索引累加行","Scatter Add","combine",["indices","values"],{rows:3},"Y[index[t],:]+=values[t,:]","把多路贡献按目标行索引聚合，是专家输出回填和共享梯度汇合的基础。","用重复 index 检查真实加法聚合而非覆盖。","输出初始化为零，未实现指定 base tensor 上的 scatter_add。"),
   row_logsumexp:block("逐行 LogSumExp","LogSumExp","reduce",["x"],{},"y[t]=m+log Σ_d exp(x[t,d]−m)","稳定计算归一化常数，用于交叉熵、Softmax 和策略 log probability。","比较大幅 logits 的稳定性。","只沿最后的特征维归约，不包含 mask。"),
+
+  low_rank_project:block("低秩压缩与重建","Low-rank Projection","compute",["x","down","up"],{},"C=X·W_down; Y=C·W_up","沿低秩中间维保存压缩张量，可用于 MLA KV/Q 压缩或 LoRA 参数化路径。","观察中间 C 的形状与重建结果，并和两次 MatMul 对照。","仅两次显式矩阵乘法，不含 MLA 的位置分支、KV cache、权重训练或具体模型权重。"),
+  partial_rope:block("部分维度 RoPE","Partial Rotary Embedding","position",["x"],{rotaryDim:2,offset:0},"Y[:,0:r]=RoPE(X[:,0:r]); Y[:,r:]=X[:,r:]","只旋转指定偶数维子空间，其他特征不变；支持 MLA 中的 decoupled positional branch 教学。","观察旋转部分范数保持、未旋转部分严格不变。","二维切片采用相邻通道配对，不代表所有模型的真实 RoPE 轴布局。"),
+  row_bias_add:block("逐通道路由 Bias","Row Broadcast Bias","routing",["scores","bias"],{},"Y[t,e]=S[t,e]+b[e]","把每个专家 bias 独立加到路由分数上，明确区分选择分数和原始门控分数。","设置大正/负 bias 观察专家排序和是否改变原始 logits。","这里仅前向；DeepSeek-V3 负载均衡的 bias 动态更新另有规则。"),
+  group_topk_mask:block("分组 Top-k Mask","Group-Limited Routing","routing",["scores"],{groups:2,keepGroups:1},"group score=sum(top2 scores); allow top groups","把专家分组，每个 token 先选组，再限制可路由专家集合。","对比不分组 Top-k 与分组筛选，检查不能选到未保留组。","只展示先选组阶段；具体模型可能使用不同组评分/偏置定义。"),
+  masked_router_topk:block("带 Mask 的专家 Top-k","Masked Router Top-k","routing",["scores","mask"],{k:2},"I=TopK(scores restricted by mask)","将分组约束与专家候选排序实际接起来；输出离散专家 ID。","连接 Group Top-k Mask，观察被选专家全部属于允许的组。","教学权重仅在选中 logits 上做 softmax；不直接复现 DeepSeek-V3 sigmoid gate。"),
+  log_softmax:block("稳定 LogSoftmax","Log Softmax","activate",["x"],{},"log p_j=x_j−logsumexp(x)","在 log 域计算归一化概率，训练 CE、PPO/DPO log-prob 均可复用。","比较与 Softmax 后再取 log 的数值稳定性。","只沿二维矩阵最后一个维度归一化，不带 mask 或跨 token loss reduction。"),
+  selected_logprob:block("目标 Token 对数概率","Selected Log Probability","training",["logits","labels"],{},"log π(y|x)=logits_y−logsumexp(logits)","用逐位置 token 的真实类别索引取 log probability，作为偏好/RL 目标的前置积木。","与 CrossEntropy 每 token 值比较，应当符号相反。","仅计算已给定动作 ID 的前向 log-prob；未进行采样、序列 mask 或奖励计算。"),
+  group_advantage:block("组内奖励标准化","Group-relative Advantage","training",["rewards"],{epsilon:0.00001},"A=(R−mean_group(R))/sqrt(var_group(R)+ε)","沿每行候选回答组对奖励中心化和缩放，展示 GRPO 所用的相对基线思想。","比较奖励同值、离散值、数值平移与正尺度变化。","使用平滑 epsilon 的特定教学约定，不包含 PPO clipping、KL 项或完整 GRPO 目标。"),
   repeat_kv_rows:block("分组 KV 复制","KV Group Repeat","attention",["x"],{groups:2},"Y=repeat_interleave(X,groups,axis=rows)","以二维教学切片展示 GQA 中 KV head 向更多 query head 对齐的重复映射。","观察共享 KV 的多条消费路径以及反向应求和的语义。","此积木把行视为 Head，而非 Token；必须在真实多轴模型中校准轴含义。")
  };
  const KINDS=Object.keys(defs);
@@ -124,6 +133,10 @@
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
    if(kind==='bias')float(n.bias,-100,100,'bias');
+   if(kind==='partial_rope'){int(n.rotaryDim,2,16,'rotary dimension');int(n.offset,0,64,'offset');if(n.rotaryDim%2)fail('rotary dimension must be even');}
+   if(kind==='group_topk_mask'){int(n.groups,1,8,'groups');int(n.keepGroups,1,8,'keepGroups');if(n.keepGroups>n.groups)fail('keepGroups cannot exceed groups');}
+   if(kind==='masked_router_topk')int(n.k,1,16,'k');
+   if(kind==='group_advantage')float(n.epsilon,0,1,'epsilon',false);
    if(kind==='scatter_add')int(n.rows,1,8,'scatter rows');
    if(kind==='repeat_kv_rows')int(n.groups,1,8,'KV groups');
    if(kind==='sliding_window_mask')int(n.window,1,8,'window');
@@ -208,6 +221,35 @@
         const i=j-j%2,angle=(t+params.offset)/10000**(i/row.length),a=row[i],b=row[i+1];
         return j%2?a*Math.sin(angle)+b*Math.cos(angle):a*Math.cos(angle)-b*Math.sin(angle);
       }));break;
+
+    case 'low_rank_project':{const A=inputs.down,B=inputs.up;if(x[0].length!==A.length||A[0].length!==B.length)fail('low rank projection dimension mismatch');
+      const C=x.map(row=>A[0].map((_,j)=>row.reduce((a,v,i)=>a+v*A[i][j],0)));
+      value=C.map(row=>B[0].map((_,j)=>row.reduce((a,v,i)=>a+v*B[i][j],0)));
+      internals={latent:{shape:dims(C),values:C,note:'low-rank latent: not full MLA cache by itself'}};break;}
+    case 'partial_rope':{if(params.rotaryDim>x[0].length)fail('rotary dimension exceeds features');
+      value=x.map((row,t)=>row.map((v,j)=>{if(j>=params.rotaryDim)return v;const i=j-j%2,theta=(t+params.offset)/10000**(i/params.rotaryDim);
+        return j%2?row[i]*Math.sin(theta)+row[i+1]*Math.cos(theta):row[i]*Math.cos(theta)-row[i+1]*Math.sin(theta);}));break;}
+    case 'row_bias_add':{const S=inputs.scores,B=inputs.bias;if(B.length!==1||B[0].length!==S[0].length)fail('row bias requires [1,E]');
+      value=S.map(row=>row.map((v,j)=>v+B[0][j]));break;}
+    case 'group_topk_mask':{const S=inputs.scores,E=S[0].length;if(E%params.groups)fail('expert count must be divisible by groups');
+      const size=E/params.groups;value=[];const selected=[];
+      S.forEach(row=>{const ranked=Array.from({length:params.groups},(_,g)=>{
+        const top=row.slice(g*size,(g+1)*size).sort((a,b)=>b-a).slice(0,2);
+        return {g,score:top.reduce((a,b)=>a+b,0)};}).sort((a,b)=>b.score-a.score||a.g-b.g).slice(0,params.keepGroups);
+        const chosen=new Set(ranked.map(v=>v.g));selected.push(ranked.map(v=>v.g));
+        value.push(row.map((_,j)=>chosen.has(Math.floor(j/size))?1:0));});
+      internals={groups:{shape:[S.length,params.keepGroups],values:selected,note:'group score = sum of highest up to 2 scores in each group; toy routing contract'}};break;}
+    case 'masked_router_topk':{const S=inputs.scores,M=inputs.mask;same(S,M);requireBinary(M);
+      const selected=S.map((row,t)=>row.map((v,j)=>({v,j})).filter(z=>M[t][z.j]===1).sort((a,b)=>b.v-a.v||a.j-b.j).slice(0,params.k));
+      if(selected.some(row=>row.length!==params.k))fail('not enough unmasked experts for k');
+      value=selected.map(row=>row.map(z=>z.j));internals={selected_weights:{shape:[S.length,params.k],values:selected.map(row=>softmax(row.map(z=>z.v))),note:'selected-softmax is illustrative; not a universal MoE gate'}};break;}
+    case 'log_softmax':value=x.map(row=>{const m=Math.max(...row),logZ=m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0));return row.map(v=>v-logZ);});break;
+    case 'selected_logprob':{const S=inputs.logits,I=inputs.labels;if(S.length!==I.length||I[0].length!==1)fail('selected logprob labels must be [T,1]');
+      value=S.map((row,t)=>{const id=I[t][0];if(!Number.isSafeInteger(id)||id<0||id>=row.length)fail('selected logprob label out of range');
+        const m=Math.max(...row),z=m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0));return [row[id]-z];});break;}
+    case 'group_advantage':{value=inputs.rewards.map(row=>{const mu=row.reduce((a,v)=>a+v,0)/row.length;
+      const variance=row.reduce((a,v)=>a+(v-mu)**2,0)/row.length;
+      return row.map(v=>(v-mu)/Math.sqrt(variance+params.epsilon));});break;}
     case 'gather_rows':{const ids=inputs.indices;if(ids[0].length!==1)fail('indices must be [T,1]');value=ids.map(([i])=>{if(!Number.isSafeInteger(i)||i<0||i>=x.length)fail('gather index out of bounds');return x[i].slice();});break;}
     case 'scatter_add':{const ids=inputs.indices,v=inputs.values;if(ids.length!==v.length||ids[0].length!==1)fail('scatter index/values mismatch');value=Array.from({length:params.rows},()=>Array(v[0].length).fill(0));ids.forEach(([i],t)=>{if(!Number.isSafeInteger(i)||i<0||i>=params.rows)fail('scatter index out of bounds');v[t].forEach((z,j)=>{value[i][j]+=z;});});break;}
     case 'row_logsumexp':value=x.map(row=>{const m=Math.max(...row);return [m+Math.log(row.reduce((a,v)=>a+Math.exp(v-m),0))];});break;
