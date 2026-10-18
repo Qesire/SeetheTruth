@@ -7,11 +7,13 @@ const isNode=typeof module==="object"&&module.exports;
 const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Grad=isNode?require("./graph_autodiff.js"):root.SeetheTruthGraphAutodiff;
 const AdamW=isNode?require("./adamw_micro.js"):root.SeetheTruthAdamW;
+const NDAdamW=isNode?require("./nd_adamw_micro.js"):root.SeetheTruthNDAdamW;
+const ND=isNode?require("./nd_tensor.js"):root.SeetheTruthND;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 function step(raw,options={}){
  const graph=L.validateGraph(raw);
  const scope=options.targetId?Branch.slice(graph,options.targetId):graph;
- const parameters=scope.nodes.filter(n=>n.kind==="parameter");
+ const parameters=scope.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter");
  if(!parameters.length)throw Error("training requires a connected trainable Parameter block");
  const oldForward=L.evaluate(scope);
  const reverse=Grad.backward(scope,oldForward,{targetId:options.targetId});
@@ -20,17 +22,19 @@ function step(raw,options={}){
  if(active.length>12)throw Error("too many parameter nodes for bounded optimizer");
  const next=JSON.parse(JSON.stringify(graph));
  const records=[];
- for(const node of next.nodes.filter(n=>n.kind==="parameter"&&active.some(a=>a.id===n.id))){
+ for(const node of next.nodes.filter(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&active.some(a=>a.id===n.id))){
    const current=node.params.values,grad=reverse.gradients[node.id],previous=node.params.optimizer;
-   const update=AdamW.step(current,grad,previous,{
+   const update=(node.kind==="nd_parameter"?NDAdamW:AdamW).step(current,grad,previous,{
      lr:options.lr??0.01,weightDecay:options.weightDecay??0.01,
      beta1:options.beta1??0.9,beta2:options.beta2??0.999,eps:options.eps??1e-8
    });
    if(update.state.t>10000)throw Error("educational optimizer iteration limit");
    node.params.values=update.parameter;
    node.params.optimizer=update.state;
-   records.push({id:node.id,shape:[current.length,current[0].length],
-      gradientNorm:Math.hypot(...grad.flat()),updateNorm:Math.hypot(...update.update.flat()),optimizerStep:update.state.t});
+   const shape=node.kind==="nd_parameter"?ND.shape(current):[current.length,current[0].length];
+   const flatten=a=>node.kind==="nd_parameter"?ND.flatten(a):a.flat();
+   records.push({id:node.id,shape,
+      gradientNorm:Math.hypot(...flatten(grad)),updateNorm:Math.hypot(...flatten(update.update)),optimizerStep:update.state.t});
  }
  const validated=L.validateGraph(next);
  const nextForward=L.evaluate(options.targetId?Branch.slice(validated,options.targetId):validated);
@@ -39,7 +43,7 @@ function step(raw,options={}){
  if(!Number.isFinite(before)||!Number.isFinite(after))throw Error("non-finite loss in training step");
  return {graph:validated,beforeLoss:before,afterLoss:after,delta:after-before,
    targetId:reverse.targetId,records,previous:oldForward,next:nextForward,
-   evidence:"exact bounded graph VJP + persisted AdamW matrix state; no real pretrained model or GPU execution"};
+   evidence:"exact bounded graph VJP + persisted 2D/4D AdamW state; no real pretrained model or GPU execution"};
 }
 function steps(raw,options={}){
  const count=options.count??1;
@@ -57,7 +61,7 @@ function steps(raw,options={}){
 }
 function inspect(raw){
  const graph=L.validateGraph(raw);
- return graph.nodes.filter(n=>n.kind==="parameter").map(n=>({id:n.id,shape:[n.params.values.length,n.params.values[0].length],optimizerStep:n.params.optimizer.t}));
+ return graph.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter").map(n=>({id:n.id,shape:n.kind==="nd_parameter"?ND.shape(n.params.values):[n.params.values.length,n.params.values[0].length],optimizerStep:n.params.optimizer.t}));
 }
 return Object.freeze({step,steps,inspect});
 });
