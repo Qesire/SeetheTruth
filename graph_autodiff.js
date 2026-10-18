@@ -4,13 +4,24 @@
 (function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphAutodiff=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
 const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Expert=typeof module==="object"&&module.exports?require("./expert_ffn_vjp.js"):root.SeetheTruthExpertVJP;
-const finite=a=>Array.isArray(a)&&a.length>0&&a.length<=16&&Array.isArray(a[0])&&a[0].length>0&&a[0].length<=16&&a.every(row=>Array.isArray(row)&&row.length===a[0].length&&row.every(Number.isFinite));
-const z=a=>a.map(row=>row.map(()=>0)),tr=a=>a[0].map((_,j)=>a.map(row=>row[j]));
+const NDVJP=typeof module==="object"&&module.exports?require("./nd_autodiff.js"):root.SeetheTruthNDVJP;
+const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):root.SeetheTruthND;
+const finite=a=>{try{
+ const walk=(v,depth)=>{if(depth>4)throw Error("rank");
+  if(!Array.isArray(v))return typeof v==="number"&&Number.isFinite(v);
+  if(!v.length||v.length>16)return false;
+  const nested=Array.isArray(v[0]),length=v[0]?.length;
+  return v.every(x=>Array.isArray(x)===nested&&(!nested||x.length===length)&&walk(x,depth+1));
+ };
+ return Array.isArray(a)&&Array.isArray(a[0])&&walk(a,0);
+}catch(e){return false;}};
+const z=a=>a.map(row=>Array.isArray(row)?z(row):0),tr=a=>a[0].map((_,j)=>a.map(row=>row[j]));
+const shapeDeep=a=>{const sh=[];let v=a;while(Array.isArray(v)){sh.push(v.length);v=v[0];}return sh;};
 const mm=(a,b)=>{if(a[0].length!==b.length)throw Error("VJP matrix dimensions mismatch");return a.map(row=>b[0].map((_,j)=>row.reduce((s,v,k)=>s+v*b[k][j],0)));};
-const same=(a,b)=>a.length===b.length&&a[0].length===b[0].length;
+const same=(a,b)=>{const x=shapeDeep(a),y=shapeDeep(b);return x.length===y.length&&x.every((v,i)=>v===y[i]);};
 const had=(a,b)=>a.map((row,i)=>row.map((v,j)=>v*b[i][j]));
 const scale=(a,k)=>a.map(row=>row.map(v=>v*k));
-const add=(a,b)=>a.map((row,i)=>row.map((v,j)=>v+b[i][j]));
+const add=(a,b)=>a.map((row,i)=>Array.isArray(row)?add(row,b[i]):row+b[i]);
 const dsilu=x=>{const p=x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));return p+x*p*(1-p);};
 const hashWeight=(id,r,c)=>{let h=2166136261;for(const ch of id+":"+r+":"+c)h=Math.imul(h^ch.charCodeAt(0),16777619);return ((h>>>0)%2001-1000)/2600;};
 function backward(raw,forward,opts={}){
@@ -19,7 +30,7 @@ function backward(raw,forward,opts={}){
  const values=new Map(),byId=new Map(nodes.map(n=>[n.id,n])),edges=new Map();
  for(let i=0;i<nodes.length;i++){const step=trace[i],n=nodes[i];if(step.id!==n.id||step.kind!==n.kind||!finite(step.values))throw Error("stale or invalid forward trace");values.set(n.id,step.values);}
  for(const e of graph.edges)edges.set(e.to+":"+e.port,e.from);
- const chosen=opts.targetId||[...nodes].reverse().find(n=>values.get(n.id).length===1&&values.get(n.id)[0].length===1&&(n.kind==="mse"||n.kind==="cross_entropy"||n.kind==="masked_grpo_objective"))?.id;
+ const chosen=opts.targetId||[...nodes].reverse().find(n=>values.get(n.id).length===1&&values.get(n.id)[0].length===1&&(n.kind==="mse"||n.kind==="nd_mse"||n.kind==="cross_entropy"||n.kind==="masked_grpo_objective"))?.id;
  if(!chosen||!byId.has(chosen)||values.get(chosen).length!==1||values.get(chosen)[0].length!==1)throw Error("choose scalar loss node for graph reverse pass");
  const grads=new Map(),routes=[],cuts=[],local={};
  const src=(id,port)=>{const v=edges.get(id+":"+port);if(!v)throw Error("missing gradient input "+id+"."+port);return v;};
@@ -32,6 +43,18 @@ function backward(raw,forward,opts={}){
   if(!grads.has(n.id))continue;
   const id=n.id,p=n.params,d=grads.get(id),kind=n.kind;
   routes.push(id);
+  if(kind.startsWith("nd_")){
+    const input={};
+    for(const port of L.defs[kind].ports)input[port]=inp(id,port);
+    const deriv=NDVJP.vjp(kind,input,p,d,values.get(id));
+    for(const port of L.defs[kind].ports){
+      if(deriv.cuts?.includes(port)){cut(id,port,"fixed N-D target or intentionally detached argument");continue;}
+      if(!Object.hasOwn(deriv,port))throw Error("missing N-D VJP for "+id+"."+port);
+      send(id,port,deriv[port]);
+    }
+    local[id]={vjp:"N-D exact reverse tensor VJP with explicit broadcasting, grouped-head accumulation and tensor axis semantics"};
+    continue;
+  }
   if(kind==="input"||kind==="parameter"||kind==="token_ids")continue;
   if(kind==="add"||kind==="subtract"){
     send(id,"a",d);send(id,"b",kind==="add"?d:scale(d,-1));continue;
