@@ -17,15 +17,15 @@ This lesson teaches the *split of content/position pathways* and *shared compres
 
 ## 14: `moe_route` — bias, group filtering, masked expert Top-k
 
-Reference: DeepSeek-V3 §2.1.2, https://arxiv.org/abs/2412.19437 .
+Reference: DeepSeek-V3 §2.1.2, https://arxiv.org/abs/2412.19437 ; exact official Gate.forward: https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py .
 
 - Input token representations `X:[3,4]` feed a teaching router `S:[3,4]`.
-- Independently input `b:[1,4]`; `S' = S+b` for routing selection.
+- First create *affinities* `A = sigmoid(S)` as an explicit, replaceable activation block. Independently input `b:[1,4]`; `S' = A+b` is used for **selection only**.
 - A `group_topk_mask` partitions experts and emits a `[3,4]` eligibility mask.
 - `masked_router_topk(S',mask)` emits `I:[3,1]` integer expert indices.
 - `gather_rows(experts:[4,4],I)` returns illustrative *expert prototype vectors*, **not** outputs of real expert FFNs.
 
-The group score in this lesson sums the top two scores per group, and selected weights use softmax. These are explicit **teaching choices**. DeepSeek's routing score and bias semantics must not be confused with this simplification, especially where sigmoid affinity and bias-free gating weights differ.
+The group score sums the top two biased affinities per group. `router_gate_weights(A,I,mode=identity,normalize=true)` takes the selected **unbiased** affinities and normalizes them; `expert_bank_mix` then weights teaching prototype vectors. This reproduces the selection-vs-gating split in the cited inference source, but not its route-scale, genuine expert FFNs, or distributed dispatch.
 
 ## 15: `grpo_signals` — log policy probabilities and group advantages
 
