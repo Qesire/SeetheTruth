@@ -172,6 +172,46 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         undone=p.evaluate("() => [...document.querySelectorAll('#blocks .block')].map(n=>[n.style.left,n.style.top])")
         self.assertEqual(before,undone)
 
+    def test_unified_graph_autodiff_shared_weight_attention_gradient(self):
+        p=self.page
+        p.locator('[data-preset="autodiff_core"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),11)
+        self.assertTrue(p.locator("#backward").is_disabled())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertFalse(p.locator("#backward").is_disabled())
+        p.locator("#backward").click()
+        self.assertIn("11 / 11",p.locator("#stepInfo").inner_text())
+        p.locator("#gradientInspector").scroll_into_view_if_needed()
+        self.assertEqual(p.locator("#gradientInspector .cell").count(),1)
+        self.shot("24-unified-autodiff-loss-backward.png")
+        trace=p.evaluate("""() => {
+          const g=window.SeetheTruthLearning.preset('autodiff_core'),
+                f=window.SeetheTruthLearning.evaluate(g),
+                b=window.SeetheTruthGraphAutodiff.backward(g,f);
+          return {shared:b.gradients.shared_weight,x:b.gradients.features,
+                  target:b.gradients.target,
+                  paths:b.pathIds,stop:b.cutEdges};
+        }""")
+        self.assertEqual(len(trace["shared"]),2)
+        self.assertTrue(any(abs(v)>1e-9 for row in trace["shared"] for v in row))
+        self.assertTrue(all(v==0 for row in trace["target"] for v in row))
+        self.assertIn("attention",trace["paths"] and ["attention" if x=="attend" else x for x in trace["paths"]])
+        i=p.evaluate("""() => window.SeetheTruthLearning.order(
+            window.SeetheTruthLearning.preset('autodiff_core')).findIndex(n=>n.id==='shared_weight')""")
+        p.locator('#trace [data-step="'+str(i)+'"]').click()
+        self.assertEqual(p.locator("#gradientInspector .cell").count(),4)
+        p.locator("#gradientInspector").scroll_into_view_if_needed()
+        self.assertIn("∂LOSS",p.locator("#gradientInspector").inner_text())
+        self.shot("25-shared-weight-accumulated-matmul-gradients.png")
+        p.locator('[data-preset="grpo_objective"]').click()
+        self.assertFalse(p.locator("#backward").is_enabled())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        p.locator("#backward").click()
+        self.assertIn("20 / 20",p.locator("#stepInfo").inner_text())
+        self.assertNotIn("不可用",p.locator("#status").inner_text())
+
     def test_grpo_gradient_trace_clip_and_stop_boundaries(self):
         p=self.page
         self.assertTrue(p.locator("#backward").is_disabled())
