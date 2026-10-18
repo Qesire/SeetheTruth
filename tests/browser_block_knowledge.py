@@ -37,7 +37,7 @@ class DetailedBlockKnowledgeAcceptance(unittest.TestCase):
         self.errors=[]
         self.p.on("pageerror",lambda e:self.errors.append(str(e)))
         self.p.goto(self.base+"/learn.html",wait_until="domcontentloaded")
-        self.p.wait_for_function("document.querySelectorAll('#palette [data-add]').length===45")
+        self.p.wait_for_function("window.SeetheTruthLearning && document.querySelectorAll('#palette [data-add]').length===window.SeetheTruthLearning.KINDS.length")
         self.assertEqual(self.p.locator("#studyMode").input_value(),"concept")
 
     def tearDown(self):
