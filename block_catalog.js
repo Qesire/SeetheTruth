@@ -12,6 +12,11 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  nd_parameter:block("可训练四轴参数","N-D Trainable Parameter","data",[],
+   {values:[[[[0.12,-0.18],[0.31,0.27]]]],
+    optimizer:{t:0,m:[[[[0,0],[0,0]]]],v:[[[[0,0],[0,0]]]]}},
+   "θ[B,H,T,D]; θ⁺ = AdamW(θ,∂L/∂θ,m,v)","持久四轴张量；以积木 ID 作为参数身份，多个下游分支共享梯度，动量和参数保存在工程 JSON。",
+   "替换 GQA/MQA Q/K/V 数据源，执行连续训练并观察每个 KV Head 汇合的梯度。","仅有界 Float64 教学张量；参数不是大模型权重；手动编辑必须重置动量。"),
   nd_input:block("四轴张量输入","4-Axis Tensor Source","data",[],{b:1,h:2,t:3,d:4,seed:1},
    "X ∈ ℝ^{B×H×T×D}","显式生成有界 [Batch, Head, Token, Channel] 教学张量，各轴独立可调。","修改 Head 或 Token 数，观察后续形状推导和数值运算。","仅独立的合成 Float64 数据；B/H/T/D 是默认含义，不是强制模型架构。"),
   nd_permute:block("四轴重排","Permute Tensor Axes","compute",["x"],{axis0:0,axis1:2,axis2:1,axis3:3},
@@ -173,6 +178,19 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(kind==='nd_parameter'){
+     const ND=typeof module==='object'&&module.exports?require('./nd_tensor.js'):globalThis.SeetheTruthND;
+     const a=ND.shape(n.values),opt=n.optimizer;
+     if(a.length!==4)fail('N-D Parameter requires exactly four tensor axes');
+     if(ND.flatten(n.values).some(v=>Math.abs(v)>1000))fail('N-D Parameter values exceed teaching bounds');
+     if(!opt||typeof opt!=='object'||Array.isArray(opt)||!Number.isSafeInteger(opt.t)||opt.t<0||opt.t>10000)
+       fail('invalid N-D optimizer step');
+     for(const field of ['m','v']){
+       const shape=ND.shape(opt[field]);
+       if(shape.length!==4||shape.some((v,i)=>v!==a[i]))fail('N-D optimizer moment shape mismatch');
+     }
+     if(ND.flatten(opt.v).some(v=>v<0))fail('N-D second moment must be nonnegative');
+   }
    if(kind==='nd_input'||kind==='nd_reshape'){
      for(const axis of ['b','h','t','d'])int(n[axis],1,8,'N-D '+axis);
      if(n.b*n.h*n.t*n.d>512)fail('N-D shape exceeds bounded CPU budget');
@@ -239,7 +257,8 @@
    if(kind.startsWith('nd_')){
      const ND=typeof module==='object'&&module.exports?require('./nd_tensor.js'):globalThis.SeetheTruthND;
      let value;
-     if(kind==='nd_input')value=ND.seedTensor([params.b,params.h,params.t,params.d],params.seed);
+     if(kind==='nd_parameter')value=ND.build(ND.shape(params.values),i=>ND.at(params.values,i));
+     else if(kind==='nd_input')value=ND.seedTensor([params.b,params.h,params.t,params.d],params.seed);
      else if(kind==='nd_permute')value=ND.permute(inputs.x,[params.axis0,params.axis1,params.axis2,params.axis3]);
      else if(kind==='nd_reshape')value=ND.reshape(inputs.x,[params.b,params.h,params.t,params.d]);
      else if(kind==='nd_flatten'){const sh=ND.shape(inputs.x);if(sh.length!==4)fail('N-D flatten expects rank 4');value=ND.reshape(inputs.x,[sh[0]*sh[1]*sh[2],sh[3]]);}
