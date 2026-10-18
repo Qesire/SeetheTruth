@@ -311,3 +311,26 @@ The new numeric acceptance checks both Heads against an independent Q/K dot-prod
 
 Boundaries remain explicit: no K/V cache state machine in this lesson, no automatic Rotary embeddings, no fused FlashAttention kernel, and no N-dimensional backward engine yet. These can be assembled or implemented separately with precisely documented semantics. Relevant published reference: [Attention Is All You Need](https://arxiv.org/abs/1706.03762); implementation semantics: [PyTorch scaled_dot_product_attention](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html).
 
+
+## 27–28: Grouped-Query and Multi-Query Attention with four-axis reverse-mode gradients
+
+Lessons `nd_gqa_attention` and `nd_mqa_attention` are **fully editable compositions** of the same public tensor operators. They do not install specialized opaque "GQA kernels" or constrain independent Scratch experiments to Llama-like or DeepSeek-like model recipes.
+
+- GQA: four Query Heads, two Key Heads and two Value Heads, with mapping `KVhead=floor(Qhead / 2)`.
+- MQA: four Query Heads, one shared Key Head and one shared Value Head, with mapping `KVhead=0` for all Queries.
+- Both use `[B=1,T=3,D=2]`, construct real `Q Kᵀ / sqrt(D)`, causal mask, last-axis softmax, weighted `PV`, and end in a separately connected `nd_mse` tensor loss.
+
+These compositions expose a fundamental training mechanism that a pure shape calculator would miss:
+
+```
+dL/dK_shared[b,hkv,t,d] = sum over Query Heads mapped to hkv of dL/dK_expanded[b,hq,t,d]
+dL/dV_shared[b,hkv,t,d] = sum over Query Heads mapped to hkv of dL/dV_expanded[b,hq,t,d]
+```
+
+The existing Scratch reverse engine now accepts rank-4 output gradients and dispatches local rules through `nd_autodiff.js` rather than inventing 2D flattened derivatives. Supported exact N-D VJPs cover: batched MatMul (including head/batch broadcast), head repetition, permute/reshape/flatten/expand, N-D broadcast-add, axis sum, scale, masked score stop gradients, last-axis softmax and multi-axis MSE. The original 2D block reverse rules remain available without modification of their mathematical behavior.
+
+**Scope:** `nd_input` is a deterministic 4D teaching source, not a trainable model weight or optimizer state. The backward inspector can display `∂Loss/∂Q`, `∂Loss/∂K` and `∂Loss/∂V`, and it explicitly detaches the MSE target. There is no persistent 4D parameter update in these two lessons yet.
+
+Verification includes an independent reference formula for masked scores/attention output, *every element* of Q/K/V checked by central finite differences through the full GQA and MQA loss, plus numerical consistency checks for individual N-D local VJPs. The implementation also rejects illegal `Hq/Hkv` ratios, rather than silently repeating incompatible head groups.
+
+Research groundings: Ainslie et al., [GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints](https://aclanthology.org/2023.emnlp-main.298/) (EMNLP 2023); [PyTorch SDPA enable_gqa semantics](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention), notably `Hq % Hkv == 0` and equal K/V Head counts. Physical KV cache savings and fused GPU-kernel performance are not measured by this CPU learning tool.
