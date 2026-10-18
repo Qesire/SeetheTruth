@@ -296,7 +296,7 @@
     }else{
       fail("尚无显式的定性形状合同："+kind,n.id);
     }
-    by(output.length>=2&&output.length<=4&&output.every(x=>Number.isSafeInteger(x)&&x>=1&&x<=8)&&output.reduce((a,b)=>a*b,1)<=512,"N-D inferred tensor exceeds rank/axis/512-element bound",n.id);
+    if(kind.startsWith("nd_"))by(output.length>=2&&output.length<=4&&output.every(x=>Number.isSafeInteger(x)&&x>=1&&x<=8)&&output.reduce((a,b)=>a*b,1)<=512,"N-D inferred tensor exceeds rank/axis/512-element bound",n.id);
     return {shape:output,rule,conditions,stages,meaning:groups[L.defs[kind].category]||"数学计算"};
   }
   function evaluate(raw){
