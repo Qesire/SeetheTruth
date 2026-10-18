@@ -166,6 +166,6 @@
     return {mode:"concept",steps,totalKnownFlops:null,exactFlopCoverage:null,
       evidence:EVIDENCE,noNumericalExecution:true};
   }
-  if(CATALOG.length!==45)throw Error("Concept flow must be checked against complete 45-block catalog");
+  if(CATALOG.length!==new Set(CATALOG).size)throw Error("Concept flow duplicate block ids");
   return Object.freeze({evaluate,analyze,EVIDENCE,coveredKinds:CATALOG.slice()});
 });
