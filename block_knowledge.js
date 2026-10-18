@@ -9,6 +9,8 @@ const sources=Object.freeze({
  qwen3:["Qwen3 Technical Report","https://arxiv.org/abs/2505.09388"],
  gemma3:["Gemma 3 Technical Report","https://arxiv.org/abs/2503.19786"],
  deepseek3:["DeepSeek-V3 Technical Report","https://arxiv.org/abs/2412.19437"],
+ deepseekmath:["DeepSeekMath: GRPO","https://arxiv.org/abs/2402.03300"],
+ deepseekv2:["DeepSeek-V2: MLA / DeepSeekMoE","https://arxiv.org/abs/2405.04434"],
  softcap:["Gemma 2 Technical Report","https://arxiv.org/abs/2408.00118"],
  switch:["Switch Transformers","https://arxiv.org/abs/2101.03961"],
  stopgrad:["PyTorch detach API","https://docs.pytorch.org/docs/stable/generated/torch.Tensor.detach.html"],
@@ -38,6 +40,16 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+
+ low_rank_project:["先执行 X[T,D]·Wdown[D,R] 得 C[T,R]，再执行 C[T,R]·Wup[R,O] 得 Y[T,O]，中间低秩激活仍可展开。","DeepSeek MLA 的 KV latent 压缩与多个 Up Projection 共享同一缓存 latent；LoRA 也是低秩路径，但训练身份和位置不同。","一个低秩投影不是完整 MLA；必须再表达 K/V、独立带位置 RoPE 的 K 支路及 Attention。","画出压缩 latent 分别通向 K 与 V 两条矩阵计算的分叉，验证维度和共享。","deepseek3,deepseekv2"],
+ partial_rope:["输入每行仅前 r 个通道以相邻偶数对执行位置旋转，后续 D−r 个通道逐元素保持不变。","MLA 将内容向量与解耦的 RoPE 位置向量分开；并非将部分 RoPE 积木放到任何网络都自动获得缓存压缩。","RoPE 保持每对坐标的欧氏范数，但不同 token 位置的点积可能改变；实际配对布局依实现。","在两行、六通道输入上令 rotaryDim=2，检验其余四维保持原样。","deepseek3,rope"],
+ row_bias_add:["将路由分数 S[T,E] 与专家偏置 B[1,E] 沿 token 轴广播相加，输出形状仍为 [T,E]。","DeepSeek-V3 的负载均衡采用路由选择的附加偏置，并根据训练时负载状态进行更新；不把 bias 混进原始门控权重。","加偏置改变排序，但不代表真实模型中 sigmoid 门控直接替换成 softmax；也不等于 optimizer bias。","将第二个专家的选择 bias 提高，比较原始门控 logits 和最终 Top-k 选择。","deepseek3"],
+ group_topk_mask:["按专家索引连续等分为组；组评分是组内最高的两个分数之和（小组可能只有一个），保留得分最高的若干组。","DeepSeek-V3 采用 group-limited routing 约束路由集合；具体组评分和 bias 使用应对照真实实现检查。","这里只做组过滤；后面需要 masked Top-k 才完成专家选择，输出 0/1 不代表专家概率。","对四个专家分两组，构造一组单一极高分但另一组综合分更高的情况。","deepseek3"],
+ masked_router_topk:["先使用二值 mask 删除不允许的专家，然后稳定按原始分数排序选出 k 个专家下标。","可拼接 Group-Limited Routing 与其他稀疏路由器；真实模型中的 gate weight 可能为 sigmoid 而非演示的 selected softmax。","被 Mask 的专家不参与排序，且每行允许的候选不足 k 时必须报错而不是偷偷回退全局 Top-k。","令所有高分专家被 mask，只保留低分专家并检查输出索引。","deepseek3,switch"],
+ log_softmax:["沿类别轴以最大值平移计算 logsumexp，然后逐元素做 logits 减法，避免在极小概率处数值下溢。","语言模型 CE、DPO 及 PPO token-level policy log probability 常以 log-domain 计算，并另外处理 mask 与 reduction。","LogSoftmax 不是采样器，不携带选中 token id，也不等于整个序列的概率。","用正负千量级 logits，验证逐行 exp(logprob) 的和在浮点精度下约为 1。","ce,softmax"],
+ selected_logprob:["对每个 token 行先做 logsumexp，再按整数 label 选定单个动作的 log probability，输出 [T,1]。","偏好优化和策略梯度需要新旧/参考策略对指定动作的 log probability；序列聚合还要独立加 token mask。","此积木不生成动作，不隐含 rollout，也不执行 PPO clipping 或 DPO 的偏好对数比目标。","比较同一 logits 的 CrossEntropy 单样本损失，验证 selected log-prob 与其为相反数。","deepseekmath,ce"],
+ group_advantage:["每行是一组同问题候选结果的 reward，先减组均值，再除以 sqrt(组总体方差+epsilon)；常量行得到全零。","DeepSeekMath GRPO 使用组内相对奖励替代单独价值网络的 baseline；本教学公式固定一套方差/epsilon 约定。","组内标准化不等于完整 GRPO；还需要策略比率、截断、参考策略 KL 与 token reduction。","设置两组不同奖励尺度，比较标准化后正负符号、均值和同奖退化。","deepseekmath"],
+
  gather_rows:["依据每个整数索引选择源矩阵的一整行；重复索引形成多个下游读者，不修改原张量。","Embedding 查表与稀疏专家 token dispatch 都会用到 gather 类操作，但其轴与批量组织不同。","Gather 不等于自动赋予概率权重，也不能用输出 shape 猜测源轴。","用 indices=[2,0,2] 收集三行，检查首尾两行是否相等。","embed,topk"],
  scatter_add:["对每个源行按整数目标位置执行加法；相同目标索引的贡献必须累加。","Embedding 稀疏梯度、MoE expert outputs 回填和一些并行规约都依赖 scatter/add 的数学语义。","重复目的索引时不能覆盖旧值；并行浮点加法的顺序可能影响最低位。","把两行送到相同目标位置，检验输出是否为向量和。","embed,matmul"],
  row_logsumexp:["计算 m=max(x)，随后得到 m+log(sum(exp(x-m)))，避免直接 exp(很大值) 上溢。","Softmax 和 CrossEntropy 在数值稳定实现中常使用 log-sum-exp；论文与框架可能融合多个操作。","它不是单独 Softmax：输出是逐行标量而非概率矩阵。","设置 [1000,1001] 与 [-1000,-999]，验证结果仍有限。","ce,softmax"],
