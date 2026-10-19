@@ -567,9 +567,9 @@ function inspect(){
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  $("#blockKnowledge").innerHTML=renderKnowledge(d,n);
  $("#parameters").innerHTML=d?((n.kind==="parameter"||n.kind==="nd_parameter")?
-   '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · AdamW step '+esc(n.params.optimizer.t)+'</div>'+
+   '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · '+esc(n.params.optimizer.kind||'adamw')+' step '+esc(n.params.optimizer.t)+'</div>'+
    '<label class="param">Parameter values (JSON, 2D/4D)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
-   '<p class="hint">编辑矩阵后重置该参数的 AdamW 动量。训练步骤保存在 JSON 并随撤销/重做恢复。</p>'
+   '<p class="hint">编辑张量后重置当前优化器的累积状态。训练步骤保存在 JSON 并随撤销/重做恢复。</p>'
    :Object.keys(d.params).map(k=>
   '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
