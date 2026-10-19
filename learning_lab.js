@@ -456,9 +456,8 @@
     }else if(name==="industrial_gqa_rope_tied"){
       title="任务 38 · Qwen3 启发：QK Norm + RoPE + GQA + 权重绑定";
       // Heads=2, KV heads=1, head_dim=2, model_dim=4, V=8.
-      // Qwen3 has independently trainable Q/K Norm gains and uses separate
-      // per-head 4D layouts; here gamma=1 and the same head math is exposed
-      // as explicit 2D sliced subgraphs so every operation stays inspectable.
+      // Qwen3 uses learnable Q/K Norm gains; these are shared across heads
+      // as one Parameter per Q/K side. 2D slicing exposes every head operation.
       const mat=(rows,cols,seed)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>
         Number((Math.sin((i+1)*.47+(j+1)*.31+seed)*.24).toFixed(8))));
       const P=(id,x,y,v)=>N(id,"parameter",x,y,{values:v,
@@ -472,12 +471,17 @@
         N("pre_norm","rmsnorm",695,100,{epsilon:1e-5}),
         P("wq",680,350,mat(4,4,2)),P("wk",680,590,mat(4,2,3)),
         P("wv",680,820,mat(4,2,4)),
+        P("qgain",930,950,[[1,1]]),P("kgain",930,1140,[[1,1]]),
+        N("qgainrows","repeat_rows",1190,950,{times:3}),
+        N("kgainrows","repeat_rows",1190,1140,{times:3}),
         N("q","matmul",945,60),N("k","matmul",945,260),N("v","matmul",945,495),
         N("q0","slice_cols",1160,30,{start:0,width:2}),
         N("q1","slice_cols",1160,210,{start:2,width:2}),
         N("q0n","qk_norm",1360,30,{epsilon:1e-5}),
         N("q1n","qk_norm",1360,210,{epsilon:1e-5}),
         N("kn","qk_norm",1160,510,{epsilon:1e-5}),
+        N("q0aff","mul",1430,30),N("q1aff","mul",1430,210),
+        N("kaff","mul",1430,510),
         N("q0r","rope2d",1580,30,{offset:0}),
         N("q1r","rope2d",1580,210,{offset:0}),
         N("kr","rope2d",1360,510,{offset:0}),
@@ -507,7 +511,11 @@
         ["pre_norm","v","a"],["wv","v","b"],
         ["q","q0","x"],["q","q1","x"],
         ["q0","q0n","x"],["q1","q1n","x"],["k","kn","x"],
-        ["q0n","q0r","x"],["q1n","q1r","x"],["kn","kr","x"],
+        ["qgain","qgainrows","x"],["kgain","kgainrows","x"],
+        ["q0n","q0aff","a"],["q1n","q1aff","a"],
+        ["qgainrows","q0aff","b"],["qgainrows","q1aff","b"],
+        ["kn","kaff","a"],["kgainrows","kaff","b"],
+        ["q0aff","q0r","x"],["q1aff","q1r","x"],["kaff","kr","x"],
         ["kr","kt","x"],
         ["q0r","score0","a"],["kt","score0","b"],
         ["q1r","score1","a"],["kt","score1","b"],
