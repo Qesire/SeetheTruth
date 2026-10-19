@@ -12,7 +12,7 @@ const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');
 assert.equal(new Set(guided).size,guided.length,'each course is represented once');
 const lessons=guided.filter(x=>x!=='blank');
-assert.equal(lessons.length,38,'freeze public alpha curriculum number until README is updated');
+assert.equal(lessons.length,40,'freeze public alpha curriculum number until README is updated');
 assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
 assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
