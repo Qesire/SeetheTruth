@@ -151,6 +151,43 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             p.locator("#gradientInspector").scroll_into_view_if_needed()
             self.shot(name)
 
+    def test_activation_and_optimizer_free_composition_lessons(self):
+        p=self.page
+        p.locator('[data-preset="activation_gallery"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),7)
+        self.assertIn("7/7",p.locator("#graphReadiness").inner_text())
+        p.locator("#run").click()
+        self.assertIn("1 / 7",p.locator("#stepInfo").inner_text())
+        results=p.evaluate("""() => {
+          const L=window.SeetheTruthLearning;
+          const run=L.evaluate(L.preset('activation_gallery'));
+          return {ids:run.steps.map(x=>x.id),
+            outputs:Object.fromEntries(run.steps.map(s=>[s.id,s.values]))};
+        }""")
+        for k in ("gelu_cdf","gelu_approx","mish_act","relu_square","leaky","silu_act"):
+            self.assertIn(k,results["ids"])
+        self.assertNotEqual(results["outputs"]["gelu_cdf"],results["outputs"]["mish_act"])
+        p.locator('#trace [data-step="'+str(results["ids"].index("gelu_cdf"))+'"]').click()
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("57-activation-gallery-gelu-cdf.png")
+        p.locator('[data-preset="optimizer_compare"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),6)
+        p.locator("#run").click()
+        self.assertIn("1 / 6",p.locator("#stepInfo").inner_text())
+        stats=p.evaluate("""() => {
+          const L=window.SeetheTruthLearning,B=window.SeetheTruthBlockCatalog;
+          const steps=L.evaluate(L.preset('optimizer_compare')).steps;
+          return {ids:steps.map(x=>x.id),
+            updates:Object.fromEntries(steps.map(s=>[s.id,s.values]))};
+        }""")
+        for k in ("adamw","sgd","rmsprop","lion"):
+            self.assertIn(k,stats["ids"])
+        self.assertNotEqual(stats["updates"]["adamw"],stats["updates"]["lion"])
+        p.locator('#trace [data-step="'+str(stats["ids"].index("lion"))+'"]').click()
+        self.assertEqual(p.locator("#matrix .cell").count(),4)
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("58-free-optimizer-lion-update.png")
+
     def test_activation_palette_and_four_optimizer_live_training(self):
         import json
         p=self.page
