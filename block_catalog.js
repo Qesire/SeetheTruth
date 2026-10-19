@@ -161,6 +161,16 @@
    "Y=GELU_tanh(G)⊙U","在上投影的值上施加 GELU 门控。","比较不同门控函数产生的激活差异。","GELU 采用 tanh 近似，和默认精确形式不同。"),
   causal_mask:block("生成因果掩码","Causal Mask","attention",["x"],{},
    "M[i,j]=1 ⇔ j≤i","将当前 token 数转成严格下三角布尔可见性。","接 Masked Softmax 观察不可访问位置变成精确零。","限定自注意力、相同 Q/K 序列长度。"),
+  token_depth_mask:block("逐 Token 循环预算 Mask","Token Depth Budget Mask","routing",["depths"],{step:1,width:4},
+   "M[t,d]=1 iff budget[t]≥step, otherwise 0",
+   "使用离散的每 Token 计算深度控制状态能否更新；共享参数时为易任务保留早期状态，为难任务允许更多迭代。",
+   "对比预算 0/1/2 时两次循环各自哪些 Token 的状态被冻结；修改深度预算而非模型权重。",
+   "本积木只产生停止更新的数学 Mask，尚未稀疏调度 Attention/KV 或跳过稠密 GEMM，不应声称真实推理加速。"),
+  state_mask_blend:block("逐 Token 隐藏状态保持","Active/Exited State Blend","routing",["previous","candidate","mask"],{},
+   "H[t,d]=(1−M[t,d]) Hprev[t,d]+M[t,d] Hcandidate[t,d]",
+   "按 Token 决定是否采用新一轮候选状态；已经退出的 Token 必须保持前轮状态，保持模型有效输出。",
+   "对 Mask=0/1 行检查数值完全等于 previous/candidate；反传验证两个分支按 Mask 分配梯度。",
+   "即使 Mask=0，当前教学 DAG 仍物化 candidate 计算；这是正确的语义混合，不是 MoR 的稀疏 Attention 内核。"),
   masked_softmax:block("带 Mask Softmax","Masked Softmax","attention",["logits","mask"],{},
    "P[i,j]=softmax_{j∈allowed(i)} logits[i,j]","排除不允许的注意力位置，归一化仅在剩余 Key 上进行。","确认 Mask=0 的概率严格为零。","Mask 只能含 0/1；全屏蔽行被拒绝，避免 NaN。"),
   rope2d:block("RoPE 旋转","RoPE · 2D","position",["x"],{offset:0},
@@ -295,6 +305,7 @@
       if(opt.m.length!==n.values.length||opt.v.length!==n.values.length||opt.m[0].length!==n.values[0].length||opt.v[0].length!==n.values[0].length)fail('optimizer moment dimensions mismatch');
       if(opt.v.some(row=>row.some(x=>x<0)))fail('AdamW second moment must be nonnegative');
    }
+   if(kind==='token_depth_mask'){int(n.step,1,3,'loop step');int(n.width,1,16,'hidden width');}
    if(kind==='token_ids'){int(n.rows,1,8,'rows');int(n.vocab,2,16,'vocab');int(n.seed,-10000,10000,'seed');}
    if(kind==='embedding'){int(n.width,1,16,'width');int(n.vocab,2,16,'vocab');}
    if(kind==='slice_rows'){int(n.start,0,7,'row start');int(n.length,1,8,'row length');}
@@ -435,6 +446,20 @@
     case 'geglu':value=pair(inputs.gate,inputs.up,(u,v)=>gelu(u)*v);break;
     case 'causal_mask':
       value=Array.from({length:x.length},(_,i)=>Array.from({length:x.length},(_,j)=>j<=i?1:0));break;
+    case 'token_depth_mask':{
+      const depths=inputs.depths;
+      if(!Array.isArray(depths)||depths.some(row=>row.length!==1||!Number.isSafeInteger(row[0])||row[0]<0||row[0]>3))fail('Token depth budgets must be integer [T,1] values in 0..3');
+      value=depths.map(row=>Array.from({length:params.width},()=>row[0]>=params.step?1:0));
+      internals={depth_step:{shape:[1,1],values:[[params.step]],note:'discrete budget mask, no sparse compute asserted'}};
+      break;
+    }
+    case 'state_mask_blend':{
+      const old=inputs.previous,next=inputs.candidate,mask=inputs.mask;
+      same(old,next);same(old,mask);requireBinary(mask);
+      value=old.map((row,i)=>row.map((v,j)=>mask[i][j]?next[i][j]:v));
+      internals={active_token_count:{shape:[1,1],values:[[mask.filter(r=>r[0]===1).length]],note:'mathematical active rows; full dense candidate graph still executed'}};
+      break;
+    }
     case 'masked_softmax':
       same(inputs.logits,inputs.mask);requireBinary(inputs.mask);
       value=inputs.logits.map((row,i)=>{
