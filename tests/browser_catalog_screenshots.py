@@ -338,6 +338,56 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_loop_depth_weighted_supervision_keeps_trained_parameter_identity(self):
+        p=self.page
+        p.locator('[data-preset="loop_transformer_2"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),57)
+        self.assertFalse(p.locator("#applyLoopDepth").is_disabled())
+        self.assertEqual(p.locator("#loopDepth").input_value(),"2")
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        before=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        params_before={n["id"]:n["params"] for n in before["nodes"] if n["kind"]=="parameter"}
+        self.assertEqual(len(params_before),8)
+        self.assertTrue(all(n["optimizer"]["t"]==2 for n in params_before.values()))
+        self.assertAlmostEqual(sum(n["params"]["factor"] for n in before["nodes"] if n["id"] in ("weight0","weight1")),1)
+        p.locator("#loopDepth").select_option("3")
+        p.locator("#applyLoopDepth").click()
+        self.assertIn("循环深度 2 → 3",p.locator("#status").inner_text())
+        self.assertEqual(p.locator("#blocks .block").count(),79)
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        after=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        self.assertEqual(params_before,{n["id"]:n["params"] for n in after["nodes"] if n["kind"]=="parameter"})
+        self.assertAlmostEqual(sum(n["params"]["factor"] for n in after["nodes"] if n["id"] in ("weight0","weight1","weight2")),1)
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#run").click()
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        source=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn('v["r2_ce"]',source)
+        self.assertIn('self.loss_id = "loss"',source)
+        self.assertEqual(source.count('torch.nn.Parameter('),8)
+        self.shot("61-loop-weighted-depth-3-real-torch.png")
+        p.locator("#loopDepth").select_option("1")
+        p.locator("#applyLoopDepth").click()
+        self.assertEqual(p.locator("#blocks .block").count(),35)
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        one=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        self.assertEqual(params_before,{n["id"]:n["params"] for n in one["nodes"] if n["kind"]=="parameter"})
+        self.assertFalse(p.locator("#applyLoopDepth").is_disabled())
+
     def test_looped_transformer_shared_parameters_recurrent_depth_and_real_exports(self):
         p=self.page
         for recipe,depth,count in (("loop_transformer_two",2,56),("loop_transformer_three",3,75)):
