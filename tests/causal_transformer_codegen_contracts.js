@@ -102,5 +102,5 @@ for(const [id,i,j] of [['wq',0,1],['wk',1,1],['wv',2,0],['embedding_table',seq[0
 const invalid=JSON.parse(source);
 invalid.nodes.find(n=>n.id==='mask').kind='input';
 invalid.nodes.find(n=>n.id==='mask').params={rows:2,width:2,seed:1};
-assert.throws(()=>L.evaluate(invalid),/逐元素操作|Mask|形状|相同|same/i);
+assert.throws(()=>L.evaluate(invalid),/目标输入端口无效|mask|invalid port/i);
 console.log('CAUSAL_TRANSFORMER_TRAINING_PASS 23 real tensor nodes, exact causal invariance, masked VJP, 5 trainable params, finite difference, NumPy/Torch parity, 2 AdamW + checkpoint replay');
