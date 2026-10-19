@@ -248,7 +248,30 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="activation_gallery"){
+    if(name==="activation_extension"){
+      title="任务 34 · ELU / HardSwish · 双维度激活导数与拐点";
+      nodes=[
+        N("signal","input",30,225,{rows:2,width:4,seed:4}),
+        N("elu_act","elu",350,60,{alpha:1}),
+        N("hard_act","hardswish",350,330),
+        N("tensor","nd_input",680,220,{b:1,h:2,t:2,d:4,seed:4}),
+        N("elu4","nd_elu",1010,60,{alpha:1}),
+        N("hard4","nd_hardswish",1010,330)
+      ];
+      edges=[["signal","elu_act","x"],["signal","hard_act","x"],
+             ["tensor","elu4","x"],["tensor","hard4","x"]];
+    }else if(name==="optimizer_decay_compare"){
+      title="任务 35 · Adam vs AdamW · Adagrad vs RMSprop";
+      nodes=[
+        N("weights","parameter",30,160),
+        N("gradient","input",30,520,{rows:2,width:2,seed:3}),
+        N("adam","opt_adam",400,30,{lr:0.01,weightDecay:0.1}),
+        N("adamw","opt_adamw",400,260,{lr:0.01,weightDecay:0.1}),
+        N("adagrad","opt_adagrad",400,490,{lr:0.01,weightDecay:0.01,lrDecay:0}),
+        N("rmsprop","opt_rmsprop",400,720,{lr:0.01,weightDecay:0.01,alpha:0.99})
+      ];
+      edges=nodes.slice(2).flatMap(n=>[["weights",n.id,"parameter"],["gradient",n.id,"gradient"]]);
+    }else if(name==="activation_gallery"){
       title="任务 32 · 激活函数比较实验 · GELU/SiLU/Mish/ReLU²";
       nodes=[
         N("signal","input",30,300,{rows:2,width:4,seed:4}),
