@@ -338,6 +338,57 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_loop_residual_scaling_literature_why_and_real_cpu_training(self):
+        p=self.page
+        p.locator('[data-preset="loop_residual_scaling"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),61)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator('[data-node="r0_attn_delta"] .block-head').click()
+        why=p.locator("#blockKnowledge").inner_text()
+        self.assertIn("为什么共享循环 Transformer 的残差",why)
+        self.assertIn("同权重、同输入",why)
+        self.assertIn("∇Wq",why)
+        self.assertIn("inverse_sqrt",why)
+        self.assertIn("inverse_loops",why)
+        self.assertTrue(p.locator("#applyLoopDepth").is_disabled())
+        self.assertFalse(p.locator("#applyLoopResidual").is_disabled())
+        p.locator("#loopResidualRule").select_option("unit")
+        p.locator("#applyLoopResidual").click()
+        self.assertIn("unit",p.locator("#status").inner_text())
+        self.assertEqual(p.locator('[data-node="r0_attn_delta"]').get_attribute("data-readiness"),"ready")
+        p.locator("#loopResidualRule").select_option("inverse_sqrt")
+        p.locator("#applyLoopResidual").click()
+        self.assertIn("inverse_sqrt",p.locator("#status").inner_text())
+        p.locator("#loopResidualRule").select_option("inverse_loops")
+        p.locator("#applyLoopResidual").click()
+        self.assertIn("inverse_loops",p.locator("#status").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        data=json.loads(Path(d.value.path()).read_text(encoding="utf8"))
+        self.assertEqual(len(data["nodes"]),61)
+        self.assertEqual(sum(n["kind"]=="parameter" for n in data["nodes"]),8)
+        self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in data["nodes"] if n["kind"]=="parameter"))
+        self.assertTrue(all(abs(n["params"]["factor"]-.5)<1e-12 for n in data["nodes"] if n["id"] in
+          ("r0_attn_delta","r0_ffn_delta","r1_attn_delta","r1_ffn_delta")))
+        for backend in ("numpy","torch"):
+            p.locator("#pythonBackend").select_option(backend)
+            with p.expect_download() as d:
+                p.locator("#exportPython").click()
+            src=Path(d.value.path()).read_text(encoding="utf8")
+            self.assertIn('v["r1_ffn_delta"]',src)
+            self.assertIn('v["r0_attn_delta"]',src)
+        p.locator('[data-node="r1_ffn_delta"] .block-head').click()
+        self.shot("63-loop-residual-scaling-live-why-math-and-gradients.png")
+
     def test_loopformer_consistency_mechanism_and_industry_why_tradeoff(self):
         p=self.page
         p.locator('[data-preset="loopformer_consistency"]').click()
