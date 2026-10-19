@@ -101,6 +101,8 @@
    "PE(pos,2i)=sin(pos/10000^(2i/D)); PE(pos,2i+1)=cos(…)","把绝对 token 位置信息加到连续表示上。","和 RoPE 比较：此处加位置向量；RoPE 旋转 Q/K。","使用起始位置 0，不含可学习位置参数，要求 D 为偶数。"),
   transpose2d:block("转置","Transpose","shape",["x"],{},
    "Y[j,i]=X[i,j]","交换二维矩阵轴，改变后续矩阵乘法的收缩方向。","用 MatMul 验证内维要匹配。","只支持二维，输出必须满足教学矩阵 8×16 上限。"),
+  slice_rows:block("Token 序列切片","Slice token rows","shape",["x"],{start:0,length:2},
+   "Y[t,d]=X[start+t,d], 0≤t<length","沿 Token 时间轴取连续子序列，保留所有特征通道；可用于语言模型输入和右移标签配对。","输入使用 [0,T−1)，标签使用 [1,T)，核对前缀与后继 token 的严格一格位移。","静态切片不是 tokenizer 或 attention mask；梯度只回传到被选中的连续行。"),
   slice_cols:block("特征切片","Slice cols","shape",["x"],{start:0,width:2},
    "Y[:,j]=X[:,start+j]","从隐藏通道轴选择连续区间。","观察裁剪后残差分支是否仍形状相容。","仅支持连续列切片，起始下标从零计数。"),
   concat_cols:block("特征拼接","Concatenate","shape",["a","b"],{},
@@ -295,6 +297,7 @@
    }
    if(kind==='token_ids'){int(n.rows,1,8,'rows');int(n.vocab,2,16,'vocab');int(n.seed,-10000,10000,'seed');}
    if(kind==='embedding'){int(n.width,1,16,'width');int(n.vocab,2,16,'vocab');}
+   if(kind==='slice_rows'){int(n.start,0,7,'row start');int(n.length,1,8,'row length');}
    if(kind==='slice_cols'){int(n.start,0,15,'start');int(n.width,1,16,'width');}
    if(kind==='repeat_rows')int(n.times,1,8,'times');
    if(kind==='scale')float(n.factor,-100,100,'factor');
@@ -392,6 +395,9 @@
     case 'transpose2d':
       if(x[0].length>8)fail('Transpose 输出 token 轴不能超过 8');
       value=Array.from({length:x[0].length},(_,j)=>x.map(row=>row[j]));break;
+    case 'slice_rows':
+      if(params.start+params.length>x.length)fail('Token row slice exceeds current source sequence');
+      value=x.slice(params.start,params.start+params.length).map(row=>row.slice());break;
     case 'slice_cols':
       if(params.start+params.width>x[0].length)fail('切片范围超出特征维');
       value=x.map(row=>row.slice(params.start,params.start+params.width));break;
