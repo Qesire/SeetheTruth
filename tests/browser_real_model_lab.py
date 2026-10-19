@@ -87,4 +87,51 @@ class RealTraceBrowserAcceptance(unittest.TestCase):
         (DEST/"manifest.json").write_text(json.dumps({"evidence":"real CPU model trace imported from pinned CI capture, UI does not independently verify origin",
           "real_file":"03-genuine-tinystories-pinned-cpu-capture.png",
           "other_files":"01-no-real-samples.png,02-synthetic-structural-test-not-real-capture.png"}),encoding="utf8")
+    def test_learning_canvas_model_reference_remains_read_only(self):
+        p=self.p
+        p.goto("http://127.0.0.1:%d/learn.html"%self.server.server_port)
+        p.locator('[data-preset="trainable_attention"]').click()
+        p.locator('[data-node="q_proj"] .block-head').click()
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        before=json.loads(pathlib.Path(d.value.path()).read_text(encoding="utf8"))
+        self.assertTrue(p.locator("#realTracePanel").inner_text()=="")
+        with tempfile.NamedTemporaryFile("w",suffix=".json",encoding="utf8") as tmp:
+            json.dump(synthetic_test_only(),tmp);tmp.flush()
+            p.locator("#traceReferenceFile").set_input_files(tmp.name)
+        self.assertIn("只读关联积木 q_proj",p.locator("#status").inner_text())
+        self.assertIn("TEST_FIXTURE_NOT_REAL",p.locator("#realTracePanel").inner_text())
+        self.assertIn("不修改执行图、参数、优化器、导出代码",p.locator("#realTracePanel").inner_text())
+        self.assertEqual(p.locator("#realTracePanel .real-sample-values").count(),4)
+        p.locator('[data-node="attend"] .block-head').click()
+        self.assertEqual(p.locator("#realTracePanel").inner_text(),"")
+        self.assertTrue(p.locator("#bindRealTrace").is_disabled())
+        p.locator('[data-node="wq"] .block-head').click()
+        self.assertFalse(p.locator("#bindRealTrace").is_disabled())
+        p.locator("#bindRealTrace").click()
+        self.assertIn("关联到 wq",p.locator("#traceReferenceStatus").inner_text())
+        p.screenshot(path=str(DEST/"04-synthetic-reference-on-real-learning-canvas.png"),full_page=True)
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        after=json.loads(pathlib.Path(d.value.path()).read_text(encoding="utf8"))
+        self.assertEqual(before,after,"read-only evidence changed the serialized graph")
+        p.locator("#clearRealTrace").click()
+        self.assertIn("尚未导入",p.locator("#traceReferenceStatus").inner_text())
+        self.assertEqual(p.locator("#realTracePanel").inner_text(),"")
+
+    def test_real_model_capture_on_learning_canvas_when_available(self):
+        import os
+        capture=os.getenv("SEETHTRUTH_REAL_MODEL_CAPTURE")
+        if not capture:return
+        p=self.p
+        p.goto("http://127.0.0.1:%d/learn.html"%self.server.server_port)
+        p.locator('[data-preset="autodiff_core"]').click()
+        p.locator('[data-node="project"] .block-head').click()
+        p.locator("#traceReferenceFile").set_input_files(capture)
+        self.assertIn("roneneldan/TinyStories-1M",p.locator("#realTracePanel").inner_text())
+        self.assertIn("64×64",p.locator("#realTracePanel").inner_text())
+        self.assertEqual(p.locator("#realTracePanel .real-sample-values").count(),4)
+        self.assertFalse(p.evaluate("document.documentElement.scrollWidth>innerWidth+2"))
+        p.screenshot(path=str(DEST/"05-real-tinystories-observation-linked-to-matmul.png"),full_page=True)
+
 if __name__=="__main__":unittest.main(verbosity=2)
