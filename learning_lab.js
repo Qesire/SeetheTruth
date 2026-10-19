@@ -453,6 +453,78 @@
         ["q_proj","attend","q"],["k_proj","attend","k"],["v_proj","attend","v"],
         ["attend","loss","prediction"],["target","loss","target"]
       ];
+    }else if(name==="industrial_gqa_rope_tied"){
+      title="任务 38 · Qwen3 启发：QK Norm + RoPE + GQA + 权重绑定";
+      // Heads=2, KV heads=1, head_dim=2, model_dim=4, V=8.
+      // Qwen3 has independently trainable Q/K Norm gains and uses separate
+      // per-head 4D layouts; here gamma=1 and the same head math is exposed
+      // as explicit 2D sliced subgraphs so every operation stays inspectable.
+      const mat=(rows,cols,seed)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>
+        Number((Math.sin((i+1)*.47+(j+1)*.31+seed)*.24).toFixed(8))));
+      const P=(id,x,y,v)=>N(id,"parameter",x,y,{values:v,
+        optimizer:{t:0,m:v.map(row=>row.map(()=>0)),v:v.map(row=>row.map(()=>0))}});
+      nodes=[
+        N("ids","token_ids",20,160,{rows:4,vocab:8,seed:1}),
+        N("prefix","slice_rows",260,60,{start:0,length:3}),
+        N("labels","slice_rows",260,1120,{start:1,length:3}),
+        P("embed",20,400,mat(8,4,1)),
+        N("lookup","gather_rows",480,100),
+        N("pre_norm","rmsnorm",695,100,{epsilon:1e-5}),
+        P("wq",680,350,mat(4,4,2)),P("wk",680,590,mat(4,2,3)),
+        P("wv",680,820,mat(4,2,4)),
+        N("q","matmul",945,60),N("k","matmul",945,260),N("v","matmul",945,495),
+        N("q0","slice_cols",1160,30,{start:0,width:2}),
+        N("q1","slice_cols",1160,210,{start:2,width:2}),
+        N("q0n","qk_norm",1360,30,{epsilon:1e-5}),
+        N("q1n","qk_norm",1360,210,{epsilon:1e-5}),
+        N("kn","qk_norm",1160,510,{epsilon:1e-5}),
+        N("q0r","rope2d",1580,30,{offset:0}),
+        N("q1r","rope2d",1580,210,{offset:0}),
+        N("kr","rope2d",1360,510,{offset:0}),
+        N("kt","transpose2d",1580,510),
+        N("score0","matmul",1800,20),N("score1","matmul",1800,210),
+        N("scale0","scale",2000,20,{factor:1/Math.sqrt(2)}),
+        N("scale1","scale",2000,210,{factor:1/Math.sqrt(2)}),
+        N("mask","causal_mask",2000,510),
+        N("prob0","masked_softmax",2230,20),
+        N("prob1","masked_softmax",2230,215),
+        N("out0","weighted_sum",2460,20),
+        N("out1","weighted_sum",2460,215),
+        N("heads","concat_cols",2700,125),
+        P("wo",2490,515,mat(4,4,5)),
+        N("out_proj","matmul",2920,125),
+        N("residual","add",3130,125),
+        N("post_norm","rmsnorm",3350,125,{epsilon:1e-5}),
+        N("tied_head","transpose2d",3130,520),
+        N("logits","matmul",3570,125),
+        N("loss","cross_entropy",3790,125)
+      ];
+      edges=[
+        ["ids","prefix","x"],["ids","labels","x"],
+        ["prefix","lookup","indices"],["embed","lookup","x"],["lookup","pre_norm","x"],
+        ["pre_norm","q","a"],["wq","q","b"],
+        ["pre_norm","k","a"],["wk","k","b"],
+        ["pre_norm","v","a"],["wv","v","b"],
+        ["q","q0","x"],["q","q1","x"],
+        ["q0","q0n","x"],["q1","q1n","x"],["k","kn","x"],
+        ["q0n","q0r","x"],["q1n","q1r","x"],["kn","kr","x"],
+        ["kr","kt","x"],
+        ["q0r","score0","a"],["kt","score0","b"],
+        ["q1r","score1","a"],["kt","score1","b"],
+        ["score0","scale0","x"],["score1","scale1","x"],
+        ["scale0","mask","x"],
+        ["scale0","prob0","logits"],["scale1","prob1","logits"],
+        ["mask","prob0","mask"],["mask","prob1","mask"],
+        ["prob0","out0","weights"],["v","out0","values"],
+        ["prob1","out1","weights"],["v","out1","values"],
+        ["out0","heads","a"],["out1","heads","b"],
+        ["heads","out_proj","a"],["wo","out_proj","b"],
+        ["lookup","residual","a"],["out_proj","residual","b"],
+        ["residual","post_norm","x"],
+        ["embed","tied_head","x"],
+        ["post_norm","logits","a"],["tied_head","logits","b"],
+        ["logits","loss","logits"],["labels","loss","labels"]
+      ];
     }else if(name==="causal_transformer_lm"){
       title="任务 37 · 可训练因果 Transformer · QKᵀ→Mask→Softmax→PV→CE";
       // Pure composition of individual, reusable mathematics blocks.
