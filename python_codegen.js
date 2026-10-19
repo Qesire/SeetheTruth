@@ -10,7 +10,7 @@
 const node=typeof module==="object"&&module.exports;
 const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
-const SOURCES=new Set(["input","parameter","nd_input","nd_parameter"]);
+const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
  ...SOURCES,"linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
@@ -26,7 +26,7 @@ const SUPPORTED=new Set([
  "temperature","residual_scale","mae_loss","topk","argmax","detach_demo",
  "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
  "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
- "router_topk","gather_rows","scatter_add"
+ "router_topk","gather_rows","scatter_add","embedding","cross_entropy"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
 const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
@@ -100,6 +100,22 @@ def _sliding_window(x, width):
     rows = np.arange(x.shape[0])[:,None]
     cols = np.arange(x.shape[1])[None,:]
     return ((cols <= rows) & (rows-cols < width)).astype(np.float64)
+
+def _fixed_embedding(ids, vocab, width):
+    if ids.ndim!=2 or ids.shape[1]!=1 or not np.all(np.isfinite(ids)) or \
+       not np.all(ids==np.floor(ids)) or np.any(ids<0) or np.any(ids>=vocab):
+        raise ValueError("Embedding token IDs must be integral [T,1] within vocab")
+    rows=np.arange(vocab,dtype=np.float64)[:,None]+1
+    cols=np.arange(width,dtype=np.float64)[None,:]+1
+    table=np.sin(rows*.331+cols*.73+11*.11)*.52+np.cos(rows*cols*.17)*.1
+    return table[ids[:,0].astype(np.int64)]
+
+def _cross_entropy(logits,labels):
+    if logits.ndim!=2 or labels.shape!=(logits.shape[0],1) or not np.all(np.isfinite(labels)) or \
+       not np.all(labels==np.floor(labels)) or np.any(labels<0) or np.any(labels>=logits.shape[1]):
+        raise ValueError("cross entropy requires integral labels [T,1] within class count")
+    picked=logits[np.arange(logits.shape[0]),labels[:,0].astype(np.int64)]
+    return np.asarray([[np.mean(np.logaddexp.reduce(logits,axis=-1)-picked)]],dtype=np.float64)
 
 def _route_ids(values, upper):
     ids=np.asarray(values)
@@ -293,6 +309,8 @@ function compile(raw,options={}){
    else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
    else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
+   else if(kind==="embedding")expression='_fixed_embedding('+port("ids")+','+p.vocab+','+p.width+')';
+   else if(kind==="cross_entropy")expression='_cross_entropy('+port("logits")+','+port("labels")+')';
    else if(kind==="group_topk_mask")expression='_group_topk('+port("scores")+','+p.groups+','+p.keepGroups+')';
    else if(kind==="masked_router_topk")expression='_masked_topk('+port("scores")+','+port("mask")+','+p.k+')';
    else if(kind==="router_topk")expression='_masked_topk('+port("x")+',np.ones_like('+port("x")+'),'+p.k+')';
