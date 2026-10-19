@@ -11,6 +11,7 @@ on:
       - 'learn.html'
       - 'atlas_server.py'
       - 'tests/torch_codegen_contracts.js'
+      - 'tests/torch_codegen_extensions_contracts.js'
       - '.github/workflows/torch-export.yml'
   push:
     branches: [main]
@@ -32,4 +33,4 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' --index-url https://download.pytorch.org/whl/cpu
       - run: node --check torch_codegen.js
-      - run: node tests/torch_codegen_contracts.js
+      - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js
