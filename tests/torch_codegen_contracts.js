@@ -38,6 +38,21 @@ for(const name of ['trainable_core','trainable_attention','trainable_swiglu','nd
  assert.ok(Number.isFinite(py.history[1].afterLoss));
  console.log('Torch backward+state parity PASS '+name+', 2 steps + exact checkpoint resume');
 }
+const Rewrite=require('../paper_graph_rewrites.js');
+const adapter=Rewrite.lora(L.preset('trainable_attention'),'q_proj').graph;
+const exported=Torch.compile(adapter);
+assert.ok(!exported.trainable.includes('wq'),'frozen pretrained W0 must not be torch.nn.Parameter');
+const adaptedOutput=python(exported,'print(json.dumps({k:v.detach().tolist() for k,v in GraphRuntime().forward().items()}))');
+for(const n of L.evaluate(adapter).steps)close(n.values,adaptedOutput[n.id],'LoRA/'+n.id);
+const frozenCode=[
+ 'g=GraphRuntime()',
+ 'original=g.inputs["wq"].clone()',
+ 'history=g.train(steps=2,lr=.004,weight_decay=.005)',
+ 'print(json.dumps({"w":g.inputs["wq"].tolist(),"original":original.tolist(),"history":history}))'
+].join("\n");
+const frozenRun=python(exported,frozenCode);
+assert.deepEqual(frozenRun.w,frozenRun.original,'Torch optimizer mutated frozen base W0');
+assert.equal(frozenRun.history.length,2);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const graph=L.preset('trainable_swiglu');
 assert.throws(()=>Torch.compile(L.preset('trainable_moe')),/不支持的积木/);
