@@ -184,6 +184,12 @@ function comparisons(){
 }
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function keyFor(graph,id){
+ if(graph?.title==="任务 44 · MoR 启发 · 逐 Token 硬深度预算与状态停止"){
+   const MoR=typeof module==="object"&&module.exports?require("./adaptive_token_depth.js"):root.SeetheTruthAdaptiveDepth;
+   try{MoR.inspect(graph);}catch(e){return null;}
+   return ["budget_ids","r0_continue","r1_continue","r0_adopted","r1_adopted","loss","r0_state","r1_state"].includes(id)?"exit":null;
+ }
+
  if(!graph||!graph.title?.includes("Loop")||!graph.nodes?.some(n=>n.id===id))return null;
  if(graph.title.includes("任务 43")){
    try{Loop.inspectResidualScaling(graph);}catch(e){return null;}
@@ -208,6 +214,21 @@ function render(raw,id){
   ["必须付出的代价","cost"],["什么时候不该这么设计","failure"],["最小对照实验","test"]])
   out+='<p><b>'+title+'：</b>'+esc(d[field])+'</p>';
  out+='<p><b>证据依据：</b>'+d.sources.map(([name,url])=>'<a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(name)+' ↗</a>').join(" · ")+'</p>';
+ if(key==="exit"&&raw.title==="任务 44 · MoR 启发 · 逐 Token 硬深度预算与状态停止"){
+  try{
+    const MoR=typeof module==="object"&&module.exports?require("./adaptive_token_depth.js"):root.SeetheTruthAdaptiveDepth;
+    MoR.inspect(raw);
+    const g=L.evaluate(raw),v=Object.fromEntries(g.steps.map(s=>[s.id,s.values]));
+    const budget=v.budget_ids.map(row=>row[0]),
+       count=[v.r0_continue,v.r1_continue].map(a=>a.filter(r=>r[0]===1).length);
+    const total=budget.length*2,active=count.reduce((a,b)=>a+b,0);
+    out+='<details open><summary>真实 Mask 观测：语义更新比例 ≠ 实际计算省略</summary>'+
+      '<p>Token 循环预算：'+budget.map(esc).join(' / ')+'；循环 1/2 的状态更新行数：'+count.join(' / ')+'；'+
+      '理论激活更新行次：'+active+'/'+total+'（'+(100*active/total).toFixed(1)+'%）。</p>'+
+      '<p>**当前 Python 与 JS 后端仍执行全部 Attention/FFN 候选 GEMM：实际被跳过的 GEMM = 0。** '+
+      '这些数值不是 MoR GPU 性能测量；要获得真实收益需要 Token 压缩调度、缓存/位置重映射和 kernel 级验证。</p></details>';
+  }catch(e){out+='<p>Token 深度实验已被修改：'+esc(e.message)+'，不再展示受控对照。</p>';}
+ }
  if(key==="sharing"||key==="multidepth"){
   try{const g=profile(raw),rows=comparisons();
   out+='<details open><summary>真实教学图的参数量与计算量 · ×1/×2/×3</summary>'+
