@@ -73,7 +73,7 @@ function backward(raw,forward,opts={}){
   }
   if(kind==="square"){send(id,"x",had(d,scale(inp(id,"x"),2)));continue;}
   if(kind==="transpose2d"){send(id,"x",tr(d));continue;}
-  if(["gelu_erf","gelu_tanh","relu_squared","mish","leaky_relu"].includes(kind)){
+  if(["gelu_erf","gelu_tanh","relu_squared","mish","leaky_relu","elu","hardswish"].includes(kind)){
     const x=inp(id,"x");
     send(id,"x",d.map((row,i)=>row.map((v,j)=>v*Activations.derivative(kind,x[i][j],p))));
     local[id]={vjp:"analytic scalar activation derivative, multiplied by incoming gradient"};continue;
