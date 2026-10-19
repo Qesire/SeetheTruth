@@ -12,7 +12,7 @@ const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');
 assert.equal(new Set(guided).size,guided.length,'each course is represented once');
 const lessons=guided.filter(x=>x!=='blank');
-assert.equal(lessons.length,43,'freeze public alpha curriculum number until README is updated');
+assert.equal(lessons.length,44,'freeze public alpha curriculum number until README is updated');
 assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
 assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
@@ -26,7 +26,7 @@ for(const route of ['learn.html','training.html','cache.html','paper_lab.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
-for(const source of ['python_codegen.js','torch_codegen.js','loop_transformer.js','loop_consistency.js','loop_design_tradeoffs.js','architecture_why.js','training_objective.js','paper_graph_rewrites.js','industrial_source_inspector.js','model_trace.js','model_trace_bridge.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
+for(const source of ['python_codegen.js','torch_codegen.js','loop_transformer.js','adaptive_token_depth.js','loop_consistency.js','loop_design_tradeoffs.js','architecture_why.js','training_objective.js','paper_graph_rewrites.js','industrial_source_inspector.js','model_trace.js','model_trace_bridge.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
  assert.ok(html.includes('src="'+source+'"'),source+' loaded in the public workbench');
 }
 for(const doc of ['docs/executable-python-codegen.md','docs/real-model-sampling.md','docs/release-readiness.md']){
