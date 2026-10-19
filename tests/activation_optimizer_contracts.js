@@ -77,4 +77,36 @@ const fg=L.evaluate(mix),bg=G.backward(mix,fg);
 assert.deepEqual(ND.shape(bg.gradients.query),[1,4,3,2]);
 const updated=T.step(mix,{optimizer:'lion',targetId:'loss',lr:.004});
 assert.equal(updated.records.length,3);
+// The pre-existing tanh GELU, Softplus and GEGLU blocks must also be trainable.
+for(const v of x)near(A.derivative('gelu_tanh',v),
+  (A.value('gelu_tanh',v+1e-5)-A.value('gelu_tanh',v-1e-5))/(2e-5),2e-5);
+for(const kind of ['gelu_tanh','softplus']){
+ const graph=L.preset('trainable_core');
+ const source=graph.nodes.find(n=>n.id==='shared_weight');
+ // A standalone differentiable loss branch avoids relying on preset FFN structure.
+ const single={schema:L.SCHEMA,title:'activation-vjp-'+kind,nodes:[
+   JSON.parse(JSON.stringify(source)),
+   {id:'gate',kind,x:250,y:0,params:{}},
+   {id:'target',kind:'input',x:100,y:300,params:{rows:2,width:2,seed:1}},
+   {id:'loss',kind:'mse',x:500,y:0,params:{}}
+ ],edges:[
+   {from:'shared_weight',to:'gate',port:'x'},
+   {from:'gate',to:'loss',port:'prediction'},
+   {from:'target',to:'loss',port:'target'}
+ ]};
+ const out=L.evaluate(single),grad=G.backward(single,out);
+ for(let i=0;i<2;i++)for(let j=0;j<2;j++){
+   const h=1e-6,evaluate=delta=>{
+     const p=JSON.parse(JSON.stringify(single));p.nodes[0].params.values[i][j]+=delta;
+     return L.evaluate(p).steps.at(-1).values[0][0];
+   };
+   near(grad.gradients.shared_weight[i][j],(evaluate(h)-evaluate(-h))/(2*h),1e-5);
+ }
+ assert.equal(T.step(single,{targetId:'loss'}).records.length,1);
+}
+const ge=L.preset('trainable_swiglu');
+ge.nodes.find(n=>n.id==='activated').kind='geglu';
+const gf=L.evaluate(ge),gb=G.backward(ge,gf);
+assert.ok(gb.gradients.w1.some(row=>row.some(x=>Math.abs(x)>0)));
+assert.equal(T.step(ge,{targetId:'loss'}).records.length,3);
 console.log('Activation/optimizer contracts PASS: scalar derivatives, four-axis VJPs, four optimizer paths, state persistence and composed 4D training');
