@@ -23,7 +23,7 @@ const SUPPORTED=new Set([
  "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
-const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):encoded(x);
+const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
 function weight(id,r,c){
  let h=2166136261;
  for(const char of id+":"+r+":"+c)h=Math.imul(h^char.charCodeAt(0),16777619);
