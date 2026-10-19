@@ -37,6 +37,7 @@ function perKind(k){
   const sample=(sh,seed)=>ND.seedTensor(sh,seed);
   let inputs={};
   if(k==='nd_permute'||k==='nd_flatten'||k==='nd_reduce_sum'||k==='nd_scale'||k==='nd_softmax_last'||k==='nd_causal_mask')inputs={x:sample([1,2,3,4],2)};
+  else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish'].includes(k))inputs={x:sample([1,2,3,4],2)};
   else if(k==='nd_repeat_kv')inputs={x:sample([1,2,3,4],2)};
   else if(k==='nd_cache_read')inputs={x:sample([1,2,3,4],2)};
   else if(k==='nd_cache_append')inputs={cache:sample([1,2,2,4],2),segment:sample([1,2,1,4],3)};
