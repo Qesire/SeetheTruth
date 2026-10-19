@@ -23,6 +23,8 @@ on:
       - 'tests/token_embedding_ce_codegen_contracts.js'
       - 'tests/causal_transformer_codegen_contracts.js'
       - 'tests/industrial_gqa_tied_codegen_contracts.js'
+      - 'industrial_source_inspector.js'
+      - 'tests/industrial_source_contracts.js'
       - 'tests/release_surface_contracts.js'
       - 'README.md'
       - 'docs/release-readiness.md'
@@ -117,6 +119,7 @@ jobs:
       - run: node tests/micro_training_flows_contracts.js
       - run: node --check paper_graph_rewrites.js && node tests/paper_graph_rewrites_contracts.js
       - run: node --check model_trace_bridge.js && node tests/model_trace_bridge_contracts.js
+      - run: node --check industrial_source_inspector.js && node tests/industrial_source_contracts.js
       - run: node tests/model_trace_contracts.js
       - run: node tests/paper_patches_contracts.js
       - run: node tests/paper_hover_contracts.js
