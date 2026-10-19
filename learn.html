@@ -191,6 +191,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="optimizer_compare"><span class="num">33</span><span>优化器积木 · 四算法对照<span class="desc">相同 θ 和梯度，比较 AdamW / SGD / RMSprop / Lion</span></span></button>
   <button class="mission" data-preset="activation_extension"><span class="num">34</span><span>ELU 与 HardSwish · 数值和导数<span class="desc">2D / 4D 独立激活，比较负半轴和分段折点</span></span></button>
   <button class="mission" data-preset="optimizer_decay_compare"><span class="num">35</span><span>Adam / AdamW / Adagrad / RMSprop 对照<span class="desc">耦合 L2 与解耦衰减；累计梯度与指数平均</span></span></button>
+  <button class="mission" data-preset="token_lm_trainable"><span class="num">36</span><span>Token → 可训练 Embedding → CE<span class="desc">真实离散索引、共享表梯度、分类损失与续训</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -739,10 +740,10 @@ function render(){
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length+(runScope?" · 分支 "+runScope:""):"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
- $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse","mae_loss"].includes(n.kind));
+ $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind));
  $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
  $("#applyLoRA").disabled=!graph.nodes.some(n=>n.id===selected&&n.kind==="matmul");
- $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss");
+ $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss"||n.kind==="cross_entropy");
  $("#trainSummary").hidden=!trainStatus;
  if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
  $("#courseProgress").textContent=activeComposite?
@@ -809,10 +810,10 @@ $("#trainOptimizer").onchange=()=>{
 };
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const possibleLosses=graph.nodes.filter(n=>["mse","nd_mse","mae_loss"].includes(n.kind));
+ const possibleLosses=graph.nodes.filter(n=>["mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind));
  const selectedLoss=possibleLosses.find(n=>n.id===selected)||
    possibleLosses.find(n=>n.id===runScope)||(possibleLosses.length===1?possibleLosses[0]:null);
- if(!selectedLoss)throw Error("请先选择要训练的 MSE、四轴 MSE 或 MAE 损失积木（多损失时须明确选中）");
+ if(!selectedLoss)throw Error("请先选择要训练的 MSE、四轴 MSE、MAE 或 CrossEntropy 损失积木（多损失时须明确选中）");
  const previous=clone(graph),options={
    count:Number($("#trainCount").value),optimizer:$("#trainOptimizer").value,lr:Number($("#trainLearningRate").value),
    weightDecay:Number($("#trainWeightDecay").value),momentum:Number($("#trainMomentum").value),
