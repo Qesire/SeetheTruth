@@ -111,6 +111,7 @@ jobs:
       - run: node tests/optimizer_activation_expansion.js
       - run: node tests/micro_training_flows_contracts.js
       - run: node --check paper_graph_rewrites.js && node tests/paper_graph_rewrites_contracts.js
+      - run: node --check model_trace_bridge.js && node tests/model_trace_bridge_contracts.js
       - run: node tests/model_trace_contracts.js
       - run: node tests/paper_patches_contracts.js
       - run: node tests/paper_hover_contracts.js
