@@ -14,7 +14,7 @@ const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecu
 function step(raw,options={}){
  const graph=L.validateGraph(raw);
  const scope=options.targetId?Branch.slice(graph,options.targetId):graph;
- const parameters=scope.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter");
+ const parameters=scope.nodes.filter(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&!n.params.frozen);
  if(!parameters.length)throw Error("training requires a connected trainable Parameter block");
  const oldForward=L.evaluate(scope);
  const reverse=Grad.backward(scope,oldForward,{targetId:options.targetId});
