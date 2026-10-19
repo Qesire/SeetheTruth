@@ -198,6 +198,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="loop_transformer_three"><span class="num">40</span><span>Looped Transformer ×3 · 深度可扩展<span class="desc">计算深度增至 3 次，参数数量完全不变；测试因果性与断点续训</span></span></button>
   <button class="mission" data-preset="loop_transformer_2"><span class="num">41</span><span>Ouro 启发 · 共享循环 + 多深度监督<span class="desc">每轮独立 CE，按深度加权总损失；切换 1/2/3 次且保留参数和优化器状态</span></span></button>
   <button class="mission" data-preset="loopformer_consistency"><span class="num">42</span><span>LoopFormer 动机 · 长短深度一致性<span class="desc">深层 Detach 教师与浅层 MSE；“为什么”含真实参数/FLOPs 对照与方案边界</span></span></button>
+  <button class="mission" data-preset="mor_token_depth_budget"><span class="num">44</span><span>MoR 启发 · 按 Token 选择循环预算<span class="desc">逐 Token 0/1/2 次状态更新、硬停止、BPTT；保留退出位置状态，不虚报稀疏加速</span></span></button>
   <button class="mission" data-preset="loop_residual_scaling"><span class="num">43</span><span>Loop Residual Scaling · 为什么按轮缩放？<span class="desc">2026 论文：1 / 1/√N / 1/N，控制变量，真实 loss 与梯度对照</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
@@ -281,6 +282,7 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
+<script src="adaptive_token_depth.js"></script>
 <script src="loop_consistency.js"></script>
 <script src="loop_design_tradeoffs.js"></script>
 <script src="architecture_why.js"></script>
