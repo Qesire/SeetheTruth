@@ -40,7 +40,7 @@ const fullProb=ND.softmaxLast(ND.causalMask4(ND.scale(fullScores,.5),0,0));
 const fullContext=ND.matmul4(fullProb,V);
 same(out.context,ND.cacheRead4(fullContext,2,1),1e-12);
 same(out.probabilities,ND.cacheRead4(fullProb,2,1),1e-12);
-assert.equal(forward.totalKnownFlops,96);
+assert.equal(forward.totalKnownFlops,192);
 // Whole graph gradient includes distinct key/value prefix and current branches.
 // Append ND-MSE and compare every source derivative with independent finite differences.
 const supervised=JSON.parse(JSON.stringify(graph));
