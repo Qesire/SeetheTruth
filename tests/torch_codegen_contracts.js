@@ -55,7 +55,7 @@ assert.deepEqual(frozenRun.w,frozenRun.original,'Torch optimizer mutated frozen 
 assert.equal(frozenRun.history.length,2);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const graph=L.preset('trainable_swiglu');
-assert.throws(()=>Torch.compile(L.preset('trainable_moe')),/不支持的积木/);
+assert.ok(Torch.compile(L.preset('trainable_moe')).trainable.includes('w1'),'MoE now has real differentiable routed expert execution');
 assert.throws(()=>Torch.compile(L.preset('grpo_objective')),/不支持的积木/);
 const partial=clone(graph);partial.nodes.push({id:'loose',kind:'softmax',x:20,y:20,params:{}});
 assert.throws(()=>Torch.compile(partial),/没有连接|还没有连接/);
