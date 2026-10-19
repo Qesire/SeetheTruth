@@ -202,6 +202,7 @@ input[type="file"]{display:none}
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
     <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button><button class="btn small" id="checkGraph" type="button" title="检查当前自由搭建计算图的输入端口、张量形状与可执行性，不要求任何固定模型结构">检查可运行性</button>
+    <button class="btn small" id="applyLoRA" type="button" title="对选定的 MatMul 应用真实 LoRA 低秩子图重写；基底 W0 必须是只读 Input">LoRA · 改造矩阵乘</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <select id="pythonBackend" aria-label="Python 导出后端" title="NumPy 前向计算 / PyTorch CPU 可训练子集"><option value="numpy">NumPy · 数值执行</option><option value="torch">PyTorch · 自动微分与训练</option></select>
      <select id="exportScope" aria-label="Python 代码导出范围" title="完整图或仅所选节点的上游依赖"><option value="full">Python · 全图</option><option value="selected">Python · 所选分支</option></select>
@@ -269,6 +270,7 @@ input[type="file"]{display:none}
 <script src="python_codegen.js"></script>
 <script src="torch_codegen.js"></script>
 <script src="composite_atlas.js"></script>
+<script src="paper_graph_rewrites.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
 <script src="grpo_backward.js"></script>
@@ -283,7 +285,7 @@ input[type="file"]{display:none}
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
-  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,$=q=>document.querySelector(q);
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
@@ -435,7 +437,7 @@ function renderBlocks(){
   }).join("");
   const readiness=nodeReadiness.get(n.id),state=readiness?.status||"unknown";
   const shapeLabel=readiness?.shape?.join("×")||(state==="missing"?"待连线":state==="blocked"?"待上游":state==="shape-error"?"形状错误":"—");
-  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+(runScope&&run&&!run.steps.some(x=>x.id===n.id)?' outside-run':'')+'" data-node="'+esc(n.id)+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+(runScope&&run&&!run.steps.some(x=>x.id===n.id)?' outside-run':'')+'" data-node="'+esc(n.id)+'" data-paper-patch="'+esc((graph.paperPatches||[]).find(p=>p.outputId===n.id)?.paper||"")+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
  }).join("");
  document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。绿色=形状兼容，橙色=冲突，虚线=待判断；任何形状提示都不阻止自由连接。");};});
  document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
@@ -579,7 +581,12 @@ function inspect(){
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
- $("#blockKnowledge").innerHTML=renderKnowledge(d,n);
+ const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
+ $("#blockKnowledge").innerHTML=renderKnowledge(d,n)+(patch?
+   '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
+   '<p>此 Add 是一次论文计算图改造：W₀ 保持只读，ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
+   '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
+   '<a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener noreferrer">LoRA · Hu et al. 原始论文 ↗</a></div>':'');
  $("#parameters").innerHTML=d?((n.kind==="parameter"||n.kind==="nd_parameter")?
    '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · '+esc(n.params.optimizer.kind||'adamw')+' step '+esc(n.params.optimizer.t)+'</div>'+
    '<label class="param">Parameter values (JSON, 2D/4D)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
@@ -710,6 +717,7 @@ function render(){
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
  $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse"].includes(n.kind));
  $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
+ $("#applyLoRA").disabled=!graph.nodes.some(n=>n.id===selected&&n.kind==="matmul");
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse");
  $("#trainSummary").hidden=!trainStatus;
  if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
@@ -723,6 +731,16 @@ $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataT
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
+$("#applyLoRA").onclick=()=>{
+ try{
+   const outputId=selected;
+   const updated=PaperRewrite.lora(graph,outputId,{rank:2,alpha:2});
+   if(mutate(()=>updated.graph)){
+     selected=outputId;render();
+     say("LoRA 图重写已完成：冻结 W0，只训练低秩 A/B，前向初始化等价（最大误差 "+updated.delta.toExponential(1)+"）。数学来源 arXiv:2106.09685，可查看选中积木的论文解释。");
+   }
+ }catch(err){say("LoRA 重写拒绝："+err.message,true);}
+};
 $("#challenge").onclick=()=>{
  if(!graph.edges.length){say("当前工程没有连线可拆，请先连接两个模块。",true);return;}
  let last=graph.edges[graph.edges.length-1];
