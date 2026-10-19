@@ -128,6 +128,7 @@ class RealTraceBrowserAcceptance(unittest.TestCase):
         p.locator('[data-preset="autodiff_core"]').click()
         p.locator('[data-node="project"] .block-head').click()
         p.locator("#traceReferenceFile").set_input_files(capture)
+        p.wait_for_function("document.querySelector('#realTracePanel').textContent.includes('roneneldan/TinyStories-1M') || document.querySelector('#status').classList.contains('error')",timeout=10000)
         self.assertIn("roneneldan/TinyStories-1M",p.locator("#realTracePanel").inner_text())
         self.assertIn("64×64",p.locator("#realTracePanel").inner_text())
         self.assertEqual(p.locator("#realTracePanel .real-sample-values").count(),4)
