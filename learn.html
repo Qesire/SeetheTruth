@@ -186,6 +186,8 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="nd_trainable_gqa"><span class="num">29</span><span>GQA · 四轴参数训练</span><span class="desc">四维 Q/K/V · Forward → VJP → AdamW → Forward</span></button>
   <button class="mission" data-preset="nd_trainable_mqa"><span class="num">30</span><span>MQA · 四轴参数训练</span><span class="desc">单 KV Head 更新、动量与梯度共享验证</span></button>
   <button class="mission" data-preset="nd_cached_gqa_decode"><span class="num">31</span><span>GQA · RoPE 与 KV Cache 增量解码<span class="desc">Prefill 读取 → KV 追加 → 绝对 RoPE → 当前 Token Attention</span></span></button>
+  <button class="mission" data-preset="activation_gallery"><span class="num">32</span><span>激活函数 · 数值和梯度对比<span class="desc">GELU CDF / tanh、Mish、ReLU²、SiLU、Leaky ReLU</span></span></button>
+  <button class="mission" data-preset="optimizer_compare"><span class="num">33</span><span>优化器积木 · 四算法对照<span class="desc">相同 θ 和梯度，比较 AdamW / SGD / RMSprop / Lion</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -285,7 +287,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
