@@ -23,6 +23,7 @@ on:
       - 'tests/token_embedding_ce_codegen_contracts.js'
       - 'tests/causal_transformer_codegen_contracts.js'
       - 'tests/industrial_gqa_tied_codegen_contracts.js'
+      - 'tests/loop_transformer_codegen_contracts.js'
       - 'industrial_source_inspector.js'
       - 'tests/industrial_source_contracts.js'
       - 'tests/release_surface_contracts.js'
