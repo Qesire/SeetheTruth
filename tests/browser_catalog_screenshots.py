@@ -151,6 +151,69 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             p.locator("#gradientInspector").scroll_into_view_if_needed()
             self.shot(name)
 
+    def test_adam_adagrad_and_elu_hardswish_extensions(self):
+        import json
+        p=self.page
+        p.locator('[data-preset="activation_extension"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),6)
+        self.assertIn("6/6",p.locator("#graphReadiness").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        result=p.evaluate("""() => {
+          const L=window.SeetheTruthLearning,run=L.evaluate(L.preset('activation_extension'));
+          return Object.fromEntries(run.steps.map(s=>[s.id,{shape:s.shape,values:s.values}]));
+        }""")
+        self.assertEqual(result["elu_act"]["shape"],[2,4])
+        self.assertEqual(result["elu4"]["shape"],[1,2,2,4])
+        self.assertNotEqual(result["elu_act"]["values"],result["hard_act"]["values"])
+        self.assertNotEqual(result["elu4"]["values"],result["hard4"]["values"])
+        names=p.evaluate("""() => window.SeetheTruthLearning.order(
+                 window.SeetheTruthLearning.preset('activation_extension')).map(n=>n.id)""")
+        p.locator('#trace [data-step="'+str(names.index("hard4"))+'"]').click()
+        p.locator('#matrix [data-nd-slice="1"]').select_option("1")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("59-elu-hardswish-four-axis-activation.png")
+        p.locator('[data-preset="optimizer_decay_compare"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),6)
+        p.locator("#run").click()
+        vals=p.evaluate("""() => {
+          const L=window.SeetheTruthLearning,out=L.evaluate(L.preset('optimizer_decay_compare'));
+          return Object.fromEntries(out.steps.map(s=>[s.id,s.values]));
+        }""")
+        self.assertNotEqual(vals["adam"],vals["adamw"])
+        self.assertNotEqual(vals["adagrad"],vals["rmsprop"])
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("60-adam-adamw-adagrad-rmsprop-canvas.png")
+        p.locator('[data-preset="trainable_core"]').click()
+        p.locator("#trainCount").select_option("2")
+        for optimizer,screenshot in [
+            ("adam","61-coupled-adam-persistent-train.png"),
+            ("adagrad","62-adagrad-accumulator-persistent-train.png")
+        ]:
+            p.locator("#trainOptimizer").select_option(optimizer)
+            p.locator("#trainStep").click()
+            self.assertIn("Step 2",p.locator("#trainSummary").inner_text())
+            with p.expect_download() as exported:
+                p.locator("#save").click()
+            graph=json.loads(open(exported.value.path(),encoding="utf-8").read())
+            state=next(n for n in graph["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]
+            self.assertEqual(state["kind"],optimizer)
+            self.assertEqual(state["t"],2)
+            self.assertEqual(p.locator("#trainOptimizer").input_value(),optimizer)
+            p.locator("#trainSummary").scroll_into_view_if_needed()
+            self.shot(screenshot)
+        p.locator("#undo").click()
+        with p.expect_download() as before:
+            p.locator("#save").click()
+        prior=json.loads(open(before.value.path(),encoding="utf-8").read())
+        prev_state=next(n for n in prior["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]
+        self.assertEqual(prev_state["kind"],"adagrad")
+        self.assertEqual(prev_state["t"],0)
+        p.locator("#load").set_input_files(exported.value.path())
+        self.assertEqual(p.locator("#trainOptimizer").input_value(),"adagrad")
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 4",p.locator("#trainSummary").inner_text())
+
     def test_activation_and_optimizer_free_composition_lessons(self):
         p=self.page
         p.locator('[data-preset="activation_gallery"]').click()
