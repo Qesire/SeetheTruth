@@ -13,6 +13,7 @@ on:
       - 'tests/torch_codegen_contracts.js'
       - 'tests/torch_codegen_extensions_contracts.js'
       - 'tests/moe_executable_codegen_contracts.js'
+      - 'tests/token_embedding_ce_codegen_contracts.js'
       - 'python_codegen.js'
       - '.github/workflows/torch-export.yml'
   push:
@@ -36,4 +37,4 @@ jobs:
       - run: python -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
       - run: node --check torch_codegen.js
-      - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js
+      - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js && node tests/token_embedding_ce_codegen_contracts.js
