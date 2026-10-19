@@ -315,6 +315,37 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#trainStep").click()
         self.assertIn("AdamW",p.locator("#trainSummary").inner_text().replace("adamw","AdamW"))
 
+    def test_export_real_python_code_whole_and_partial_graph(self):
+        p=self.page
+        p.locator('[data-preset="nd_cached_gqa_decode"]').click()
+        with p.expect_download() as downloaded:
+            p.locator("#exportPython").click()
+        artifact=downloaded.value
+        self.assertTrue(artifact.suggested_filename.endswith(".py"))
+        script=Path(artifact.path()).read_text(encoding="utf-8")
+        self.assertIn("import numpy as np",script)
+        self.assertIn("def run_graph(overrides=None):",script)
+        self.assertIn("_rope(",script)
+        self.assertIn("_causal(",script)
+        self.assertIn("np.concatenate(",script)
+        self.assertIn("return v",script)
+        self.assertFalse(p.locator("#pythonExportPanel").is_hidden())
+        self.assertIn("nd_cache_append",p.locator("#pythonExportSource").inner_text())
+        p.locator("#pythonExportPanel").scroll_into_view_if_needed()
+        self.shot("53-export-executable-numpy-rope-kv-code.png")
+        p.locator('[data-preset="blank"]').click()
+        p.locator('[data-add="silu"]').click()   # Incomplete neighbor.
+        p.locator("#exportPython").click()
+        self.assertIn("Python 导出失败",p.locator("#status").inner_text())
+        p.locator("#exportScope").select_option("selected")
+        p.locator('[data-node="x"] .block-foot').click()
+        with p.expect_download() as sliced:
+            p.locator("#exportPython").click()
+        code=Path(sliced.value.path()).read_text(encoding="utf-8")
+        self.assertIn('v["x"]',code)
+        self.assertNotIn('v["silu',code)
+        self.assertIn("所选分支",p.locator("#status").inner_text())
+
     def test_four_axis_cached_gqa_rope_incremental_decode(self):
         p=self.page
         p.locator('[data-preset="nd_cached_gqa_decode"]').click()
