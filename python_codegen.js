@@ -23,7 +23,10 @@ const SUPPORTED=new Set([
  "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion",
  "row_mean","row_sum","row_var","row_logsumexp","log_softmax","l2norm","qk_norm","logit_softcap",
  "low_rank_project","row_bias_add","weighted_sum","masked_softmax","sliding_window_mask",
- "temperature","residual_scale","mae_loss","topk","argmax","detach_demo"
+ "temperature","residual_scale","mae_loss","topk","argmax","detach_demo",
+ "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
+ "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
+ "router_topk","gather_rows","scatter_add"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
 const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
@@ -97,6 +100,91 @@ def _sliding_window(x, width):
     rows = np.arange(x.shape[0])[:,None]
     cols = np.arange(x.shape[1])[None,:]
     return ((cols <= rows) & (rows-cols < width)).astype(np.float64)
+
+def _route_ids(values, upper):
+    ids=np.asarray(values)
+    if ids.ndim != 2 or not np.isfinite(ids).all() or not np.all(ids == np.floor(ids)) or np.any(ids < 0) or np.any(ids >= upper):
+        raise ValueError("invalid discrete router indices")
+    return ids.astype(np.int64)
+
+def _group_topk(scores, groups, keep):
+    rows, experts = scores.shape
+    if groups < 1 or experts % groups or keep < 1 or keep > groups:
+        raise ValueError("invalid expert groups")
+    group_size=experts//groups
+    answer=np.zeros_like(scores,dtype=np.float64)
+    for t in range(rows):
+        ranks=[]
+        for g in range(groups):
+            block=scores[t,g*group_size:(g+1)*group_size]
+            score=float(np.sort(block)[::-1][:2].sum())
+            ranks.append((-score,g))
+        kept=sorted(ranks)[:keep]
+        for _,g in kept:answer[t,g*group_size:(g+1)*group_size]=1.
+    return answer
+
+def _masked_topk(scores, mask, k):
+    if scores.shape != mask.shape or not np.all((mask == 0)|(mask == 1)):
+        raise ValueError("invalid routing mask")
+    picks=[]
+    for row,allowed in zip(scores,mask):
+        ranked=sorted(((-float(v),i) for i,v in enumerate(row) if allowed[i] == 1))
+        if len(ranked)<k:raise ValueError("insufficient unmasked experts")
+        picks.append([i for _,i in ranked[:k]])
+    return np.asarray(picks,dtype=np.float64)
+
+def _router_gate_weights(scores, ids, mode, normalize):
+    index=_route_ids(ids,scores.shape[1])
+    selected=np.take_along_axis(scores,index,axis=1)
+    if mode == "identity":
+        if np.any(selected < 0):raise ValueError("negative identity gate affinity")
+        result=selected
+    elif mode == "sigmoid":result=1./(1.+np.exp(-selected))
+    elif mode == "softmax":result=_softmax(selected)
+    else:raise ValueError("invalid gate mode")
+    if normalize:
+        denom=np.sum(result,axis=1,keepdims=True)
+        if np.any(denom <= 0):raise ValueError("zero router gate sum")
+        return result/denom
+    return result
+
+def _dispatch_tokens(x,ids):
+    _route_ids(ids,2**31)
+    if x.shape[0] != ids.shape[0] or ids.size > 8:raise ValueError("invalid routed-token rows")
+    return np.repeat(x,ids.shape[1],axis=0)
+
+def _expert_linear_bank(x,ids,weights):
+    if x.ndim!=2 or weights.ndim!=2 or weights.shape[0]%x.shape[1]:
+        raise ValueError("invalid expert weight layout")
+    token,k=ids.shape
+    if token*k!=x.shape[0]:raise ValueError("expert tokens != T*K")
+    dims=x.shape[1];experts=weights.shape[0]//dims
+    selected=weights.reshape(experts,dims,weights.shape[1])[_route_ids(ids,experts)]
+    return np.einsum("tkd,tkdh->tkh",x.reshape(token,k,dims),selected).reshape(token*k,weights.shape[1])
+
+def _routed_reduce(values,gates):
+    token,k=gates.shape
+    if values.shape[0]!=token*k:raise ValueError("routed reduction requires T*K rows")
+    return (values.reshape(token,k,values.shape[1])*gates[:,:,None]).sum(axis=1)
+
+def _expert_bank_mix(ids,gates,experts):
+    if ids.shape!=gates.shape:raise ValueError("expert mix shape mismatch")
+    selected=experts[_route_ids(ids,experts.shape[0])]
+    return np.sum(selected*gates[:,:,None],axis=1)
+
+def _gather_routed_bank(x,ids):
+    if ids.size>8:raise ValueError("routed gather exceeds eight rows")
+    return x[_route_ids(ids,x.shape[0]).reshape(-1)]
+
+def _gather_rows(x,ids):
+    if ids.shape[1]!=1:raise ValueError("gather index must be [T,1]")
+    return x[_route_ids(ids,x.shape[0])[:,0]]
+
+def _scatter_add(ids,values,rows):
+    if ids.shape!=(values.shape[0],1):raise ValueError("scatter shape mismatch")
+    out=np.zeros((rows,values.shape[1]),dtype=np.float64)
+    np.add.at(out,_route_ids(ids,rows)[:,0],values)
+    return out
 
 def _rope(x, offset, r, base):
     out=x.copy()
@@ -205,6 +293,17 @@ function compile(raw,options={}){
    else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
    else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
+   else if(kind==="group_topk_mask")expression='_group_topk('+port("scores")+','+p.groups+','+p.keepGroups+')';
+   else if(kind==="masked_router_topk")expression='_masked_topk('+port("scores")+','+port("mask")+','+p.k+')';
+   else if(kind==="router_topk")expression='_masked_topk('+port("x")+',np.ones_like('+port("x")+'),'+p.k+')';
+   else if(kind==="router_gate_weights")expression='_router_gate_weights('+port("scores")+','+port("indices")+','+py(p.mode)+','+(p.normalize?'True':'False')+')';
+   else if(kind==="dispatch_routed_tokens")expression='_dispatch_tokens('+port("x")+','+port("indices")+')';
+   else if(kind==="expert_linear_bank")expression='_expert_linear_bank('+port("x")+','+port("indices")+','+port("weights")+')';
+   else if(kind==="routed_weighted_reduce")expression='_routed_reduce('+port("values")+','+port("gates")+')';
+   else if(kind==="expert_bank_mix")expression='_expert_bank_mix('+port("indices")+','+port("gates")+','+port("experts")+')';
+   else if(kind==="gather_routed_bank")expression='_gather_routed_bank('+port("x")+','+port("indices")+')';
+   else if(kind==="gather_rows")expression='_gather_rows('+port("x")+','+port("indices")+')';
+   else if(kind==="scatter_add")expression='_scatter_add('+port("indices")+','+port("values")+','+p.rows+')';
    else if(kind==="swiglu")expression='(_act('+port("gate")+',"silu") * '+port("up")+')';
    else if(kind==="geglu")expression='(_act('+port("gate")+',"gelu_tanh") * '+port("up")+')';
    else if(kind.startsWith("opt_"))expression='_opt('+py(kind)+','+port("parameter")+','+port("gradient")+','+p.lr+','+p.weightDecay+','+(p.momentum??.9)+','+(p.alpha??.99)+','+(p.lrDecay??0)+')';
