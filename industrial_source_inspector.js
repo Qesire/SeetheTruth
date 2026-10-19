@@ -15,6 +15,14 @@ const UT="https://arxiv.org/abs/1807.03819";
 const HUGINN="https://github.com/seal-rg/recurrent-pretraining";
 const MOR="https://github.com/raymin0223/mixture_of_recursions";
 const ENTRIES=Object.freeze({
+ mor_hard:Object.freeze({title:"MoR · 为什么逐 Token 分配不同循环深度？",formula:"budget[t]∈{0,1,2}; Mᵣ[t,d]=1 iff budget[t]≥r; Hᵣ=where(Mᵣ,Fθ(Hᵣ₋₁),Hᵣ₋₁)",
+ flow:"第 44 课两轮 Attention/SwiGLU 复用八组共享 Parameter。每轮计算 candidate，再通过 0/1 二值 Mask 选择更新或保留上一轮状态；已退出 Token 的旧隐藏向量可继续作为后续 Attention 的 K/V 上下文。离散预算不可导。",
+ practice:"MoR 将循环参数共享与 Token 级自适应深度结合；只有通过实际压缩活跃 Token、控制 Attention K/V 缓存和 kernel 调度，才能将可省的算术量转换为真实执行收益。",
+ trap:"本课是严格数学的硬停止演示而非 MoR 完整模型。所有候选 Attention/FFN 的稠密 GEMM 都执行，当前节省 GEMM=0；未训练退出 Router，也不复刻 MoR token selection / cache compaction。反传中的 mask=0 只消除候选隐藏状态的直接梯度。",
+ exercise:"依次对 budget=[2,1,0]、[0,0,0]、[2,2,2] 独立计算；逐行验证 state freeze，比较共享 Wq VJP 和真实 MatMul 次数，最后尝试实现活跃行压缩的独立数学等价验证。",
+ epistemic:"EXECUTABLE_DENSE_HALT_SEMANTICS_NOT_SPARSE_KERNEL",
+ papers:[{id:"mor",title:"MoR · NeurIPS 2025 paper and real adaptive routing",url:"https://proceedings.nips.cc/paper_files/paper/2025/hash/8b08bbf8b420faa6eeb4020720582ec7-Abstract-Conference.html"},{id:"code",title:"Mixture of Recursions · open implementation",url:MOR}]}),
+
  loop_residual:Object.freeze({title:"Looped residual scale · 为什么 1/N 可能优于 1/√N？",formula:"H←H+εFθ(H); N=2, ε∈{1,1/√2,1/2}",flow:"两轮共享同一套 Attention/SwiGLU 参数，每轮 Attention 输出和 FFN 输出都先经过一个真实 Scale，再与残差主路 Add。四个 Scale 当前数值必须匹配；参数不复制。",practice:"2026 年对 Looped Transformers 的残差缩放研究强调共享访问导致相关更新，因此讨论 1/N 而非单纯非共享网络的 1/√N。DeepLoop 另在 Post-LN DeepNorm 里用 α/β 定义稳定更新。",trap:"本例是 Pre-Norm 的严格控制消融，不是 DeepLoop 的 Post-LN 结构、不等同已证明 1/N 必然提升真实 LLM 收敛；更小的更新幅度也可能妨碍有效表征更新。",exercise:"改动四个 Scale 参数并比较损失、相对输入状态变化 RMS、Wq 梯度；固定权重做差分，观察 1/√N 与 1/N 的梯度差别。",epistemic:"CONTROLLED_CPU_MICRO_GRAPH_MECHANISM; NOT_LARGE_MODEL_GENERALIZATION",papers:[{id:"residual",title:"On the Residual Scaling of Looped Transformers (2026)",url:"https://arxiv.org/abs/2606.18524"},{id:"deeploop",title:"DeepLoop · Post-LN α/β is a different parameterization",url:"https://arxiv.org/abs/2607.13491"}]}),
  loop_multidepth:Object.freeze({title:"Ouro 启发 · 每轮深度监督与权重共享",formula:"H_(r+1)=F_θ(H_r); L=Σᵣ αᵣ CE(logits_r,labels), αᵣ≥0, Σαᵣ=1",flow:"每轮独立经过共享 Q/K/V、Causal Attention、Sandwich RMSNorm、SwiGLU 和同一个 tied_head，产出每轮 CE；用 Scale + Add 汇成一个真正的反向目标。改深度时不复制参数及 AdamW 状态。",practice:"Ouro 的循环语言模型确实使用共享层组、多步输出和学习式深度分配。这个实验仅以固定非负系数验证多深度梯度，尚未实现 learned exit gate、entropy regularization 或 per-token depth routing。",trap:"有多轮 CE 并不等于动态退出：当前全部轮次均执行，不能声称推理省算力、达到 Ouro 精度或重现其训练配方。切换循环数会改变目标权重，但保留全部参数/优化器状态。",exercise:"比较第 0、1、2 轮的 CE，验证最终 loss 是每轮加权和；扰动 Wq 做有限差分；训练后从 2 轮切至 3 轮，参数和优化器动量应逐项不变。",epistemic:"EXECUTABLE_FIXED_DEPTH_MULTI_STEP_SUPERVISION; NOT ADAPTIVE_HALTING",papers:[{id:"ouro",title:"Ouro · Scaling Latent Reasoning via Looped Language Models",url:"https://arxiv.org/abs/2510.25741"},{id:"recipes",title:"Closing the Loop · practical recipes",url:"https://arxiv.org/abs/2610.00673"}]}),
  loop_shared:Object.freeze({title:"Looped Transformer · 跨深度共享真实参数",formula:"H^(r+1)=F_θ(H^r); dL/dθ=Σ_r (∂L/∂H^(r+1)) ∂F_θ(H^r)/∂θ",flow:"完整 Attention+FFN 数学流在第 r 轮和 r+1 轮重复，所有 Q/K/V、输出和 SwiGLU 权重回到同一 Parameter 节点。为了与自由 DAG 计算引擎兼容，循环被显式展开为两轮或三轮，不建立非法图循环。",practice:"Universal Transformer 采用深度方向的迭代计算；Huginn / Ouro 将 recurrent depth 扩展到语言模型。增加有效深度可以不增加核心 Block 的存储参数，但激活与计算次数会增长。",trap:"这不是 Ouro 完整 checkpoint、真实隐藏状态初始注入、随机深度训练、ACT 学习式退出或 GPU kernel；本课固定深度、无省算力声明。不要误将同值但不同参数 ID 当成权重共享。",exercise:"比较两轮与三轮模型的 Parameter ID 集合完全相同，逐轮 state 不同。单独修改 wq 一处，必须影响两个 loop 的输出梯度。",epistemic:"EXECUTABLE_SHARED_WEIGHT_RECURRENT_DEPTH_SUBSET",papers:[{id:"ouro",title:"Ouro official implementation",url:OURO},{id:"ut",title:"Universal Transformers 2018",url:UT},{id:"huginn",title:"Huginn recurrent pretraining",url:HUGINN}]}),
@@ -38,6 +46,14 @@ const IDS=Object.freeze({
  mask:"mask",scale0:"mask",scale1:"mask",prob0:"mask",prob1:"mask",
 });
 function kind(graph,id){
+ if(graph?.title==="任务 44 · MoR 启发 · 逐 Token 硬深度预算与状态停止"){
+   const Adaptive=typeof module==="object"&&module.exports?
+     require("./adaptive_token_depth.js"):
+     (typeof window!=="undefined"?window.SeetheTruthAdaptiveDepth:null);
+   try{if(!Adaptive)throw Error("missing");Adaptive.inspect(graph);}catch(e){return null;}
+   return ["budget_ids","r0_continue","r1_continue","r0_adopted","r1_adopted","r0_state","r1_state","loss"].includes(id)?"mor_hard":null;
+ }
+
  if(!graph||typeof graph.title!=="string"||!graph.nodes?.some(n=>n.id===id))return null;
  if(graph.title.startsWith("任务 43 · Loop Residual Scaling")){
    // Source attribution is also a statement about a specific graph topology.
