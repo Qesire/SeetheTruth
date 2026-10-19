@@ -338,6 +338,45 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_trainable_causal_transformer_full_graph_and_export(self):
+        p=self.page
+        p.locator('[data-preset="causal_transformer_lm"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),23)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        self.assertFalse(p.locator("#backward").is_disabled())
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        graph=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        params=[n for n in graph["nodes"] if n["kind"]=="parameter"]
+        self.assertEqual({n["id"] for n in params},{"embedding_table","wq","wk","wv","lm_head"})
+        self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in params))
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        numpy=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_masked_softmax",numpy)
+        self.assertIn("_cross_entropy",numpy)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        torch=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn("torch.nn.Parameter",torch)
+        self.assertIn("_masked_softmax",torch)
+        self.assertIn("F.cross_entropy",torch)
+        self.assertIn("self._optimizer.load_state_dict",torch)
+        self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
+        p.locator('[data-node="probs"] .block-head').click()
+        self.shot("58-real-executable-causal-transformer.png")
+
     def test_real_token_embedding_crossentropy_training_and_code_export(self):
         p=self.page
         p.locator('[data-preset="token_lm_trainable"]').click()
