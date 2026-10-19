@@ -197,6 +197,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="loop_transformer_two"><span class="num">39</span><span>Looped Transformer ×2 · 共享完整 Block<span class="desc">2 次潜空间迭代，同一 Q/K/V + Attention + SwiGLU 权重，多路径梯度</span></span></button>
   <button class="mission" data-preset="loop_transformer_three"><span class="num">40</span><span>Looped Transformer ×3 · 深度可扩展<span class="desc">计算深度增至 3 次，参数数量完全不变；测试因果性与断点续训</span></span></button>
   <button class="mission" data-preset="loop_transformer_2"><span class="num">41</span><span>Ouro 启发 · 共享循环 + 多深度监督<span class="desc">每轮独立 CE，按深度加权总损失；切换 1/2/3 次且保留参数和优化器状态</span></span></button>
+  <button class="mission" data-preset="loopformer_consistency"><span class="num">42</span><span>LoopFormer 动机 · 长短深度一致性<span class="desc">深层 Detach 教师与浅层 MSE；“为什么”含真实参数/FLOPs 对照与方案边界</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -278,6 +279,8 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
+<script src="loop_consistency.js"></script>
+<script src="loop_design_tradeoffs.js"></script>
 <script src="training_objective.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
@@ -616,7 +619,7 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
- $("#blockKnowledge").innerHTML=(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
+ $("#blockKnowledge").innerHTML=(window.SeetheTruthDesignTradeoffs?.render(graph,n?.id)||"")+(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
    '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
    '<p>此 Add 是一次论文计算图改造：W₀ 保持只读（Parameter 将显式冻结），ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
    '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
