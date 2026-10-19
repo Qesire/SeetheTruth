@@ -316,6 +316,25 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#trainStep").click()
         self.assertIn("AdamW",p.locator("#trainSummary").inner_text().replace("adamw","AdamW"))
 
+    def test_torch_export_is_real_autograd_and_not_fake_fallback(self):
+        p=self.page
+        p.locator('[data-preset="trainable_attention"]').click()
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as download:
+            p.locator("#exportPython").click()
+        code=open(download.value.path(),encoding="utf-8").read()
+        self.assertIn("import torch",code)
+        self.assertIn("torch.nn.Parameter",code)
+        self.assertIn("loss.sum().backward()",code)
+        self.assertIn("self._optimizer.load_state_dict",code)
+        self.assertIn("GraphRuntime",code)
+        self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
+        self.assertIn("PyTorch CPU",p.locator("#pythonExportCaption").inner_text())
+        p.locator('[data-preset="trainable_moe"]').click()
+        p.locator("#exportPython").click()
+        self.assertIn("不支持",p.locator("#status").inner_text())
+        self.assertIn("expert_linear_bank",p.locator("#status").inner_text())
+
     def test_export_real_python_code_whole_and_partial_graph(self):
         p=self.page
         p.locator('[data-preset="nd_cached_gqa_decode"]').click()
