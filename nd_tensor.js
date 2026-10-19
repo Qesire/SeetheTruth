@@ -105,9 +105,46 @@ function meanSquaredError(x,y){
  const xf=flatten(x),yf=flatten(y);
  return [[xf.reduce((sum,v,i)=>sum+(v-yf[i])**2,0)/xf.length]];
 }
+/* Adjacent-pair RoPE (explicit convention): positions are absolute token indices.
+ * Real models may instead use split-half pairing, scaling, or distinct frequencies.
+ */
+function rope4(x,offset=0,rotaryDim=4,base=10000){
+ const sh=shape(x);if(sh.length!==4)fail("N-D RoPE expects [B,H,T,D]");
+ if(!Number.isSafeInteger(offset)||offset<0||offset>64||!Number.isSafeInteger(rotaryDim)||
+    rotaryDim<2||rotaryDim>sh[3]||rotaryDim%2!==0||
+    !Number.isFinite(base)||base<2||base>1000000)
+   fail("N-D RoPE invalid offset, even rotary dimension or frequency base");
+ return build(sh,idx=>{
+   const channel=idx[3];if(channel>=rotaryDim)return at(x,idx);
+   const pair=Math.floor(channel/2),position=offset+idx[2];
+   const angle=position/Math.pow(base,2*pair/rotaryDim);
+   const other=[...idx.slice(0,3),channel%2===0?channel+1:channel-1];
+   const a=at(x,idx),b=at(x,other),cos=Math.cos(angle),sin=Math.sin(angle);
+   return channel%2===0?a*cos-b*sin:a*cos+b*sin;
+ });
+}
+/* Explicit cache read = materialize a contiguous absolute prefix/window.
+ * This is a pure DAG operation, not mutable cross-turn model state.
+ */
+function cacheRead4(x,start=0,length=1){
+ const sh=shape(x);if(sh.length!==4)fail("N-D cache read requires [B,H,T,D]");
+ if(!Number.isSafeInteger(start)||start<0||!Number.isSafeInteger(length)||
+    length<1||start+length>sh[2])fail("N-D cache read window is outside cached Token axis");
+ return build([sh[0],sh[1],length,sh[3]],idx=>x[idx[0]][idx[1]][start+idx[2]][idx[3]]);
+}
+function cacheAppend4(cache,segment){
+ const a=shape(cache),b=shape(segment);
+ if(a.length!==4||b.length!==4||a[0]!==b[0]||a[1]!==b[1]||a[3]!==b[3])
+   fail("N-D cache append requires matching Batch, Head and Channel axes");
+ if(a[2]+b[2]>MAX_DIM)fail("N-D cache append exceeds Token capacity");
+ return build([a[0],a[1],a[2]+b[2],a[3]],idx=>{
+   const t=idx[2];return t<a[2]?cache[idx[0]][idx[1]][t][idx[3]]:
+     segment[idx[0]][idx[1]][t-a[2]][idx[3]];
+ });
+}
 function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,cacheRead4,cacheAppend4});
 });
