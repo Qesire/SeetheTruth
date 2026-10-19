@@ -21,6 +21,18 @@
     "y = max(0,x)²","显式逐元素平方整流，正半轴导数 2x。","比较 ReLU² 与 GeLU/SiLU 的负半轴及大正输入。","即使输出大面积为零，稠密矩阵乘也不会自动跳过计算。"),
   nd_mish:block("四轴 Mish","N-D Mish","activate",["x"],{},
     "y = x tanh(softplus(x))","稳定 Softplus 内核形成非单调平滑激活，保留部分负半轴信息。","测试正负输入和极端数值，并观察反向梯度。","此函数不是所有 Transformer 的默认选择；不要把激活函数的效果混同模型质量。"),
+  opt_adamw:block("AdamW · 一步更新","AdamW Functional Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01},
+    "θ⁺ = AdamW(θ,g), zero prior moments","独立积木计算一次 bias-corrected AdamW 更新；适合与其他优化器在同一画布上比较。",
+    "给四个优化器接入同一 θ 和 g，观察不同的更新轨迹。","只计算一步预览，不直接修改 Parameter；连续训练请使用上方优化器选择器。"),
+  opt_sgd_momentum:block("SGD · Momentum","SGD Momentum Functional Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01,momentum:0.9},
+    "m = μm + g + λθ; θ⁺=θ−ηm","纯函数式从零动量开始执行一次 SGD with momentum + coupled weight decay。",
+    "与 Lion 的 sign 方向和 AdamW 自适应更新比较。","本积木前向预览只有一次；真实连续步骤通过 Train 事务持久记录动量。"),
+  opt_rmsprop:block("RMSprop · 二阶均值","RMSprop Functional Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01,alpha:0.99},
+    "v=αv+(1−α)(g+λθ)²; θ⁺=θ−η(g+λθ)/(√v+ε)","纯函数式 RMSprop 非中心化/无动量模式；平方梯度平滑比例由 α 确定。",
+    "比较大、小梯度各参数的更新比例。","与 PyTorch 默认形式对齐；L2 正则项与梯度耦合，并非 AdamW 式解耦。"),
+  opt_lion:block("Lion · 符号动量","Lion Functional Step","training",["parameter","gradient"],{lr:0.004,weightDecay:0.01},
+    "θ⁺=(1−ηλ)θ−ηsign(β₁m+(1−β₁)g)","从零动量开始预览 Lion 的逐坐标符号更新；正式 Train 仍保留 β₂ 动量。",
+    "比较不同绝对梯度下的更新幅度是否相等。","Lion 是 sign 更新、解耦衰减；学习率应独立调优，不能凭同一学习率判断优劣。"),
   nd_parameter:block("可训练四轴参数","N-D Trainable Parameter","data",[],
    {values:[[[[0.12,-0.18],[0.31,0.27]]]],
     optimizer:{t:0,m:[[[[0,0],[0,0]]]],v:[[[[0,0],[0,0]]]]}},
@@ -241,6 +253,12 @@
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
    if(kind==='leaky_relu')float(n.slope,0,1,'Leaky ReLU slope');
+   if(kind.startsWith('opt_')){
+     float(n.lr,0.00000001,1,'optimizer learning rate');
+     float(n.weightDecay,0,1,'optimizer weight decay');
+     if(kind==='opt_sgd_momentum')float(n.momentum,0,0.999999,'SGD momentum');
+     if(kind==='opt_rmsprop')float(n.alpha,0,0.999999,'RMSprop alpha');
+   }
    if(kind==='nd_repeat_kv')int(n.queryHeads,1,8,'GQA Query head count');
    if(kind==='nd_rope'){
       int(n.offset,0,64,'N-D RoPE absolute offset');
@@ -335,6 +353,16 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'opt_adamw':case 'opt_sgd_momentum':case 'opt_rmsprop':case 'opt_lion':{
+      const Opt=typeof module==='object'&&module.exports?require('./optimizer_rules.js'):globalThis.SeetheTruthOptimizerRules;
+      const optimizer=kind==='opt_adamw'?'adamw':kind==='opt_sgd_momentum'?'sgd_momentum':kind==='opt_rmsprop'?'rmsprop':'lion';
+      const update=Opt.step(inputs.parameter,inputs.gradient,null,{...params,optimizer});
+      value=update.parameter;
+      internals={update:{shape:dims(update.update),values:update.update},
+        moment:{shape:dims(update.state.m),values:update.state.m},
+        square_average:{shape:dims(update.state.v),values:update.state.v}};
+      break;
+    }
     case 'parameter':value=params.values.map(row=>row.slice());internals={optimizer_step:{shape:[1,1],values:[[params.optimizer.t]],note:'AdamW step stored within this stable node ID; not a measured training run'}};break;
     case 'token_ids':
       value=Array.from({length:params.rows},(_,i)=>[(Math.abs((Math.imul(i+1,1103515245) + params.seed*12345)|0))%params.vocab]);break;
