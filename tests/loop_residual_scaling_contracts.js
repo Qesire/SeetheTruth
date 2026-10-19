@@ -34,6 +34,7 @@ assert.equal(new Set(rows.map(x=>x.paramElements)).size,1,'matched parameter sto
 assert.equal(new Set(rows.map(x=>x.matmulMAC)).size,1,'matched actual MatMul workload');
 assert.ok(new Set(rows.map(x=>x.loss.toFixed(13))).size>1,'real loop scaling must alter actual outputs');
 assert.ok(new Set(rows.map(x=>x.wqGradientL2.toFixed(13))).size>1,'scaling must alter actual gradients');
+console.log('LOOP_RESIDUAL_ABLATION_NUMERIC_EVIDENCE '+JSON.stringify(rows));
 
 let tensors=0;
 for(const rule of Loop.RESIDUAL_RULES){
@@ -107,6 +108,14 @@ assert.throws(()=>Loop.buildResidualScaling({loops:3}),/exactly two loops/);
 assert.throws(()=>Loop.buildResidualScaling({rule:'made-up'}),/unknown/);
 const broken=JSON.parse(JSON.stringify(defaultGraph));broken.edges.find(e=>e.to==='r0_state'&&e.port==='b').from='r0_down';
 assert.throws(()=>Loop.inspectResidualScaling(broken),/no longer connected/);
+const rewire=JSON.parse(JSON.stringify(defaultGraph));
+rewire.edges.find(e=>e.to==='r1_q'&&e.port==='a').from='r0_attn_norm';
+assert.throws(()=>Loop.inspectResidualScaling(rewire),/no longer a matched residual-scaling experiment/,
+  'changing intermediate attention math must invalidate the comparison label');
+const changedData=JSON.parse(JSON.stringify(defaultGraph));
+changedData.nodes.find(n=>n.id==='tokens').params.seed=5;
+assert.throws(()=>Loop.inspectResidualScaling(changedData),/no longer a matched residual-scaling experiment/,
+  'changing the data source invalidates controlled initial-state evidence');
 const unequal=JSON.parse(JSON.stringify(defaultGraph));unequal.nodes.find(n=>n.id==='r1_attn_delta').params.factor=.6;
 assert.throws(()=>Loop.inspectResidualScaling(unequal),/diverged/);
 console.log('LOOP_RESIDUAL_SCALING_PASS 3 controlled rules, '+tensors+' JS/NumPy/Torch intermediate checks, tied gradients, finite differences, 2-step AdamW/checkpoint, evidence-labelled design tradeoffs');
