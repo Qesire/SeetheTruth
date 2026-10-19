@@ -6,6 +6,12 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ lion:["Symbolic Discovery of Optimization Algorithms — Lion (NeurIPS 2023)","https://arxiv.org/abs/2302.06675"],
+ sgd_guide:["PyTorch SGD mathematical update","https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html"],
+ rmsprop_guide:["PyTorch RMSprop mathematical update","https://docs.pytorch.org/docs/stable/generated/torch.optim.RMSprop.html"],
+ activation_study:["Deep Network Approximation: Beyond ReLU to Diverse Activation Functions (JMLR 2024)","https://jmlr.org/papers/v25/23-0912.html"],
+ mish_paper:["Mish: A Self Regularized Non-Monotonic Activation Function","https://arxiv.org/abs/1908.08681"],
+ gelu_paper:["Gaussian Error Linear Units (GELUs)","https://arxiv.org/abs/1606.08415"],
  rope_paper:["RoFormer: Enhanced Transformer with Rotary Position Embedding","https://arxiv.org/abs/2104.09864"],
  hf_cache:["Hugging Face Transformers: KV Cache implementation guide","https://huggingface.co/docs/transformers/cache_explanation"],
  gqa_paper:["GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints","https://aclanthology.org/2023.emnlp-main.298/"],
@@ -52,6 +58,19 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ opt_adamw:["AdamW 单步模块从零一阶、二阶动量计算一次带偏差修正的更新。其 output 是下一时刻 Parameter 数值，而不是就地写入。","AdamW 将 L2 类权重衰减与自适应梯度更新解耦，避免 Adam 的耦合惩罚语义。","本积木是 Stateless 预览，参数可自由连线；需要多步及状态持久化时使用 Train 事务。","将相同 θ、g 接到四种优化器后，检查每一坐标更新量。","adamw,pytorch"],
+ opt_sgd_momentum:["SGD+Momentum 使用 g_eff=g+λθ，m_t=μm_{t−1}+g_eff，θ_new=θ−ηm_t；从零缓冲开始的首步与无动量 SGD 相同。","PyTorch 常见 SGD 默认 dampening=0、Nesterov=False，权重衰减以耦合的 L2 形式加入梯度。","与 AdamW 的 decoupled 衰减不同；多步状态存于参数的 optimizer.m。","从第二步起修改 μ，观察状态改变；比较前两步的更新。","sgd_guide,adamw"],
+ opt_rmsprop:["RMSprop 保存逐元素平方梯度滑动平均 v_t=αv_{t−1}+(1−α)(g+λθ)²，再执行 ηg_eff/(√v+ε)。","PyTorch RMSprop 无 Centered、Momentum 的基础形式即此计算，epsilon 放在根号外。","耦合的 L2 惩罚与 AdamW 不等价；单步预览没有累计历史。","比较大梯度与小梯度的有效步长，观察 v 与更新范数。","rmsprop_guide"],
+ opt_lion:["Lion 先混合上一动量与当前梯度形成 c=β1m+(1−β1)g，然后以 sign(c) 更新参数；存储动量按 β2 更新。","Chen et al. 的 Lion 来自程序搜索优化器，使用单一动量缓冲与解耦权重衰减，通常所需 LR 比 AdamW 小。","符号更新非自适应幅度，不能简单用相同 LR 宣称比 AdamW 好。","输入相同符号、不同幅度的梯度，观察 Lion 的更新步幅（去除衰减后）近似相同。","lion,adamw"],
+ gelu_erf:["精确 CDF 型 GELU 写作 xΦ(x)=0.5x(1+erf(x/√2))，反向导数为 Φ(x)+xφ(x)。","GELU 原文将输入按高斯概率柔性门控；之前的 gelu_tanh 是明确的近似版本。","运行时 erf 以有界高精度求积近似实现，导数采用高斯 CDF 闭式表达，而非 tanh 近似导数。","用 x=-1、0、1 及有限差分比较 GELU(erf) 与 GELU(tanh) 的微小差异。","gelu_paper,activation_study"],
+ relu_squared:["ReLU² 对正输入取平方，导数为 2x，负输入与负区导数均严格为零。","平方整流已作为多种神经网络激活候选被讨论，与 ReLU 的线性正半轴不同。","零点按常见选择记导数 0；大量零值不表示 GPU 自动跳过计算。","检查 x=-2、0、2 的输出和导数，比较 ReLU。","activation_study"],
+ mish:["Mish = x·tanh(softplus(x))，负半轴可非单调，导数为 tanh(sp)+xσ(x)(1−tanh(sp)²)。","Mish 通过 Softplus 和 Tanh 构成平滑的自门控激活，不等于 SiLU。","该函数并非所有开源大模型的默认选项；训练有效性需要真实实验。","与 SiLU、GELU 在负值上做实际数值比较。","mish_paper,activation_study"],
+ leaky_relu:["Leaky ReLU 的负半轴具有显式 slope，正半轴为恒等；导数分别为 slope 与 1。","Leaky ReLU 缓解硬 ReLU 负半轴完全为零的现象，但不会自动解决所有梯度消失。","在零点不可微，教学约定导数 1；调节 slope 不会改变输出张量形状。","比较相同矩阵输入的 ReLU、Leaky ReLU 与 ReLU²。","activation_study"],
+ nd_gelu_erf:["逐元素对任意四轴张量执行 erf-CDF GELU，保存 B/H/T/D 轴和各 Head 的差异。","同 GELU 原始论文的标量函数，四轴实现仅改变布局而不改变数学公式。","属于真正浮点计算和逐元素 VJP，不是只显示形状的积木。","连接可训练四轴 Parameter、激活、ND-MSE，验证全元素的数值梯度。","gelu_paper"],
+ nd_silu:["四轴 SiLU=f(x)=xσ(x)，导数 σ(x)+xσ(x)(1−σ(x))。","SiLU/Swish 类激活常见于现代门控 FFN，完整 SwiGLU 仍需独立 Gate/Up 线性投影。","本积木只含逐元素非线性，不能被误当作完整 FFN。","在四轴 Parameter 到 Loss 的中间插入 SiLU，比较数值与梯度。","activation_study,glu"],
+ nd_relu_squared:["四轴逐元素 ReLU²，输出维与输入完全一致，梯度为 2max(x,0) 对正输入有效。","该形式可作为 FFN 非线性候选，具体是否提高模型质量需对照实验。","即便形状可执行，输出大幅稀疏可能改变模型质量，不能视作等价重写。","比较各 Head 的激活零比例和梯度范数。","activation_study"],
+ nd_mish:["在 B/H/T/D 每个坐标独立执行 Mish，不混合不同 Token 或 Head。","Softplus→Tanh→逐元素乘积构成 Mish，导数可用链式法则完全复现。","该积木的导数与数值实现通过有限差分校验，不代表真实大模型已验证此模块效果。","同一 4D 输入并联 Mish、SiLU 与 GELU，对比输出和梯度。","mish_paper"],
+
  nd_parameter:["四轴 Parameter 不是每次重播种子的输入，而是 JSON 工程中具有稳定节点身份的张量值 θ[B,H,T,D]。同一个参数输出可以同时连到多个消费者，反向传播按节点 ID 汇合 VJP。","训练状态保存 θ 以及独立的 AdamW m/v 张量和 t 步数；每一步都重新运行当前 DAG Forward，再计算反向梯度和下一次权重数值。PyTorch Parameter 和 AdamW 是标准来源。","仅有界 Float64 CPU 教学；这并不是 GPU 上真实的大模型训练。修改参数值后必须重置矩阵形状一致的动量，不能沿用原状态。","将课程 29/30 中的 Q/K/V 从多个输入替换为共享 Parameter，观察各 Head 梯度总和、两步 AdamW、导出再恢复第三步。","pytorch,adamw,gqa_paper"],
  nd_rope:["标准相邻通道对 RoPE 对第 (2i,2i+1) 个通道执行二维正交旋转，角度 (offset+t)/base^(2i/R)。位置索引必须对应当前 Query 和 Key 的真实绝对 Token 位置。","RoFormer (Su et al., 2021) 用正交旋转把绝对位置信息写进 Q/K，并使点积含相对位置信息；开源模型还有 split-half 等配对习惯及额外 RoPE scaling。","本积木采用明确的 adjacent-pair 约定；不要与 split-half 权重布局直接混用。旋转维 R 必须为偶数、不得超过 D。","先计算 RoPE(完整 K,offset=0)，再把 K 分为 prefix[0,2) 与新 Token[2,3)，以 offset=0/2 旋转并拼接，核对每个元素。","rope_paper,transformer"],
  nd_cache_read:["纯函数式地读取 [B,H,T,D] 的 Token 窗口 [start,start+length)，不修改上游 Cache 或输入张量。","Hugging Face 的 DynamicCache 在实际解码过程中按层维护 KV 张量；读取 prefix 和新 Token 是学习这一行为的可拆分积木。","该积木只保存一张可复现的快照视图；不是浏览器外持续生效的缓存服务，也不假装测量真实 Cache 命中率。","让原始 K/V 既连接到前缀读取，又连接到当前位置读取，最后写入 Append；检查读取后两个片段元素不丢失。","hf_cache,tensor_views"],
