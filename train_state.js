@@ -9,6 +9,7 @@ const Grad=isNode?require("./graph_autodiff.js"):root.SeetheTruthGraphAutodiff;
 const AdamW=isNode?require("./adamw_micro.js"):root.SeetheTruthAdamW;
 const NDAdamW=isNode?require("./nd_adamw_micro.js"):root.SeetheTruthNDAdamW;
 const ND=isNode?require("./nd_tensor.js"):root.SeetheTruthND;
+const Optimizers=isNode?require("./optimizer_rules.js"):root.SeetheTruthOptimizerRules;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 function step(raw,options={}){
  const graph=L.validateGraph(raw);
@@ -24,9 +25,11 @@ function step(raw,options={}){
  const records=[];
  for(const node of next.nodes.filter(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&active.some(a=>a.id===n.id))){
    const current=node.params.values,grad=reverse.gradients[node.id],previous=node.params.optimizer;
-   const update=(node.kind==="nd_parameter"?NDAdamW:AdamW).step(current,grad,previous,{
+   const update=Optimizers.step(current,grad,previous,{
+     optimizer:options.optimizer??"adamw",
      lr:options.lr??0.01,weightDecay:options.weightDecay??0.01,
-     beta1:options.beta1??0.9,beta2:options.beta2??0.999,eps:options.eps??1e-8
+     beta1:options.beta1??0.9,beta2:options.beta2??(options.optimizer==="lion"?0.99:0.999),
+     alpha:options.alpha??0.99,momentum:options.momentum??0.9,eps:options.eps??1e-8
    });
    if(update.state.t>10000)throw Error("educational optimizer iteration limit");
    node.params.values=update.parameter;
@@ -34,7 +37,7 @@ function step(raw,options={}){
    const shape=node.kind==="nd_parameter"?ND.shape(current):[current.length,current[0].length];
    const flatten=a=>node.kind==="nd_parameter"?ND.flatten(a):a.flat();
    records.push({id:node.id,shape,
-      gradientNorm:Math.hypot(...flatten(grad)),updateNorm:Math.hypot(...flatten(update.update)),optimizerStep:update.state.t});
+      gradientNorm:Math.hypot(...flatten(grad)),updateNorm:Math.hypot(...flatten(update.update)),optimizerStep:update.state.t,optimizer:options.optimizer??"adamw"});
  }
  const validated=L.validateGraph(next);
  const nextForward=L.evaluate(options.targetId?Branch.slice(validated,options.targetId):validated);
