@@ -261,6 +261,11 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(/^loop_transformer_[123]$/.test(name)){
+      const Composer=typeof module==="object"&&module.exports?require("./loop_transformer.js"):globalThis.SeetheTruthLoopTransformer;
+      if(!Composer)throw Error("Looped Transformer source graph builder is not loaded");
+      return Composer.build({loops:Number(name.slice(-1))});
+    }
     const N=node;
     let title,nodes,edges;
     if(name==="activation_extension"){
