@@ -194,6 +194,8 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="token_lm_trainable"><span class="num">36</span><span>Next-token → 可训练 Embedding → CE<span class="desc">时间轴标签右移、共享表梯度与续训</span></span></button>
   <button class="mission" data-preset="causal_transformer_lm"><span class="num">37</span><span>可训练 Causal Attention → Next-token<span class="desc">Q/K/V、三角 Mask、Softmax、残差、CrossEntropy、AdamW</span></span></button>
   <button class="mission" data-preset="industrial_gqa_rope_tied"><span class="num">38</span><span>Qwen3 风格 GQA / RoPE / 权重绑定<span class="desc">逐头 QK Norm、2:1 KV 共享、正交旋转与真实参数复用</span></span></button>
+  <button class="mission" data-preset="loop_transformer_two"><span class="num">39</span><span>Looped Transformer ×2 · 共享完整 Block<span class="desc">2 次潜空间迭代，同一 Q/K/V + Attention + SwiGLU 权重，多路径梯度</span></span></button>
+  <button class="mission" data-preset="loop_transformer_three"><span class="num">40</span><span>Looped Transformer ×3 · 深度可扩展<span class="desc">计算深度增至 3 次，参数数量完全不变；测试因果性与断点续训</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
