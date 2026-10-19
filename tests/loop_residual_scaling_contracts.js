@@ -19,6 +19,12 @@ const name='loop_residual_scaling',defaultGraph=L.preset(name);
 assert.equal(defaultGraph.nodes.length,61,'explicit 57-node 2-loop graph plus four branch scales');
 assert.equal(Loop.inspectResidualScaling(defaultGraph).rule,'inverse_loops');
 assert.equal(Why.keyFor(defaultGraph,'r0_attn_delta'),'residual_scaling');
+const Industry=require('../industrial_source_inspector.js');
+assert.equal(Industry.kind(defaultGraph,'r0_attn_delta'),'loop_residual');
+assert.match(Industry.render('loop_residual'),/DeepLoop/);
+assert.match(Industry.render('loop_residual'),/Pre-Norm/);
+assert.equal(Industry.kind(L.preset('causal_transformer_lm'),'r0_attn_delta'),null);
+
 assert.match(Why.render(defaultGraph,'r0_ffn_delta'),/为什么共享循环 Transformer 的残差/);
 assert.match(Why.render(defaultGraph,'loss'),/状态变化 RMS/);
 const rows=Why.residualComparisons();
