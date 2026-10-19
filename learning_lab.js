@@ -12,7 +12,7 @@
   const SCHEMA="seethetruth-learning-lab-v1";
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
-  const MAX_NODES=48,MAX_EDGES=96;
+  const MAX_NODES=80,MAX_EDGES=176;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
       formula:"X ∈ ℝ^{T×D}",why:"建立具有确定形状和数值的微型张量，作为后续计算的数据来源。",
@@ -453,6 +453,88 @@
         ["q_proj","attend","q"],["k_proj","attend","k"],["v_proj","attend","v"],
         ["attend","loss","prediction"],["target","loss","target"]
       ];
+    }else if(name==="loop_transformer_two"||name==="loop_transformer_three"){
+      // Fixed-depth graph unrolling exposes exact repeated calls to one
+      // causal Transformer block, while preserving a SINGLE Parameter identity
+      // for each projection and FFN tensor across all recurrent steps.
+      const nLoops=name==="loop_transformer_two"?2:3;
+      title="任务 "+(nLoops===2?"39":"40")+" · Looped Transformer "+nLoops+" 次循环 · 共享 Attention/SwiGLU 权重";
+      const mat=(rows,cols,seed)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>
+        Number((Math.sin((i+1)*.47+(j+1)*.31+seed)*.24).toFixed(8))));
+      const P=(id,x,y,v)=>N(id,"parameter",x,y,{values:v,
+        optimizer:{t:0,m:v.map(row=>row.map(()=>0)),v:v.map(row=>row.map(()=>0))}});
+      nodes=[
+        N("ids","token_ids",20,115,{rows:4,vocab:8,seed:1}),
+        N("prefix","slice_rows",265,65,{start:0,length:3}),
+        N("labels","slice_rows",265,930,{start:1,length:3}),
+        P("embed",20,370,mat(8,4,1)),
+        N("lookup","gather_rows",485,120),
+        N("pos","pos_encoding",685,120),
+        N("mask","causal_mask",905,950),
+        P("wq",75,1350,mat(4,4,2)),
+        P("wk",75,1550,mat(4,4,3)),
+        P("wv",75,1750,mat(4,4,4)),
+        P("wo",75,1950,mat(4,4,5)),
+        P("wgate",75,2150,mat(4,4,6)),
+        P("wup",75,2350,mat(4,4,7)),
+        P("wdown",75,2550,mat(4,4,8))
+      ];
+      edges=[
+        ["ids","prefix","x"],["ids","labels","x"],
+        ["prefix","lookup","indices"],["embed","lookup","x"],
+        ["lookup","pos","x"],["pos","mask","x"]
+      ];
+      let state="pos";
+      for(let loop=1;loop<=nLoops;loop++){
+        const p="r"+loop+"_";
+        const x=1010+(loop-1)*2700,y=100;
+        const nd=(suffix,kind,dx,dy,params={})=>nodes.push(N(p+suffix,kind,x+dx,y+dy,params));
+        const link=(source,port,to)=>edges.push([source,p+to,port]);
+        nd("norm","rmsnorm",0,0,{epsilon:1e-5});
+        nd("q","matmul",225,-15);nd("k","matmul",225,250);nd("v","matmul",225,510);
+        nd("qr","rope2d",445,-15,{offset:0});
+        nd("kr","rope2d",445,250,{offset:0});
+        nd("kt","transpose2d",660,250);
+        nd("score","matmul",865,110);
+        nd("scale","scale",1065,105,{factor:0.5});
+        nd("prob","masked_softmax",1260,105);
+        nd("ctx","weighted_sum",1455,105);
+        nd("attn","matmul",1640,105);
+        nd("attn_res","add",1835,105);
+        nd("ffnorm","rmsnorm",2010,105,{epsilon:1e-5});
+        nd("gate","matmul",2200,-15);
+        nd("up","matmul",2200,235);
+        nd("swi","swiglu",2390,105);
+        nd("down","matmul",2580,105);
+        nd("state","add",2770,105);
+        link(state,"x","norm");
+        link(p+"norm","a","q");edges.push(["wq",p+"q","b"]);
+        link(p+"norm","a","k");edges.push(["wk",p+"k","b"]);
+        link(p+"norm","a","v");edges.push(["wv",p+"v","b"]);
+        link(p+"q","x","qr");link(p+"k","x","kr");
+        link(p+"kr","x","kt");
+        link(p+"qr","a","score");link(p+"kt","b","score");
+        link(p+"score","x","scale");
+        link(p+"scale","logits","prob");edges.push(["mask",p+"prob","mask"]);
+        link(p+"prob","weights","ctx");link(p+"v","values","ctx");
+        link(p+"ctx","a","attn");edges.push(["wo",p+"attn","b"]);
+        edges.push([state,p+"attn_res","a"]);link(p+"attn","b","attn_res");
+        link(p+"attn_res","x","ffnorm");
+        link(p+"ffnorm","a","gate");edges.push(["wgate",p+"gate","b"]);
+        link(p+"ffnorm","a","up");edges.push(["wup",p+"up","b"]);
+        link(p+"gate","gate","swi");link(p+"up","up","swi");
+        link(p+"swi","a","down");edges.push(["wdown",p+"down","b"]);
+        link(p+"attn_res","a","state");link(p+"down","b","state");
+        state=p+"state";
+      }
+      const x=1010+nLoops*2910;
+      nodes.push(N("final_norm","rmsnorm",x,125,{epsilon:1e-5}),
+        N("tied_head","transpose2d",x,450),
+        N("logits","matmul",x+245,125),
+        N("loss","cross_entropy",x+490,125));
+      edges.push([state,"final_norm","x"],["embed","tied_head","x"],
+        ["final_norm","logits","a"],["tied_head","logits","b"],
+        ["logits","loss","logits"],["labels","loss","labels"]);
     }else if(name==="industrial_gqa_rope_tied"){
       title="任务 38 · Qwen3 启发：QK Norm + RoPE + GQA + 权重绑定";
       // Heads=2, KV heads=1, head_dim=2, model_dim=4, V=8.
