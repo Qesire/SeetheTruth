@@ -13,7 +13,7 @@
 ## Verified candidate inventory
 
 - `learning_lab.js`: 11 original kinds plus 106 `block_catalog.js` definitions = **117 registered kinds**.
-- `learn.html`: 40 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
+- `learn.html`: 41 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
 - Graphs: bounded (48 nodes, 96 edges), DAG and port/shape validation; the *chosen upstream closure* may be runnable while unrelated incomplete nodes remain on the canvas. Never require a model-specific template.
 - NumPy codegen: full and selected-branch exports, source tensor overrides, fail-closed unsupported operations, intermediate-value parity against JS. For supported differentiable subgraphs, the separate PyTorch CPU backend now emits real training/AdamW/checkpoint code; unsupported ops fail closed.
 - Training: bounded explicit parameter identities and supported VJPs; differentiate one-step optimizer function blocks from persistent multistep training transactions.
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | P0 · Integrate candidate | Draft PR #21, many changes on feature branch | Review latest diff and known limitations, finalize PR, merge without losing required checks |
 | P0 · Legal distribution | No `LICENSE` at repository root | Owner explicitly chooses compatible open-source license and commits it; do not assume a license |
-| P0 · Stable smoke path | Five latest GitHub Actions workflow runs on candidate HEAD reported success; browser suite in Static Behavior Acceptance | Repeat all mandatory CI workflows on final merged SHA, manually open `/learn.html` as first-time user in a clean environment and confirm no JS console errors or overflow |
+| P0 · Stable smoke path | Seven mandatory GitHub Actions workflow runs on candidate HEAD reported success; browser suite in Static Behavior Acceptance | Repeat all mandatory CI workflows on final merged SHA, manually open `/learn.html` as first-time user in a clean environment and confirm no JS console errors or overflow |
 | P0 · User-facing truth | Old README described only 45 kinds and denied any graph training/codegen | Landing README, generated-code documentation and route UI consistently distinguish implemented subset and future backend |
 | P0 · Release artifact | No published GitHub Release | Cut explicitly labeled prerelease `v0.1.0-alpha`, include release notes, dependency/startup instructions, example project JSON and reproducible evidence links |
 
@@ -42,7 +42,7 @@
 1. `node tests/release_surface_contracts.js` — source-of-truth catalogue count, README consistency and visible public entrypoints.
 2. `node tests/graph_readiness_contracts.js` and `node tests/branch_execution_contracts.js` — unconstrained valid DAG + incomplete parallel branches.
 3. `node tests/python_codegen_contracts.js` and `node tests/python_codegen_extensions_contracts.js` — actual Python/NumPy execution and per-node cross-language parity; `node tests/moe_executable_codegen_contracts.js` additionally verifies dynamic MoE source overrides and CPU Torch shared-gradient/optimizer state consistency.
-4. `node tests/train_state_contracts.js`, `node tests/nd_train_state_contracts.js`, `node tests/moe_graph_autodiff_contracts.js`, `node tests/torch_codegen_extensions_contracts.js` — fresh forward on each optimizer step, gradient fan-in, state/undo/save/restore, finite difference.
+4. `node tests/train_state_contracts.js`, `node tests/nd_train_state_contracts.js`, `node tests/moe_graph_autodiff_contracts.js`, `node tests/torch_codegen_extensions_contracts.js` and `node tests/loop_depth_supervision_contracts.js` — fresh forward on each optimizer step, gradient fan-in, state/undo/save/restore, finite difference.
 5. `python tests/browser_catalog_screenshots.py` and screenshot manifest — **actual headless Chromium**, click/drag/repair/train/export/import, browser scenarios; inspect screenshots and errors rather than relying on PNG existence.
 6. Existing `Static Analysis CI`, `Static Behavior Acceptance`, `Real-model Static Concordance`, `Pinned Real-Source Operator Audit`, `Training Microflows Contracts`, `Real CPU PyTorch Training Codegen`, and `Pinned TinyStories CPU Real-Model Capture` all success on the same final SHA.
 
@@ -50,7 +50,7 @@ For each failing gate: record input graph, exception or numerical discrepancy, w
 
 ## Suggested release note outline
 
-**What works:** Scratch-like free graph editing, 117 registered block kinds, 40 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
+**What works:** Scratch-like free graph editing, 117 registered block kinds, 41 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
 
 **Not included:** generic trainable Python/PyTorch graph export, full-precision real models, GPU timings, actual RL rollout, unsupported operator VJPs or every paper patch being executable.
 
