@@ -52,7 +52,7 @@ for(let r=0;r<2;r++){
  for(let t=0;t<3;t++)if(mask[t][0]===0)close('inactive candidate gradient '+id+'/'+t,dv[t],[0,0,0,0],1e-12);
 }
 assert.ok(adj.cutEdges.some(x=>x.nodeId==='r0_adopted'&&x.port==='mask'));
-assert.ok(adj.cutEdges.some(x=>x.nodeId==='r0_continue'&&x.port==='depths'));
+assert.ok(!adj.pathIds.includes('r0_continue')&&!adj.pathIds.includes('r1_continue'),'hard control graph must not enter differentiable VJP path');
 // Per-token budgets can be changed via real runtime source overrides.
 const forced=[[0],[0],[0]],maximal=[[2],[2],[2]],json=x=>JSON.stringify(JSON.stringify(x));
 for(const [id,depths,expected] of [['none',forced,'lookup'],['all',maximal,'r1_state']]){
