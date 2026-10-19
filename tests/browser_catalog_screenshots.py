@@ -331,6 +331,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("np.concatenate(",script)
         self.assertIn("return v",script)
         self.assertFalse(p.locator("#pythonExportPanel").is_hidden())
+        p.locator("#pythonExportPanel summary").click()
         self.assertIn("nd_cache_append",p.locator("#pythonExportSource").inner_text())
         p.locator("#pythonExportPanel").scroll_into_view_if_needed()
         self.shot("53-export-executable-numpy-rope-kv-code.png")
