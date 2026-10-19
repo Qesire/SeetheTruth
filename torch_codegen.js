@@ -103,7 +103,7 @@ function compile(raw,options={}){
    body.push('        if not bool(torch.isfinite('+v+').all()): raise ValueError('+py(id+' nonfinite result')+')');
    metadata.push({id,kind:k,shape:t.shape});
  }
- const source=TEMPLATE.replace('__LOSS_ID__',py(target))
+ const source=TEMPLATE.replace('__LOSS_ID__',target===null?"None":py(target))
    .replace('__INITIALIZERS__',init.join("\n")||'        pass')
    .replace('__FORWARD__',body.join("\n")||'        pass');
  return {source,filename:"seethetruth-"+(options.targetId||"training-graph")+"-torch.py",nodes:metadata,
