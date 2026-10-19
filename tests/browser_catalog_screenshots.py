@@ -347,7 +347,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("为什么这么设计",p.locator("#blockKnowledge").inner_text())
         self.assertIn("LoopFormer",p.locator("#blockKnowledge").inner_text())
         self.assertIn("stop_gradient",p.locator("#blockKnowledge").inner_text())
-        self.assertIn("尚未实现",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("不含 LoopFormer 原版",p.locator("#blockKnowledge").inner_text())
         p.locator('[data-node="Wq"] .block-head').click()
         self.assertIn("不共享同深度对照",p.locator("#blockKnowledge").inner_text())
         self.assertIn("168",p.locator("#blockKnowledge").inner_text())
