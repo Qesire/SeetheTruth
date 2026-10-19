@@ -39,6 +39,20 @@ near(ad2.state.v[0][0],8);near(ad2.parameter[0][0],.9-.2/Math.sqrt(8));
 const rms=O.step([[1]],[[2]],null,{optimizer:'rmsprop',lr:.1,weightDecay:0,eps:1e-10});
 near(rms.state.v[0][0],.04);
 assert.notEqual(rms.state.v[0][0],ad.state.v[0][0]);
+const trainedBase=L.preset('trainable_core');
+const adagradBase=T.steps(trainedBase,{targetId:'loss',optimizer:'adagrad',count:3,lr:.01,lrDecay:0});
+const adagradDecay=T.steps(trainedBase,{targetId:'loss',optimizer:'adagrad',count:3,lr:.01,lrDecay:1});
+assert.notDeepEqual(adagradBase.graph.nodes.find(n=>n.id==='shared_weight').params.values,
+                    adagradDecay.graph.nodes.find(n=>n.id==='shared_weight').params.values,
+                    'UI-controllable Adagrad lrDecay must alter actual multi-step parameter trajectory');
+const sgdFlat=T.steps(trainedBase,{targetId:'loss',optimizer:'sgd_momentum',count:3,lr:.01,momentum:0});
+const sgdMom=T.steps(trainedBase,{targetId:'loss',optimizer:'sgd_momentum',count:3,lr:.01,momentum:.9});
+assert.notDeepEqual(sgdFlat.graph.nodes.find(n=>n.id==='shared_weight').params.values,
+                    sgdMom.graph.nodes.find(n=>n.id==='shared_weight').params.values);
+const rmsSlow=T.steps(trainedBase,{targetId:'loss',optimizer:'rmsprop',count:2,lr:.01,alpha:.9});
+const rmsFast=T.steps(trainedBase,{targetId:'loss',optimizer:'rmsprop',count:2,lr:.01,alpha:.999});
+assert.notDeepEqual(rmsSlow.graph.nodes.find(n=>n.id==='shared_weight').params.values,
+                    rmsFast.graph.nodes.find(n=>n.id==='shared_weight').params.values);
 const slowed=O.step(ad.parameter,[[2]],ad.state,{optimizer:'adagrad',lr:.1,weightDecay:0,lrDecay:1});
 assert.ok(slowed.update[0][0]<ad2.update[0][0],'learning-rate decay must change update');
 for(const type of ['adam','adagrad']){
