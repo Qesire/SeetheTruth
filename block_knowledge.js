@@ -6,7 +6,7 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
- mor:["Mixture-of-Recursions: adaptive token-level recursive computation (NeurIPS 2025)","https://proceedings.nips.cc/paper_files/paper/2025/hash/8b08bbf8b420faa6eeb4020720582ec7-Abstract-Conference.html"],
+ mor:["Mixture-of-Recursions: adaptive token-level recursive computation (NeurIPS 2025)","https://arxiv.org/abs/2507.10524"],
  adam_official:["PyTorch Adam — coupled L2 and decoupled_weight_decay option","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html"],
  adagrad_official:["PyTorch Adagrad accumulator and learning-rate decay","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adagrad.html"],
  elu_official:["PyTorch ELU and exponential negative branch","https://docs.pytorch.org/docs/stable/generated/torch.nn.ELU.html"],
