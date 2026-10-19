@@ -172,6 +172,27 @@ function backward(raw,forward,opts={}){
     send(id,"v",mm(tr(probabilities),d));send(id,"q",mm(ds,k));send(id,"k",mm(tr(ds),q));
     local[id]={vjp:"dV=PᵀdY, dP=dYVᵀ, dS=softmax-VJP/√d, dQ=dS K, dK=dSᵀ Q"};continue;
   }
+  if(kind==="gather_rows"){
+    const bank=inp(id,"x"),ids=inp(id,"indices"),dx=z(bank);
+    for(let t=0;t<ids.length;t++){
+      const row=ids[t][0];
+      if(!Number.isSafeInteger(row)||row<0||row>=bank.length)throw Error("invalid gather index in VJP");
+      for(let j=0;j<bank[0].length;j++)dx[row][j]+=d[t][j];
+    }
+    send(id,"x",dx);cut(id,"indices","discrete token/expert lookup indices do not receive gradients");
+    local[id]={vjp:"scatter-add dY[t,:] into dTable[index[t],:] with duplicates accumulated"};continue;
+  }
+  if(kind==="cross_entropy"){
+    const scores=inp(id,"logits"),labels=inp(id,"labels"),n=scores.length;
+    const grad=scores.map((row,i)=>{
+      const label=labels[i][0];
+      if(!Number.isSafeInteger(label)||label<0||label>=row.length)throw Error("cross-entropy label out of range in VJP");
+      const max=Math.max(...row),exp=row.map(v=>Math.exp(v-max)),sum=exp.reduce((a,v)=>a+v,0);
+      return exp.map((v,j)=>(v/sum-(j===label?1:0))*d[0][0]/n);
+    });
+    send(id,"logits",grad);cut(id,"labels","integer teacher token IDs are fixed targets");
+    local[id]={vjp:"(softmax(logits)−one_hot(target))/T · upstream gradient, logits only"};continue;
+  }
   if(kind==="mse"||kind==="mae_loss"){
     const a=inp(id,"prediction"),b=inp(id,"target"),size=a.length*a[0].length;
     send(id,"prediction",a.map((row,i)=>row.map((v,j)=>(kind==="mse"?2*(v-b[i][j]):Math.sign(v-b[i][j]))*d[0][0]/size)));
