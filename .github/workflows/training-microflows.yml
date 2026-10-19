@@ -28,6 +28,8 @@ on:
       - 'tests/loop_consistency_tradeoffs_contracts.js'
       - 'loop_consistency.js'
       - 'loop_design_tradeoffs.js'
+      - 'architecture_why.js'
+      - 'tests/architecture_why_contracts.js'
       - 'loop_transformer.js'
       - 'training_objective.js'
       - 'industrial_source_inspector.js'
@@ -142,7 +144,7 @@ jobs:
       - run: node --check grpo_backward.js && node tests/grpo_backward_contracts.js
       - run: node --check graph_autodiff.js && node tests/graph_autodiff_contracts.js
       - run: node tests/moe_graph_autodiff_contracts.js
-      - run: node --check loop_transformer.js && node --check loop_consistency.js && node --check loop_design_tradeoffs.js && node --check training_objective.js
+      - run: node --check loop_transformer.js && node --check loop_consistency.js && node --check loop_design_tradeoffs.js && node --check architecture_why.js && node tests/architecture_why_contracts.js && node --check training_objective.js
       - run: node --check train_state.js && node tests/train_state_contracts.js
       - run: node tests/trainable_architecture_contracts.js
       - run: node --check graph_readiness.js && node tests/graph_readiness_contracts.js
