@@ -527,7 +527,7 @@
         link(p+"attn_res","a","state");link(p+"down","b","state");
         state=p+"state";
       }
-      const x=1010+nLoops*2910;
+      const x=1010+nLoops*2700;
       nodes.push(N("final_norm","rmsnorm",x,125,{epsilon:1e-5}),
         N("tied_head","transpose2d",x,450),
         N("logits","matmul",x+245,125),
