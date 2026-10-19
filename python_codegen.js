@@ -22,7 +22,7 @@ const SUPPORTED=new Set([
  "nd_silu","nd_relu_squared","nd_mish","nd_gelu_erf","nd_elu","nd_hardswish",
  "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion",
  "row_mean","row_sum","row_var","row_logsumexp","log_softmax","l2norm","qk_norm","logit_softcap",
- "low_rank_project","row_bias_add","weighted_sum","masked_softmax","sliding_window_mask",
+ "low_rank_project","row_bias_add","weighted_sum","masked_softmax","token_depth_mask","state_mask_blend","sliding_window_mask",
  "temperature","residual_scale","mae_loss","topk","argmax","detach_demo","causal_mask",
  "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
  "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
@@ -82,6 +82,18 @@ def _act(x, name, **kw):
     if name == "hardswish":
         return x*np.clip(x+3, 0, 6)/6
     raise ValueError("unsupported activation " + name)
+
+def _depth_mask(depths, step, width):
+    if depths.ndim!=2 or depths.shape[1]!=1 or not np.isfinite(depths).all() or \
+       not np.all(depths==np.floor(depths)) or np.any(depths<0) or np.any(depths>3):
+        raise ValueError("Token depth budgets must be integers in [0,3]")
+    return np.broadcast_to((depths>=step).astype(np.float64),(depths.shape[0],width)).copy()
+
+def _blend_state(previous, candidate, mask):
+    if previous.shape!=candidate.shape or previous.shape!=mask.shape or \
+       not np.all((mask==0)|(mask==1)):
+        raise ValueError("state blend needs matching tensors and a binary mask")
+    return np.where(mask==1,candidate,previous)
 
 def _masked_softmax(logits, mask):
     if logits.shape != mask.shape or not np.all((mask == 0) | (mask == 1)):
@@ -322,6 +334,8 @@ function compile(raw,options={}){
    else if(kind==="low_rank_project")expression='(('+port("x")+' @ '+port("down")+') @ '+port("up")+')';
    else if(kind==="row_bias_add")expression='('+port("scores")+' + '+port("bias")+')';
    else if(kind==="weighted_sum")expression='('+port("weights")+' @ '+port("values")+')';
+   else if(kind==="token_depth_mask")expression='_depth_mask('+port("depths")+','+p.step+','+p.width+')';
+   else if(kind==="state_mask_blend")expression='_blend_state('+port("previous")+','+port("candidate")+','+port("mask")+')';
    else if(kind==="masked_softmax")expression='_masked_softmax('+port("logits")+','+port("mask")+')';
    else if(kind==="sliding_window_mask")expression='_sliding_window('+port("x")+','+p.window+')';
    else if(kind==="temperature")expression='('+port("x")+' / '+p.temperature+')';
