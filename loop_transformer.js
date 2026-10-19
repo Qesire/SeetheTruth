@@ -140,6 +140,20 @@ function inspectResidualScaling(raw){
   }
  }
  if(!inspect(graph).linked)throw Error("recurrent hidden-state feedback no longer linked");
+ // Loss, source-token semantics, shared parameter identities and every
+ // intermediary must remain the SAME mathematical recipe for matched evidence.
+ // Users can still freely edit other graphs; this only removes the false
+ // "verified matched ablation" label if they change this experimental recipe.
+ const reference=buildResidualScaling({loops:2,rule:"inverse_loops"});
+ const fingerprint=g=>JSON.stringify({
+   nodes:g.nodes.map(n=>[n.id,n.kind,
+     n.kind==="parameter"?[n.params.values.length,n.params.values[0].length]:
+     /^r[01]_(attn_delta|ffn_delta)$/.test(n.id)?"variable-residual-epsilon":n.params])
+       .sort((a,b)=>a[0].localeCompare(b[0])),
+   edges:g.edges.map(e=>e.from+">"+e.to+":"+e.port).sort()
+ });
+ if(fingerprint(graph)!==fingerprint(reference))
+   throw Error("graph math/source changed: this is no longer a matched residual-scaling experiment");
  return Object.freeze({loops:2,coefficient:factor,rule:Math.abs(factor-1)<1e-12?"unit":
    Math.abs(factor-1/Math.sqrt(2))<1e-12?"inverse_sqrt":
    Math.abs(factor-.5)<1e-12?"inverse_loops":"user_defined",
