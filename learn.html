@@ -281,6 +281,7 @@ input[type="file"]{display:none}
 <script src="loop_transformer.js"></script>
 <script src="loop_consistency.js"></script>
 <script src="loop_design_tradeoffs.js"></script>
+<script src="architecture_why.js"></script>
 <script src="training_objective.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
@@ -619,7 +620,7 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
- $("#blockKnowledge").innerHTML=(window.SeetheTruthDesignTradeoffs?.render(graph,n?.id)||"")+(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
+ $("#blockKnowledge").innerHTML=(window.SeetheTruthDesignTradeoffs?.render(graph,n?.id)||"")+(window.SeetheTruthArchitectureWhy?.render(graph,n)||"")+(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
    '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
    '<p>此 Add 是一次论文计算图改造：W₀ 保持只读（Parameter 将显式冻结），ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
    '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
