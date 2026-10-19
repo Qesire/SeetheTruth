@@ -112,6 +112,7 @@ const rewire=JSON.parse(JSON.stringify(defaultGraph));
 rewire.edges.find(e=>e.to==='r1_q'&&e.port==='a').from='r0_attn_norm';
 assert.throws(()=>Loop.inspectResidualScaling(rewire),/no longer a matched residual-scaling experiment/,
   'changing intermediate attention math must invalidate the comparison label');
+assert.equal(Industry.kind(rewire,'r0_attn_delta'),null,'modified graph must not retain false paper identity');
 const changedData=JSON.parse(JSON.stringify(defaultGraph));
 changedData.nodes.find(n=>n.id==='tokens').params.seed=5;
 assert.throws(()=>Loop.inspectResidualScaling(changedData),/no longer a matched residual-scaling experiment/,
