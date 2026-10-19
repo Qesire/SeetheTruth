@@ -809,7 +809,7 @@ $("#trainOptimizer").onchange=()=>{
 };
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const possibleLosses=graph.nodes.filter(n=>n.kind==="mse"||n.kind==="nd_mse");
+ const possibleLosses=graph.nodes.filter(n=>["mse","nd_mse","mae_loss"].includes(n.kind));
  const selectedLoss=possibleLosses.find(n=>n.id===selected)||
    possibleLosses.find(n=>n.id===runScope)||(possibleLosses.length===1?possibleLosses[0]:null);
  if(!selectedLoss)throw Error("请先选择要训练的 MSE/四轴 MSE 损失积木（有多个损失时必须明确选中）");
