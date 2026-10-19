@@ -3,12 +3,16 @@
  */
 (function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthNDVJP=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
 const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):root.SeetheTruthND;
+const Act=typeof module==="object"&&module.exports?require("./activation_math.js"):root.SeetheTruthActivations;
 const eq=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
 const zeros=x=>ND.build(ND.shape(x),()=>0);
 const accum=(g,a)=>ND.broadcastBinary(g,a,(x,y)=>x+y);
 function vjp(kind,input,params,upstream,output){
  const dshape=ND.shape(upstream),source=k=>input[k],A=source("a"),B=source("b"),X=source("x"),result={};
  if(!eq(dshape,ND.shape(output)))throw Error("N-D VJP upstream gradient shape mismatch");
+ if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish"].includes(kind)){
+   const sh=ND.shape(X);result.x=ND.build(sh,idx=>ND.at(upstream,idx)*Act.derivative(kind.slice(3),ND.at(X,idx),params));return result;
+ }
  if(kind==="nd_input")return result;
  if(kind==="nd_mse"){
    const a=source("prediction"),b=source("target"),sh=ND.shape(a),size=ND.product(sh),delta=upstream[0][0];
