@@ -338,6 +338,50 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_mor_token_depth_halt_source_why_cpu_training_and_two_exports(self):
+        p=self.page
+        p.locator('[data-preset="mor_token_depth_budget"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),62)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator('[data-node="r0_continue"] .block-head').click()
+        rationale=p.locator("#blockKnowledge").inner_text()
+        self.assertIn("为什么需要自适应退出",rationale)
+        self.assertIn("实际被跳过的 GEMM = 0",rationale)
+        self.assertIn("Token 循环预算",rationale)
+        self.assertEqual(p.locator('[data-node="r0_continue"]').get_attribute("data-industrial-ref"),"mor_hard")
+        p.locator('[data-node="r0_continue"] .block-head').hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=5000)
+        self.assertIn("MoR",p.locator("#paperHoverInspector").inner_text())
+        self.assertIn("稠密 GEMM",p.locator("#paperHoverInspector").inner_text())
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        saved=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        params=[n for n in saved["nodes"] if n["kind"]=="parameter"]
+        self.assertEqual(len(params),8)
+        self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in params))
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        numpy=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_depth_mask",numpy)
+        self.assertIn("_blend_state",numpy)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        torch=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn("torch.where(mask==1,candidate,previous)",torch)
+        self.assertIn("torch.optim.AdamW",torch)
+        p.locator('[data-node="r1_adopted"] .block-head').click()
+        self.shot("65-mor-hard-token-depth-masked-dense-execution.png")
+
     def test_loop_residual_scaling_literature_why_and_real_cpu_training(self):
         p=self.page
         p.locator('[data-preset="loop_residual_scaling"]').click()
