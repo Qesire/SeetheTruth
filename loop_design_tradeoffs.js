@@ -108,6 +108,28 @@ function profile(raw){
   scope:"current validated micro-tensor graph, MatMul-only arithmetic; no kernel, memory allocation, throughput or factual benchmark"
  });
 }
+function observations(raw){
+ const graph=L.validateGraph(raw),about=Loop.inspect(graph);
+ if(!about.linked||!about.loops)throw Error("not a connected loop for observations");
+ const trace=L.evaluate(graph),by=new Map(trace.steps.map(x=>[x.id,x]));
+ const ce=about.perIteration.map(r=>({depth:r.index+1,ce:by.get(r.lossId)?.values?.[0]?.[0]}));
+ if(ce.some(x=>!Number.isFinite(x.ce)))throw Error("missing real per-loop CE tensor output");
+ const output=(id)=>by.get(id)?.values;
+ const rmsDifference=(a,b)=>{
+  if(!a||!b||a.length!==b.length||a[0].length!==b[0].length)throw Error("incompatible loop state tensors");
+  let sum=0,count=0;
+  for(let i=0;i<a.length;i++)for(let j=0;j<a[i].length;j++){let d=a[i][j]-b[i][j];sum+=d*d;count++;}
+  return Math.sqrt(sum/count);
+ };
+ const changes=about.perIteration.map((r,i)=>({depth:i+1,
+   stateRMSChange:rmsDifference(output(r.finalStateId),output(i===0?"lookup":about.perIteration[i-1].finalStateId))}));
+ const m=by.get("short_consistency"),base=by.get("base_loss");
+ const consistency=m?{mse:m.values[0][0],baseLoss:base?.values?.[0]?.[0],
+    totalLoss:by.get("loss")?.values?.[0]?.[0],
+    lambda:graph.nodes.find(n=>n.id==="cons_weight")?.params.factor}:null;
+ return Object.freeze({perDepth:ce,changes,consistency,
+   evidence:"actual finite Float64 graph outputs only; not model accuracy or held-out validation"});
+}
 let cache=null;
 function comparisons(){
  if(!cache)cache=Object.freeze([1,2,3].map(loops=>profile(Loop.build({loops}))));
@@ -146,8 +168,21 @@ function render(raw,id){
    ' 个 MatMul；参数元素='+g.physicalParameterElements+'，核心共享权重元素='+
    g.coreParameterElements+'；参数共享节省的是权重元素，不是循环 GEMM 的执行次数。</p></details>';
  }
+ if(key==="consistency"||key==="sharing"||key==="multidepth"){
+  const obs=observations(raw);
+  out+='<details open><summary>当前参数下真实执行的逐轮损失／表征变化</summary>'+
+   '<p>由当前教学图执行的 Float64 值，非训练精度或验证集质量；CE 变低不自动说明泛化改善。</p>'+
+   '<table style="width:100%;font-size:11px"><thead><tr><th>轮次</th><th>Next-token CE</th><th>状态变化 RMS</th></tr></thead><tbody>'+
+   obs.perDepth.map((row,i)=>'<tr><td>'+row.depth+'</td><td>'+Number(row.ce).toFixed(6)+
+     '</td><td>'+obs.changes[i].stateRMSChange.toFixed(6)+'</td></tr>').join('')+'</tbody></table>'+
+   (obs.consistency?'<p>λ='+obs.consistency.lambda+
+     '；原多深度 CE='+obs.consistency.baseLoss.toFixed(6)+
+     '；浅/深状态 MSE='+obs.consistency.mse.toFixed(6)+
+     '；实际总损失='+obs.consistency.totalLoss.toFixed(6)+'</p>':'')+
+   '</details>';
+ }
  if(key==="consistency")out+='<p><strong>精确实现边界：</strong>本课程固定 2 轮，共享参数，不含 LoopFormer 原版的 t/Δt 条件或独立采样的 shortcut trajectory。只能验证 Detach + MSE 消融的数学与梯度。</p>';
  out+='</section>';return out;
 }
-return Object.freeze({profile,comparisons,keyFor,render,decisions:DECISIONS,sources:SOURCES});
+return Object.freeze({profile,comparisons,observations,keyFor,render,decisions:DECISIONS,sources:SOURCES});
 });
