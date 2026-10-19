@@ -34,6 +34,21 @@ for(const name of ['moe_route','moe_expert_ffn','trainable_moe']){
  assert.match(torch.source,/torch.einsum/);
  console.log('MoE real independent executable parity PASS '+name+' '+outputs.length+' nodes');
 }
+// Source overrides must recompute expert routing and all downstream values.
+const routeGraph=L.preset('moe_expert_ffn');
+const orig=L.evaluate(routeGraph).steps.find(n=>n.id==='x').values;
+const changed=JSON.parse(JSON.stringify(orig));changed[0][0]+=.37;
+const literal=JSON.stringify(JSON.stringify(changed));
+const updatedNP=run(N.compile(routeGraph).source+
+ '\nchanged=run_graph({"x":json.loads('+literal+')})\nprint(json.dumps({k:v.tolist() for k,v in changed.items()}))\n','numpy');
+const updatedTorch=run(T.compile(routeGraph).source+
+ '\ngraph=GraphRuntime({"x":json.loads('+literal+')})\nprint(json.dumps({k:v.detach().tolist() for k,v in graph.forward().items()}))\n','numpy');
+close(updatedNP.x,changed,'overridden NumPy expert source');
+close(updatedTorch.x,changed,'overridden PyTorch expert source');
+close(updatedNP.out,updatedTorch.out,'overridden routed output',1e-8);
+assert.notDeepEqual(updatedNP.out,L.evaluate(routeGraph).steps.find(n=>n.id==='out').values,
+ 'MoE source overrides must really recompute all routed downstream nodes');
+
 const graph=L.preset('trainable_moe'),compiled=T.compile(graph);
 const original=L.evaluate(graph),grads=G.backward(graph,original);
 const extra=[
