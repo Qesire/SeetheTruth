@@ -157,7 +157,7 @@ function render(raw,id){
   out+='<p><b>'+title+'：</b>'+esc(d[field])+'</p>';
  out+='<p><b>证据依据：</b>'+d.sources.map(([name,url])=>'<a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(name)+' ↗</a>').join(" · ")+'</p>';
  if(key==="sharing"||key==="multidepth"){
-  const g=profile(raw),rows=comparisons();
+  try{const g=profile(raw),rows=comparisons();
   out+='<details open><summary>真实教学图的参数量与计算量 · ×1/×2/×3</summary>'+
    '<p>下表由实际图的 Parameter shape 和所有 MatMul 边的维度计算，非 GPU profiling；不包括非 GEMM 操作或真实运行时内存峰值。</p>'+
    '<table style="width:100%;font-size:11px"><thead><tr><th>循环</th><th>独立参数元素</th><th>不共享同深度对照</th><th>MatMul MAC</th></tr></thead><tbody>'+
@@ -167,9 +167,10 @@ function render(raw,id){
    '<p>所选图：'+g.graphNodes+' 节点、'+g.parameterTensors+' 套独立参数、'+g.matmulNodes+
    ' 个 MatMul；参数元素='+g.physicalParameterElements+'，核心共享权重元素='+
    g.coreParameterElements+'；参数共享节省的是权重元素，不是循环 GEMM 的执行次数。</p></details>';
+  }catch(err){out+='<p>资源对照暂停：需要先修复循环连线及张量合同（'+esc(err.message)+'）。不会伪造无效统计。</p>';}
  }
  if(key==="consistency"||key==="sharing"||key==="multidepth"){
-  const obs=observations(raw);
+  try{const obs=observations(raw);
   out+='<details open><summary>当前参数下真实执行的逐轮损失／表征变化</summary>'+
    '<p>由当前教学图执行的 Float64 值，非训练精度或验证集质量；CE 变低不自动说明泛化改善。</p>'+
    '<table style="width:100%;font-size:11px"><thead><tr><th>轮次</th><th>Next-token CE</th><th>状态变化 RMS</th></tr></thead><tbody>'+
@@ -180,6 +181,7 @@ function render(raw,id){
      '；浅/深状态 MSE='+obs.consistency.mse.toFixed(6)+
      '；实际总损失='+obs.consistency.totalLoss.toFixed(6)+'</p>':'')+
    '</details>';
+  }catch(err){out+='<p>逐轮数值观察暂停：需要可执行的当前计算图（'+esc(err.message)+'）。</p>';}
  }
  if(key==="consistency")out+='<p><strong>精确实现边界：</strong>本课程固定 2 轮，共享参数，不含 LoopFormer 原版的 t/Δt 条件或独立采样的 shortcut trajectory。只能验证 Detach + MSE 消融的数学与梯度。</p>';
  out+='</section>';return out;
