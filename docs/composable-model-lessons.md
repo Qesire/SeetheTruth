@@ -422,3 +422,27 @@ For fairness these algorithms cannot be interpreted as a controlled quality benc
 Unit tests enforce scalar function derivatives, 4D local VJPs, optimizer recurrences and state persistence for all four algorithms, a composed 4D Mish activation + MQA trainable graph, invalid parameter values, and a cross-algorithm switch requiring reset. Chromium tests exercise the toolbar choices, JSON restore, and independently built activation/optimizer comparison DAGs.
 
 Optimizer references: [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101), [PyTorch SGD](https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html), [PyTorch RMSprop](https://docs.pytorch.org/docs/stable/generated/torch.optim.RMSprop.html), and [Lion / Symbolic Discovery (NeurIPS 2023)](https://arxiv.org/abs/2302.06675).
+
+## 34–35: Activation and optimizer mechanisms, free-form blocks
+
+Four additional activation blocks can be added to any compatible arbitrary DAG: `elu`, `hardswish`, `nd_elu`, `nd_hardswish`. Each has real CPU values, explicit shape contracts, and analytic local VJPs:
+
+- **ELU** with `alpha>0`: `f(x)=x` when `x>0`, otherwise `alpha*(exp(x)-1)`. The negative-branch derivative is `alpha*exp(x)`. When `alpha != 1`, the one-sided derivatives disagree at zero; the teaching engine uses the nonpositive branch at `x=0`.
+- **HardSwish**: `f(x)=0` for `x<=-3`, `x` for `x>=3`, otherwise `x*(x+3)/6`. In the interior the derivative is `(2*x+3)/6`; at the kinks it follows the explicitly chosen outside branch. This is a piecewise approximation, not identical to SiLU.
+
+Two new functional optimizer step blocks and two persisted update strategies provide a concrete comparison between **decoupled versus coupled weight decay** and **running averages versus cumulative squared gradients**:
+
+| Strategy | State | Update rule | Decay |
+|---|---|---|---|
+| AdamW | `m,v,t` | Bias-corrected moments on `g`; separate `lambda*theta` update | Decoupled |
+| Adam | `m,v,t` | Bias-corrected moments on `g_eff=g+lambda*theta` | Coupled L2 |
+| RMSprop | `v,t` | `v=alpha*v+(1-alpha)*g_eff^2` | Coupled L2 |
+| Adagrad | `v,t` | `v+=g_eff^2`, `lr_t=lr/(1+t*lrDecay)` | Coupled L2 |
+| SGD+Momentum | `m,t` | `m=momentum*m+g_eff` | Coupled L2 |
+| Lion | `m,t` | `sign(beta1*m+(1-beta1)*g)` | Decoupled |
+
+All six share the same **Parameter identity** and serializable optimizer state `{kind,t,m,v}`; unused moment buffers remain zero for algorithms that do not need them. Changing algorithm requires resetting the previous state, while **preserving the parameter values** and allowing the whole selection to be undone. Both 2D and 4D Parameter tensors use the same training transaction, which recomputes the actual forward loss and reverse-mode gradients after each step. For the functional one-step optimizer blocks, no state is committed to the source Parameter: they are read-only comparison primitives.
+
+**Mechanism tests:** Adam and AdamW produce identical values when `weightDecay=0`, but differ for nonzero decay on otherwise equal weights/gradients. Adagrad with gradient `g=2` accumulates `v=4,8` after two steps, whereas RMSprop with `alpha=.99` starts at `v=.04`. Activation VJPs are verified against central finite differences away from nondifferentiable kinks; both new algorithms update and persist genuine 2D and 4D Parameters, including JSON resume. None of these micro-examples claims a ranking for real LLM training or measured GPU performance.
+
+The lessons `activation_extension` and `optimizer_decay_compare` deliberately include independently editable blocks and no fixed model-family constraints. References: [PyTorch Adam](https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html), [AdamW](https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html), [Adagrad](https://docs.pytorch.org/docs/stable/generated/torch.optim.Adagrad.html), [ELU](https://docs.pytorch.org/docs/stable/generated/torch.nn.ELU.html), [HardSwish](https://docs.pytorch.org/docs/stable/generated/torch.nn.Hardswish.html).
