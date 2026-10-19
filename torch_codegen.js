@@ -24,7 +24,7 @@ const SUPPORTED=new Set([
  "sliding_window_mask","temperature","residual_scale","mae_loss","detach_demo","topk","argmax",
  "group_topk_mask","masked_router_topk","router_topk","router_gate_weights",
  "dispatch_routed_tokens","expert_linear_bank","routed_weighted_reduce",
- "expert_bank_mix","gather_routed_bank","gather_rows","scatter_add","token_ids","embedding","cross_entropy","pos_encoding","slice_rows"
+ "expert_bank_mix","gather_routed_bank","gather_rows","scatter_add","token_ids","embedding","cross_entropy","pos_encoding","slice_rows","causal_mask"
 ]);
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const TRAINABLE=new Set(["parameter","nd_parameter"]);
@@ -107,6 +107,7 @@ function compile(raw,options={}){
     else if(k==="argmax")expr="torch.argmax("+src(id,"x")+",dim=-1).reshape(-1,1).to(DTYPE)";
     else if(k==="slice_rows")expr=src(id,"x")+'['+p.start+':'+(p.start+p.length)+',:]';
     else if(k==="pos_encoding")expr="_pos_encoding("+src(id,"x")+")";
+    else if(k==="causal_mask")expr="torch.tril(torch.ones(("+src(id,"x")+".shape[0],"+src(id,"x")+".shape[0]),dtype=DTYPE,device="+src(id,"x")+".device))";
     else if(k==="embedding")expr="_fixed_embedding("+src(id,"ids")+","+p.vocab+","+p.width+")";
     else if(k==="cross_entropy")expr="_cross_entropy("+src(id,"logits")+","+src(id,"labels")+")";
     else if(k==="group_topk_mask")expr="_group_topk("+src(id,"scores")+","+p.groups+","+p.keepGroups+")";
