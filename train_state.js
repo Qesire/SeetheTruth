@@ -29,7 +29,7 @@ function step(raw,options={}){
      optimizer:options.optimizer??"adamw",
      lr:options.lr??0.01,weightDecay:options.weightDecay??0.01,
      beta1:options.beta1??0.9,beta2:options.beta2??(options.optimizer==="lion"?0.99:0.999),
-     alpha:options.alpha??0.99,momentum:options.momentum??0.9,eps:options.eps??1e-8
+     alpha:options.alpha??0.99,momentum:options.momentum??0.9,lrDecay:options.lrDecay??0,eps:options.eps??1e-8
    });
    if(update.state.t>10000)throw Error("educational optimizer iteration limit");
    node.params.values=update.parameter;
@@ -46,7 +46,7 @@ function step(raw,options={}){
  if(!Number.isFinite(before)||!Number.isFinite(after))throw Error("non-finite loss in training step");
  return {graph:validated,beforeLoss:before,afterLoss:after,delta:after-before,
    targetId:reverse.targetId,records,previous:oldForward,next:nextForward,
-   evidence:"exact bounded graph VJP + persisted 2D/4D AdamW state; no real pretrained model or GPU execution"};
+   evidence:"exact bounded graph VJP + persisted 2D/4D optimizer-specific state; no real pretrained model or GPU execution"};
 }
 function steps(raw,options={}){
  const count=options.count??1;
