@@ -9,6 +9,7 @@ on:
       - 'block_catalog.js'
       - 'python_codegen.js'
       - 'tests/python_codegen_contracts.js'
+      - 'tests/write_python_export_examples.js'
       - 'nd_tensor.js'
       - 'nd_autodiff.js'
       - 'nd_adamw_micro.js'
@@ -79,6 +80,12 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
       - run: node --check python_codegen.js && node tests/python_codegen_contracts.js
+      - run: node tests/write_python_export_examples.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: executable-numpy-graph-examples
+          path: artifacts/executable-python
+          retention-days: 14
       - run: node --check micro_training_flows.js && node --check paper_patches.js && node --check paper_hover.js
       - run: node tests/block_catalog_contracts.js
       - run: node tests/concept_flow_contracts.js
