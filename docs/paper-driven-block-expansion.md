@@ -15,6 +15,16 @@ Patch schema: source (paper, code commit where available), target operation, tra
 
 Each paper patch must say whether it changes the mathematical function, its gradients, the numerical implementation, or only the hardware schedule. This prevents a FlashAttention tile scheduler from being misrepresented as a new attention distribution.
 
+## Executable original-graph patch: LoRA
+
+`paper_graph_rewrites.js` now rewrites **the MatMul selected by a user** into six ordinary added graph nodes: a dense `XW₀` branch; rank-r trainable `A`, `B`; `XA`, `(XA)B`, scale by `α/r`, then Add. Original output node ID, all downstream links and the entire graph topology outside the rewrite remain preserved. The output `Add` carries persisted paper provenance, and hovering over it opens LoRA's primary source and mathematics.
+
+- A base `W₀` may be an immutable `Input`, or a `Parameter` which is **frozen explicitly by `params.frozen=true`**, preserving its complete values and identity.
+- `B=0` initially gives exactly `Y=XW₀` (tested against pre-patch forward), while `A` has finite nonzero initialization; gradients propagate to B initially and A later, but frozen W₀ is excluded from optimizer updates.
+- The rewritten graph is saved as standard graph JSON; regular validation, branch execution, reverse-mode and independent NumPy/PyTorch exporters work without a bespoke LoRA kernel.
+- Tests assert original/destination equality, frozen parameter persistence, source-matched forward outputs, VJP paths, optimizer steps and cross-language execution.
+- This changes **weight parameterization/training paths**, not the density of the base GEMM or a measured GPU kernel schedule. Other paper patches are not silently promoted to executable status.
+
 ## Implemented in paper_patches.js
 - LoRA: output = XW0 + (alpha/r)XAB, trainable A/B, frozen W0.
 - DoRA: column-wise direction normalization and trainable magnitude; **forward only** (no custom normalization VJP).
