@@ -17,6 +17,23 @@
     optimizer:{t:0,m:[[[[0,0],[0,0]]]],v:[[[[0,0],[0,0]]]]}},
    "θ[B,H,T,D]; θ⁺ = AdamW(θ,∂L/∂θ,m,v)","持久四轴张量；以积木 ID 作为参数身份，多个下游分支共享梯度，动量和参数保存在工程 JSON。",
    "替换 GQA/MQA Q/K/V 数据源，执行连续训练并观察每个 KV Head 汇合的梯度。","仅有界 Float64 教学张量；参数不是大模型权重；手动编辑必须重置动量。"),
+  nd_rope:block("四轴旋转位置编码","4D Rotary Position Embedding","position",["x"],
+    {offset:0,rotaryDim:4,base:10000},
+    "RoPE(X)_{2i}=x_{2i}cosθ-x_{2i+1}sinθ; θ=(offset+t)/base^(2i/R)",
+    "对 Token 绝对位置逐对旋转 Q/K 的前 R 个通道，兼容 GQA 和只处理当前 Token 的增量解码。",
+    "将同一 Q/K 分别以全序列和分段绝对 offset 编码，比对每个 Token 的数值。",
+    "采用邻接通道配对，不等于所有架构的 split-half RoPE；旋转维必须为不超过 D 的偶数。"),
+  nd_cache_read:block("四轴 KV Cache 切片","4D KV Cache Read","memory",["x"],
+    {start:0,length:1},
+    "Y[b,h,t,d] = X[b,h,start+t,d]",
+    "只读取指定 Token 窗口，支持 Prefill prefix 与新 Token 切片。计算图保持不可变。",
+    "使用相同 K/V 源先读取 [0,2)，再读取 [2,3) 以供 Cache Append。",
+    "当前是纯函数式张量快照，不是跨会话的持久缓存服务器；必须显式连接每次更新。"),
+  nd_cache_append:block("四轴 KV Cache 追加","4D KV Cache Append","memory",["cache","segment"],{},
+    "Y = concat(cache,segment), axis = Token(2)",
+    "在固定 Batch、KV Head、Channel 轴的前提下，将新 Token KV 追加到旧缓存。",
+    "组合 RoPE(prefix) + RoPE(new) 并验证等价于 RoPE(完整 K)，或组合完整 V。",
+    "必须具有一致的 B/H/D；Token 维合并上限 8。不会隐式广播或就地修改。"),
   nd_input:block("四轴张量输入","4-Axis Tensor Source","data",[],{b:1,h:2,t:3,d:4,seed:1},
    "X ∈ ℝ^{B×H×T×D}","显式生成有界 [Batch, Head, Token, Channel] 教学张量，各轴独立可调。","修改 Head 或 Token 数，观察后续形状推导和数值运算。","仅独立的合成 Float64 数据；B/H/T/D 是默认含义，不是强制模型架构。"),
   nd_permute:block("四轴重排","Permute Tensor Axes","compute",["x"],{axis0:0,axis1:2,axis2:1,axis3:3},
@@ -203,6 +220,15 @@
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
    if(kind==='nd_repeat_kv')int(n.queryHeads,1,8,'GQA Query head count');
+   if(kind==='nd_rope'){
+      int(n.offset,0,64,'N-D RoPE absolute offset');
+      int(n.rotaryDim,2,8,'N-D rotary dimension');
+      if(n.rotaryDim%2!==0)fail('N-D RoPE rotary dimension must be even');
+      float(n.base,2,1000000,'N-D RoPE base');
+   }
+   if(kind==='nd_cache_read'){
+      int(n.start,0,7,'N-D cache start');int(n.length,1,8,'N-D cache length');
+   }
    if(kind==='nd_causal_mask'){int(n.queryStart,0,64,'queryStart');int(n.keyStart,0,64,'keyStart');if(n.queryStart<n.keyStart)fail('Causal mask no legal key at first query');}
    if(kind==='parameter'){
       const check=(value,name)=>{if(!Array.isArray(value)||!value.length||value.length>8||!Array.isArray(value[0])||!value[0].length||value[0].length>16||value.some(row=>!Array.isArray(row)||row.length!==value[0].length||row.some(x=>typeof x!=='number'||!Number.isFinite(x)||Math.abs(x)>1000)))fail('invalid '+name+' matrix');};
@@ -267,6 +293,9 @@
      else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
      else if(kind==='nd_repeat_kv')value=ND.repeatKVHeads(inputs.x,params.queryHeads);
+     else if(kind==='nd_rope')value=ND.rope4(inputs.x,params.offset,params.rotaryDim,params.base);
+     else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
+     else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);
      else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
      else if(kind==='nd_scale')value=ND.scale(inputs.x,params.factor);
      else if(kind==='nd_softmax_last')value=ND.softmaxLast(inputs.x);
