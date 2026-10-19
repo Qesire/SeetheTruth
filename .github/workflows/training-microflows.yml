@@ -6,6 +6,8 @@ on:
       - 'paper_patches.js'
       - 'paper_graph_rewrites.js'
       - 'model_trace.js'
+      - 'model_trace_bridge.js'
+      - 'tests/model_trace_bridge_contracts.js'
       - 'real_model_lab.html'
       - 'tests/model_trace_contracts.js'
       - 'tests/paper_graph_rewrites_contracts.js'
