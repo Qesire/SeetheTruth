@@ -36,7 +36,7 @@
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
     if(kind==="nd_parameter"){const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):globalThis.SeetheTruthND;output=ND.shape(p.values);rule="节点 ID 是真实小张量参数身份，JSON 存放 θ 及 AdamW 的 m/v/t，多个下游共享同一可求导来源";
-    }else if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish"].includes(kind)){
+    }else if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish","nd_elu","nd_hardswish"].includes(kind)){
       const x=get("x");output=x.slice();rule="按四轴张量每一数值单独执行 "+L.defs[kind].en+"；轴意义与 Tensor 形状不改变，可通过真实 VJP 求梯度";
     }else if(kind==="nd_input"){
       output=[p.b,p.h,p.t,p.d];rule="生成显式 [B,H,T,D] 的小型四轴张量，实际数值仍是确定性 CPU 合成数据";
@@ -105,7 +105,7 @@
         "N-D MatMul batch/head axes cannot broadcast",n.id);
       output=[Math.max(a[0],b[0]),Math.max(a[1],b[1]),a[2],b[3]];
       rule="在每个批次和头中只沿 K 轴收缩；B/H 轴允许 singleton 广播";
-    }else if(["opt_adamw","opt_sgd_momentum","opt_rmsprop","opt_lion"].includes(kind)){
+    }else if(["opt_adamw","opt_adam","opt_sgd_momentum","opt_rmsprop","opt_adagrad","opt_lion"].includes(kind)){
       const [a,b]=ports(n,inputs,"parameter","gradient");
       by(equal(a,b),kind+" parameter and gradient shape mismatch",n.id);
       output=a.slice();rule="对给定 Parameter 和 Gradient 从零历史状态计算一步 "+L.defs[kind].en+"，仅返回下一参数矩阵，不修改外部图或维护多步状态";
