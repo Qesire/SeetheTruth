@@ -14,8 +14,8 @@ function close(name,a,b,eps=6e-8){
 }
 const graph=L.preset('industrial_gqa_rope_tied'),before=JSON.stringify(graph),
   trace=L.evaluate(graph),steps=new Map(trace.steps.map(s=>[s.id,s]));
-assert.equal(graph.nodes.length,38);
-assert.equal(Concept.evaluate(graph).steps.length,38,'all industrial graph nodes need shape contracts');
+assert.equal(graph.nodes.length,45);
+assert.equal(Concept.evaluate(graph).steps.length,45,'all industrial graph nodes need shape contracts');
 const masks=steps.get('mask').values;
 assert.deepEqual(masks,[[1,0,0],[1,1,0],[1,1,1]]);
 for(const id of ['prob0','prob1']){
@@ -33,7 +33,7 @@ const embedding=steps.get('embed').values;
 close('tied head is the SAME table transposed',steps.get('tied_head').values,
  embedding[0].map((_,col)=>embedding.map(row=>row[col])));
 const numpy=NP.compile(graph),torch=T.compile(graph);
-assert.deepEqual([...torch.trainable].sort(),['embed','wk','wo','wq','wv']);
+assert.deepEqual([...torch.trainable].sort(),['embed','kgain','qgain','wk','wo','wq','wv']);
 assert.equal(torch.lossId,'loss');
 const outN=py(numpy.source),outT=py(torch.source,
  'print(json.dumps({k:v.detach().tolist() for k,v in GraphRuntime().forward().items()}))');
@@ -55,7 +55,7 @@ for(const k of ['out0','out1','logits'])close('no future leakage '+k,changedN[k]
 assert.notDeepEqual(changedN.logits[2],outN.logits[2],'own-token change must change output');
 const backward=G.backward(graph,trace);
 assert.ok(backward.pathIds.includes('q0r')&&backward.pathIds.includes('q1r')&&backward.pathIds.includes('kr'));
-for(const id of ['embed','wq','wk','wv','wo'])assert.ok(values(backward.gradients[id]).some(v=>Math.abs(v)>1e-12),'missing gradient '+id);
+for(const id of ['embed','qgain','kgain','wq','wk','wv','wo'])assert.ok(values(backward.gradients[id]).some(v=>Math.abs(v)>1e-12),'missing gradient '+id);
 const js=Train.steps(graph,{targetId:'loss',count:2,lr:.004,weightDecay:.005});
 const external=py(torch.source,[
 'g=GraphRuntime()',
@@ -81,7 +81,7 @@ for(const id of torch.trainable){
  close('checkpoint/'+id,external.full[id],external.replay[id],1e-10);
 }
 assert.equal(external.history.length,2);
-for(const [id,i,j] of [['embed',0,0],['wq',0,1],['wk',1,1],['wo',1,2]]){
+for(const [id,i,j] of [['embed',0,0],['qgain',0,0],['kgain',0,1],['wq',0,1],['wk',1,1],['wo',1,2]]){
  const eps=1e-5;
  const loss=(step)=>{
   const g=JSON.parse(before);g.nodes.find(n=>n.id===id).params.values[i][j]+=step*eps;
@@ -90,4 +90,4 @@ for(const [id,i,j] of [['embed',0,0],['wq',0,1],['wk',1,1],['wo',1,2]]){
  const fd=(loss(1)-loss(-1))/(2*eps),analytical=backward.gradients[id][i][j];
  assert.ok(Math.abs(fd-analytical)<1e-6,'finite difference '+id+' '+fd+' '+analytical);
 }
-console.log('INDUSTRIAL_GQA_TIED_PASS 38 compositional ops, 2 query heads/1 shared KV, per-head QK RMS+RoPE, true parameter alias, no future leaks, 5 parameter gradients, AdamW/checkpoint');
+console.log('INDUSTRIAL_GQA_TIED_PASS 45 compositional ops, 2 query heads/1 shared KV, per-head QK RMS+RoPE, true parameter alias, no future leaks, 7 parameter gradients, AdamW/checkpoint');
