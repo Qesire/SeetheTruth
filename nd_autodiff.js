@@ -15,6 +15,29 @@ function vjp(kind,input,params,upstream,output){
    result.prediction=ND.build(sh,idx=>2*(ND.at(a,idx)-ND.at(b,idx))*delta/size);
    result.cuts=["target"];return result;
  }
+ if(kind==="nd_rope"){
+   const sh=ND.shape(X),R=params.rotaryDim,offset=params.offset,base=params.base;
+   result.x=ND.build(sh,idx=>{
+     const d=idx[3];if(d>=R)return ND.at(upstream,idx);
+     const pair=Math.floor(d/2),theta=(offset+idx[2])/Math.pow(base,2*pair/R);
+     const cos=Math.cos(theta),sin=Math.sin(theta),pairIdx=[...idx.slice(0,3),d%2===0?d+1:d-1],
+           g=ND.at(upstream,idx),other=ND.at(upstream,pairIdx);
+     return d%2===0?cos*g+sin*other:cos*g-sin*other;
+   });return result;
+ }
+ if(kind==="nd_cache_read"){
+   const sh=ND.shape(X);
+   result.x=ND.build(sh,idx=>{
+     const t=idx[2]-params.start;
+     return t>=0&&t<params.length?ND.at(upstream,[idx[0],idx[1],t,idx[3]]):0;
+   });return result;
+ }
+ if(kind==="nd_cache_append"){
+   const a=ND.shape(input.cache),b=ND.shape(input.segment);
+   result.cache=ND.cacheRead4(upstream,0,a[2]);
+   result.segment=ND.cacheRead4(upstream,a[2],b[2]);
+   return result;
+ }
  if(kind==="nd_repeat_kv"){
    const sh=ND.shape(X),ratio=params.queryHeads/sh[1];
    result.x=ND.build(sh,([batch,head,t,d])=>{
