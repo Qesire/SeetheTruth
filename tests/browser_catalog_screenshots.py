@@ -215,7 +215,9 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         prev_state=next(n for n in prior["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]
         self.assertEqual(prev_state["kind"],"adagrad")
         self.assertEqual(prev_state["t"],0)
+        p.locator("#optimizerAdvanced summary").click()
         p.locator("#trainLRDecay").select_option("0")
+        p.locator("#optimizerAdvanced summary").click()
         p.locator("#load").set_input_files(exported.value.path())
         self.assertEqual(p.locator("#trainOptimizer").input_value(),"adagrad")
         self.assertEqual(p.locator("#trainLRDecay").input_value(),"1")
