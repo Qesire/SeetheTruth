@@ -379,9 +379,16 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
         self.assertIn("PyTorch CPU",p.locator("#pythonExportCaption").inner_text())
         p.locator('[data-preset="trainable_moe"]').click()
+        with p.expect_download() as download:
+            p.locator("#exportPython").click()
+        code=Path(download.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_expert_linear_bank",code)
+        self.assertIn("torch.einsum",code)
+        self.assertIn("self.parameters",code)
+        self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
+        p.locator('[data-preset="grpo_objective"]').click()
         p.locator("#exportPython").click()
         self.assertIn("不支持",p.locator("#status").inner_text())
-        self.assertIn("expert_linear_bank",p.locator("#status").inner_text())
 
     def test_export_real_python_code_whole_and_partial_graph(self):
         p=self.page
