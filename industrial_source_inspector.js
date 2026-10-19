@@ -40,6 +40,13 @@ const IDS=Object.freeze({
 function kind(graph,id){
  if(!graph||typeof graph.title!=="string"||!graph.nodes?.some(n=>n.id===id))return null;
  if(graph.title.startsWith("任务 43 · Loop Residual Scaling")){
+   // Source attribution is also a statement about a specific graph topology.
+   // After arbitrary rewiring/altered data, decline a validated recipe label.
+   const Loop=typeof module==="object"&&module.exports?
+     require("./loop_transformer.js"):
+     (typeof window!=="undefined"?window.SeetheTruthLoopTransformer:null);
+   try{if(!Loop)throw Error("no loop validator");Loop.inspectResidualScaling(graph);}
+   catch(err){return null;}
    if(/^r[01]_(attn_delta|ffn_delta|attn_res|state)$/.test(id)||id==="loss")return "loop_residual";
    if(["Wq","Wk","Wv","Wo","Wup","Wgate","Wdown"].includes(id))return "loop_residual";
    return null;
