@@ -35,7 +35,7 @@ The exported runner rejects a wrong source shape or nonfinite source values.
 - Sources can be modified on the Python side; the compiler never assumes
   that arbitrary Parameter sources are already trained.
 
-## Initial support
+## Tested NumPy support
 
 2D source tensors, MatMul, deterministic Linear, attention, MSE, elementwise
 arithmetic, Softmax, RMSNorm, LayerNorm, SiLU/GELU and other activations.
@@ -46,16 +46,11 @@ The six functional optimizer comparison blocks (AdamW, Adam, SGD momentum,
 RMSprop, Adagrad, Lion) export as **one-step pure updates from zero state**.
 Their inputs are not silently modified.
 
-This initial NumPy backend **does not translate the browser's stateful
-autodiff training transactions** into an independently trainable Python
-checkpoint. Building a PyTorch backend for gradient/stateful training
-requires separately verified backpropagation, optimizer state persistence
-and checkpoint handling. Other advanced blocks are rejected rather than
-faked. No model GPU kernels, huge tensor replay, or performance claims.
+The **NumPy backend remains functional and forward-only**; for actual parameter gradients, persistent AdamW, and resume-from-checkpoint use the separate [CPU PyTorch export](pytorch-executable-training.md). Both backends now cover ordinary reductions, normalization, 2D attention masks, low-rank projections and the fully composed teaching MoE routed expert path. The PyTorch backend implements differentiable weight sharing and explicit non-differentiable expert-index selection. GRPO and other unsupported operator kinds are rejected. This is not GPU kernel generation or a full pretrained model training system.
 
 ## Real cross-language acceptance
 
-CI installs NumPy and invokes generated Python scripts as subprocesses.
+CI installs NumPy and invokes generated Python scripts as subprocesses. The extended suite `tests/python_codegen_extensions_contracts.js` checks 19 more operator families; `tests/moe_executable_codegen_contracts.js` executes entire MoE routing and three expert weight banks through standalone Python.
 It compares **every intermediate tensor** with the JavaScript graph executor
 for cached GQA decoding, 4D attention, trainable-parameter-source recipes,
 FFN/Attention compositions, activations, and functional optimizer blocks.
