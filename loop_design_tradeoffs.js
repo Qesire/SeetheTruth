@@ -47,7 +47,7 @@ const DECISIONS=Object.freeze({
  alternative:"双深度 CE-only 不直接约束隐藏表征；无 Detach 对称 MSE 同时推动教师与学生，可能出现目标互相迁移；真正 LoopFormer 使用不同长度且经时间/步长条件的轨迹",
  cost:"多一个 MSE 目标、额外梯度；只做相同轨迹两轮状态匹配不等同于不同步长的短程一致性训练，可能反而逼近过早收敛",
  failure:"较深状态本身不比浅状态更好、各步表征处于不同语义阶段，或共享参数使深层目标不稳定时，MSE 可能伤害主任务",
- test:"固定 CPU 随机种子：λ=0 与 λ=0.1；对比 Detach 与不 Detach 的 MSE 梯度、浅轮 CE 与深轮 CE，观察是否缩小表征距离且不损害验证集",
+ test:"固定 CPU 随机种子比较 λ=0/0.1。数值梯度检验必须固定深层教师张量，只扰动浅层学生及主任务路径；若同时重算教师得到的是另一目标的全导数。再比浅/深 CE、表征距离及验证质量",
  sources:[["LoopFormer official training code: long.detach() → short",SOURCES.loopformer_code],["LoopFormer ICLR 2026",SOURCES.loopformer]]
  }),
  exit:Object.freeze({
