@@ -151,6 +151,53 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             p.locator("#gradientInspector").scroll_into_view_if_needed()
             self.shot(name)
 
+    def test_four_axis_cached_gqa_rope_incremental_decode(self):
+        p=self.page
+        p.locator('[data-preset="nd_cached_gqa_decode"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),21)
+        self.assertIn("21/21",p.locator("#graphReadiness").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        names=p.evaluate("""() => window.SeetheTruthLearning.order(
+          window.SeetheTruthLearning.preset('nd_cached_gqa_decode')).map(n=>n.id)""")
+        self.assertEqual(len(names),21)
+        self.assertEqual(names[-1],"context")
+        p.locator('#trace [data-step="'+str(names.index("cached_k"))+'"]').click()
+        self.assertIn("1×2×3×4",p.locator("#metrics").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),12)
+        p.locator('#matrix [data-nd-slice="1"]').select_option("1")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("50-rope-gqa-kv-cache-prefill-append.png")
+        p.locator('#trace [data-step="'+str(names.index("probabilities"))+'"]').click()
+        self.assertIn("1×4×1×3",p.locator("#metrics").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),3)
+        p.locator('#matrix [data-nd-slice="1"]').select_option("2")
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("51-rope-cached-query-attention-probability.png")
+        p.locator('#trace [data-step="'+str(names.index("context"))+'"]').click()
+        self.assertIn("1×4×1×4",p.locator("#metrics").inner_text().replace(" ",""))
+        self.assertEqual(p.locator("#matrix .cell").count(),4)
+        p.locator("#matrix").scroll_into_view_if_needed()
+        self.shot("52-cached-gqa-decoding-context.png")
+        verification=p.evaluate("""() => {
+          const L=window.SeetheTruthLearning,ND=window.SeetheTruthND,
+                out=Object.fromEntries(L.evaluate(L.preset('nd_cached_gqa_decode')).steps.map(s=>[s.id,s.values]));
+          const K=ND.repeatKVHeads(ND.rope4(out.full_k,0,4),4),
+                Q=ND.rope4(out.full_q,0,4),V=ND.repeatKVHeads(out.full_v,4);
+          const full=ND.matmul4(ND.softmaxLast(
+            ND.causalMask4(ND.scale(ND.matmul4(Q,ND.permute(K,[0,1,3,2])),.5))),V);
+          const expected=ND.flatten(ND.cacheRead4(full,2,1)),
+                actual=ND.flatten(out.context);
+          return {maxError:Math.max(...actual.map((v,i)=>Math.abs(v-expected[i]))),
+                  shape:ND.shape(out.context),
+                  kvCacheShape:ND.shape(out.cached_k),
+                  knownFlops:L.evaluate(L.preset('nd_cached_gqa_decode')).totalKnownFlops};
+        }""")
+        self.assertEqual(verification["shape"],[1,4,1,4])
+        self.assertEqual(verification["kvCacheShape"],[1,2,3,4])
+        self.assertEqual(verification["knownFlops"],192)
+        self.assertLess(verification["maxError"],1e-12)
+
     def test_composed_causal_multihead_attention_probabilities_and_context(self):
         p=self.page
         p.locator('[data-preset="nd_causal_attention"]').click()
