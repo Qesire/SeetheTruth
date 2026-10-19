@@ -172,7 +172,7 @@ function backward(raw,forward,opts={}){
     send(id,"v",mm(tr(probabilities),d));send(id,"q",mm(ds,k));send(id,"k",mm(tr(ds),q));
     local[id]={vjp:"dV=PᵀdY, dP=dYVᵀ, dS=softmax-VJP/√d, dQ=dS K, dK=dSᵀ Q"};continue;
   }
-  if(kind==="mse"){
+  if(kind==="mse"||kind==="mae_loss"){
     const a=inp(id,"prediction"),b=inp(id,"target"),size=a.length*a[0].length;
     send(id,"prediction",a.map((row,i)=>row.map((v,j)=>2*(v-b[i][j])*d[0][0]/size)));
     cut(id,"target","target data is fixed during optimization");continue;
