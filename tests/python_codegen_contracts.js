@@ -40,7 +40,7 @@ for(const name of [
 const graph=L.preset('nd_causal_attention'),program=Py.compile(graph);
 const baseline=execute(program),src=graph.nodes.find(n=>n.id==='query');
 const x=L.evaluate(graph).steps.find(s=>s.id===src.id).values;
-const modified=JSON.parse(JSON.stringify(x));modified[0][0][0][0]+=.25;
+const modified=JSON.parse(JSON.stringify(x));modified[0][0][2][0]+=.25;
 const more='\nchanged=json.loads('+JSON.stringify(JSON.stringify(modified))+')\n'
  +'out=run_graph({"query":changed})\n'
  +'print(json.dumps({k:v.tolist() for k,v in out.items()}))\n';
