@@ -21,7 +21,7 @@ function lora(raw,outputId,options={}){
        wEdge=graph.edges.find(e=>e.to===outputId&&e.port==="b");
  if(!xEdge||!wEdge)throw Error("LoRA target MatMul requires both input edges");
  const base=graph.nodes.find(n=>n.id===wEdge.from);
- if(base.kind!=="input")throw Error("LoRA frozen W0 must come from a nontrainable Input; refusing to silently freeze a Parameter");
+ if(base.kind!=="input"&&base.kind!=="parameter")throw Error("LoRA frozen W0 must be an Input or explicitly frozen Parameter");
  const trace=L.evaluate(graph),byId=new Map(trace.steps.map(s=>[s.id,s]));
  const X=byId.get(xEdge.from),W=byId.get(wEdge.from);
  if(X.shape.length!==2||W.shape.length!==2||X.shape[1]!==W.shape[0])
@@ -48,6 +48,8 @@ function lora(raw,outputId,options={}){
    m(ids.scaled,"scale",x+240,y+100,{factor:alpha/rank})
  ];
  const next=JSON.parse(JSON.stringify(graph));
+ const originalWeight=next.nodes.find(n=>n.id===wEdge.from);
+ if(originalWeight.kind==="parameter")originalWeight.params.frozen=true;
  const target=next.nodes.find(n=>n.id===outputId);
  target.kind="add";target.params={};
  next.nodes.push(...added);
@@ -71,7 +73,7 @@ function lora(raw,outputId,options={}){
  const delta=prev.flat().reduce((mx,z,i)=>Math.max(mx,Math.abs(z-newValue.flat()[i])),0);
  if(delta>1e-10)throw Error("LoRA zero-B initialization failed numerical parity: "+delta);
  return {graph:verified,patch:verified.paperPatches.at(-1),delta,source:paper,
-   description:"W0 frozen Input, trainable A/B Parameters, output ID preserved; B initialized to zero"};
+   description:"W0 frozen Input or Parameter (value preserved), trainable A/B; output ID preserved; B initialized to zero"};
 }
 return Object.freeze({lora,papers:{lora:paper}});
 });
