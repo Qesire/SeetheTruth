@@ -158,6 +158,7 @@ const notes={
  embedding:["用 Token ID 对表 E[V,D] 进行按行索引，输出 [T,D]，不是执行全部词表 GEMM。","一些架构共享输入和输出词表权重，但必须由实际配置确认。","连续的 ID 不保证对应的特征向量在空间中相近。","挑两个 ID 比较读取哪些表行，区分查表与训练更新。","embed"],
  pos_encoding:["生成不同频率的 sin/cos 位置向量，再加到输入隐藏特征。","真实模型可能采用可学习位置编码、相对偏置或 RoPE 等不同机制。","加性 PE 与 Q/K 上的 RoPE 旋转不是同一个算子。","输入内容不变仅改变位置，解释变化出现在何处。","transformer,rope"],
  transpose2d:["X[T,D] 交换为 Xᵀ[D,T]，索引重新排列供下一步矩阵收缩。","视图形式的 transpose 可不复制物理数据，contiguous 约束可能另行造成拷贝。","变换后的第一个轴未必仍代表 token，不能只按轴序号推测含义。","解释 Q[T,D] 乘 Kᵀ[D,T] 的两个输出轴。","matmul,sdpa"],
+ slice_rows:["保留时间轴上的连续行区间，形状 [T,D]→[length,D]，并对被选中的每行做恒等数值复制。","Next-token teacher forcing 常将同一完整序列做 [0:T−1] 输入与 [1:T] 标签切片；梯度只从连续输入分支回传，整数标签不可微。","不是自动 next-token 采样：只有把输入和标签按相差一格的时间位置明确连起来，才有对应的自回归监督语义。","取 ids=[2,5,1,4]，分别设置 start=0,length=3 和 start=1,length=3，验证输入/标签一格位移以及切片梯度的非选中行等于零。","transformer,ce"],
  slice_cols:["选取连续特征通道，保持 token 轴、减少可见的特征宽度。","合并 QKV Linear 后常通过切片得到分支；连续切片与任意索引在访存上不同。","单个通道不一定对应一个可解释语义神经元。","将宽度 8 的输出切成两组，说明分支用途依赖哪里。","linear"],
  concat_cols:["Token 对齐后沿特征轴拼接，数据重新排列但未执行可学习混合。","多头合并常涉及 Head 轴 reshape/permute，顺序必须与输出权重匹配。","Concat 本身不是输出投影，也不保证不同 token 已正确对齐。","拼接两条 4 通道支路再接 Linear，指出哪步才发生融合。","transformer,matmul"],
  repeat_rows:["重复已有 token 行以增大序列长度，值没有新来源。","GQA repeat_kv 是 KV Head 轴重用，不是重复 Token 轴，后端可以不实际拷贝。","复制输入不能等同新 token 生成或 KV cache 追加。","对比 Token repeat 与 KV Head 复用在数学轴上的区别。","gqa,cache"],
