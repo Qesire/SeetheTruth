@@ -6,7 +6,7 @@ assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','nd_trainable_gqa','nd_trainable_mqa','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','nd_trainable_gqa','nd_trainable_mqa','nd_cached_gqa_decode','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -23,6 +23,11 @@ for(const name of presetNames){
 }
 function perKind(k){
  if(k.startsWith('nd_')){
+  if(k==='nd_rope'){
+    const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
+    const input=ND.seedTensor([1,2,3,4],5),actual=B.execute(n,{x:input});
+    assert.deepEqual(C.analyze(n,{x:[1,2,3,4]}).shape,actual.shape);return;
+  }
   if(k==='nd_parameter'){
    const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
    const expected=ND.shape(n.params.values),sym=C.analyze(n,{}),num=B.execute(n,{});
@@ -33,6 +38,8 @@ function perKind(k){
   let inputs={};
   if(k==='nd_permute'||k==='nd_flatten'||k==='nd_reduce_sum'||k==='nd_scale'||k==='nd_softmax_last'||k==='nd_causal_mask')inputs={x:sample([1,2,3,4],2)};
   else if(k==='nd_repeat_kv')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_cache_read')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_cache_append')inputs={cache:sample([1,2,2,4],2),segment:sample([1,2,1,4],3)};
   else if(k==='nd_mse')inputs={prediction:sample([1,2,3,4],2),target:sample([1,2,3,4],3)};
   else if(k==='nd_reshape')inputs={x:sample([6,4],2)};
   else if(k==='nd_expand4d')inputs={x:sample([3,4],2)};
