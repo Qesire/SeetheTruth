@@ -6,6 +6,10 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ adam_official:["PyTorch Adam — coupled L2 and decoupled_weight_decay option","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html"],
+ adagrad_official:["PyTorch Adagrad accumulator and learning-rate decay","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adagrad.html"],
+ elu_official:["PyTorch ELU and exponential negative branch","https://docs.pytorch.org/docs/stable/generated/torch.nn.ELU.html"],
+ hardswish_official:["PyTorch HardSwish and MobileNetV3 piecewise definition","https://docs.pytorch.org/docs/stable/generated/torch.nn.Hardswish.html"],
  lion:["Symbolic Discovery of Optimization Algorithms — Lion (NeurIPS 2023)","https://arxiv.org/abs/2302.06675"],
  sgd_guide:["PyTorch SGD mathematical update","https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html"],
  rmsprop_guide:["PyTorch RMSprop mathematical update","https://docs.pytorch.org/docs/stable/generated/torch.optim.RMSprop.html"],
@@ -58,6 +62,13 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ opt_adam:["经典 Adam 先构造耦合衰减后的有效梯度 g_eff=g+λθ，然后使一阶、二阶动量都累积 g_eff；与 AdamW 将 λθ 从矩更新中分离不同。","PyTorch Adam 的 decoupled_weight_decay=False 是这里的明确对照语义；不是 AdamW 同义写法。","本积木从零动量预览一步，持久训练时状态 {kind,t,m,v} 存在 Parameter 内；切换策略必须重置旧动量。","将权重衰减设为 0 时 Adam 与 AdamW 等价，再设为 0.1 时比较两组真实参数更新。","adam_official,adamw"],
+ opt_adagrad:["Adagrad 维护长期累加器 V_t=V_(t−1)+(g+λθ)^2，下一步根据 sqrt(V_t)+ε 缩放梯度；可独立设置学习率衰减 lrDecay。","与 RMSprop 的指数平均不同，持续同向同幅梯度会不断增加 Adagrad 的分母；这并不自动代表更好的模型收敛。","采用初始累加器 0、无 momentum、耦合 L2；多步状态保存在 optimizer.v 中，可通过 JSON 恢复。","输入常数梯度 2，验证连续两步 v=4、8，改变 lrDecay 查看有效学习率。","adagrad_official,rmsprop_guide"],
+ elu:["ELU 在正半轴恒等，负半轴 α·expm1(x)，导数为 α·exp(x)；与 ReLU 的零负区、Leaky ReLU 的线性负区均不同。","PyTorch ELU 明确提供可选 alpha，常用于讨论负值饱和及激活均值；不隐含任何特定模型的默认架构。","当 alpha≠1 时原点左右导数不相同；有限差分应避开 x=0。本实现只做真实小张量计算。","设置 alpha=1/1.3，比对负值输出与有限差分，并将它自由接入 MSE 训练计算图。","elu_official"],
+ hardswish:["HardSwish = x·ReLU6(x+3)/6，x<=−3 时为 0，x>=3 时等于 x，中间区为 x(x+3)/6。","作为 MobileNetV3 使用的分段门控函数，常用于比较与 SiLU 的数值和实现代价。","在 x=−3、3 处分段导数存在跳变；教学定义采用外侧分支，测试不能将折点中央差分误当真实解析导数。","手算 −4、−1、1、4 的值并检查负区、线性区和中间区的梯度。","hardswish_official"],
+ nd_elu:["对四轴张量逐元素应用 ELU，保留 Batch/Head/Token/Channel 轴；梯度按逐元素 VJP 回传。","与二维 ELU 是相同数学函数而非不同架构，只改变数据布局。","Alpha 显式给定，不做隐式广播或改变模型结构。","连接四轴 Parameter → ELU → 四轴 MSE，检查梯度与 Adam/Adagrad 更新。","elu_official"],
+ nd_hardswish:["四轴 HardSwish 在每个张量坐标独立执行分段门控，形状完全保持不变。","ELU、HardSwish、SiLU 的取舍属于训练模型设计问题，不由本工作台强制规定。","不模拟硬件特殊激活 kernel 的真实执行性能，零点和拐点采用明确约定。","在两个 Head 查看实际数值切片并进行有限差分和反向传播。","hardswish_official"],
+
  opt_adamw:["AdamW 单步模块从零一阶、二阶动量计算一次带偏差修正的更新。其 output 是下一时刻 Parameter 数值，而不是就地写入。","AdamW 将 L2 类权重衰减与自适应梯度更新解耦，避免 Adam 的耦合惩罚语义。","本积木是 Stateless 预览，参数可自由连线；需要多步及状态持久化时使用 Train 事务。","将相同 θ、g 接到四种优化器后，检查每一坐标更新量。","adamw,pytorch"],
  opt_sgd_momentum:["SGD+Momentum 使用 g_eff=g+λθ，m_t=μm_{t−1}+g_eff，θ_new=θ−ηm_t；从零缓冲开始的首步与无动量 SGD 相同。","PyTorch 常见 SGD 默认 dampening=0、Nesterov=False，权重衰减以耦合的 L2 形式加入梯度。","与 AdamW 的 decoupled 衰减不同；多步状态存于参数的 optimizer.m。","从第二步起修改 μ，观察状态改变；比较前两步的更新。","sgd_guide,adamw"],
  opt_rmsprop:["RMSprop 保存逐元素平方梯度滑动平均 v_t=αv_{t−1}+(1−α)(g+λθ)²，再执行 ηg_eff/(√v+ε)。","PyTorch RMSprop 无 Centered、Momentum 的基础形式即此计算，epsilon 放在根号外。","耦合的 L2 惩罚与 AdamW 不等价；单步预览没有累计历史。","比较大梯度与小梯度的有效步长，观察 v 与更新范数。","rmsprop_guide"],
