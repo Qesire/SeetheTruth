@@ -91,7 +91,7 @@ function build(opts={}){
  // End with canonical target ID so existing train/backward UI and exports work.
  if(total!=="loss")total=join("scale","loss",{x:total},{factor:1},1550,2180);
  const graph=L.validateGraph({schema:L.SCHEMA,title:
-  "任务 "+(38+loops)+" · Looped Transformer ×"+loops+" · 同一参数共享迭代 + 多步损失",
+  "任务 41 · Looped Transformer ×"+loops+" · 参数共享 + 多深度损失",
   nodes,edges});
  // For 3 steps the entire recurrent depth, supervision and source matrices
  // still fit the bounded editor's 80-node + 176-edge contracts.
