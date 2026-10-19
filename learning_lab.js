@@ -261,6 +261,11 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="loop_residual_scaling"){
+      const Loop=typeof module==="object"&&module.exports?require("./loop_transformer.js"):globalThis.SeetheTruthLoopTransformer;
+      if(!Loop)throw Error("loop residual scaling engine not loaded");
+      return Loop.buildResidualScaling({loops:2,rule:"inverse_loops"});
+    }
     if(name==="loopformer_consistency"){
       const Consistency=typeof module==="object"&&module.exports?require("./loop_consistency.js"):globalThis.SeetheTruthLoopConsistency;
       if(!Consistency)throw Error("LoopFormer-inspired source graph builder unavailable");
