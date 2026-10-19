@@ -77,12 +77,22 @@ const SKETCH=Object.freeze({
 });
 const elems=shape=>shape.reduce((a,b)=>a*b,1);
 function profile(raw){
- const g=L.validateGraph(raw),info=Loop.inspect(g);
+ const g=L.validateGraph(raw);
+ const isOld=Boolean(g.nodes.some(n=>n.id==="r1_state")&&!g.nodes.some(n=>n.id==="r0_state"));
+ let info;
+ if(isOld){
+  const active=[1,2,3].filter(i=>g.nodes.some(n=>n.id==="r"+i+"_state"));
+  const parents=new Map(g.edges.map(e=>[e.to+":"+e.port,e.from]));
+  if(active.length===0||!active.every((i,j)=>i===j+1&&parents.get("r"+i+"_norm:x")===(i===1?"pos":"r"+(i-1)+"_state")))
+   throw Error("not a correctly connected legacy recurrent stack");
+  info={loops:active.length,linked:true};
+ }else info=Loop.inspect(g);
  if(!info.linked||!info.loops)throw Error("loop profiling requires connected recurrent graph");
  const by=new Map(g.nodes.map(n=>[n.id,n]));
  const parameters=g.nodes.filter(n=>n.kind==="parameter");
  const unique=parameters.reduce((s,n)=>s+elems([n.params.values.length,n.params.values[0].length]),0);
- const core=SKETCH.sharing.reduce((s,id)=>{
+ const ids=isOld?["wq","wk","wv","wo","wup","wgate","wdown"]:SKETCH.sharing;
+ const core=ids.reduce((s,id)=>{
   const n=by.get(id);return s+(n&&n.kind==="parameter"?elems([n.params.values.length,n.params.values[0].length]):0);
  },0);
  const fixed=unique-core;
@@ -159,7 +169,7 @@ function render(raw,id){
  if(key==="sharing"||key==="multidepth"){
   try{const g=profile(raw),rows=comparisons();
   out+='<details open><summary>真实教学图的参数量与计算量 · ×1/×2/×3</summary>'+
-   '<p>下表由实际图的 Parameter shape 和所有 MatMul 边的维度计算，非 GPU profiling；不包括非 GEMM 操作或真实运行时内存峰值。</p>'+
+   '<p>表格是第 41 课标准循环图的真实 ×1/×2/×3 对照；下方“所选图”数字独立从当前图推导。不同课程权重尺寸不同，不能将表格逐行当作其他课程的参数统计。非 GPU profiling，不含非 GEMM 算子和峰值内存。</p>'+
    '<table style="width:100%;font-size:11px"><thead><tr><th>循环</th><th>独立参数元素</th><th>不共享同深度对照</th><th>MatMul MAC</th></tr></thead><tbody>'+
     rows.map(r=>'<tr'+(g.loops===r.loops?' style="font-weight:bold"':'')+'><td>'+r.loops+
       '</td><td>'+r.physicalParameterElements+'</td><td>'+r.depthMatchedUntiedParameterElements+
