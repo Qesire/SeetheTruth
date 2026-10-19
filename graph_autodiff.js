@@ -164,6 +164,17 @@ function backward(raw,forward,opts={}){
     send(id,"scores",ds);cut(id,"indices","Top-k discrete selected IDs are fixed; gradient flows only through selected gate affinities");
     local[id]={vjp:"g=selectedAffinity/sum(selectedAffinity); dAffinity_i=(dG_i−Σ_j dG_j·g_j)/sum; duplicate selected IDs accumulate"};continue;
   }
+  if(kind==="token_depth_mask"){
+    cut(id,"depths","discrete per-token loop budgets, no derivative through the routing decision");
+    local[id]={vjp:"budget mask is a 0/1 control tensor, not learned differentiable routing"};continue;
+  }
+  if(kind==="state_mask_blend"){
+    const mask=inp(id,"mask");
+    send(id,"previous",d.map((row,i)=>row.map((v,j)=>v*(1-mask[i][j]))));
+    send(id,"candidate",d.map((row,i)=>row.map((v,j)=>v*mask[i][j])));
+    cut(id,"mask","hard 0/1 token depth selection is a non-differentiable routing control");
+    local[id]={vjp:"dPrevious=(1−Mask)*dH; dCandidate=Mask*dH, zero candidate gradient for exited Token rows"};continue;
+  }
   if(kind==="masked_softmax"){
     const mask=inp(id,"mask"),pvals=values.get(id);
     const dx=d.map((row,i)=>{
