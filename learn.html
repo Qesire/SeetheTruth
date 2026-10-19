@@ -196,6 +196,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="industrial_gqa_rope_tied"><span class="num">38</span><span>Qwen3 风格 GQA / RoPE / 权重绑定<span class="desc">逐头 QK Norm、2:1 KV 共享、正交旋转与真实参数复用</span></span></button>
   <button class="mission" data-preset="loop_transformer_two"><span class="num">39</span><span>Looped Transformer ×2 · 共享完整 Block<span class="desc">2 次潜空间迭代，同一 Q/K/V + Attention + SwiGLU 权重，多路径梯度</span></span></button>
   <button class="mission" data-preset="loop_transformer_three"><span class="num">40</span><span>Looped Transformer ×3 · 深度可扩展<span class="desc">计算深度增至 3 次，参数数量完全不变；测试因果性与断点续训</span></span></button>
+  <button class="mission" data-preset="loop_transformer_2"><span class="num">41</span><span>Ouro 启发 · 共享循环 + 多深度监督<span class="desc">每轮独立 CE，按深度加权总损失；切换 1/2/3 次且保留参数和优化器状态</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -209,6 +210,7 @@ input[type="file"]{display:none}
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
     <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button><button class="btn small" id="checkGraph" type="button" title="检查当前自由搭建计算图的输入端口、张量形状与可执行性，不要求任何固定模型结构">检查可运行性</button>
     <button class="btn small" id="applyLoRA" type="button" title="对选定 MatMul 执行 LoRA 真实图重写；W0 可以是只读 Input 或自动冻结的 Parameter">LoRA · 改造矩阵乘</button>
+    <select id="loopDepth" aria-label="计算循环深度" title="在新 Ouro 启发的多深度监督任务中调整循环深度" disabled><option value="1">循环 ×1</option><option value="2">循环 ×2</option><option value="3">循环 ×3</option></select><button class="btn small" id="applyLoopDepth" type="button" disabled title="调整循环次数，保留全部共享参数值和 AdamW 状态；旧的深度加权目标会重建">调整 Loop 深度</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <select id="pythonBackend" aria-label="Python 导出后端" title="NumPy 前向计算 / PyTorch CPU 可训练子集"><option value="numpy">NumPy · 数值执行</option><option value="torch">PyTorch · 自动微分与训练</option></select>
      <select id="exportScope" aria-label="Python 代码导出范围" title="完整图或仅所选节点的上游依赖"><option value="full">Python · 全图</option><option value="selected">Python · 所选分支</option></select>
@@ -275,6 +277,7 @@ input[type="file"]{display:none}
 <script src="activation_math.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
+<script src="loop_transformer.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
@@ -748,6 +751,10 @@ function render(){
  $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind));
  $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
  $("#applyLoRA").disabled=!graph.nodes.some(n=>n.id===selected&&n.kind==="matmul");
+ const loopState=window.SeetheTruthLoopTransformer?.inspect(graph);
+ $("#applyLoopDepth").disabled=!(loopState?.loops>0&&loopState.linked);
+ $("#loopDepth").disabled=$("#applyLoopDepth").disabled;
+ if(loopState?.loops>0)$("#loopDepth").value=String(loopState.loops);
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss"||n.kind==="cross_entropy");
  $("#trainSummary").hidden=!trainStatus;
  if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
@@ -770,6 +777,17 @@ $("#applyLoRA").onclick=()=>{
      say("LoRA 图重写已完成：冻结 W0，只训练低秩 A/B，前向初始化等价（最大误差 "+updated.delta.toExponential(1)+"）。数学来源 arXiv:2106.09685，可查看选中积木的论文解释。");
    }
  }catch(err){say("LoRA 重写拒绝："+err.message,true);}
+};
+$("#applyLoopDepth").onclick=()=>{
+ try{
+   const to=Number($("#loopDepth").value);
+   const state=window.SeetheTruthLoopTransformer.resize(graph,to);
+   if(mutate(()=>state.graph)){
+     selected="loss";render();
+     say("循环深度 "+state.oldLoops+" → "+state.newLoops+"；"+state.preservedParameterIds.length+
+       " 个共享参数的实际值与 AdamW 一阶/二阶状态完全保留。多深度损失权重按照新的循环次数重新计算。");
+   }
+ }catch(err){say("深度调整被拒绝："+err.message,true);}
 };
 $("#challenge").onclick=()=>{
  if(!graph.edges.length){say("当前工程没有连线可拆，请先连接两个模块。",true);return;}
