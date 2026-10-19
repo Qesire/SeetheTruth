@@ -25,7 +25,7 @@
     regularize:"训练/推理行为差异",routing:"离散路由与专家集合",training:"策略概率/奖励与梯度语义"
   });
   const unary=new Set(["rmsnorm","silu","softmax","layernorm","l2norm",
-    "relu","gelu_tanh","sigmoid","tanh","softplus","scale","bias","square",
+    "relu","gelu_tanh","gelu_erf","relu_squared","mish","leaky_relu","sigmoid","tanh","softplus","scale","bias","square",
     "dropout_demo","pos_encoding","rope2d","temperature","qk_norm","logit_softcap","detach_demo","residual_scale","partial_rope","log_softmax"]);
   const binary=new Set(["add","mul","subtract","divide","swiglu","geglu"]);
   const reduced=new Set(["row_mean","row_sum","row_var","row_logsumexp"]);
@@ -36,6 +36,8 @@
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
     if(kind==="nd_parameter"){const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):globalThis.SeetheTruthND;output=ND.shape(p.values);rule="节点 ID 是真实小张量参数身份，JSON 存放 θ 及 AdamW 的 m/v/t，多个下游共享同一可求导来源";
+    }else if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish"].includes(kind)){
+      const x=get("x");output=x.slice();rule="按四轴张量每一数值单独执行 "+L.defs[kind].en+"；轴意义与 Tensor 形状不改变，可通过真实 VJP 求梯度";
     }else if(kind==="nd_input"){
       output=[p.b,p.h,p.t,p.d];rule="生成显式 [B,H,T,D] 的小型四轴张量，实际数值仍是确定性 CPU 合成数据";
     }else if(kind==="nd_permute"){
