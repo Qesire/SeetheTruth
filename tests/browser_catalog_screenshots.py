@@ -338,6 +338,53 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_loopformer_consistency_mechanism_and_industry_why_tradeoff(self):
+        p=self.page
+        p.locator('[data-preset="loopformer_consistency"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),61)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator('[data-node="short_consistency"] .block-head').click()
+        self.assertIn("为什么这么设计",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("LoopFormer",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("stop_gradient",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("尚未实现",p.locator("#blockKnowledge").inner_text())
+        p.locator('[data-node="Wq"] .block-head').click()
+        self.assertIn("不共享同深度对照",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("168",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("440",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("MatMul MAC",p.locator("#blockKnowledge").inner_text())
+        p.locator("#studyMode").select_option("numeric")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        self.assertFalse(p.locator("#backward").is_disabled())
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        exported=json.loads(Path(d.value.path()).read_text(encoding="utf8"))
+        self.assertEqual(len(exported["nodes"]),61)
+        params=[n for n in exported["nodes"] if n["kind"]=="parameter"]
+        self.assertEqual(len(params),8)
+        self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in params))
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        numpy=Path(d.value.path()).read_text(encoding="utf8")
+        self.assertIn('v["short_consistency"]',numpy)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        torch=Path(d.value.path()).read_text(encoding="utf8")
+        self.assertIn('.detach().clone()',torch)
+        self.assertIn('self.loss_id = "loss"',torch)
+        self.assertEqual(torch.count('torch.nn.Parameter('),8)
+        p.locator('[data-node="Wq"] .block-head').click()
+        self.shot("62-loopformer-inspired-real-consistency-why-and-cost.png")
+
     def test_loop_depth_weighted_supervision_keeps_trained_parameter_identity(self):
         p=self.page
         p.locator('[data-preset="loop_transformer_2"]').click()
