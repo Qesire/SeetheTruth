@@ -5,6 +5,9 @@ on:
       - 'micro_training_flows.js'
       - 'paper_patches.js'
       - 'paper_graph_rewrites.js'
+      - 'model_trace.js'
+      - 'real_model_lab.html'
+      - 'tests/model_trace_contracts.js'
       - 'tests/paper_graph_rewrites_contracts.js'
       - 'paper_lab.html'
       - 'paper_hover.js'
@@ -106,6 +109,7 @@ jobs:
       - run: node tests/optimizer_activation_expansion.js
       - run: node tests/micro_training_flows_contracts.js
       - run: node --check paper_graph_rewrites.js && node tests/paper_graph_rewrites_contracts.js
+      - run: node tests/model_trace_contracts.js
       - run: node tests/paper_patches_contracts.js
       - run: node tests/paper_hover_contracts.js
       - run: node tests/paper_linked_blocks.js
