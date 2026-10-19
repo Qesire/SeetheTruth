@@ -30,7 +30,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
 | 积木库 | **119 种积木**：11 种基本计算积木 + 108 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **44 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；另有空白自由画布 | 固定循环次数；没有 LoopFormer 原版的时间／步长调制、随机短轨迹，也不是 Ouro learned exit、Huginn 全模型或 MoR Token 级路由的完整复刻 |
+| 学习内容 | **44 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
 | 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
@@ -68,6 +68,7 @@ node tests/industrial_gqa_tied_codegen_contracts.js # torch + numpy
 node tests/loop_transformer_codegen_contracts.js     # CPU NumPy/Torch，原始 2/3 轮最终步 CE
 node tests/loop_depth_supervision_contracts.js        # CPU NumPy/Torch，每轮 CE、深度加权梯度、深度调整保持参数和动量
 node tests/loop_consistency_tradeoffs_contracts.js     # CPU NumPy/Torch，深度一致性、BPTT、AdamW、真实参数/MAC 数量
+node tests/adaptive_token_depth_contracts.js            # CPU NumPy/Torch，逐 Token 停止、共享权重梯度、AdamW/断点续训
 node tests/architecture_why_contracts.js               # 论文与工业代码的设计动机、方案对比、失败条件
 node tests/industrial_source_contracts.js          # Node
 node tests/paper_graph_rewrites_contracts.js
@@ -85,6 +86,6 @@ node tests/python_codegen_extensions_contracts.js
 
 截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[源码对齐的 Qwen3 风格 GQA / QK Norm / RoPE / 可选权重绑定](docs/industrial-gqa-rope-tied.md)、[设计决策：工业界为什么这么做？](docs/architecture-design-rationale.md)、[Loop Transformer / Ouro / Huginn / MoR 的可执行循环深度及数学边界](docs/loop-transformer-recurrent-depth.md)、[逐轮监督与自适应深度的真实计算边界](docs/looped-multidepth-supervision.md)、[循环残差为什么要缩放：2026 论文与三组真实对照](docs/loop-residual-scaling-design-why.md)、[架构优先级](docs/learning-first-architecture.md)。
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[源码对齐的 Qwen3 风格 GQA / QK Norm / RoPE / 可选权重绑定](docs/industrial-gqa-rope-tied.md)、[设计决策：工业界为什么这么做？](docs/architecture-design-rationale.md)、[Loop Transformer / Ouro / Huginn / MoR 的可执行循环深度及数学边界](docs/loop-transformer-recurrent-depth.md)、[逐轮监督与自适应深度的真实计算边界](docs/looped-multidepth-supervision.md)、[循环残差为什么要缩放：2026 论文与三组真实对照](docs/loop-residual-scaling-design-why.md)、[MoR 逐 Token 递归预算：设计动机、真实计算图与没有节省的 FLOPs](docs/mor-token-depth-computation.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
