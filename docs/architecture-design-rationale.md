@@ -22,7 +22,7 @@ H(3) = F_θ(H(2))
 
 本项目提供可直接验证的“同深度不共享权重”的结构反事实。按当前的完整教学图：独立可训练矩阵共有 8 张；Embedding 32 元素，7 个共享核心矩阵 136 元素，合计 **168 参数元素**。固定深度 1/2/3 轮都是 168；若只把这 7 个矩阵展开成互相独立的权重，则同深度对照分别需要 **168 / 304 / 440 元素**。这些数来自程序读取真实 `Parameter` shape，**不是某个大型 LLM 的参数估计**。MatMul MAC 总数也从实际已连线图逐个推算，随着递归次数增加。
 
-**业界研究观点**：<Link url="https://arxiv.org/abs/2510.25741">Ouro / Scaling Latent Reasoning</Link> 希望增加潜空间推理的多步计算，而不是每次增加知识存储容量；<Link url="https://arxiv.org/abs/2610.00673">Closing the Loop</Link> 通过控制数据与计算预算分析 Looped LM 相比参数匹配 Dense 模型的增益。可以将其视为*待验证的归纳偏置*，不是所有文本任务下的胜出保证。
+**业界研究观点**：[Ouro / Scaling Latent Reasoning](https://arxiv.org/abs/2510.25741) 希望增加潜空间推理的多步计算，而不是每次增加知识存储容量；[Closing the Loop](https://arxiv.org/abs/2610.00673) 通过控制数据与计算预算分析 Looped LM 相比参数匹配 Dense 模型的增益。可以将其视为*待验证的归纳偏置*，不是所有文本任务下的胜出保证。
 
 **什么时候不适合**：纯事实记忆、严格低延迟以及训练算力不足时，额外串行深度可能难以换来收益。
 
@@ -38,7 +38,7 @@ L_depth = Σ_r α_r CE_r,  α_r≥0, Σ_r α_r=1
 
 ## 3 · LoopFormer：为什么用深度一致性与停止梯度？
 
-论文 [LoopFormer (ICLR 2026)](https://arxiv.org/abs/2602.11451) 希望模型在不同推理预算下表现稳定。其真实 <Link url="https://github.com/armenjeddi/loopformer/blob/master/train.py">train.py</Link> 中，长轨迹与短轨迹分别经模型推理，并同时优化语言模型损失和 `MSE(long.detach(),short)`。其精确实现还涉及 **time/step-size conditioning** 与**独立采样的短计算轨迹**，对这些要点不能只看多次循环就声称已经复现。
+论文 [LoopFormer (ICLR 2026)](https://arxiv.org/abs/2602.11451) 希望模型在不同推理预算下表现稳定。其真实 [train.py](https://github.com/armenjeddi/loopformer/blob/master/train.py) 中，长轨迹与短轨迹分别经模型推理，并同时优化语言模型损失和 `MSE(long.detach(),short)`。其精确实现还涉及 **time/step-size conditioning** 与**独立采样的短计算轨迹**，对这些要点不能只看多次循环就声称已经复现。
 
 第 42 门课是刻意缩小的*机制消融*：
 
@@ -56,7 +56,7 @@ L = L_depth + λ·MSE(H_short, stop_gradient(H_deep))
 
 ## 4 · 为什么让 Token 在不同深度退出？
 
-固定执行 3 轮虽然算法简单，却浪费“简单 Token”的潜在计算预算。<Link url="https://arxiv.org/abs/2507.10524">Mixture-of-Recursions</Link> 的研究方向是 Token 级深度路由；Ouro 也研究学习式深度分配。工程实现必须额外处理退出概率/负载、Batch 重整、梯度估计、退出后残余权重与每轮 KV Cache。这些并非第 39–42 课已经实现的功能。
+固定执行 3 轮虽然算法简单，却浪费“简单 Token”的潜在计算预算。[Mixture-of-Recursions](https://arxiv.org/abs/2507.10524) 的研究方向是 Token 级深度路由；Ouro 也研究学习式深度分配。工程实现必须额外处理退出概率/负载、Batch 重整、梯度估计、退出后残余权重与每轮 KV Cache。这些并非第 39–42 课已经实现的功能。
 
 **替代方案**：固定序列级预算；按请求难度选择统一循环数；真正逐 Token 退出。
 
