@@ -30,7 +30,11 @@ checkGraph('embedding');checkGraph('classifier');
 const {g,numpy,torch}=checkGraph('token_lm_trainable');
 assert.equal(torch.lossId,'loss');
 assert.deepEqual([...torch.trainable].sort(),['embedding_table','lm_head']);
-const oracle=L.evaluate(g),gradient=Grad.backward(g,oracle);
+const oracle=L.evaluate(g);
+const seq=oracle.steps.find(n=>n.id==='token_ids').values.map(x=>x[0]);
+assert.deepEqual(oracle.steps.find(n=>n.id==='input_tokens').values.map(x=>x[0]),seq.slice(0,3),'shifted LM inputs');
+assert.deepEqual(oracle.steps.find(n=>n.id==='labels').values.map(x=>x[0]),seq.slice(1,4),'labels must be exact next tokens');
+const gradient=Grad.backward(g,oracle);
 const training=Training.steps(g,{targetId:'loss',count:2,lr:.004,weightDecay:.005});
 const result=invoke(torch.source,[
 'r=GraphRuntime()',
@@ -77,7 +81,7 @@ assert.notDeepEqual(changedN.lookup,oracle.steps.find(n=>n.id==='lookup').values
 assert.notDeepEqual(changedN.loss,oracle.steps.find(n=>n.id==='loss').values);
 const bad=invoke(torch.source,[
 'try:',
-'  GraphRuntime({"labels":[[0.5],[2.],[1.]]}).forward()',
+'  _cross_entropy(torch.zeros((2,8),dtype=DTYPE),torch.tensor([[0.5],[2.]],dtype=DTYPE))',
 'except ValueError as e:',
 '  print(json.dumps({"error":str(e)}))'
 ].join('\n'));
