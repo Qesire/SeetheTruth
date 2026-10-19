@@ -98,6 +98,55 @@ function build(opts={}){
  if(graph.nodes.length>L.MAX_NODES||graph.edges.length>L.MAX_EDGES)throw Error("loop graph exceeded bounded editor budget");
  return graph;
 }
+// Controlled residual-step-size experiment motivated by Wang et al. (2026).
+// It is a pre-Norm, two-residual-per-loop ablation, NOT the exact DeepLoop
+// Post-LN α/β architecture or its paper's full multi-layer scaling rule.
+const RESIDUAL_RULES=Object.freeze(["unit","inverse_sqrt","inverse_loops"]);
+function buildResidualScaling(opts={}){
+ const loops=opts.loops===undefined?2:opts.loops;
+ const rule=opts.rule===undefined?"inverse_loops":opts.rule;
+ if(loops!==2)throw Error("residual-scaling demonstration supports exactly two loops within the editor limit");
+ if(!RESIDUAL_RULES.includes(rule))throw Error("unknown recurrent residual scaling rule; use unit, inverse_sqrt, or inverse_loops");
+ const epsilon=rule==="unit"?1:rule==="inverse_sqrt"?1/Math.sqrt(loops):1/loops;
+ const graph=build({loops});
+ for(let r=0;r<loops;r++){
+  const id="r"+r;
+  for(const [suffix,residual,branch] of [["attn_delta","attn_res","proj"],["ffn_delta","state","down"]]){
+   const target=id+"_"+residual,source=id+"_"+branch,delta=id+"_"+suffix;
+   const incoming=graph.edges.find(e=>e.to===target&&e.port==="b");
+   if(!incoming||incoming.from!==source)throw Error("residual branch changed; fail closed instead of rewriting an unrelated graph");
+   incoming.from=delta;
+   graph.nodes.push({id:delta,kind:"scale",x:390+r*750,y:suffix==="attn_delta"?1150:1360,params:{factor:epsilon}});
+   graph.edges.push({from:source,to:delta,port:"x"});
+  }
+ }
+ graph.title="任务 43 · Loop Residual Scaling ×2 · "+rule+" (ε="+epsilon.toFixed(6)+")";
+ return L.validateGraph(graph);
+}
+function inspectResidualScaling(raw){
+ const graph=L.validateGraph(raw);
+ const deltaNodes=graph.nodes.filter(n=>/^r[01]_(attn_delta|ffn_delta)$/.test(n.id));
+ if(deltaNodes.length!==4||!graph.title.startsWith("任务 43"))
+   throw Error("not an explicit two-loop residual-scaling experiment");
+ const factor=deltaNodes[0].params.factor;
+ if(!Number.isFinite(factor)||factor<=0||deltaNodes.some(n=>n.params.factor!==factor))
+   throw Error("residual step scales have diverged; not a matched-scaling reference graph");
+ const parents=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
+ for(let i=0;i<2;i++){
+  for(const [suffix,target,source] of [["attn_delta","attn_res","proj"],["ffn_delta","state","down"]]){
+   if(parents.get("r"+i+"_"+target+":b")!=="r"+i+"_"+suffix||
+      parents.get("r"+i+"_"+suffix+":x")!=="r"+i+"_"+source)
+      throw Error("residual scaling no longer connected to the claimed attention/FFN branch");
+  }
+ }
+ if(!inspect(graph).linked)throw Error("recurrent hidden-state feedback no longer linked");
+ return Object.freeze({loops:2,coefficient:factor,rule:Math.abs(factor-1)<1e-12?"unit":
+   Math.abs(factor-1/Math.sqrt(2))<1e-12?"inverse_sqrt":
+   Math.abs(factor-.5)<1e-12?"inverse_loops":"user_defined",
+   nodes:graph.nodes.length,parameters:graph.nodes.filter(n=>n.kind==="parameter").map(n=>n.id),
+   paper:"https://arxiv.org/abs/2606.18524",
+   scope:"exact mathematical two-loop residual ablation; not post-LN DeepLoop implementation"});
+}
 function inspect(raw){
  const graph=L.validateGraph(raw);
  const iterations=[0,1,2].filter(i=>graph.nodes.some(n=>n.id==="r"+i+"_state"));
@@ -144,5 +193,5 @@ function resize(raw,nextLoops){
   newObjectiveWeights:valid.nodes.filter(n=>/^weight[0-2]$/.test(n.id)).map(n=>n.params.factor),
   warning:"objective depth weights are rebuilt for the new depth; original parameter values and AdamW moments remain unchanged"};
 }
-return Object.freeze({build,inspect,resize,MAX_LOOPS,PAPER});
+return Object.freeze({build,buildResidualScaling,inspectResidualScaling,RESIDUAL_RULES,inspect,resize,MAX_LOOPS,PAPER});
 });
