@@ -49,9 +49,10 @@ function compile(raw,options={}){
    let expr="";
    if(SOURCES.has(k)){
      const initializer='_tensor('+py(id)+','+py(JSON.stringify(t.values))+','+JSON.stringify(t.shape)+',overrides)';
-     if(TRAINABLE.has(k))init.push('        self.parameters['+py(id)+'] = torch.nn.Parameter('+initializer+')');
+     const trainable=TRAINABLE.has(k)&&!p.frozen;
+     if(trainable)init.push('        self.parameters['+py(id)+'] = torch.nn.Parameter('+initializer+')');
      else init.push('        self.inputs['+py(id)+'] = '+initializer);
-     expr='self.'+(TRAINABLE.has(k)?'parameters':'inputs')+'['+py(id)+']';
+     expr='self.'+(trainable?'parameters':'inputs')+'['+py(id)+']';
    } else if(k==="linear"){
      const sh=out.get(edges.get(id+":x")).shape;
      const W=Array.from({length:sh[1]},(_,j)=>Array.from({length:p.out},(_,i)=>weight(id,i,j)));
@@ -108,7 +109,7 @@ function compile(raw,options={}){
    .replace('__FORWARD__',body.join("\n")||'        pass');
  return {source,filename:"seethetruth-"+(options.targetId||"training-graph")+"-torch.py",nodes:metadata,
     outputId:options.targetId||sorted.at(-1).id,
-    dependency:"torch",backend:"pytorch",trainable:sorted.filter(n=>TRAINABLE.has(n.kind)).map(n=>n.id),
+    dependency:"torch",backend:"pytorch",trainable:sorted.filter(n=>TRAINABLE.has(n.kind)&&!n.params.frozen).map(n=>n.id),
     lossId:target,statement:"Torch CPU Float64 forward+autograd+checkpoint for the supported subset; no pretrained models"};
 }
 return Object.freeze({compile,supportedKinds:[...SUPPORTED].sort()});
