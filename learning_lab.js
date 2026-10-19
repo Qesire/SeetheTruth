@@ -89,6 +89,10 @@
       for(const key of Object.keys(params)){
         if(Object.hasOwn(p,key))params[key]=p[key];
       }
+      if(type==="parameter"||type==="nd_parameter"){
+        if(p.frozen!==undefined&&typeof p.frozen!=="boolean")fail("Parameter frozen must be boolean",n.id);
+        if(p.frozen===true)params.frozen=true;
+      }
       if(type==="input"){
         safeDim(params.rows,n.id,"token 数",8);
         safeDim(params.width,n.id,"特征维度");
