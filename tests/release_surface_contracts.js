@@ -25,7 +25,7 @@ for(const route of ['learn.html','training.html','cache.html','paper_lab.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
-for(const source of ['python_codegen.js','torch_codegen.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
+for(const source of ['python_codegen.js','torch_codegen.js','paper_graph_rewrites.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
  assert.ok(html.includes('src="'+source+'"'),source+' loaded in the public workbench');
 }
 for(const doc of ['docs/executable-python-codegen.md','docs/real-model-sampling.md','docs/release-readiness.md']){
