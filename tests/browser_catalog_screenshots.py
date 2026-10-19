@@ -338,6 +338,52 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_looped_transformer_shared_parameters_recurrent_depth_and_real_exports(self):
+        p=self.page
+        for recipe,depth,count in (("loop_transformer_two",2,56),("loop_transformer_three",3,75)):
+            p.locator('[data-preset="'+recipe+'"]').click()
+            self.assertEqual(p.locator("#blocks .block").count(),count)
+            self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+            p.locator("#run").click()
+            self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+            p.locator('[data-node="loss"] .block-head').click()
+            p.locator("#backward").click()
+            self.assertIn("反向传播",p.locator("#status").inner_text())
+            self.assertEqual(p.locator('[data-node="r1_gate"]').get_attribute("data-industrial-ref"),"loop_ffn")
+            self.assertEqual(p.locator('[data-node="r2_prob"]').get_attribute("data-industrial-ref"),"loop_causal")
+            p.locator('[data-node="wq"] .block-head').click()
+            self.assertIn("跨深度共享",p.locator("#blockKnowledge").inner_text())
+            p.locator('[data-node="r1_qr"] .block-head').hover()
+            p.locator("#paperHoverInspector").wait_for(state="visible",timeout=5000)
+            self.assertIn("Looped Causal Attention",p.locator("#paperHoverInspector").inner_text())
+            p.locator('[data-node="loss"] .block-head').click()
+            p.locator("#trainCount").select_option("2")
+            p.locator("#trainStep").click()
+            self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+            with p.expect_download() as d:
+                p.locator("#save").click()
+            saved=json.loads(Path(d.value.path()).read_text(encoding="utf8"))
+            weights=[n for n in saved["nodes"] if n["kind"]=="parameter"]
+            self.assertEqual(len(weights),8)
+            self.assertEqual({n["id"] for n in weights},
+              {"embed","wq","wk","wv","wo","wgate","wup","wdown"})
+            self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in weights))
+            for backend in ("numpy","torch"):
+                p.locator("#pythonBackend").select_option(backend)
+                with p.expect_download() as d:
+                    p.locator("#exportPython").click()
+                source=Path(d.value.path()).read_text(encoding="utf8")
+                self.assertIn('r1_norm',source)
+                self.assertIn('r'+str(depth)+'_state',source)
+                self.assertIn('wq',source)
+                self.assertIn('wdown',source)
+                if backend=="torch":
+                    self.assertIn("torch.nn.Parameter",source)
+                    self.assertIn("self._optimizer.load_state_dict",source)
+                else:
+                    self.assertIn("np",source)
+            self.shot("60-loop-transformer-"+str(depth)+"-recurrences-real-code.png")
+
     def test_industry_qwen3_inspired_gqa_rope_tied_head_executable(self):
         p=self.page
         p.locator('[data-preset="industrial_gqa_rope_tied"]').click()
