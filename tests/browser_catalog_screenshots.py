@@ -341,7 +341,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_real_token_embedding_crossentropy_training_and_code_export(self):
         p=self.page
         p.locator('[data-preset="token_lm_trainable"]').click()
-        self.assertEqual(p.locator("#blocks .block").count(),8)
+        self.assertEqual(p.locator("#blocks .block").count(),9)
         self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
         p.locator("#run").click()
         self.assertIn("✓ 已运行",p.locator("#status").inner_text())
