@@ -14,6 +14,9 @@ on:
       - 'tests/nd_gqa_autodiff_contracts.js'
       - 'tests/nd_vjp_local_contracts.js'
       - 'tests/nd_cached_decode_contracts.js'
+      - 'activation_math.js'
+      - 'optimizer_rules.js'
+      - 'tests/activation_optimizer_contracts.js'
       - 'tests/nd_tensor_contracts.js'
       - 'block_knowledge.js'
       - 'concept_flow.js'
@@ -76,6 +79,7 @@ jobs:
       - run: node --check nd_adamw_micro.js && node tests/nd_train_state_contracts.js
       - run: node tests/nd_vjp_local_contracts.js
       - run: node tests/nd_cached_decode_contracts.js
+      - run: node --check activation_math.js && node --check optimizer_rules.js && node tests/activation_optimizer_contracts.js
       - run: node tests/micro_training_flows_contracts.js
       - run: node tests/paper_patches_contracts.js
       - run: node tests/paper_hover_contracts.js
