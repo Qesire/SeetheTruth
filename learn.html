@@ -572,7 +572,7 @@ function inspect(){
    :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>'):"";
  if(n&&(n.kind==="parameter"||n.kind==="nd_parameter"))$("#parameterMatrix").addEventListener("change",e=>{try{
    const matrix=JSON.parse(e.target.value),id=n.id;
-   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params.values=matrix;const zero=target.kind==="nd_parameter"?window.SeetheTruthND.build(window.SeetheTruthND.shape(matrix),()=>0):matrix.map(row=>row.map(()=>0));target.params.optimizer={t:0,m:zero,v:JSON.parse(JSON.stringify(zero))};return g;});
+   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params.values=matrix;const zero=target.kind==="nd_parameter"?window.SeetheTruthND.build(window.SeetheTruthND.shape(matrix),()=>0):matrix.map(row=>row.map(()=>0));target.params.optimizer={kind:target.params.optimizer.kind||"adamw",t:0,m:zero,v:JSON.parse(JSON.stringify(zero))};return g;});
  }catch(err){say("参数矩阵 JSON 无效："+err.message,true);}});
  document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
    const name=input.dataset.param, v=input.tagName==="SELECT"?input.value==="true":Number(input.value),id=selected;
@@ -674,6 +674,8 @@ function renderReadiness(){
  root.querySelectorAll("[data-readiness-node]").forEach(b=>b.onclick=()=>{selected=b.dataset.readinessNode;render();focusGraphNode(selected);});
 }
 function render(){
+ const kinds=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind)).map(n=>n.params.optimizer.kind||"adamw");
+ if(kinds.length&&kinds.every(k=>k===kinds[0]))$("#trainOptimizer").value=kinds[0];
  readinessSnapshot=Readiness.check(graph);
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
@@ -733,6 +735,18 @@ $("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.eval
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
+$("#trainOptimizer").onchange=()=>{
+ const nextKind=$("#trainOptimizer").value;
+ const before=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind));
+ if(!before.length)return;
+ if(before.every(n=>(n.params.optimizer.kind||"adamw")===nextKind))return;
+ const reset=matrix=>matrix.map(x=>Array.isArray(x)?reset(x):0);
+ const ok=mutate(g=>{for(const n of g.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind))){
+   const blank=reset(n.params.values);
+   n.params.optimizer={kind:nextKind,t:0,m:blank,v:JSON.parse(JSON.stringify(blank))};
+ }return g;});
+ if(ok)say("已切换到 "+nextKind+" 并重置所有参数的优化器状态（可撤销）；原有权重数值保留。");
+};
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
  const possibleLosses=graph.nodes.filter(n=>n.kind==="mse"||n.kind==="nd_mse");
