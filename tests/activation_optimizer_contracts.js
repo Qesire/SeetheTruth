@@ -33,7 +33,7 @@ for(const kind of ['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish']){
 }
 const p=[[.5,-.7],[.1,-.3]],g=[[.2,-.4],[.5,.05]];
 const strategies=O.KINDS;
-assert.deepEqual(strategies,['adamw','sgd_momentum','rmsprop','lion']);
+assert.deepEqual(strategies,['adamw','adam','sgd_momentum','rmsprop','adagrad','lion']);
 for(const optimizer of strategies){
  const h={optimizer,lr:.01,weightDecay:.02},a=O.step(p,g,null,h);
  assert.equal(a.state.kind,optimizer);assert.equal(a.state.t,1);
