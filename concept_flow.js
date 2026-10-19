@@ -216,6 +216,12 @@
       output=[idx[0]*idx[1],x[1]];
       rule="按 token-major 顺序展开每个 token 的 K 个离散专家索引，输出 [T·K,D] 的示例专家向量";
       conditions.push("概念模式不检查每个索引实际是否有效；不执行真正的专家 FFN");
+    }else if(kind==="slice_rows"){
+      const x=get("x");
+      by(x.length===2&&p.start+p.length<=x[0],"Token slice requires 2D source with start+length <= T",n.id);
+      output=[p.length,x[1]];
+      rule="沿时间 Token 轴从 start 开始选择 length 行，特征轴 D 完整保留；前缀 [0,T−1) 与后继 [1,T) 可组成 next-token 训练配对";
+      conditions.push("此为静态行切片，不执行 tokenizer、随机采样或 attention；超出序列范围的切片必须拒绝");
     }else if(kind==="gather_rows"){
       const [x,idx]=ports(n,inputs,"x","indices");by(idx[1]===1,"Gather indices must be [T,1]",n.id);
       output=[idx[0],x[1]];rule="整数行索引收集输入行；重复索引意味着重复读取相同张量";
