@@ -18,6 +18,25 @@ assert.match(Source.card('tie').practice,/false/,'must not misrepresent Qwen3 un
 assert.match(Source.card('gqa').flow,/K/);
 assert.equal(Source.kind(L.preset('causal_transformer_lm'),'qgain'),null,'no false Qwen3 reference on unrelated graph');
 assert.equal(Source.kind(g,'not_a_node'),null);
+for(const [lesson,loops] of [['loop_transformer_two',2],['loop_transformer_three',3]]){
+ const graph=L.preset(lesson),source=JSON.stringify(graph);
+ for(let i=1;i<=loops;i++){
+  assert.equal(Source.kind(graph,'r'+i+'_norm'),'loop_shared');
+  assert.equal(Source.kind(graph,'r'+i+'_qr'),'loop_causal');
+  assert.equal(Source.kind(graph,'r'+i+'_prob'),'loop_causal');
+  assert.equal(Source.kind(graph,'r'+i+'_state'),'loop_ffn');
+ }
+ assert.equal(Source.kind(graph,'loss'),'loop_adaptive');
+ for(const key of ['loop_shared','loop_causal','loop_ffn','loop_adaptive']){
+  const entry=Source.card(key);
+  assert.ok(entry.papers.length>0);
+  assert.match(Source.render(key),/源码拆解/);
+  assert.match(entry.epistemic,/[A-Z_]+/);
+ }
+ assert.equal(JSON.stringify(graph),source,'paper inspector may not modify recurrence');
+}
+assert.match(Source.card('loop_adaptive').trap,/没有实际实现退出分布/);
+assert.match(Source.card('loop_shared').trap,/不.*Ouro 完整 checkpoint/);
 assert.equal(Source.render('unknown'),'');
 const original=JSON.stringify(g);
 for(const id of Object.keys(refs))Source.render(refs[id]);
