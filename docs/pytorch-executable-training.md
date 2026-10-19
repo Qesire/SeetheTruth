@@ -25,7 +25,9 @@ restored.train(steps=1, lr=0.004, weight_decay=0.005)
 
 Using `GraphRuntime(overrides={"tokens": values})` supplies complete input tensors with the expected shape; overrides are checked for finiteness. Train uses PyTorch `loss.backward()` followed by genuine `torch.optim.AdamW.step()` with *persistent optimizer moments* on a single graph instance. Both parameter values and AdamW state survive a trusted local checkpoint round-trip. Changing optimizer hyperparameters without explicitly reconstructing the runtime is rejected to avoid hidden state resets.
 
-**Backpropagation is verified on supported graph recipes, not all 116 blocks.** A standalone generated PyTorch file has no SeetheTruth imports. CPU/no GPU is the default. It does **not** capture or train actual pretrained model weights, execute arbitrary Python supplied through saved project JSON, implement distributed expert dispatch, or export a production checkpoint of an LLM.
+**A `Parameter` with validated `params.frozen=true` is a value-preserving **non-trainable Torch tensor**, omitted from `torch.optim.AdamW`. This permits a paper-driven LoRA rewrite to keep the original pretrained/base `W₀` unchanged while training the low-rank A/B adapters; no hidden copies or resetting to synthetic weights occurs.
+
+Backpropagation is verified on supported graph recipes, not all 116 blocks.** A standalone generated PyTorch file has no SeetheTruth imports. CPU/no GPU is the default. It does **not** capture or train actual pretrained model weights, execute arbitrary Python supplied through saved project JSON, implement distributed expert dispatch, or export a production checkpoint of an LLM.
 
 ### Evidence
 
