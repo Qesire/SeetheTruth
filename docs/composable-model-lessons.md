@@ -353,3 +353,33 @@ These are observed numerical outputs for deterministic synthetic tensors, not la
 Contract tests verify AdamW's first-step and second-step moment/bias correction analytically for every tensor element; zero-gradient decoupled weight decay; three simultaneous parameter updates through full GQA and MQA graphs; immutability of old versions; target/shape safety; serializing a two-step graph and reproducing the identical next update; and an unfinished unrelated side branch surviving a parameter update. Browser tests explicitly perform two-step training, inspect per-parameter optimizer counters and Loss curves, undo, export/reimport and continue training.
 
 The N-D VJP and optimizer features remain deliberately bounded to `Float64` CPU teaching tensors with four axes of 1–8 elements and at most 512 elements. Real trainable-model components still require actual datasets, parameter initialization, backends, optimizer schedule and distributed learning before they can claim full training. Reference: [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101); [PyTorch Parameter](https://docs.pytorch.org/docs/stable/generated/torch.nn.parameter.Parameter.html).
+
+## 31 — 4D RoPE, pure KV Cache read/append, cached GQA decoding
+
+This 21-node lesson extends free-form CPU tensor graphs with three independently reusable primitives:
+
+| Primitive | Actual bounded operation | Important constraint |
+|---|---|---|
+| `nd_rope` | Adjacent-pair planar rotation over the first `rotaryDim` channels with absolute `offset+t`; the rest are copied unchanged | `rotaryDim` even and ≤ D. Adjacent-pair is explicitly **not** every real model's split-half RoPE convention |
+| `nd_cache_read` | Read `X[...,start:start+length,:]` from axis 2 and materialize a nested tensor | Start and length must describe a real contiguous window |
+| `nd_cache_append` | Concatenate `cache` and `segment` on Token axis 2 while preserving B, KV Head and D | No side effects, no implicit broadcast, bounded combined Token length |
+
+The lesson begins with three deterministic synthetic tensors: `Q=[1,4,3,4]`, `K=V=[1,2,3,4]`. It then explicitly splits the Key and Value series into a **prefill prefix of 2 Tokens** and the **new Token at absolute position 2**. New query comes from the same Token index. The keys are rotated *before* being appended:
+
+```text
+full K [1,2,3,4] → Read prefix [1,2,2,4] → RoPE(offset=0) ──┐
+                  → Read current [1,2,1,4] → RoPE(offset=2) ─┴─ Append → K_cache [1,2,3,4]
+full V [1,2,3,4] → Read prefix ────────────────────────────────┐
+                  → Read current ───────────────────────────────┴─ Append → V_cache [1,2,3,4]
+full Q [1,4,3,4] → Read token 2 [1,4,1,4] → RoPE(offset=2) → Q_current
+K_cache → Repeat KV heads 2→4 → Transpose → QKᵀ → Scale → Causal Mask(queryStart=2) → Softmax
+V_cache → Repeat KV heads 2→4 ────────────────────────────────────────────────────────┘ → PV → context [1,4,1,4]
+```
+
+**Numerical acceptance:** The cached output for absolute Query position 2 agrees elementwise with `Read(FullSequenceCausalAttention(Q,K,V),start=2,length=1)`. Independently, `Append(RoPE(K_prefix,0),RoPE(K_new,2))` agrees with `RoPE(K_full,0)`, and raw Value cache concatenation agrees with the original Values. This is a correctness invariant, not a latency measurement.
+
+All three N-D primitives have reverse-mode rules as well: RoPE uses the transpose/inverse of its local rotation; Cache Read scatters gradients back into the selected Token interval, filling zero outside; Cache Append splits the downstream gradient into prefix and segment. The acceptance checks 96 full-graph Q/K/V source gradient coordinates using central finite differences, including prefix/current branch merging. As always, other unconnected blocks may coexist on the canvas, and custom topologies are accepted if they can execute.
+
+**Important epistemic boundary:** The cache here is explicit **functional snapshot data** in a DAG and is not a mutable stateful decoding engine, external cache store, or GPU paged attention implementation. Student-controlled append calls do not constitute measured runtime savings. Standard HF dynamic caches have per-layer state and update it across actual autoregressive model calls; our composition teaches the same tensor dependency without claiming a full runtime.
+
+References: [RoFormer — Rotary Position Embedding](https://arxiv.org/abs/2104.09864); [Hugging Face KV cache implementation](https://huggingface.co/docs/transformers/cache_explanation); [GQA](https://aclanthology.org/2023.emnlp-main.298/).
