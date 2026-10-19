@@ -193,6 +193,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="optimizer_decay_compare"><span class="num">35</span><span>Adam / AdamW / Adagrad / RMSprop 对照<span class="desc">耦合 L2 与解耦衰减；累计梯度与指数平均</span></span></button>
   <button class="mission" data-preset="token_lm_trainable"><span class="num">36</span><span>Next-token → 可训练 Embedding → CE<span class="desc">时间轴标签右移、共享表梯度与续训</span></span></button>
   <button class="mission" data-preset="causal_transformer_lm"><span class="num">37</span><span>可训练 Causal Attention → Next-token<span class="desc">Q/K/V、三角 Mask、Softmax、残差、CrossEntropy、AdamW</span></span></button>
+  <button class="mission" data-preset="industrial_gqa_rope_tied"><span class="num">38</span><span>Qwen3 风格 GQA / RoPE / 权重绑定<span class="desc">逐头 QK Norm、2:1 KV 共享、正交旋转与真实参数复用</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
