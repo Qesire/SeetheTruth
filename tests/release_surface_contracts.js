@@ -20,7 +20,7 @@ assert.match(readme,/PyTorch CPU/,'landing must document trainable PyTorch backe
 assert.match(readme,/不支持的节点会明确拒绝/,'do not imply arbitrary block compilation');
 assert.match(readme,/无需 GPU/,'GPU must not be mandatory for learning');
 assert.match(readme,/真实小模型采集工具已有/,'real-model capture claims must be tiered');
-for(const route of ['learn.html','training.html','cache.html','paper_lab.html','micro_training.html','index.html','telemetry.html']){
+for(const route of ['learn.html','training.html','cache.html','paper_lab.html','micro_training.html','real_model_lab.html','index.html','telemetry.html']){
  assert.ok(fs.existsSync(path.join(root,route)),route+' actually exists');
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
