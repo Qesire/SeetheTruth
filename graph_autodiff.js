@@ -6,6 +6,7 @@ const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):ro
 const Expert=typeof module==="object"&&module.exports?require("./expert_ffn_vjp.js"):root.SeetheTruthExpertVJP;
 const NDVJP=typeof module==="object"&&module.exports?require("./nd_autodiff.js"):root.SeetheTruthNDVJP;
 const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):root.SeetheTruthND;
+const Activations=typeof module==="object"&&module.exports?require("./activation_math.js"):root.SeetheTruthActivations;
 const finite=a=>{try{
  const walk=(v,depth)=>{if(depth>4)throw Error("rank");
   if(!Array.isArray(v))return typeof v==="number"&&Number.isFinite(v);
@@ -72,6 +73,11 @@ function backward(raw,forward,opts={}){
   }
   if(kind==="square"){send(id,"x",had(d,scale(inp(id,"x"),2)));continue;}
   if(kind==="transpose2d"){send(id,"x",tr(d));continue;}
+  if(["gelu_erf","relu_squared","mish","leaky_relu"].includes(kind)){
+    const x=inp(id,"x");
+    send(id,"x",d.map((row,i)=>row.map((v,j)=>v*Activations.derivative(kind,x[i][j],p))));
+    local[id]={vjp:"analytic scalar activation derivative, multiplied by incoming gradient"};continue;
+  }
   if(kind==="silu"||kind==="sigmoid"||kind==="tanh"||kind==="relu"){
     const x=inp(id,"x"),y=values.get(id);
     send(id,"x",d.map((row,i)=>row.map((v,j)=>{
