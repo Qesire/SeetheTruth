@@ -25,19 +25,22 @@ function step(raw,options={}){
  const records=[];
  for(const node of next.nodes.filter(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&active.some(a=>a.id===n.id))){
    const current=node.params.values,grad=reverse.gradients[node.id],previous=node.params.optimizer;
+   const saved=previous.config||{},chosen=options.optimizer??previous.kind??"adamw";
    const update=Optimizers.step(current,grad,previous,{
-     optimizer:options.optimizer??"adamw",
-     lr:options.lr??0.01,weightDecay:options.weightDecay??0.01,
-     beta1:options.beta1??0.9,beta2:options.beta2??(options.optimizer==="lion"?0.99:0.999),
-     alpha:options.alpha??0.99,momentum:options.momentum??0.9,lrDecay:options.lrDecay??0,eps:options.eps??1e-8
+     optimizer:chosen,
+     lr:options.lr??saved.lr??0.01,weightDecay:options.weightDecay??saved.weightDecay??0.01,
+     beta1:options.beta1??saved.beta1??0.9,
+     beta2:options.beta2??saved.beta2??(chosen==="lion"?0.99:0.999),
+     alpha:options.alpha??saved.alpha??0.99,momentum:options.momentum??saved.momentum??0.9,
+     lrDecay:options.lrDecay??saved.lrDecay??0,eps:options.eps??saved.eps??1e-8
    });
    if(update.state.t>10000)throw Error("educational optimizer iteration limit");
    node.params.values=update.parameter;
-   node.params.optimizer=update.state;
+   node.params.optimizer={...update.state,config:{optimizer:chosen,lr:update.options.lr,weightDecay:update.options.weightDecay,beta1:update.options.beta1,beta2:update.options.beta2,alpha:update.options.alpha,momentum:update.options.momentum,lrDecay:update.options.lrDecay,eps:update.options.eps}};
    const shape=node.kind==="nd_parameter"?ND.shape(current):[current.length,current[0].length];
    const flatten=a=>node.kind==="nd_parameter"?ND.flatten(a):a.flat();
    records.push({id:node.id,shape,
-      gradientNorm:Math.hypot(...flatten(grad)),updateNorm:Math.hypot(...flatten(update.update)),optimizerStep:update.state.t,optimizer:options.optimizer??"adamw"});
+      gradientNorm:Math.hypot(...flatten(grad)),updateNorm:Math.hypot(...flatten(update.update)),optimizerStep:update.state.t,optimizer:chosen});
  }
  const validated=L.validateGraph(next);
  const nextForward=L.evaluate(options.targetId?Branch.slice(validated,options.targetId):validated);
