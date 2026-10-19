@@ -19,7 +19,8 @@ assert.match(readme,/NumPy Python/,'landing must name the real export backend');
 assert.match(readme,/PyTorch CPU/,'landing must document trainable PyTorch backend');
 assert.match(readme,/不支持的节点会明确拒绝/,'do not imply arbitrary block compilation');
 assert.match(readme,/无需 GPU/,'GPU must not be mandatory for learning');
-assert.match(readme,/真实小模型采集工具已有/,'real-model capture claims must be tiered');
+assert.match(readme,/TinyStories-1M CPU 采集及独立二次复跑已通过/,'pinned real-model replay evidence must be disclosed');
+assert.match(readme,/用户本地导入但未独立复跑的 JSON 仍仅属于来源声明/,'unattested imported JSON must not be promoted to real-model evidence');
 for(const route of ['learn.html','training.html','cache.html','paper_lab.html','micro_training.html','real_model_lab.html','index.html','telemetry.html']){
  assert.ok(fs.existsSync(path.join(root,route)),route+' actually exists');
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
