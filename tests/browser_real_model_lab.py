@@ -69,4 +69,22 @@ class RealTraceBrowserAcceptance(unittest.TestCase):
         self.assertTrue(p.locator("#capture").is_hidden())
         (DEST/"manifest.json").write_text(json.dumps({"evidence":"synthetic UI contract, NOT a captured model",
         "files":["01-no-real-samples.png","02-synthetic-structural-test-not-real-capture.png"]}),encoding="utf8")
+    def test_real_capture_if_explicitly_supplied(self):
+        import os
+        capture=os.getenv("SEETHTRUTH_REAL_MODEL_CAPTURE")
+        if not capture:
+            return
+        p=self.p
+        p.locator("#traceUpload").set_input_files(capture)
+        p.wait_for_function("!document.querySelector('#capture').hidden")
+        self.assertIn("roneneldan/TinyStories-1M",p.locator("#modelName").inner_text())
+        self.assertIn("仍需按 revision 独立复跑",p.locator("#status").inner_text())
+        self.assertEqual(p.locator("#paramStats .sample").count(),2)
+        self.assertEqual(p.locator("#activationStats .sample").count(),2)
+        self.assertIn("64 × 64",p.locator("#paramStats").inner_text())
+        self.assertFalse(p.evaluate("document.documentElement.scrollWidth>innerWidth+2"))
+        p.screenshot(path=str(DEST/"03-genuine-tinystories-pinned-cpu-capture.png"),full_page=True)
+        (DEST/"manifest.json").write_text(json.dumps({"evidence":"real CPU model trace imported from pinned CI capture, UI does not independently verify origin",
+          "real_file":"03-genuine-tinystories-pinned-cpu-capture.png",
+          "other_files":"01-no-real-samples.png,02-synthetic-structural-test-not-real-capture.png"}),encoding="utf8")
 if __name__=="__main__":unittest.main(verbosity=2)
