@@ -204,6 +204,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             state=next(n for n in graph["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]
             self.assertEqual(state["kind"],optimizer)
             self.assertEqual(state["t"],2)
+            if optimizer=="adagrad":self.assertEqual(state["config"]["lrDecay"],1)
             self.assertEqual(p.locator("#trainOptimizer").input_value(),optimizer)
             p.locator("#trainSummary").scroll_into_view_if_needed()
             self.shot(screenshot)
@@ -214,8 +215,10 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         prev_state=next(n for n in prior["nodes"] if n["id"]=="shared_weight")["params"]["optimizer"]
         self.assertEqual(prev_state["kind"],"adagrad")
         self.assertEqual(prev_state["t"],0)
+        p.locator("#trainLRDecay").select_option("0")
         p.locator("#load").set_input_files(exported.value.path())
         self.assertEqual(p.locator("#trainOptimizer").input_value(),"adagrad")
+        self.assertEqual(p.locator("#trainLRDecay").input_value(),"1")
         p.locator("#trainStep").click()
         self.assertIn("adagrad step 4",p.locator("#trainSummary").inner_text())
 
