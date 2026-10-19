@@ -26,6 +26,8 @@ for(const name of [
        trace=L.evaluate(graph);
  assert.equal(Object.keys(output).length,graph.nodes.length,name+' exported all steps');
  for(const step of trace.steps){
+  assert.ok(Object.hasOwn(output,step.id),name+" missing exported node "+step.id+"; keys="+Object.keys(output));
+  assert.ok(Array.isArray(step.values),name+" missing JS value at "+step.id);
   compare(name+': '+step.id,output[step.id],step.values);
   comparisons++;
  }
