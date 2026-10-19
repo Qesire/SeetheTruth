@@ -26,7 +26,7 @@ const SUPPORTED=new Set([
  "temperature","residual_scale","mae_loss","topk","argmax","detach_demo","causal_mask",
  "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
  "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
- "router_topk","gather_rows","scatter_add","embedding","cross_entropy","pos_encoding","slice_rows"
+ "router_topk","gather_rows","scatter_add","embedding","cross_entropy","pos_encoding","slice_rows","slice_cols","concat_cols","rope2d"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
 const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
@@ -100,6 +100,18 @@ def _sliding_window(x, width):
     rows = np.arange(x.shape[0])[:,None]
     cols = np.arange(x.shape[1])[None,:]
     return ((cols <= rows) & (rows-cols < width)).astype(np.float64)
+
+def _rope2d(x, offset):
+    if x.ndim!=2 or x.shape[1]%2:
+        raise ValueError("RoPE pair layout requires even 2D head features")
+    t=np.arange(x.shape[0],dtype=np.float64)[:,None]+offset
+    j=np.arange(x.shape[1]//2,dtype=np.float64)[None,:]
+    angle=t/np.power(10000.,2*j/x.shape[1])
+    a=x[:,0::2];b=x[:,1::2]
+    out=np.empty_like(x)
+    out[:,0::2]=a*np.cos(angle)-b*np.sin(angle)
+    out[:,1::2]=a*np.sin(angle)+b*np.cos(angle)
+    return out
 
 def _pos_encoding(x):
     if x.ndim!=2 or x.shape[1]%2:
@@ -318,6 +330,9 @@ function compile(raw,options={}){
    else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
    else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
+   else if(kind==="slice_cols")expression=port("x")+'[:,'+p.start+':'+(p.start+p.width)+']';
+   else if(kind==="concat_cols")expression='np.concatenate(('+port("a")+','+port("b")+'),axis=1)';
+   else if(kind==="rope2d")expression='_rope2d('+port("x")+','+p.offset+')';
    else if(kind==="slice_rows")expression=port("x")+'['+p.start+':'+(p.start+p.length)+',:]';
    else if(kind==="pos_encoding")expression='_pos_encoding('+port("x")+')';
    else if(kind==="causal_mask")expression='np.tri('+port("x")+'.shape[0],'+port("x")+'.shape[0],dtype=np.float64)';
