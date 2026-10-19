@@ -15,9 +15,9 @@
 - `learning_lab.js`: 11 original kinds plus 105 `block_catalog.js` definitions = **116 registered kinds**.
 - `learn.html`: 35 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
 - Graphs: bounded (48 nodes, 96 edges), DAG and port/shape validation; the *chosen upstream closure* may be runnable while unrelated incomplete nodes remain on the canvas. Never require a model-specific template.
-- NumPy codegen: full and selected-branch exports, source tensor overrides, fail-closed unsupported operations, intermediate-value parity against JS. It is **not a PyTorch training/checkpoint code generator**.
+- NumPy codegen: full and selected-branch exports, source tensor overrides, fail-closed unsupported operations, intermediate-value parity against JS. For supported differentiable subgraphs, the separate PyTorch CPU backend now emits real training/AdamW/checkpoint code; unsupported ops fail closed.
 - Training: bounded explicit parameter identities and supported VJPs; differentiate one-step optimizer function blocks from persistent multistep training transactions.
-- Evidence: `scripts/capture_model_trace.py` exists; no verified pinned real-model sample is a current release proof. A synthetic teaching matrix is not real activation data.
+- Evidence: a real pinned TinyStories-1M CPU module trace and a second fresh, numerically identical replay are archived by GitHub Actions; the real Chromium inspector can render its weight/gradient/activation samples. The importer continues to distinguish source assertions from independently reproduced evidence.
 
 ## Release blockers: required before public alpha
 
@@ -32,7 +32,7 @@
 ## Non-blocking for alpha; mandatory before related claims
 
 - **Actual model measurements:** a pinned TinyStories-1M CPU forward/backward trace has now run twice and replayed exactly on [the recorded CI workflow](https://github.com/Qesire/SeetheTruth/actions/runs/39217748548), with real Chromium screenshot artifacts. This covers **one linear module**, not complete LLM equivalence, GPU throughput, MoE routing or real RL rollouts. The local file importer still labels unattested user-supplied JSON as structural verification only.
-- **Arbitrary codegen coverage:** `python_codegen.js` intentionally rejects unsupported node types; do not call the current compiler general PyTorch training.
+- **Arbitrary codegen coverage:** both backends fail closed on unsupported kinds. Full educational MoE routing and bounded CPU Autograd/AdamW for three shared expert banks are supported; this is not generic production-scale PyTorch training.
 - **Large tensor performance:** simulation is bounded and CPU-browser-oriented. GPU validation and actual model inference are not required for the learning-first alpha.
 - **Paper coverage:** modules and paper *patches* differ; both require mathematical contracts, shape/axis semantics and primary sources. A symbolic patch is not an executable operator.
 - **Interaction hardening:** verify keyboard navigation, focus states, smaller screens, resize, local file import bounds, visual scroll behavior and README onboarding in real browsers before beta.
@@ -41,10 +41,10 @@
 
 1. `node tests/release_surface_contracts.js` — source-of-truth catalogue count, README consistency and visible public entrypoints.
 2. `node tests/graph_readiness_contracts.js` and `node tests/branch_execution_contracts.js` — unconstrained valid DAG + incomplete parallel branches.
-3. `node tests/python_codegen_contracts.js` — Python 3.10+/NumPy executed as a real subprocess, all intermediate tensors compared, source overrides and rejection of unsupported nodes.
-4. `node tests/train_state_contracts.js`, `node tests/nd_train_state_contracts.js`, `node tests/moe_graph_autodiff_contracts.js` — fresh forward on each optimizer step, gradient fan-in, state/undo/save/restore, finite difference.
-5. `python tests/browser_catalog_screenshots.py` and screenshot manifest — **actual headless Chromium**, click/drag/repair/train/export/import, 25 browser scenarios; inspect screenshots and errors rather than relying on PNG existence.
-6. Existing `Static Analysis CI`, `Static Behavior Acceptance`, `Real-model Static Concordance`, `Pinned Real-Source Operator Audit`, and `Training Microflows Contracts` all success on same final SHA.
+3. `node tests/python_codegen_contracts.js` and `node tests/python_codegen_extensions_contracts.js` — actual Python/NumPy execution and per-node cross-language parity; `node tests/moe_executable_codegen_contracts.js` additionally verifies dynamic MoE source overrides and CPU Torch shared-gradient/optimizer state consistency.
+4. `node tests/train_state_contracts.js`, `node tests/nd_train_state_contracts.js`, `node tests/moe_graph_autodiff_contracts.js`, `node tests/torch_codegen_extensions_contracts.js` — fresh forward on each optimizer step, gradient fan-in, state/undo/save/restore, finite difference.
+5. `python tests/browser_catalog_screenshots.py` and screenshot manifest — **actual headless Chromium**, click/drag/repair/train/export/import, browser scenarios; inspect screenshots and errors rather than relying on PNG existence.
+6. Existing `Static Analysis CI`, `Static Behavior Acceptance`, `Real-model Static Concordance`, `Pinned Real-Source Operator Audit`, `Training Microflows Contracts`, `Real CPU PyTorch Training Codegen`, and `Pinned TinyStories CPU Real-Model Capture` all success on the same final SHA.
 
 For each failing gate: record input graph, exception or numerical discrepancy, which feature regressed, and the exact PR SHA. No “mostly green” release claim. Keep user-visible claims aligned with the strongest reproducible evidence tier.
 
