@@ -192,6 +192,16 @@ function backward(raw,forward,opts={}){
     send(id,"v",mm(tr(probabilities),d));send(id,"q",mm(ds,k));send(id,"k",mm(tr(ds),q));
     local[id]={vjp:"dV=PᵀdY, dP=dYVᵀ, dS=softmax-VJP/√d, dQ=dS K, dK=dSᵀ Q"};continue;
   }
+  if(kind==="rope2d"){
+    const data=inp(id,"x"),offset=p.offset;
+    const dx=d.map((row,t)=>row.map((_,j)=>{
+      const pair=j-j%2,angle=(t+offset)/(10000**(pair/row.length)),
+        co=Math.cos(angle),si=Math.sin(angle);
+      return j%2===0?d[t][pair]*co+d[t][pair+1]*si:
+        -d[t][pair]*si+d[t][pair+1]*co;
+    }));
+    send(id,"x",dx);local[id]={vjp:"adjoint uses RoPE inverse orthogonal rotation R(pos)ᵀ, per adjacent pair"};continue;
+  }
   if(kind==="slice_rows"){
     const x=inp(id,"x"),dx=z(x);
     for(let i=0;i<d.length;i++)for(let j=0;j<d[0].length;j++)dx[p.start+i][j]+=d[i][j];
