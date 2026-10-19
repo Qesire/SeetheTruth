@@ -30,8 +30,8 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
 | 积木库 | **117 种积木**：11 种基本计算积木 + 106 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **38 门引导课程**，另有空白自由画布 | 课程是教学组合，不代表完整复刻开源模型 |
-| 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图；可对选定 MatMul 执行真实 LoRA 低秩图重写 | 图重写必须重新通过数值/梯度合同，不代表 GPU 加速 |
+| 学习内容 | **38 门引导课程**（新增 Qwen3 风格 2Q/1KV GQA + QK Norm + RoPE + 可选权重绑定），另有空白自由画布 | 教学缩尺实现，头维布局、RoPE 约定和真实 checkpoint 不完全相同 |
+| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
 | 真实证据 | 可选 Python AST、PyTorch Runtime Trace / Profiler；真实小模型采集器和本地 JSON 溯源检查器 | 真实样本必须运行指定不可变模型版本，未复跑的数据仅结构验证，不伪造 kernel/吞吐量 |
@@ -62,6 +62,10 @@ node tests/release_surface_contracts.js
 node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
 node tests/torch_codegen_extensions_contracts.js  # torch + numpy
 node tests/moe_executable_codegen_contracts.js    # torch + numpy
+node tests/token_embedding_ce_codegen_contracts.js  # torch + numpy
+node tests/causal_transformer_codegen_contracts.js # torch + numpy
+node tests/industrial_gqa_tied_codegen_contracts.js # torch + numpy
+node tests/industrial_source_contracts.js          # Node
 node tests/paper_graph_rewrites_contracts.js
 node tests/model_trace_contracts.js
 node tests/block_catalog_contracts.js
@@ -77,6 +81,6 @@ node tests/python_codegen_extensions_contracts.js
 
 截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[架构优先级](docs/learning-first-architecture.md)。
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[源码对齐的 Qwen3 风格 GQA / QK Norm / RoPE / 可选权重绑定](docs/industrial-gqa-rope-tied.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
