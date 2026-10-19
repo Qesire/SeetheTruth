@@ -380,7 +380,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("tie_word_embeddings",p.locator("#blockKnowledge").inner_text())
         self.assertEqual(p.locator('[data-node="q0r"]').get_attribute("data-industrial-ref"),"rope")
         p.locator('[data-node="q0r"] .block-head').hover()
-        self.assertTrue(p.locator("#paperHoverInspector").is_visible())
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=5000)
         self.assertIn("RoPE",p.locator("#paperHoverInspector").inner_text())
         self.assertIn("Qwen3",p.locator("#paperHoverInspector").inner_text())
         self.shot("59-real-qwen-inspired-gqa-rope-tied-weights.png")
