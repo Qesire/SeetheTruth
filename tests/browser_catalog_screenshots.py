@@ -341,7 +341,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_industry_qwen3_inspired_gqa_rope_tied_head_executable(self):
         p=self.page
         p.locator('[data-preset="industrial_gqa_rope_tied"]').click()
-        self.assertEqual(p.locator("#blocks .block").count(),38)
+        self.assertEqual(p.locator("#blocks .block").count(),45)
         self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
         p.locator("#run").click()
         self.assertIn("✓ 已运行",p.locator("#status").inner_text())
@@ -355,7 +355,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             p.locator("#save").click()
         saved=json.loads(Path(item.value.path()).read_text(encoding="utf-8"))
         weights=[n for n in saved["nodes"] if n["kind"]=="parameter"]
-        self.assertEqual({n["id"] for n in weights},{"embed","wq","wk","wv","wo"})
+        self.assertEqual({n["id"] for n in weights},{"embed","qgain","kgain","wq","wk","wv","wo"})
         self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in weights))
         self.assertEqual(next(n for n in saved["nodes"] if n["id"]=="tied_head")["kind"],"transpose2d")
         p.locator("#pythonBackend").select_option("numpy")
