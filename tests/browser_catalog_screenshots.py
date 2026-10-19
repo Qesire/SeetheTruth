@@ -220,6 +220,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#optimizerAdvanced summary").click()
         p.locator("#load").set_input_files(exported.value.path())
         self.assertEqual(p.locator("#trainOptimizer").input_value(),"adagrad")
+        p.wait_for_function("document.querySelector('#trainLRDecay').value === '1'")
         self.assertEqual(p.locator("#trainLRDecay").input_value(),"1")
         p.locator("#trainStep").click()
         self.assertIn("adagrad step 4",p.locator("#trainSummary").inner_text())
