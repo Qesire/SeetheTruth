@@ -19,6 +19,7 @@ on:
       - 'tests/torch_codegen_contracts.js'
       - 'tests/python_codegen_contracts.js'
       - 'tests/python_codegen_extensions_contracts.js'
+      - 'tests/moe_executable_codegen_contracts.js'
       - 'tests/release_surface_contracts.js'
       - 'README.md'
       - 'docs/release-readiness.md'
