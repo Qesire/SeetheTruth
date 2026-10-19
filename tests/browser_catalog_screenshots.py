@@ -316,6 +316,28 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#trainStep").click()
         self.assertIn("AdamW",p.locator("#trainSummary").inner_text().replace("adamw","AdamW"))
 
+    def test_lora_paper_patch_rewrites_real_graph_and_trains(self):
+        p=self.page
+        p.locator('[data-preset="autodiff_core"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),11)
+        p.locator('[data-node="project"] .block-head').click()
+        self.assertFalse(p.locator("#applyLoRA").is_disabled())
+        p.locator("#applyLoRA").click()
+        self.assertEqual(p.locator("#blocks .block").count(),17)
+        self.assertIn("LoRA",p.locator("#workspaceTitle").inner_text())
+        self.assertIn("LoRA",p.locator("#blockKnowledge").inner_text())
+        self.assertEqual(p.locator('[data-node="project"]').get_attribute("data-paper-patch"),"lora")
+        self.assertIn("前向初始化等价",p.locator("#status").inner_text())
+        self.assertFalse(p.locator("#trainStep").is_disabled())
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW step 1",p.locator("#trainSummary").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        obj=json.load(open(d.value.path(),encoding="utf-8"))
+        self.assertEqual(len(obj["paperPatches"]),1)
+        self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
+        self.shot("54-lora-paper-rewrite-trainable-graph.png")
+
     def test_torch_export_is_real_autograd_and_not_fake_fallback(self):
         p=self.page
         p.locator('[data-preset="trainable_attention"]').click()
