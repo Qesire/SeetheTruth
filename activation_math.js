@@ -14,11 +14,12 @@ function erf(x){
 }
 const sigmoid=x=>x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
 const softplus=x=>Math.max(0,x)+Math.log1p(Math.exp(-Math.abs(x)));
-const KINDS=Object.freeze(["gelu_erf","relu_squared","mish","leaky_relu","silu"]);
+const KINDS=Object.freeze(["gelu_erf","gelu_tanh","relu_squared","mish","leaky_relu","silu"]);
 function value(kind,x,params={}){
  if(!KINDS.includes(kind)||!Number.isFinite(x))throw Error("activation requires supported function and finite scalar");
  switch(kind){
   case "gelu_erf":return .5*x*(1+erf(x/Math.SQRT2));
+  case "gelu_tanh":{const u=Math.sqrt(2/Math.PI)*(x+.044715*x*x*x);return .5*x*(1+Math.tanh(u));}
   case "relu_squared":return Math.max(0,x)**2;
   case "mish":return x*Math.tanh(softplus(x));
   case "leaky_relu":{const alpha=params.slope??.01;
@@ -31,6 +32,7 @@ function derivative(kind,x,params={}){
  if(!KINDS.includes(kind)||!Number.isFinite(x))throw Error("activation derivative requires supported finite scalar");
  switch(kind){
   case "gelu_erf":return .5*(1+erf(x/Math.SQRT2))+x*Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+  case "gelu_tanh":{const c=Math.sqrt(2/Math.PI),u=c*(x+.044715*x*x*x),t=Math.tanh(u);return .5*(1+t)+.5*x*(1-t*t)*c*(1+3*.044715*x*x);}
   case "relu_squared":return x>0?2*x:0;
   case "mish":{const t=Math.tanh(softplus(x));return t+x*sigmoid(x)*(1-t*t);}
   case "leaky_relu":{const alpha=params.slope??.01;
