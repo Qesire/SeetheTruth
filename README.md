@@ -77,6 +77,6 @@ node tests/python_codegen_extensions_contracts.js
 
 截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[架构优先级](docs/learning-first-architecture.md)。
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
