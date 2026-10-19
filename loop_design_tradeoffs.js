@@ -17,9 +17,21 @@ const SOURCES=Object.freeze({
  loopformer:"https://arxiv.org/abs/2602.11451",
  loopformer_code:"https://github.com/armenjeddi/loopformer/blob/master/train.py",
  mor:"https://arxiv.org/abs/2507.10524",
- hyperloop:"https://arxiv.org/abs/2604.21254"
+ hyperloop:"https://arxiv.org/abs/2604.21254",
+ residual:"https://arxiv.org/abs/2606.18524",
+ deeploop:"https://arxiv.org/abs/2607.13491"
 });
 const DECISIONS=Object.freeze({
+ residual_scaling:Object.freeze({
+ title:"为什么共享循环 Transformer 的残差要按循环次数缩放？",
+ goal:"在共享同一个 Transformer Block 多次执行时，控制残差更新沿循环深度累加造成的状态和梯度放大；保持参数存储规模不变",
+ mechanism:"本实验对每次 Attention/FFN 的残差分别计算 H←H+ε·Fθ(H)。比较 ε∈{1,1/√N,1/N}，N=2；原始主路径和全部 Parameter ID 恒定。梯度经 Scale 的系数与共享参数的所有访问次数求和",
+ alternative:"ε=1（不缩放）、传统 1/√N 缩放、与循环长度相关的 1/N；DeepLoop 则采用 Post-LN DeepNorm 的 α=√(2N), β=1/√(8N)，不是直接给 Pre-Norm 输出乘 ε",
+ cost:"1/N 可能压低单轮有效特征更新而减慢表示变化；1/√N 可能仍不足以抑制共享访问的相关累积；更多循环仍带来更多矩阵计算和训练激活",
+ failure:"任务需要大的单轮非线性跳跃、梯度相关性不显著，或模型已有稳健深度缩放/归一化时，统一 1/N 未必优于对照；本教学实验不能推断大模型的收敛改进",
+ test:"同一初始 E/Wq/Wk/Wv/Wo/Wup/Wgate/Wdown 与同一 Token/监督，对比 ε=1、1/√2、1/2：逐轮 CE、状态变化 RMS、Wq 梯度范数；再做有限差分、JS/PyTorch Autograd、AdamW 续训；论文的验证集收益需真实训练",
+ sources:[["On the Residual Scaling of Looped Transformers (2026)",SOURCES.residual],["DeepLoop: alternative Post-LN α/β scaling (2026)",SOURCES.deeploop]]
+ }),
  sharing:Object.freeze({
  title:"为什么跨深度共享权重，而不直接堆更多不同层？",
  goal:"在独立权重参数量／模型加载内存受限时，增加同一 Token 的潜空间推理步骤",
@@ -140,6 +152,31 @@ function observations(raw){
  return Object.freeze({perDepth:ce,changes,consistency,
    evidence:"actual finite Float64 graph outputs only; not model accuracy or held-out validation"});
 }
+let residualCache=null;
+function residualComparisons(){
+ if(!residualCache){
+  const Grad=typeof module==="object"&&module.exports?
+    require("./graph_autodiff.js"):root.SeetheTruthGraphAutodiff;
+  if(!Grad)throw Error("graph gradient engine unavailable for real scaling evidence");
+  const data=Loop.RESIDUAL_RULES.map(rule=>{
+   const graph=Loop.buildResidualScaling({rule}),valid=Loop.inspectResidualScaling(graph);
+   const trace=L.evaluate(graph),by=new Map(trace.steps.map(x=>[x.id,x]));
+   const gradient=Grad.backward(graph,trace),elements=gradient.gradients.Wq.flat();
+   const initial=by.get("lookup").values,second=by.get("r1_state").values;
+   const rms=Math.sqrt(second.reduce((acc,row,i)=>acc+row.reduce((s,v,j)=>s+(v-initial[i][j])**2,0),0)/
+     (initial.length*initial[0].length));
+   const meta=profile(graph);
+   return Object.freeze({rule,epsilon:valid.coefficient,loss:by.get("loss").values[0][0],
+    stateRmsFromInput:rms,wqGradientL2:Math.hypot(...elements),
+    paramElements:meta.physicalParameterElements,matmulMAC:meta.matmulMAC,
+    nodes:graph.nodes.length,claim:"fixed deterministic micro-tensor calculation, no convergence or GPU performance claim"});
+  });
+  if(new Set(data.map(x=>x.paramElements)).size!==1||new Set(data.map(x=>x.matmulMAC)).size!==1)
+    throw Error("residual scaling rules changed physical parameter size or underlying MatMul work");
+  residualCache=Object.freeze(data);
+ }
+ return residualCache;
+}
 let cache=null;
 function comparisons(){
  if(!cache)cache=Object.freeze([1,2,3].map(loops=>profile(Loop.build({loops}))));
@@ -148,6 +185,10 @@ function comparisons(){
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function keyFor(graph,id){
  if(!graph||!graph.title?.includes("Loop")||!graph.nodes?.some(n=>n.id===id))return null;
+ if(graph.title.includes("任务 43")){
+   try{Loop.inspectResidualScaling(graph);}catch(e){return null;}
+   return "residual_scaling";
+ }
  if(/任务 (?:39|40)/.test(graph.title)&&["loss","logits"].includes(id))return "sharing"; // legacy fixed-depth recipes have final-only CE
  if(graph.nodes.some(n=>n.id==="short_consistency")){
   if(["loss","base_loss","deep_teacher","short_consistency","cons_weight"].includes(id))return "consistency";
@@ -194,8 +235,23 @@ function render(raw,id){
    '</details>';
   }catch(err){out+='<p>逐轮数值观察暂停：需要可执行的当前计算图（'+esc(err.message)+'）。</p>';}
  }
+ if(key==="residual_scaling"){
+  try{
+   const current=Loop.inspectResidualScaling(raw),data=residualComparisons(),
+    rows=data.map(x=>'<tr'+(Math.abs(x.epsilon-current.coefficient)<1e-12?' style="font-weight:750"':'')+
+    '><td>'+esc(x.rule)+'</td><td>'+x.epsilon.toFixed(6)+'</td><td>'+x.loss.toFixed(7)+
+    '</td><td>'+x.stateRmsFromInput.toFixed(7)+'</td><td>'+x.wqGradientL2.toFixed(7)+'</td></tr>').join("");
+   out+='<details open><summary>同权重、同输入、同循环数的实际数值对照</summary>'+
+    '<p>只改变四个 residual Scale 系数；三种规则的参数元素数='+data[0].paramElements+
+    '，MatMul MAC='+data[0].matmulMAC+'，不随 ε 改变。以下是微型张量的初始前向/梯度数据，不是训练质量或稳定性结论。</p>'+
+    '<table style="width:100%;font-size:11px"><thead><tr><th>规则</th><th>ε</th><th>Loss</th><th>状态变化 RMS</th><th>∥∇Wq∥₂</th></tr></thead><tbody>'+
+    rows+'</tbody></table>'+
+    '<p>当前所选图的残差系数='+current.coefficient.toFixed(6)+
+    '；可直接修改四个 Scale 节点或使用顶部残差方案切换，全部真实参数及 AdamW 状态保留。</p></details>';
+  }catch(err){out+='<p>真实对照不可用：'+esc(err.message)+'；不会虚构未执行数据。</p>';}
+ }
  if(key==="consistency")out+='<p><strong>精确实现边界：</strong>本课程固定 2 轮，共享参数，不含 LoopFormer 原版的 t/Δt 条件或独立采样的 shortcut trajectory。只能验证 Detach + MSE 消融的数学与梯度。</p>';
  out+='</section>';return out;
 }
-return Object.freeze({profile,comparisons,observations,keyFor,render,decisions:DECISIONS,sources:SOURCES});
+return Object.freeze({profile,comparisons,residualComparisons,observations,keyFor,render,decisions:DECISIONS,sources:SOURCES});
 });
