@@ -104,4 +104,28 @@ for(const [row,col] of [[0,0],[1,2]]){
  const estimate=(L.evaluate(hi).steps.at(-1).values[0][0]-L.evaluate(lo).steps.at(-1).values[0][0])/(2*epsilon);
  assert.ok(Math.abs(estimate-gradJS.gradients.embedding_table[row][col])<1e-6,'embedding finite-difference gradient '+row+','+col);
 }
+// A general row slice must carry adjoints into the original time positions
+// and never synthesize gradients for excluded rows.
+const sourceVals=[[.5,-.1],[.3,.2],[-.4,.7],[.6,.8]];
+const rowGraph=L.validateGraph({schema:L.SCHEMA,title:'Temporal VJP contract',
+ nodes:[
+  {id:'theta',kind:'parameter',x:10,y:10,params:{values:sourceVals,
+    optimizer:{t:0,m:sourceVals.map(r=>r.map(()=>0)),v:sourceVals.map(r=>r.map(()=>0))}}},
+  {id:'selected',kind:'slice_rows',x:180,y:100,params:{start:1,length:2}},
+  {id:'target',kind:'input',x:170,y:360,params:{rows:2,width:2,seed:4}},
+  {id:'loss',kind:'mse',x:470,y:170,params:{}}
+ ],edges:[
+  {from:'theta',to:'selected',port:'x'},
+  {from:'selected',to:'loss',port:'prediction'},
+  {from:'target',to:'loss',port:'target'}
+ ]});
+const rd=Grad.backward(rowGraph,L.evaluate(rowGraph));
+assert.deepEqual(rd.gradients.theta[0],[0,0],'row before slice must have zero gradient');
+assert.deepEqual(rd.gradients.theta[3],[0,0],'row after slice must have zero gradient');
+const rv=invoke(Torch.compile(rowGraph).source,
+ 'r=GraphRuntime()\nr.forward()[r.loss_id].sum().backward()\n'+
+ 'print(json.dumps({"g":r.parameters["theta"].grad.detach().tolist()}))');
+approx('slice rows VJP',rv.g,rd.gradients.theta,1e-8);
+assert.throws(()=>L.evaluate({...rowGraph,nodes:rowGraph.nodes.map(n=>n.id==='selected'?
+  {...n,params:{start:3,length:2}}:n)}),/slice exceeds|exceeds current source|Token row slice/);
 console.log('TOKEN_CE_TRAINING_PASS JS↔NumPy↔Torch, 2 parameters, CE derivative, repeated row scatter, finite differences, 2 AdamW steps, exact checkpoint resume, input overrides');
