@@ -248,7 +248,46 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="nd_trainable_mqa"||name==="nd_trainable_gqa"){
+    if(name==="nd_cached_gqa_decode"){
+      title="任务 31 · 四轴 RoPE + GQA KV Cache · Prefill → Decode";
+      nodes=[
+        N("full_q","nd_input",25,35,{b:1,h:4,t:3,d:4,seed:2}),
+        N("full_k","nd_input",25,320,{b:1,h:2,t:3,d:4,seed:4}),
+        N("full_v","nd_input",25,770,{b:1,h:2,t:3,d:4,seed:6}),
+        N("q_current","nd_cache_read",305,30,{start:2,length:1}),
+        N("k_prefix","nd_cache_read",305,305,{start:0,length:2}),
+        N("k_current","nd_cache_read",305,530,{start:2,length:1}),
+        N("v_prefix","nd_cache_read",305,765,{start:0,length:2}),
+        N("v_current","nd_cache_read",305,985,{start:2,length:1}),
+        N("q_rope","nd_rope",590,30,{offset:2,rotaryDim:4,base:10000}),
+        N("kp_rope","nd_rope",590,310,{offset:0,rotaryDim:4,base:10000}),
+        N("kn_rope","nd_rope",590,535,{offset:2,rotaryDim:4,base:10000}),
+        N("cached_k","nd_cache_append",880,420),
+        N("cached_v","nd_cache_append",880,835),
+        N("shared_k","nd_repeat_kv",1170,420,{queryHeads:4}),
+        N("shared_v","nd_repeat_kv",1170,835,{queryHeads:4}),
+        N("key_transpose","nd_permute",1455,410,{axis0:0,axis1:1,axis2:3,axis3:2}),
+        N("scores","nd_batched_matmul",1730,180),
+        N("scaled","nd_scale",2010,180,{factor:0.5}),
+        N("causal","nd_causal_mask",2290,180,{queryStart:2,keyStart:0}),
+        N("probabilities","nd_softmax_last",2570,180),
+        N("context","nd_batched_matmul",2850,340)
+      ];
+      edges=[
+       ["full_q","q_current","x"],["full_k","k_prefix","x"],
+       ["full_k","k_current","x"],["full_v","v_prefix","x"],
+       ["full_v","v_current","x"],["q_current","q_rope","x"],
+       ["k_prefix","kp_rope","x"],["k_current","kn_rope","x"],
+       ["kp_rope","cached_k","cache"],["kn_rope","cached_k","segment"],
+       ["v_prefix","cached_v","cache"],["v_current","cached_v","segment"],
+       ["cached_k","shared_k","x"],["cached_v","shared_v","x"],
+       ["shared_k","key_transpose","x"],
+       ["q_rope","scores","a"],["key_transpose","scores","b"],
+       ["scores","scaled","x"],["scaled","causal","x"],
+       ["causal","probabilities","x"],
+       ["probabilities","context","a"],["shared_v","context","b"]
+      ];
+    }else if(name==="nd_trainable_mqa"||name==="nd_trainable_gqa"){
       const isMQA=name==="nd_trainable_mqa";
       const base=preset(isMQA?"nd_mqa_attention":"nd_gqa_attention");
       for(const id of ["query","key","value"]){
