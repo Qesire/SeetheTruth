@@ -453,6 +453,30 @@
         ["q_proj","attend","q"],["k_proj","attend","k"],["v_proj","attend","v"],
         ["attend","loss","prediction"],["target","loss","target"]
       ];
+    }else if(name==="token_lm_trainable"){
+      title="任务 36 · 可训练 Token Embedding → Logits → CrossEntropy → AdamW";
+      // Unlike the fixed Embedding teaching node, gather_rows is a real
+      // differentiable lookup into one shared trainable Parameter table.
+      const matrix=(rows,cols,seed)=>Array.from({length:rows},(_,r)=>Array.from({length:cols},(_,c)=>
+        Number((Math.sin((r+1)*0.47+(c+1)*0.31+seed)*.24).toFixed(8))));
+      const P=(id,x,y,values)=>N(id,"parameter",x,y,{
+        values,optimizer:{t:0,m:values.map(row=>row.map(()=>0)),v:values.map(row=>row.map(()=>0))}
+      });
+      nodes=[
+        N("token_ids","token_ids",25,145,{rows:3,vocab:8,seed:1}),
+        N("labels","token_ids",25,700,{rows:3,vocab:8,seed:4}),
+        P("embedding_table",25,370,matrix(8,4,1)),
+        N("lookup","gather_rows",330,220),
+        P("lm_head",330,610,matrix(4,8,2)),
+        N("logits","matmul",645,215),
+        N("log_probs","log_softmax",935,55),
+        N("loss","cross_entropy",955,300)
+      ];
+      edges=[
+        ["token_ids","lookup","indices"],["embedding_table","lookup","x"],
+        ["lookup","logits","a"],["lm_head","logits","b"],
+        ["logits","log_probs","x"],["logits","loss","logits"],["labels","loss","labels"]
+      ];
     }else if(name==="trainable_swiglu"){
       title="任务 23 · 可训练 SwiGLU FFN · W1/W3/W2 优化";
       const P=(id,x,y,m)=>N(id,"parameter",x,y,{values:m.map(row=>row.slice()),
