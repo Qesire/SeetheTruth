@@ -15,6 +15,7 @@ const UT="https://arxiv.org/abs/1807.03819";
 const HUGINN="https://github.com/seal-rg/recurrent-pretraining";
 const MOR="https://github.com/raymin0223/mixture_of_recursions";
 const ENTRIES=Object.freeze({
+ loop_multidepth:Object.freeze({title:"Ouro 启发 · 每轮深度监督与权重共享",formula:"H_(r+1)=F_θ(H_r); L=Σᵣ αᵣ CE(logits_r,labels), αᵣ≥0, Σαᵣ=1",flow:"每轮独立经过共享 Q/K/V、Causal Attention、Sandwich RMSNorm、SwiGLU 和同一个 tied_head，产出每轮 CE；用 Scale + Add 汇成一个真正的反向目标。改深度时不复制参数及 AdamW 状态。",practice:"Ouro 的循环语言模型确实使用共享层组、多步输出和学习式深度分配。这个实验仅以固定非负系数验证多深度梯度，尚未实现 learned exit gate、entropy regularization 或 per-token depth routing。",trap:"有多轮 CE 并不等于动态退出：当前全部轮次均执行，不能声称推理省算力、达到 Ouro 精度或重现其训练配方。切换循环数会改变目标权重，但保留全部参数/优化器状态。",exercise:"比较第 0、1、2 轮的 CE，验证最终 loss 是每轮加权和；扰动 Wq 做有限差分；训练后从 2 轮切至 3 轮，参数和优化器动量应逐项不变。",epistemic:"EXECUTABLE_FIXED_DEPTH_MULTI_STEP_SUPERVISION; NOT ADAPTIVE_HALTING",papers:[{id:"ouro",title:"Ouro · Scaling Latent Reasoning via Looped Language Models",url:"https://arxiv.org/abs/2510.25741"},{id:"recipes",title:"Closing the Loop · practical recipes",url:"https://arxiv.org/abs/2610.00673"}]}),
  loop_shared:Object.freeze({title:"Looped Transformer · 跨深度共享真实参数",formula:"H^(r+1)=F_θ(H^r); dL/dθ=Σ_r (∂L/∂H^(r+1)) ∂F_θ(H^r)/∂θ",flow:"完整 Attention+FFN 数学流在第 r 轮和 r+1 轮重复，所有 Q/K/V、输出和 SwiGLU 权重回到同一 Parameter 节点。为了与自由 DAG 计算引擎兼容，循环被显式展开为两轮或三轮，不建立非法图循环。",practice:"Universal Transformer 采用深度方向的迭代计算；Huginn / Ouro 将 recurrent depth 扩展到语言模型。增加有效深度可以不增加核心 Block 的存储参数，但激活与计算次数会增长。",trap:"这不是 Ouro 完整 checkpoint、真实隐藏状态初始注入、随机深度训练、ACT 学习式退出或 GPU kernel；本课固定深度、无省算力声明。不要误将同值但不同参数 ID 当成权重共享。",exercise:"比较两轮与三轮模型的 Parameter ID 集合完全相同，逐轮 state 不同。单独修改 wq 一处，必须影响两个 loop 的输出梯度。",epistemic:"EXECUTABLE_SHARED_WEIGHT_RECURRENT_DEPTH_SUBSET",papers:[{id:"ouro",title:"Ouro official implementation",url:OURO},{id:"ut",title:"Universal Transformers 2018",url:UT},{id:"huginn",title:"Huginn recurrent pretraining",url:HUGINN}]}),
  loop_causal:Object.freeze({title:"Looped Causal Attention · 循环层级与 Token 时间轴独立",formula:"P_r[t,j]=softmax_j(Q_r[t]K_r[j]^T/√d), j≤t",flow:"每轮 state_r 经过共享 Q/K/V 投影、RoPE、Causal Mask、Softmax、PV、输出投影与残差。不同轮计算同一 Token 序列的更高阶表征；不会新增输出 Token 或将未来 Token 暴露给过去。",practice:"真实 recurrent-decoder 需要同时追踪 token/time 和 recurrence/depth 两轴。Serving 时按 loop/layer 定位 KV Cache 或采取复用策略，否则会错误地把不同深度的缓存混为一谈。",trap:"这里只模拟 prefill 型完整三 Token 窗口。没有递归深度对应的独立 KV Cache、跨 loop 的缓存共享优化、Prefill/Decode 调度或 FlashAttention 实测。",exercise:"改变输入序列最后一个上下文 Token，检查每轮早期位置的概率、state 与最终 logits 严格不变。",epistemic:"CAUSAL_RECURRENT_DEPTH_MATH_VERIFIED_NO_CACHE",papers:[{id:"ouro",title:"Ouro reference",url:OURO},{id:"huginn",title:"Huginn official code",url:HUGINN}]}),
  loop_ffn:Object.freeze({title:"Recurrent SwiGLU FFN · 每次重用同一套门控矩阵",formula:"U_r=RMSNorm(H_r); F_r=(SiLU(U_r W_g)⊙(U_r W_u)) W_d; H_(r+1)=H_r+F_r",flow:"每一次递归都会重新计算 Norm→Gate MatMul→Up MatMul→SwiGLU→Down MatMul→Residual，但 wgate/wup/wdown 的底层节点和优化器状态始终唯一。",practice:"循环共享参数≠复制参数。反向传播从后向前穿过展开的计算步骤，同一权重接收所有轮次贡献。这正是 recurrent-depth Transformer 与独立堆叠 Transformer 在参数规模上的区别。",trap:"训练时的完整 BPTT、截断 BPTT、梯度 checkpointing 和动态深度采样有不同内存/梯度定义。本例只实现完整两至三轮 BPTT；不将运行时 loop 次数误报成模型参数数。",exercise:"对 wgate 做中心有限差分，再和 JS VJP / PyTorch Autograd 比较；断点恢复后的第三步参数必须完全一致。",epistemic:"FULL_BPTT_SHARED_PARAMETERS_NUMERICALLY_VERIFIABLE",papers:[{id:"ouro",title:"Ouro looped LM",url:OURO},{id:"ut",title:"Universal Transformers",url:UT}]}),
@@ -37,6 +38,13 @@ const IDS=Object.freeze({
 });
 function kind(graph,id){
  if(!graph||typeof graph.title!=="string"||!graph.nodes?.some(n=>n.id===id))return null;
+ if(graph.title.includes("任务 41")&&graph.title.includes("Looped Transformer")){
+   if(id==="loss"||/^r[0-2]_(ce|logits)$/.test(id)||/^weight[0-2]$/.test(id)||/^total[12]$/.test(id))return "loop_multidepth";
+   if(/^r[0-2]_(attn_norm|q|k|v|kt|scores|scaled|mask|probs|context|proj|attn_res)$/.test(id))return "loop_causal";
+   if(/^r[0-2]_(ffn_norm|gate|up|swiglu|down|state)$/.test(id))return "loop_ffn";
+   if(["embedding","Wq","Wk","Wv","Wo","Wup","Wgate","Wdown","tied_head","lookup"].includes(id))return "loop_shared";
+   return null;
+ }
  if(graph.title.includes("Looped Transformer")){
    if(/^r[1-3]_(?:gate|up|swi|down|ffnorm|state)$/.test(id)||["wgate","wup","wdown"].includes(id))return "loop_ffn";
    if(/^r[1-3]_(?:q|k|v|qr|kr|kt|score|scale|prob|ctx|attn|attn_res)$/.test(id)||id==="mask")return "loop_causal";
