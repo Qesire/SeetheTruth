@@ -31,10 +31,10 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 | --- | --- | --- |
 | 积木库 | **116 种积木**：11 种基本计算积木 + 105 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
 | 学习内容 | **35 门引导课程**，另有空白自由画布 | 课程是教学组合，不代表完整复刻开源模型 |
-| 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图 | 论文事实不等于指定模型源码事实 |
+| 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图；可对选定 MatMul 执行真实 LoRA 低秩图重写 | 图重写必须重新通过数值/梯度合同，不代表 GPU 加速 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 两套后端均明确拒绝不支持的算子；PyTorch 仅覆盖已验证的 2D/4D 可训练子集，不是任意架构 |
-| 真实证据 | 可选 Python AST 解析、PyTorch Runtime Trace、Profiler，同次 Pass 的 CPU 代价归因 | 不执行陌生代码，不伪造 kernel/吞吐量，不自动下载真实权重 |
+| 真实证据 | 可选 Python AST、PyTorch Runtime Trace / Profiler；真实小模型采集器和本地 JSON 溯源检查器 | 真实样本必须运行指定不可变模型版本，未复跑的数据仅结构验证，不伪造 kernel/吞吐量 |
 
 ### 三个关键语义边界
 
@@ -49,6 +49,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 - [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
 - [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
 - [训练微流程](micro_training.html)：有界自动微分、MoE、PPO 示例。
+- [真实小模型证据实验室](real_model_lab.html)：本地导入 pinned-revision 模型采集 JSON，显示参数/梯度/激活统计和证据等级；不把模拟数据冒充实测。
 - [源码与结构图](index.html)：静态源码解释、全息结构与可选 Runtime Trace。
 - [性能和张量观测](telemetry.html)：显式实测的 profiler 与可选数值采样。
 
@@ -59,6 +60,8 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 ```bash
 node tests/release_surface_contracts.js
 node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
+node tests/paper_graph_rewrites_contracts.js
+node tests/model_trace_contracts.js
 node tests/block_catalog_contracts.js
 node tests/graph_readiness_contracts.js
 node tests/graph_autodiff_contracts.js
@@ -71,6 +74,6 @@ node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
 
 截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[架构优先级](docs/learning-first-architecture.md)。
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
