@@ -23,7 +23,7 @@ const SUPPORTED=new Set([
  "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion",
  "row_mean","row_sum","row_var","row_logsumexp","log_softmax","l2norm","qk_norm","logit_softcap",
  "low_rank_project","row_bias_add","weighted_sum","masked_softmax","sliding_window_mask",
- "temperature","residual_scale","mae_loss","topk","argmax","detach_demo",
+ "temperature","residual_scale","mae_loss","topk","argmax","detach_demo","causal_mask",
  "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
  "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
  "router_topk","gather_rows","scatter_add","embedding","cross_entropy","pos_encoding","slice_rows"
@@ -320,6 +320,7 @@ function compile(raw,options={}){
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
    else if(kind==="slice_rows")expression=port("x")+'['+p.start+':'+(p.start+p.length)+',:]';
    else if(kind==="pos_encoding")expression='_pos_encoding('+port("x")+')';
+   else if(kind==="causal_mask")expression='np.tri('+port("x")+'.shape[0],'+port("x")+'.shape[0],dtype=np.float64)';
    else if(kind==="embedding")expression='_fixed_embedding('+port("ids")+','+p.vocab+','+p.width+')';
    else if(kind==="cross_entropy")expression='_cross_entropy('+port("logits")+','+port("labels")+')';
    else if(kind==="group_topk_mask")expression='_group_topk('+port("scores")+','+p.groups+','+p.keepGroups+')';
