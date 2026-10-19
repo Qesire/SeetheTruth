@@ -22,6 +22,7 @@ on:
       - 'tests/moe_executable_codegen_contracts.js'
       - 'tests/token_embedding_ce_codegen_contracts.js'
       - 'tests/causal_transformer_codegen_contracts.js'
+      - 'tests/industrial_gqa_tied_codegen_contracts.js'
       - 'tests/release_surface_contracts.js'
       - 'README.md'
       - 'docs/release-readiness.md'
