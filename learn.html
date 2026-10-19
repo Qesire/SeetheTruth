@@ -202,7 +202,7 @@ input[type="file"]{display:none}
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
     <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button><button class="btn small" id="checkGraph" type="button" title="检查当前自由搭建计算图的输入端口、张量形状与可执行性，不要求任何固定模型结构">检查可运行性</button>
-    <button class="btn small" id="applyLoRA" type="button" title="对选定的 MatMul 应用真实 LoRA 低秩子图重写；基底 W0 必须是只读 Input">LoRA · 改造矩阵乘</button>
+    <button class="btn small" id="applyLoRA" type="button" title="对选定 MatMul 执行 LoRA 真实图重写；W0 可以是只读 Input 或自动冻结的 Parameter">LoRA · 改造矩阵乘</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
     <select id="pythonBackend" aria-label="Python 导出后端" title="NumPy 前向计算 / PyTorch CPU 可训练子集"><option value="numpy">NumPy · 数值执行</option><option value="torch">PyTorch · 自动微分与训练</option></select>
      <select id="exportScope" aria-label="Python 代码导出范围" title="完整图或仅所选节点的上游依赖"><option value="full">Python · 全图</option><option value="selected">Python · 所选分支</option></select>
@@ -584,11 +584,11 @@ function inspect(){
  const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
  $("#blockKnowledge").innerHTML=renderKnowledge(d,n)+(patch?
    '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
-   '<p>此 Add 是一次论文计算图改造：W₀ 保持只读，ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
+   '<p>此 Add 是一次论文计算图改造：W₀ 保持只读（Parameter 将显式冻结），ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
    '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
    '<a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener noreferrer">LoRA · Hu et al. 原始论文 ↗</a></div>':'');
  $("#parameters").innerHTML=d?((n.kind==="parameter"||n.kind==="nd_parameter")?
-   '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · '+esc(n.params.optimizer.kind||'adamw')+' step '+esc(n.params.optimizer.t)+'</div>'+
+   '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · '+(n.params.frozen?'冻结 / 不参加 optimizer.step · ':'可训练 · ')+esc(n.params.optimizer.kind||'adamw')+' step '+esc(n.params.optimizer.t)+'</div>'+
    '<label class="param">Parameter values (JSON, 2D/4D)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
    '<p class="hint">编辑张量后重置当前优化器的累积状态。训练步骤保存在 JSON 并随撤销/重做恢复。</p>'
    :Object.keys(d.params).map(k=>
