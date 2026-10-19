@@ -30,7 +30,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
 | 积木库 | **117 种积木**：11 种基本计算积木 + 106 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **38 门引导课程**（新增 Qwen3 风格 2Q/1KV GQA + QK Norm + RoPE + 可选权重绑定），另有空白自由画布 | 教学缩尺实现，头维布局、RoPE 约定和真实 checkpoint 不完全相同 |
+| 学习内容 | **40 门引导课程**（新增 Qwen3 风格 2Q/1KV GQA + QK Norm + RoPE + 可选权重绑定），另有空白自由画布 | 教学缩尺实现，头维布局、RoPE 约定和真实 checkpoint 不完全相同 |
 | 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
