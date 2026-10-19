@@ -26,4 +26,8 @@ For MoE samples, capture per-token router logits, expert identities, capacity/dr
 - Screenshots should expose source tier and provenance beside values.
 - Reject provenance ambiguity and do not fill missing gradients with zeros.
 
-**Current state:** the exporter and validator are committed; no actual model capture has been executed in this session because Hugging Face is unreachable. Therefore no new REAL_CAPTURE fixture is claimed.
+**Current verified CI state (2026-10-19):** actual pretrained `roneneldan/TinyStories-1M` model CPU Forward + Backward was executed **twice independently**, both at full immutable SHA `77f1b168e219585646439073245fe87e56b3023e`. Captured module: `transformer.h.0.attn.attention.k_proj`, weight shape `[64,64]`, causal LM loss `2.174146890640259`, 8 token IDs. The independent replay test found **maximum numerical difference 0** among checked statistics/samples. See [CI replay and actual evidence artifacts](https://github.com/Qesire/SeetheTruth/actions/runs/39217748548). This is a reproducible real *small-model local module trace*, not a complete Transformer activation tensor or an independent security audit of upstream checkpoint loading.
+
+`real_model_lab.html` now imports captured JSON and displays provenance, parameter weight/gradient statistics and bounded flattened input/output samples with honest evidence status. Real Chromium rendering was exercised with the **actual** captured trace, distinct from marked synthetic structural-validation tests; both PNGs and numerical artifact are archived on the same workflow run.
+
+The immutable trace is stored as a CI artifact rather than disguised as constant demo data. Future capture jobs resolve the upstream commit and include it inside exported provenance; repeated SHA/samples are checked by `tests/verify_real_model_replay.py`. Model ownership and external download remain opt-in, never required to run the Scratch learning app.
