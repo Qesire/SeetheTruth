@@ -12,6 +12,12 @@ function dot(a,b){
 }
 const X=ND.seedTensor([1,2,3,2],1),Y=ND.seedTensor([1,1,3,2],5),K=ND.seedTensor([1,1,2,3],7);
 const examples=[
+ {kind:'nd_rope',input:{x:ND.seedTensor([1,2,3,4],2)},p:{offset:2,rotaryDim:4,base:10000},
+   forward:d=>ND.rope4(d.x,2,4),ports:['x']},
+ {kind:'nd_cache_read',input:{x:X},p:{start:1,length:2},
+   forward:d=>ND.cacheRead4(d.x,1,2),ports:['x']},
+ {kind:'nd_cache_append',input:{cache:ND.cacheRead4(X,0,2),segment:ND.cacheRead4(X,2,1)},p:{},
+   forward:d=>ND.cacheAppend4(d.cache,d.segment),ports:['cache','segment']},
  {kind:'nd_permute',input:{x:X},p:{axis0:0,axis1:2,axis2:1,axis3:3},forward:d=>ND.permute(d.x,[0,2,1,3]),ports:['x']},
  {kind:'nd_reshape',input:{x:X},p:{b:1,h:3,t:2,d:2},forward:d=>ND.reshape(d.x,[1,3,2,2]),ports:['x']},
  {kind:'nd_flatten',input:{x:X},p:{},forward:d=>ND.reshape(d.x,[6,2]),ports:['x']},
