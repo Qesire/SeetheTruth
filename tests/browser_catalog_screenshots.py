@@ -373,7 +373,16 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("torch.cat",torch)
         self.assertIn("self._optimizer.load_state_dict",torch)
         self.assertNotIn('self.parameters["lm_head"]',torch)
-        p.locator('[data-node="prob0"] .block-head').click()
+        p.locator('[data-node="qgain"] .block-head').click()
+        self.assertIn("Qwen3",p.locator("#blockKnowledge").inner_text())
+        self.assertIn("q_norm",p.locator("#blockKnowledge").inner_text())
+        p.locator('[data-node="tied_head"] .block-head').click()
+        self.assertIn("tie_word_embeddings",p.locator("#blockKnowledge").inner_text())
+        self.assertEqual(p.locator('[data-node="q0r"]').get_attribute("data-industrial-ref"),"rope")
+        p.locator('[data-node="q0r"] .block-head').hover()
+        self.assertTrue(p.locator("#paperHoverInspector").is_visible())
+        self.assertIn("RoPE",p.locator("#paperHoverInspector").inner_text())
+        self.assertIn("Qwen3",p.locator("#paperHoverInspector").inner_text())
         self.shot("59-real-qwen-inspired-gqa-rope-tied-weights.png")
 
     def test_trainable_causal_transformer_full_graph_and_export(self):
