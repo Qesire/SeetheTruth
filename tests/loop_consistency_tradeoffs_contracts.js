@@ -81,6 +81,31 @@ for(const id of jsNames){
  near('resume/'+id,p.continuous[id],p.resume[id],1e-11);
 }
 assert.equal(p.history.length,2);
+// Finite differences of stop_gradient must HOLD THE TEACHER TENSOR FIXED.
+// Differentiating f(theta)=MSE(short(theta),long(theta)) directly is a
+// DIFFERENT objective and would falsely report a valid stop-grad VJP as broken.
+const frozenTeacher=step.r1_state.values;
+const fixedMSE=(a,b)=>{
+ let sum=0,n=0;for(let i=0;i<a.length;i++)for(let j=0;j<a[i].length;j++){
+  sum+=(a[i][j]-b[i][j])**2;n++;
+ }return sum/n;
+};
+let naiveDiffFound=false;
+for(const [id,row,col] of [["Wq",0,1],["Wgate",1,0],["embedding",3,2]]){
+ const eps=1e-5;
+ const evaluate=(sign)=>{
+  const test=JSON.parse(save);test.nodes.find(n=>n.id===id).params.values[row][col]+=eps*sign;
+  const steps=Object.fromEntries(L.evaluate(test).steps.map(s=>[s.id,s.values]));
+  return {naive:steps.loss[0][0],
+   stopGrad:steps.base_loss[0][0]+lambda*fixedMSE(steps.r0_state,frozenTeacher)};
+ };
+ const plus=evaluate(1),minus=evaluate(-1),
+  partial=(plus.stopGrad-minus.stopGrad)/(2*eps),
+  naive=(plus.naive-minus.naive)/(2*eps),analytic=back.gradients[id][row][col];
+ assert.ok(Math.abs(partial-analytic)<3e-7,id+" frozen-teacher finite difference mismatch "+partial+" vs "+analytic);
+ if(Math.abs(naive-analytic)>1e-5)naiveDiffFound=true;
+}
+assert.ok(naiveDiffFound,'stop-gradient must have visibly different semantics from naive total derivative');
 const baseline=Consistency.build({coefficient:0});
 const baselineValues=L.evaluate(baseline).steps;
 const baselineLoss=baselineValues.find(x=>x.id==='loss').values[0][0];
