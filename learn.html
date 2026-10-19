@@ -284,6 +284,7 @@ input[type="file"]{display:none}
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
 <script src="model_trace_bridge.js"></script>
+<script src="industrial_source_inspector.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
 <script src="grpo_backward.js"></script>
@@ -451,7 +452,7 @@ function renderBlocks(){
   }).join("");
   const readiness=nodeReadiness.get(n.id),state=readiness?.status||"unknown";
   const shapeLabel=readiness?.shape?.join("×")||(state==="missing"?"待连线":state==="blocked"?"待上游":state==="shape-error"?"形状错误":"—");
-  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+(runScope&&run&&!run.steps.some(x=>x.id===n.id)?' outside-run':'')+'" data-node="'+esc(n.id)+'" data-paper-patch="'+esc((graph.paperPatches||[]).find(p=>p.outputId===n.id)?.paper||"")+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+(runScope&&run&&!run.steps.some(x=>x.id===n.id)?' outside-run':'')+'" data-node="'+esc(n.id)+'" data-paper-patch="'+esc((graph.paperPatches||[]).find(p=>p.outputId===n.id)?.paper||"")+'" data-industrial-ref="'+esc(window.SeetheTruthIndustrialSources?.kind(graph,n.id)||"")+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
  }).join("");
  document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。绿色=形状兼容，橙色=冲突，虚线=待判断；任何形状提示都不阻止自由连接。");};});
  document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
@@ -609,7 +610,7 @@ function inspect(){
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
  const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
- $("#blockKnowledge").innerHTML=renderKnowledge(d,n)+(patch?
+ $("#blockKnowledge").innerHTML=(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
    '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
    '<p>此 Add 是一次论文计算图改造：W₀ 保持只读（Parameter 将显式冻结），ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
    '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
