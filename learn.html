@@ -224,6 +224,14 @@ input[type="file"]{display:none}
  </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="runBranch" type="button" title="只运行所选积木及其全部上游依赖；画布其他未完成的积木不影响该分支">▶ 运行选中分支</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><label class="study-mode-label" for="trainOptimizer">优化器 <select id="trainOptimizer" aria-label="训练优化器选择"><option value="adamw">AdamW</option><option value="adam">Adam · coupled L2</option><option value="sgd_momentum">SGD · Momentum</option><option value="rmsprop">RMSprop</option><option value="adagrad">Adagrad</option><option value="lion">Lion</option></select></label><label class="study-mode-label" for="trainLearningRate">学习率 <select id="trainLearningRate" aria-label="当前优化器学习率"><option value="0.001">0.001</option><option value="0.004">0.004</option><option value="0.01" selected>0.01</option><option value="0.03">0.03</option></select></label>
   <label class="study-mode-label" for="trainWeightDecay">权重衰减 <select id="trainWeightDecay" aria-label="当前优化器权重衰减"><option value="0">0</option><option value="0.01" selected>0.01</option><option value="0.1">0.1</option></select></label>
   <label class="study-mode-label" for="trainCount">步数 <select id="trainCount" aria-label="连续训练步数"><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></label>
+  <details id="optimizerAdvanced" style="display:inline-block;vertical-align:middle;position:relative">
+   <summary class="btn small" style="cursor:pointer;list-style:none" title="高级超参数：不同优化器读取不同选项">优化器超参数</summary>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;position:absolute;right:0;top:100%;z-index:60;padding:10px;background:#112d3e;border:1px solid #3e6276;border-radius:8px;min-width:310px">
+    <label class="study-mode-label">SGD momentum <select id="trainMomentum" aria-label="SGD momentum"><option value="0">0</option><option value="0.5">0.5</option><option value="0.9" selected>0.9</option><option value="0.99">0.99</option></select></label>
+    <label class="study-mode-label">RMSprop alpha <select id="trainAlpha" aria-label="RMSprop alpha"><option value="0.9">0.9</option><option value="0.99" selected>0.99</option><option value="0.999">0.999</option></select></label>
+    <label class="study-mode-label">Adagrad lr_decay <select id="trainLRDecay" aria-label="Adagrad lr decay"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.5">0.5</option><option value="1">1</option></select></label>
+   </div>
+  </details>
   <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 优化器更新，逐步重新计算 Forward/Backward，并保存独立的状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
    <div class="graph-readiness" id="graphReadiness" aria-label="自由计算图的张量形状与连线就绪状态"></div>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
@@ -759,7 +767,8 @@ $("#trainStep").onclick=()=>{try{
  if(!selectedLoss)throw Error("请先选择要训练的 MSE/四轴 MSE 损失积木（有多个损失时必须明确选中）");
  const previous=clone(graph),options={
    count:Number($("#trainCount").value),optimizer:$("#trainOptimizer").value,lr:Number($("#trainLearningRate").value),
-   weightDecay:Number($("#trainWeightDecay").value),targetId:selectedLoss.id
+   weightDecay:Number($("#trainWeightDecay").value),momentum:Number($("#trainMomentum").value),
+   alpha:Number($("#trainAlpha").value),lrDecay:Number($("#trainLRDecay").value),targetId:selectedLoss.id
  },result=Train.steps(previous,options);
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
  graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
