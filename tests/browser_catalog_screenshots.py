@@ -212,7 +212,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p.locator("#load").set_input_files(exported.value.path())
         self.assertEqual(p.locator("#trainOptimizer").input_value(),"adagrad")
         p.locator("#trainStep").click()
-        self.assertIn("AdamW step 4",p.locator("#trainSummary").inner_text())
+        self.assertIn("adagrad step 4",p.locator("#trainSummary").inner_text())
 
     def test_activation_and_optimizer_free_composition_lessons(self):
         p=self.page
