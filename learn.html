@@ -278,6 +278,7 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
+<script src="training_objective.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
@@ -833,9 +834,9 @@ $("#trainOptimizer").onchange=()=>{
 };
 $("#trainStep").onclick=()=>{try{
  if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
- const possibleLosses=graph.nodes.filter(n=>["mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind));
+ const possibleLosses=window.SeetheTruthTrainingObjective.analyze(graph).choices.map(id=>graph.nodes.find(n=>n.id===id));
  const selectedLoss=possibleLosses.find(n=>n.id===selected)||
-   possibleLosses.find(n=>n.id===runScope)||(possibleLosses.length===1?possibleLosses[0]:null);
+   possibleLosses.find(n=>n.id===runScope)||possibleLosses.find(n=>n.id==="loss")||(possibleLosses.length===1?possibleLosses[0]:null);
  if(!selectedLoss)throw Error("请先选择要训练的 MSE、四轴 MSE、MAE 或 CrossEntropy 损失积木（多损失时须明确选中）");
  const previous=clone(graph),options={
    count:Number($("#trainCount").value),optimizer:$("#trainOptimizer").value,lr:Number($("#trainLearningRate").value),
