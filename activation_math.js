@@ -14,7 +14,7 @@ function erf(x){
 }
 const sigmoid=x=>x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
 const softplus=x=>Math.max(0,x)+Math.log1p(Math.exp(-Math.abs(x)));
-const KINDS=Object.freeze(["gelu_erf","gelu_tanh","relu_squared","mish","leaky_relu","silu"]);
+const KINDS=Object.freeze(["gelu_erf","gelu_tanh","relu_squared","mish","leaky_relu","silu","elu","hardswish"]);
 function value(kind,x,params={}){
  if(!KINDS.includes(kind)||!Number.isFinite(x))throw Error("activation requires supported function and finite scalar");
  switch(kind){
@@ -26,6 +26,8 @@ function value(kind,x,params={}){
     if(!Number.isFinite(alpha)||alpha<0||alpha>1)throw Error("Leaky ReLU slope must lie in [0,1]");
     return x>=0?x:alpha*x;}
   case "silu":return x*sigmoid(x);
+  case "elu":{const alpha=params.alpha??1;if(!Number.isFinite(alpha)||alpha<=0||alpha>10)throw Error("ELU alpha must be (0,10]");return x>0?x:alpha*Math.expm1(x);}
+  case "hardswish":return x<=-3?0:x>=3?x:x*(x+3)/6;
  }
 }
 function derivative(kind,x,params={}){
@@ -39,6 +41,8 @@ function derivative(kind,x,params={}){
     if(!Number.isFinite(alpha)||alpha<0||alpha>1)throw Error("Leaky ReLU slope must lie in [0,1]");
     return x>0?1:x<0?alpha:1;}
   case "silu":{const s=sigmoid(x);return s+x*s*(1-s);}
+  case "elu":{const alpha=params.alpha??1;if(!Number.isFinite(alpha)||alpha<=0||alpha>10)throw Error("ELU alpha must be (0,10]");return x>0?1:alpha*Math.exp(x);}
+  case "hardswish":return x<=-3?0:x>=3?1:(2*x+3)/6;
  }
 }
 return Object.freeze({value,derivative,erf,softplus,sigmoid,KINDS});
