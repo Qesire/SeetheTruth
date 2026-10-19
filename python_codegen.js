@@ -26,7 +26,7 @@ const SUPPORTED=new Set([
  "temperature","residual_scale","mae_loss","topk","argmax","detach_demo",
  "group_topk_mask","masked_router_topk","router_gate_weights","dispatch_routed_tokens",
  "expert_linear_bank","routed_weighted_reduce","expert_bank_mix","gather_routed_bank",
- "router_topk","gather_rows","scatter_add","embedding","cross_entropy","pos_encoding"
+ "router_topk","gather_rows","scatter_add","embedding","cross_entropy","pos_encoding","slice_rows"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
 const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
@@ -318,6 +318,7 @@ function compile(raw,options={}){
    else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
    else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
+   else if(kind==="slice_rows")expression=port("x")+'['+p.start+':'+(p.start+p.length)+',:]';
    else if(kind==="pos_encoding")expression='_pos_encoding('+port("x")+')';
    else if(kind==="embedding")expression='_fixed_embedding('+port("ids")+','+p.vocab+','+p.width+')';
    else if(kind==="cross_entropy")expression='_cross_entropy('+port("logits")+','+port("labels")+')';
