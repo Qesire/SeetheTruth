@@ -9,7 +9,7 @@ function erf(x){
  if(a>=6)return sign;
  const mid=a/2;let sum=0;
  for(let i=0;i<8;i++){const p=points[i];sum+=weights[i]*
-   (Math.exp(-(mid*(1+p))**2)+Math.exp(-(mid*(1-p))**2));}
+   (Math.exp(-((mid*(1+p))**2))+Math.exp(-((mid*(1-p))**2)));}
  return sign*mid*(2/Math.sqrt(Math.PI))*sum;
 }
 const sigmoid=x=>x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
