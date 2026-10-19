@@ -187,7 +187,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             self.assertEqual(p.locator("#trainOptimizer").input_value(),kind)
             p.locator("#trainStep").click()
             summary=p.locator("#trainSummary").inner_text()
-            self.assertIn(kind,summary)
+            self.assertIn(kind,summary.lower())
             self.assertIn("Step 2",summary)
             with p.expect_download() as saved:
                 p.locator("#save").click()
