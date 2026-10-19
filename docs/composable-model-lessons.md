@@ -383,3 +383,42 @@ All three N-D primitives have reverse-mode rules as well: RoPE uses the transpos
 **Important epistemic boundary:** The cache here is explicit **functional snapshot data** in a DAG and is not a mutable stateful decoding engine, external cache store, or GPU paged attention implementation. Student-controlled append calls do not constitute measured runtime savings. Standard HF dynamic caches have per-layer state and update it across actual autoregressive model calls; our composition teaches the same tensor dependency without claiming a full runtime.
 
 References: [RoFormer — Rotary Position Embedding](https://arxiv.org/abs/2104.09864); [Hugging Face KV cache implementation](https://huggingface.co/docs/transformers/cache_explanation); [GQA](https://aclanthology.org/2023.emnlp-main.298/).
+
+## 32–33 — Independently composable activation functions and optimizer rules
+
+The catalogue expands to **110 executable building blocks** and **33 guided lessons**, while preserving shape-only readiness, editable DAGs, local paper hover cards, and CPU-only numerical execution. All new operators remain independent primitives, not hard-coded model-family templates.
+
+### Activation families: mathematical distinctions
+
+The library already provided ReLU, SiLU, Sigmoid, Tanh, Softplus, `gelu_tanh`, SwiGLU and GEGLU. The extension deliberately adds **distinct** operations rather than duplicating existing names:
+
+| 2D kind (plus four-axis counterpart where shown) | Formula | Analytic derivative | Relevant caveat |
+|---|---|---|---|
+| `gelu_erf` / `nd_gelu_erf` | `x Φ(x)` | `Φ(x)+xφ(x)` | Gaussian-CDF GELU distinct from `gelu_tanh`; erf is high-accuracy bounded CPU quadrature |
+| Existing `silu` / new `nd_silu` | `xσ(x)` | `σ(x)+xσ(x)(1−σ(x))` | SwiGLU also requires independent Gate/Up branches |
+| `relu_squared` / `nd_relu_squared` | `max(x,0)^2` | `2x` if `x>0`, else `0` | Sparse output does not automatically imply sparse GEMM |
+| `mish` / `nd_mish` | `x tanh(softplus(x))` | `tanh(sp)+xσ(x)(1−tanh(sp)^2)` | Stable softplus prevents overflow at large positive inputs |
+| `leaky_relu` | `x` if nonnegative, else `slope*x` | `1` or `slope` | Positive-side subgradient selected at zero |
+
+Every new activation has real value execution. The graph reverse engine routes 2D/4D VJPs through the same parameter identity and optimizer transaction; analytic derivatives have central finite-difference checks. Lesson `activation_gallery` sends one synthetic input along independent branches so students can inspect each function and replace the branch freely.
+
+Primary references: [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415), [Mish](https://arxiv.org/abs/1908.08681), [Activation function comparison (JMLR 2024)](https://jmlr.org/papers/v25/23-0912.html).
+
+### Four optimizer rules: operational differences, not only labels
+
+The training toolbar provides **AdamW**, **Momentum SGD**, **RMSprop** and **Lion**, all connected to the *same* immutable `Forward → loss → reverse VJP → optimizer update → Forward` engine for both 2D and 4D Parameter blocks. Every rule records per-parameter update norms, scalar loss before/after, and serialized `optimizer.kind`, `t`, `m`, `v`. Legacy graphs without `optimizer.kind` are interpreted as AdamW.
+
+| Optimizer | Teaching update | State memory | Decay semantics |
+|---|---|---|---|
+| AdamW | Bias-corrected `m / (sqrt(v)+eps)` | First+second moments | Decoupled |
+| SGD Momentum | `m_t = μm_{t−1}+g+λθ`; `θ -= ηm_t` | Momentum | Coupled L2 |
+| RMSprop | `v_t=αv_{t−1}+(1−α)(g+λθ)^2`; `θ -= ηg_eff/(sqrt(v)+eps)` | Squared gradient average | Coupled L2, non-centered, no momentum |
+| Lion | `θ -= η sign(β1*m_prev+(1−β1)*g) + ηλθ`; `m_t=β2*m_prev+(1−β2)*g` | First momentum only | Decoupled |
+
+For fairness these algorithms cannot be interpreted as a controlled quality benchmark merely because they receive identical synthetic inputs and learning rates. Lion's sign step often requires a different LR scale; no claim about large-model quality is implied. The four new `opt_*` **palette blocks** independently accept `parameter` and `gradient` sockets and return the one-step updated values from **zero optimizer history** (and expose moment/update matrices). These are forward-only, composable *functional previews*. By contrast the toolbar runs true multi-step transactions with independent optimizer state and undo/redo persistence. The `optimizer_compare` guided lesson wires all four previews to the same parameter and gradient input; it never silently modifies the source node.
+
+**Safe switching:** Changing the toolbar optimizer on a graph that has Parameters explicitly resets the moments and step counters, preserving tensor values and recording an undo snapshot. It is not correct to reinterpret a previous RMSprop square average as AdamW's `v` or Lion's momentum. Saving and loading a graph recovers its stored optimizer kind. Each subsequent step recomputes the true graph VJP instead of reusing previous gradients.
+
+Unit tests enforce scalar function derivatives, 4D local VJPs, optimizer recurrences and state persistence for all four algorithms, a composed 4D Mish activation + MQA trainable graph, invalid parameter values, and a cross-algorithm switch requiring reset. Chromium tests exercise the toolbar choices, JSON restore, and independently built activation/optimizer comparison DAGs.
+
+Optimizer references: [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101), [PyTorch SGD](https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html), [PyTorch RMSprop](https://docs.pytorch.org/docs/stable/generated/torch.optim.RMSprop.html), and [Lion / Symbolic Discovery (NeurIPS 2023)](https://arxiv.org/abs/2302.06675).
