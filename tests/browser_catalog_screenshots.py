@@ -191,6 +191,11 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             ("adagrad","62-adagrad-accumulator-persistent-train.png")
         ]:
             p.locator("#trainOptimizer").select_option(optimizer)
+            if optimizer=="adagrad":
+                p.locator("#optimizerAdvanced summary").click()
+                p.locator("#trainLRDecay").select_option("1")
+                self.assertEqual(p.locator("#trainLRDecay").input_value(),"1")
+                p.locator("#optimizerAdvanced summary").click()
             p.locator("#trainStep").click()
             self.assertIn("Step 2",p.locator("#trainSummary").inner_text())
             with p.expect_download() as exported:
