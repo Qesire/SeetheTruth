@@ -114,6 +114,6 @@ for(const [recipe,count,wantNodes] of cases){
 }
 // A DAG displays depth recurrence by unrolling; actual feedback cycles must be rejected.
 const cycle=JSON.parse(JSON.stringify(L.preset('loop_transformer_two')));
-cycle.edges.push({from:'r2_state',to:'r1_norm',port:'x'});
-assert.throws(()=>L.order(L.validateGraph(cycle)),/循环|cycle|重复输入|duplicate|port/i);
+cycle.edges.find(e=>e.to==='r1_norm'&&e.port==='x').from='r2_state';
+assert.throws(()=>L.order(L.validateGraph(cycle)),/循环计算依赖/);
 console.log('LOOP_TRANSFORMER_CODEGEN_PASS '+total+' independent node tensor comparisons, 2 and 3 loops; causal, shared gradients, finite differences, checkpoint exact');
