@@ -20,7 +20,10 @@ const SUPPORTED=new Set([
  "nd_reduce_sum","nd_batched_matmul","nd_scale","nd_softmax_last","nd_causal_mask",
  "nd_repeat_kv","nd_mse","nd_rope","nd_cache_read","nd_cache_append",
  "nd_silu","nd_relu_squared","nd_mish","nd_gelu_erf","nd_elu","nd_hardswish",
- "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion"
+ "opt_adamw","opt_adam","opt_adagrad","opt_sgd_momentum","opt_rmsprop","opt_lion",
+ "row_mean","row_sum","row_var","row_logsumexp","log_softmax","l2norm","qk_norm","logit_softcap",
+ "low_rank_project","row_bias_add","weighted_sum","masked_softmax","sliding_window_mask",
+ "temperature","residual_scale","mae_loss","topk","argmax","detach_demo"
 ]);
 const encoded=x=>JSON.stringify(JSON.stringify(x));
 const py=x=>typeof x==="number"?(Number.isFinite(x)?String(x):(()=>{throw Error("nonfinite literal")})()):JSON.stringify(x);
@@ -76,6 +79,24 @@ def _act(x, name, **kw):
     if name == "hardswish":
         return x*np.clip(x+3, 0, 6)/6
     raise ValueError("unsupported activation " + name)
+
+def _masked_softmax(logits, mask):
+    if logits.shape != mask.shape or not np.all((mask == 0) | (mask == 1)):
+        raise ValueError("masked_softmax requires same-shape boolean 0/1 mask")
+    allowed = mask.astype(bool)
+    if not np.all(allowed.any(axis=-1)):
+        raise ValueError("masked_softmax has a fully masked row")
+    scores = np.where(allowed, logits, -np.inf)
+    maximum = np.max(scores, axis=-1, keepdims=True)
+    exp = np.where(allowed, np.exp(scores-maximum), 0)
+    return exp / np.sum(exp,axis=-1,keepdims=True)
+
+def _sliding_window(x, width):
+    if x.shape[0] != x.shape[1]:
+        raise ValueError("sliding_window_mask requires a square token matrix")
+    rows = np.arange(x.shape[0])[:,None]
+    cols = np.arange(x.shape[1])[None,:]
+    return ((cols <= rows) & (rows-cols < width)).astype(np.float64)
 
 def _rope(x, offset, r, base):
     out=x.copy()
@@ -165,6 +186,25 @@ function compile(raw,options={}){
    else if(kind==="layernorm")expression='(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))/np.sqrt(np.mean(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
    else if(kind==="attention")expression='(_softmax(('+port("q")+' @ '+port("k")+'.T)/np.sqrt('+port("q")+'.shape[-1])) @ '+port("v")+')';
    else if(kind==="mse"||kind==="nd_mse")expression='np.asarray([[np.mean(('+port("prediction")+'-'+port("target")+')**2)]],dtype=np.float64)';
+   else if(kind==="row_mean")expression='np.mean('+port("x")+',axis=-1,keepdims=True)';
+   else if(kind==="row_sum")expression='np.sum('+port("x")+',axis=-1,keepdims=True)';
+   else if(kind==="row_var")expression='np.var('+port("x")+',axis=-1,keepdims=True)';
+   else if(kind==="row_logsumexp")expression='np.logaddexp.reduce('+port("x")+',axis=-1,keepdims=True)';
+   else if(kind==="log_softmax")expression='('+port("x")+'-np.logaddexp.reduce('+port("x")+',axis=-1,keepdims=True))';
+   else if(kind==="l2norm")expression='('+port("x")+'/np.maximum(np.linalg.norm('+port("x")+',axis=-1,keepdims=True),'+p.epsilon+'))';
+   else if(kind==="qk_norm")expression='('+port("x")+'/np.sqrt(np.mean('+port("x")+'**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
+   else if(kind==="logit_softcap")expression='('+p.cap+'*np.tanh('+port("x")+'/'+p.cap+'))';
+   else if(kind==="low_rank_project")expression='(('+port("x")+' @ '+port("down")+') @ '+port("up")+')';
+   else if(kind==="row_bias_add")expression='('+port("scores")+' + '+port("bias")+')';
+   else if(kind==="weighted_sum")expression='('+port("weights")+' @ '+port("values")+')';
+   else if(kind==="masked_softmax")expression='_masked_softmax('+port("logits")+','+port("mask")+')';
+   else if(kind==="sliding_window_mask")expression='_sliding_window('+port("x")+','+p.window+')';
+   else if(kind==="temperature")expression='('+port("x")+' / '+p.temperature+')';
+   else if(kind==="residual_scale")expression='('+port("x")+' * '+p.factor+')';
+   else if(kind==="mae_loss")expression='np.asarray([[np.mean(np.abs('+port("prediction")+'-'+port("target")+'))]],dtype=np.float64)';
+   else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
+   else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
+   else if(kind==="detach_demo")expression=port("x")+'.copy()';
    else if(kind==="swiglu")expression='(_act('+port("gate")+',"silu") * '+port("up")+')';
    else if(kind==="geglu")expression='(_act('+port("gate")+',"gelu_tanh") * '+port("up")+')';
    else if(kind.startsWith("opt_"))expression='_opt('+py(kind)+','+port("parameter")+','+port("gradient")+','+p.lr+','+p.weightDecay+','+(p.momentum??.9)+','+(p.alpha??.99)+','+(p.lrDecay??0)+')';
