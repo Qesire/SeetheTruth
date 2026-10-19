@@ -28,6 +28,7 @@ on:
       - 'tests/loop_consistency_tradeoffs_contracts.js'
       - 'loop_consistency.js'
       - 'loop_design_tradeoffs.js'
+      - 'tests/loop_residual_scaling_contracts.js'
       - 'architecture_why.js'
       - 'tests/architecture_why_contracts.js'
       - 'loop_transformer.js'
