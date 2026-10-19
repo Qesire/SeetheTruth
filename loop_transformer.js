@@ -113,5 +113,36 @@ function inspect(raw){
     lossId:"r"+i+"_ce",attentionIds:["r"+i+"_probs","r"+i+"_mask"]})),
   paper:PAPER,evidence:"unrolled_shared_parameter_identity_not_a_python_loop_or_adaptive_halting"});
 }
-return Object.freeze({build,inspect,MAX_LOOPS,PAPER});
+function resize(raw,nextLoops){
+ const source=L.validateGraph(raw),about=inspect(source);
+ if(!about.linked||!about.loops)throw Error("not a connected Looped Transformer graph");
+ const originalWeights=Array.from({length:about.loops},(_,i)=>source.nodes.find(n=>n.id==="weight"+i)?.params.factor);
+ if(originalWeights.some(x=>typeof x!=="number"||!Number.isFinite(x)||x<0))throw Error("invalid existing depth loss factors");
+ const total=originalWeights.reduce((s,v)=>s+v,0);
+ if(!(total>0))throw Error("nonpositive existing depth loss mass");
+ const canonical=build({loops:about.loops,lossWeights:originalWeights});
+ // Changing loop depth is a structural rewrite, not a silent repair of
+ // arbitrary user edits. Reject noncanonical edges and changed math operators.
+ const signature=g=>JSON.stringify({
+  nodes:g.nodes.map(n=>[n.id,n.kind,n.kind==="parameter"?
+   n.params.values.map(row=>row.length):n.params]).sort((a,b)=>a[0].localeCompare(b[0])),
+  edges:g.edges.map(e=>e.from+":"+e.to+":"+e.port).sort()
+ });
+ if(signature(source)!==signature(canonical))
+  throw Error("custom rewiring/operator edits found; cannot change loop depth without discarding work");
+ const target=build({loops:nextLoops});
+ const sourceParams=new Map(source.nodes.filter(n=>n.kind==="parameter").map(n=>[n.id,n]));
+ for(const n of target.nodes.filter(n=>n.kind==="parameter")){
+  const old=sourceParams.get(n.id);
+  if(!old)throw Error("missing shared parameter "+n.id);
+  n.params=JSON.parse(JSON.stringify(old.params));
+ }
+ const valid=L.validateGraph(target);
+ return {graph:valid,oldLoops:about.loops,newLoops:nextLoops,
+  preservedParameterIds:[...sourceParams.keys()],
+  oldObjectiveWeights:originalWeights,
+  newObjectiveWeights:valid.nodes.filter(n=>/^weight[0-2]$/.test(n.id)).map(n=>n.params.factor),
+  warning:"objective depth weights are rebuilt for the new depth; original parameter values and AdamW moments remain unchanged"};
+}
+return Object.freeze({build,inspect,resize,MAX_LOOPS,PAPER});
 });
