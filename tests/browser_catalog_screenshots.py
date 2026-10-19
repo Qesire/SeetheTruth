@@ -151,6 +151,60 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             p.locator("#gradientInspector").scroll_into_view_if_needed()
             self.shot(name)
 
+    def test_activation_palette_and_four_optimizer_live_training(self):
+        import json
+        p=self.page
+        # Every new activation is present and executes actual bounded values.
+        all_kinds=p.evaluate("window.SeetheTruthLearning.KINDS")
+        for kind in ("gelu_erf","relu_squared","mish","leaky_relu",
+                     "nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish",
+                     "opt_adamw","opt_sgd_momentum","opt_rmsprop","opt_lion"):
+            self.assertIn(kind,all_kinds)
+        outcomes=p.evaluate("""() => {
+            const B=window.SeetheTruthBlockCatalog,ND=window.SeetheTruthND;
+            const x=[[-2,-.5,.5,2]];
+            return {
+              erf:B.execute({kind:'gelu_erf',params:{}},{x}).values[0],
+              squared:B.execute({kind:'relu_squared',params:{}},{x}).values[0],
+              mish:B.execute({kind:'mish',params:{}},{x}).values[0],
+              ndShape:B.execute({kind:'nd_mish',params:{}},
+                  {x:ND.seedTensor([1,2,2,4],3)}).shape
+            };
+        }""")
+        self.assertEqual(outcomes["squared"],[0,0,.25,4])
+        self.assertEqual(outcomes["ndShape"],[1,2,2,4])
+        self.assertNotEqual(outcomes["erf"],outcomes["mish"])
+        # Changing optimizers resets incompatible moments but not parameter values.
+        p.locator('[data-preset="trainable_core"]').click()
+        p.locator("#trainCount").select_option("2")
+        for kind,expected_file in [
+            ("sgd_momentum","53-sgd-momentum-live-optimizer.png"),
+            ("rmsprop","54-rmsprop-live-optimizer.png"),
+            ("lion","55-lion-live-optimizer.png"),
+            ("adamw","56-adamw-live-optimizer.png")
+        ]:
+            p.locator("#trainOptimizer").select_option(kind)
+            self.assertEqual(p.locator("#trainOptimizer").input_value(),kind)
+            p.locator("#trainStep").click()
+            summary=p.locator("#trainSummary").inner_text()
+            self.assertIn(kind,summary)
+            self.assertIn("Step 2",summary)
+            with p.expect_download() as saved:
+                p.locator("#save").click()
+            data=json.loads(open(saved.value.path(),encoding="utf-8").read())
+            param=next(n for n in data["nodes"] if n["id"]=="shared_weight")
+            self.assertEqual(param["params"]["optimizer"]["kind"],kind)
+            self.assertEqual(param["params"]["optimizer"]["t"],2)
+            p.locator("#trainSummary").scroll_into_view_if_needed()
+            self.shot(expected_file)
+        # Restore moments by project import and continue using the saved optimizer.
+        with p.expect_download() as exported:
+            p.locator("#save").click()
+        p.locator("#load").set_input_files(exported.value.path())
+        self.assertEqual(p.locator("#trainOptimizer").input_value(),"adamw")
+        p.locator("#trainStep").click()
+        self.assertIn("AdamW",p.locator("#trainSummary").inner_text().replace("adamw","AdamW"))
+
     def test_four_axis_cached_gqa_rope_incremental_decode(self):
         p=self.page
         p.locator('[data-preset="nd_cached_gqa_decode"]').click()
