@@ -330,6 +330,16 @@
     }else if(kind==="causal_mask"){
       const x=get("x");by(x[0]<=16,"Causal Mask 长度超出界限",n.id);
       output=[x[0],x[0]];rule="由 Query/Key 时间先后关系产生 T×T 下三角布尔约束";
+    }else if(kind==="token_depth_mask"){
+      const d=get("depths");by(d[1]===1,"Token budgets must use [T,1] integer ID shape",n.id);
+      output=[d[0],p.width];
+      rule="逐 Token 离散预算产生 [T,D] 二进制持续迭代 Mask；只改变隐藏状态更新语义，不减少稠密矩阵乘";
+      conditions.push("depths 数值必须为 0..3 的整数；静态模式不检查具体取值");
+    }else if(kind==="state_mask_blend"){
+      const [old,candidate,mask]=ports(n,inputs,"previous","candidate","mask");
+      by(equal(old,candidate)&&equal(old,mask),"state blend requires same [T,D] shapes",n.id);
+      output=old.slice();rule="M=1 采用本轮候选状态，M=0 严格保留之前已退出的 Token 表征";
+      conditions.push("mask 必须为 0/1；即使 M=0，稠密教学后端仍会执行全部候选分支");
     }else if(kind==="masked_softmax"){
       const [logits,mask]=ports(n,inputs,"logits","mask");
       by(equal(logits,mask),"Masked Softmax logits/mask 形状必须相同",n.id);
