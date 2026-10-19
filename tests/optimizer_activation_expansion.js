@@ -42,6 +42,12 @@ assert.notEqual(rms.state.v[0][0],ad.state.v[0][0]);
 const trainedBase=L.preset('trainable_core');
 const adagradBase=T.steps(trainedBase,{targetId:'loss',optimizer:'adagrad',count:3,lr:.01,lrDecay:0});
 const adagradDecay=T.steps(trainedBase,{targetId:'loss',optimizer:'adagrad',count:3,lr:.01,lrDecay:1});
+const recorded=adagradDecay.graph.nodes.find(n=>n.id==='shared_weight').params.optimizer;
+assert.equal(recorded.config.lrDecay,1);
+assert.equal(recorded.config.optimizer,'adagrad');
+assert.deepEqual(T.step(clone(adagradDecay.graph),{targetId:'loss'}).graph,
+                 T.step(adagradDecay.graph,{targetId:'loss',optimizer:'adagrad',lr:.01,lrDecay:1,weightDecay:.01}).graph,
+                 'JSON checkpoint should restore Adagrad algorithm plus decay without reselecting options');
 assert.notDeepEqual(adagradBase.graph.nodes.find(n=>n.id==='shared_weight').params.values,
                     adagradDecay.graph.nodes.find(n=>n.id==='shared_weight').params.values,
                     'UI-controllable Adagrad lrDecay must alter actual multi-step parameter trajectory');
