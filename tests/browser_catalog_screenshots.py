@@ -338,6 +338,42 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_real_token_embedding_crossentropy_training_and_code_export(self):
+        p=self.page
+        p.locator('[data-preset="token_lm_trainable"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),8)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        self.assertFalse(p.locator("#backward").is_disabled())
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        self.assertIn("AdamW step 2",p.locator("#trainSummary").inner_text())
+        with p.expect_download() as item:
+            p.locator("#save").click()
+        saved=json.loads(Path(item.value.path()).read_text(encoding="utf-8"))
+        table=next(n for n in saved["nodes"] if n["id"]=="embedding_table")
+        self.assertEqual(table["params"]["optimizer"]["t"],2)
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as item:
+            p.locator("#exportPython").click()
+        np_source=Path(item.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_cross_entropy",np_source)
+        self.assertIn("_gather_rows",np_source)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as item:
+            p.locator("#exportPython").click()
+        torch_source=Path(item.value.path()).read_text(encoding="utf-8")
+        self.assertIn("F.cross_entropy",torch_source)
+        self.assertIn("torch.nn.Parameter",torch_source)
+        self.assertIn("self._optimizer.load_state_dict",torch_source)
+        self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
+        self.shot("57-trainable-token-embedding-ce-export.png")
+
     def test_free_mixed_loss_mae_optimizer_and_export(self):
         p=self.page
         p.locator('[data-preset="trainable_swiglu"]').click()
