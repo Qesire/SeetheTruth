@@ -161,6 +161,26 @@ function backward(raw,forward,opts={}){
     send(id,"scores",ds);cut(id,"indices","Top-k discrete selected IDs are fixed; gradient flows only through selected gate affinities");
     local[id]={vjp:"g=selectedAffinity/sum(selectedAffinity); dAffinity_i=(dG_i−Σ_j dG_j·g_j)/sum; duplicate selected IDs accumulate"};continue;
   }
+  if(kind==="masked_softmax"){
+    const mask=inp(id,"mask"),pvals=values.get(id);
+    const dx=d.map((row,i)=>{
+      const weighted=row.reduce((sum,g,j)=>sum+g*pvals[i][j],0);
+      return row.map((g,j)=>mask[i][j]===1?pvals[i][j]*(g-weighted):0);
+    });
+    send(id,"logits",dx);
+    cut(id,"mask","binary causal/structural visibility mask is a non-differentiable control edge");
+    local[id]={vjp:"masked softmax: p_j*(dP_j−Σ_k p_k dP_k) on allowed entries; exact zero outside mask"};continue;
+  }
+  if(kind==="weighted_sum"){
+    const weights=inp(id,"weights"),valuesIn=inp(id,"values");
+    send(id,"weights",mm(d,tr(valuesIn)));
+    send(id,"values",mm(tr(weights),d));
+    local[id]={vjp:"dWeights=dContext·Valueᵀ; dValue=Weightsᵀ·dContext, cross-token gradients accumulate"};continue;
+  }
+  if(kind==="causal_mask"){
+    cut(id,"x","causal visibility topology is fixed, not a real-valued differentiable path");
+    local[id]={vjp:"causal mask is a discrete structural constraint; graph gradients follow logits→masked_softmax, not mask construction"};continue;
+  }
   if(kind==="attention"){
     const q=inp(id,"q"),k=inp(id,"k"),v=inp(id,"v"),
       scores=mm(q,tr(k)),factor=1/Math.sqrt(q[0].length);
