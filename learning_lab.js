@@ -248,7 +248,30 @@
   function preset(name){
     const N=node;
     let title,nodes,edges;
-    if(name==="nd_cached_gqa_decode"){
+    if(name==="activation_gallery"){
+      title="任务 32 · 激活函数比较实验 · GELU/SiLU/Mish/ReLU²";
+      nodes=[
+        N("signal","input",30,300,{rows:2,width:4,seed:4}),
+        N("gelu_cdf","gelu_erf",370,30),
+        N("gelu_approx","gelu_tanh",370,230),
+        N("mish_act","mish",370,430),
+        N("relu_square","relu_squared",370,630),
+        N("leaky","leaky_relu",700,230,{slope:0.1}),
+        N("silu_act","silu",700,490)
+      ];
+      edges=nodes.slice(1).map(n=>["signal",n.id,"x"]);
+    }else if(name==="optimizer_compare"){
+      title="任务 33 · 同一梯度对照四种优化器 · 一步纯函数更新";
+      nodes=[
+        N("weights","parameter",30,190),
+        N("gradient","input",30,520,{rows:2,width:2,seed:5}),
+        N("adamw","opt_adamw",380,30,{lr:0.01,weightDecay:0.01}),
+        N("sgd","opt_sgd_momentum",380,260,{lr:0.01,weightDecay:0.01,momentum:0.9}),
+        N("rmsprop","opt_rmsprop",380,490,{lr:0.01,weightDecay:0.01,alpha:0.99}),
+        N("lion","opt_lion",380,720,{lr:0.004,weightDecay:0.01})
+      ];
+      edges=nodes.slice(2).flatMap(n=>[["weights",n.id,"parameter"],["gradient",n.id,"gradient"]]);
+    }else if(name==="nd_cached_gqa_decode"){
       title="任务 31 · 四轴 RoPE + GQA KV Cache · Prefill → Decode";
       nodes=[
         N("full_q","nd_input",25,35,{b:1,h:4,t:3,d:4,seed:2}),
