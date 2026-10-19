@@ -338,6 +338,44 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_industry_qwen3_inspired_gqa_rope_tied_head_executable(self):
+        p=self.page
+        p.locator('[data-preset="industrial_gqa_rope_tied"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),38)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as item:
+            p.locator("#save").click()
+        saved=json.loads(Path(item.value.path()).read_text(encoding="utf-8"))
+        weights=[n for n in saved["nodes"] if n["kind"]=="parameter"]
+        self.assertEqual({n["id"] for n in weights},{"embed","wq","wk","wv","wo"})
+        self.assertTrue(all(n["params"]["optimizer"]["t"]==2 for n in weights))
+        self.assertEqual(next(n for n in saved["nodes"] if n["id"]=="tied_head")["kind"],"transpose2d")
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as item:
+            p.locator("#exportPython").click()
+        numpy=Path(item.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_rope2d",numpy)
+        self.assertIn("np.concatenate",numpy)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as item:
+            p.locator("#exportPython").click()
+        torch=Path(item.value.path()).read_text(encoding="utf-8")
+        self.assertIn("_rope2d",torch)
+        self.assertIn("torch.nn.Parameter",torch)
+        self.assertIn("torch.cat",torch)
+        self.assertIn("self._optimizer.load_state_dict",torch)
+        self.assertNotIn('self.parameters["lm_head"]',torch)
+        p.locator('[data-node="prob0"] .block-head').click()
+        self.shot("59-real-qwen-inspired-gqa-rope-tied-weights.png")
+
     def test_trainable_causal_transformer_full_graph_and_export(self):
         p=self.page
         p.locator('[data-preset="causal_transformer_lm"]').click()
