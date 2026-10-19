@@ -135,6 +135,7 @@ input[type="file"]{display:none}
 #paperHoverInspector{position:fixed;z-index:3000;max-height:calc(100vh - 24px);overflow:auto;background:#10293a;color:#eaf9ff;border:1px solid #56b9c4;border-radius:13px;box-shadow:0 15px 55px #000c;padding:16px 18px;font-size:12px;line-height:1.55}
 #paperHoverInspector[hidden]{display:none}#paperHoverInspector h3{font-size:16px;margin:8px 0 9px}#paperHoverInspector h4{font-size:12px;color:#84e9dc;margin:13px 0 3px}#paperHoverInspector p{margin:0;color:#c7e1ed}#paperHoverInspector code{white-space:normal;overflow-wrap:anywhere;display:block;background:#08202d;border-radius:7px;padding:9px;color:#f1dbaa}
 #paperHoverInspector .phi-heading{display:flex;justify-content:space-between;align-items:center;color:#9bdacc;letter-spacing:.07em;font:10px monospace}#paperHoverInspector button{background:transparent;border:1px solid #437186;color:#c4e6f3;border-radius:6px;padding:2px 8px;cursor:pointer}#paperHoverInspector .phi-references{display:grid;gap:4px;margin:9px 0}#paperHoverInspector .phi-references a{color:#8ee7f3;text-decoration:underline}#paperHoverInspector small{display:block;border-top:1px solid #2a5a6b;padding-top:9px;margin-top:10px;color:#96bbcb}
+.real-sample-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}.real-sample-toolbar input{max-width:100%;font-size:11px}.real-sample-hint,.real-sample-source,.real-sample-warning{font-size:11px;overflow-wrap:anywhere}.real-sample-source{font-family:ui-monospace,monospace}.real-sample-warning{border-top:1px solid #476374;margin-top:10px;padding-top:8px;color:#f1c9a4}.real-sample-header{display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap}.real-sample-header span{font:10px ui-monospace,monospace;color:#97d6ce}.real-sample-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}.real-sample-metric{background:#0b2231;border:1px solid #376275;border-radius:6px;padding:7px;min-width:0}.real-sample-metric span,.real-sample-metric small{display:block;color:#b4d5df;font-size:10px}.real-sample-metric b{font-family:ui-monospace,monospace}.real-sample-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin:5px 0 10px}.real-sample-cell{border:1px solid #496478;border-radius:3px;text-align:center;min-width:0;font:10px/1.5 ui-monospace,monospace;padding:2px;overflow:hidden}.real-sample-title{font-size:11px;color:#bce8df;margin:10px 0 2px}
 </style></head><body>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
@@ -251,6 +252,13 @@ input[type="file"]{display:none}
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
   </section>
+  <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
+    <div class="kicker">REAL MODEL REFERENCE / 真实观测 · 与教学运算分离</div>
+    <p class="hint">将真实 CPU 模型的采样关联到所选 Linear、MatMul 或 Parameter。只读展示，不替换当前计算。</p>
+    <div class="real-sample-toolbar"><input id="traceReferenceFile" type="file" accept="application/json,.json" aria-label="关联真实模型采集 JSON"><button class="btn small" id="bindRealTrace" type="button" disabled>关联选中积木</button><button class="btn small" id="clearRealTrace" type="button" disabled>清除</button></div>
+    <div class="hint" id="traceReferenceStatus">尚未导入真实观测；当前矩阵均为教学数据。</div>
+    <div id="realTracePanel"></div>
+  </section>
   <div class="section"><div class="kicker">实验参数</div><div id="parameters"><p class="hint">输入和线性层可调维度。</p></div></div>
   <div class="section"><div class="kicker">RUN TRACE / 每步变化</div><div id="trace"><p class="hint">运行后出现逐步计算轨迹。</p></div><div id="metrics"></div></div>
   <div class="section"><div class="kicker">TENSOR & SEMANTIC FLOW / 张量与机制</div><div id="shape">shape: —</div><div id="matrix"><p class="hint">运行并选择一步以查看数值矩阵。</p></div><div id="intermediates"></div></div><div class="section" aria-label="训练梯度和停止梯度边界"><div class="kicker">REVERSE FLOW / 局部梯度与截断位置</div><div id="gradientInspector"><p class="hint">数值模式下支持 GRPO 及 MSE 计算图的有界反向分析；默认不创建梯度或更新权重。</p></div></div>
@@ -271,6 +279,8 @@ input[type="file"]{display:none}
 <script src="torch_codegen.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_graph_rewrites.js"></script>
+<script src="model_trace.js"></script>
+<script src="model_trace_bridge.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
 <script src="grpo_backward.js"></script>
@@ -285,7 +295,7 @@ input[type="file"]{display:none}
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
-  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,$=q=>document.querySelector(q);
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
@@ -293,6 +303,7 @@ const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"�
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
+let realTrace=null,realAssociationId=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -305,7 +316,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -576,6 +587,19 @@ function renderKnowledge(d,n){
 
 function inspect(){
  const n=graph.nodes.find(x=>x.id===selected),d=n&&L.defs[n.kind];
+ const realStatus=$("#traceReferenceStatus"),realPanel=$("#realTracePanel");
+ $("#bindRealTrace").disabled=!realTrace||!n||!TraceBridge.supportedKinds.includes(n.kind);
+ $("#clearRealTrace").disabled=!realTrace;
+ if(realTrace&&realAssociationId===selected&&n){
+   try{
+     realPanel.innerHTML=TraceBridge.render(realTrace,n);
+     realStatus.textContent="关联到 "+selected+" · 只读参考，不参与当前教学计算和导出";
+   }catch(err){realPanel.replaceChildren();realStatus.textContent="观测关联无效："+err.message;}
+ }else{
+   realPanel.replaceChildren();
+   realStatus.textContent=realTrace?(realAssociationId?"采集已关联节点 "+realAssociationId+"；选择该节点查看，或将采集关联到当前积木":"采集已载入；请选择 Linear、MatMul 或 Parameter 并点击关联"):
+     "尚未导入真实观测；当前矩阵均为教学数据。";
+ }
  $("#inspectorTitle").textContent=d?d.title:"选择一个积木";
  $("#formula").textContent=d?d.formula:"Y=F(X)";
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
@@ -845,6 +869,32 @@ $("#copyPython").onclick=async()=>{
  if(!currentPythonSource)return;
  try{await navigator.clipboard.writeText(currentPythonSource);say("已复制生成的 Python 源码。");}
  catch(err){say("剪贴板不可用，请从下方代码框复制。",true);}
+};
+$("#traceReferenceFile").addEventListener("change",async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ realTrace=null;realAssociationId=null;
+ try{
+   if(file.size>256*1024)throw Error("采集 JSON 不得超过 256 KiB");
+   const candidate=JSON.parse(await file.text());
+   window.SeetheTruthTrace.validate(candidate);
+   realTrace=candidate;
+   const current=graph.nodes.find(n=>n.id===selected);
+   if(current&&TraceBridge.supportedKinds.includes(current.kind))realAssociationId=selected;
+   inspect();
+   say("模型观测 JSON 已通过结构校验；"+(realAssociationId?"只读关联积木 "+realAssociationId:"请选择兼容积木关联")+"。需复跑 pinned revision 才能独立验证来源。");
+ }catch(err){inspect();say("模型观测拒绝："+err.message,true);}
+ finally{e.target.value="";}
+});
+$("#bindRealTrace").onclick=()=>{
+ try{
+   const target=graph.nodes.find(n=>n.id===selected);
+   if(!realTrace)throw Error("尚未载入采集 JSON");
+   TraceBridge.describe(realTrace,target);
+   realAssociationId=selected;inspect();say("观测已只读关联 "+selected+"，不改变任何张量或计算图。");
+ }catch(err){say("关联失败："+err.message,true);}
+};
+$("#clearRealTrace").onclick=()=>{
+ realTrace=null;realAssociationId=null;inspect();say("已清除本页模型观测，不更改学习工程。");
 };
 $("#save").onclick=()=>{
  const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
