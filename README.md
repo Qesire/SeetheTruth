@@ -49,7 +49,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 - [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
 - [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
 - [训练微流程](micro_training.html)：有界自动微分、MoE、PPO 示例。
-- [真实小模型证据实验室](real_model_lab.html)：本地导入 pinned-revision 模型采集 JSON，显示参数/梯度/激活统计和证据等级；不把模拟数据冒充实测。
+- [真实小模型证据实验室](real_model_lab.html)：本地导入 pinned-revision 模型采集 JSON，显示参数/梯度/激活统计和证据等级；不把模拟数据冒充实测。也可在 [Learning Studio](learn.html) 的检查器中把观测关联到所选 Linear/MatMul/Parameter，**只读，不替换计算输入或模型参数**。
 - [源码与结构图](index.html)：静态源码解释、全息结构与可选 Runtime Trace。
 - [性能和张量观测](telemetry.html)：显式实测的 profiler 与可选数值采样。
 
