@@ -13,7 +13,7 @@
 ## Verified candidate inventory
 
 - `learning_lab.js`: 11 original kinds plus 106 `block_catalog.js` definitions = **117 registered kinds**.
-- `learn.html`: 43 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
+- `learn.html`: 44 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
 - Graphs: bounded (48 nodes, 96 edges), DAG and port/shape validation; the *chosen upstream closure* may be runnable while unrelated incomplete nodes remain on the canvas. Never require a model-specific template.
 - NumPy codegen: full and selected-branch exports, source tensor overrides, fail-closed unsupported operations, intermediate-value parity against JS. For supported differentiable subgraphs, the separate PyTorch CPU backend now emits real training/AdamW/checkpoint code; unsupported ops fail closed.
 - Training: bounded explicit parameter identities and supported VJPs; differentiate one-step optimizer function blocks from persistent multistep training transactions.
@@ -52,7 +52,7 @@ For each failing gate: record input graph, exception or numerical discrepancy, w
 
 **2026-10 Loop WHY extension:** explicit two-loop residual step-size ablation comparing `1`, `1/sqrt(N)`, and `1/N`, with all parameters shared, pre-Norm not misrepresented as DeepLoop Post-LN. Real JS/NumPy/PyTorch gradient and checkpoint parity in `tests/loop_residual_scaling_contracts.js`; source-linked parameter/compute/gradient tradeoffs and fail-closed attribution after custom rewiring.
 
-**What works:** Scratch-like free graph editing, 117 registered block kinds, 43 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
+**What works:** Scratch-like free graph editing, 117 registered block kinds, 44 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
 
 **Not included:** generic trainable Python/PyTorch graph export, full-precision real models, GPU timings, actual RL rollout, unsupported operator VJPs or every paper patch being executable.
 
