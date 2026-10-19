@@ -61,6 +61,22 @@
     }else if(kind==="nd_reduce_sum"){
       const x=get("x");by(p.axis<x.length,"N-D reduce axis out of range",n.id);
       output=x.map((d,i)=>i===p.axis?1:d);rule="在指定轴求和而非取平均，keepdim 保留长度为 1 的轴";
+    }else if(kind==="nd_rope"){
+      const x=get("x");by(x.length===4,"N-D RoPE requires [B,H,T,D]",n.id);
+      by(p.rotaryDim<=x[3]&&p.rotaryDim%2===0,"N-D RoPE rotary dimension must be even and <= channel dimension",n.id);
+      output=x.slice();rule="对旋转维内的相邻通道二元组按 offset+Token 位置执行正交旋转，其余通道保持原值";
+    }else if(kind==="nd_cache_read"){
+      const x=get("x");by(x.length===4,"N-D KV cache read requires four axes",n.id);
+      by(p.start+p.length<=x[2],"N-D cache read window exceeds cached Token axis",n.id);
+      output=[x[0],x[1],p.length,x[3]];
+      rule="保持 B/H/D，在 Token 轴显式读取 [start,start+length) 快照，不修改原缓存";
+    }else if(kind==="nd_cache_append"){
+      const [a,b]=ports(n,inputs,"cache","segment");
+      by(a.length===4&&b.length===4,"N-D KV cache append requires four axes",n.id);
+      by(a[0]===b[0]&&a[1]===b[1]&&a[3]===b[3],"N-D KV cache append Batch, Head, Channel mismatch",n.id);
+      by(a[2]+b[2]<=8,"N-D cache append exceeds Token capacity",n.id);
+      output=[a[0],a[1],a[2]+b[2],a[3]];
+      rule="沿 Token 轴追加当前片段；B、KV Head 与 D 不允许隐式改变，源输入保持不可变";
     }else if(kind==="nd_repeat_kv"){
       const x=get("x");by(x.length===4,"GQA KV Repeat requires [B,Hkv,T,D]",n.id);
       by(p.queryHeads%x[1]===0,"GQA Query head count must divide KV head count exactly",n.id);
