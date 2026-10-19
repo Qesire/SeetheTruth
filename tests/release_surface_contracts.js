@@ -16,6 +16,7 @@ assert.equal(lessons.length,35,'freeze public alpha curriculum number until READ
 assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
 assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
+assert.match(readme,/PyTorch CPU/,'landing must document trainable PyTorch backend');
 assert.match(readme,/不支持的节点会明确拒绝/,'do not imply arbitrary block compilation');
 assert.match(readme,/无需 GPU/,'GPU must not be mandatory for learning');
 assert.match(readme,/真实小模型采集工具已有/,'real-model capture claims must be tiered');
@@ -24,7 +25,7 @@ for(const route of ['learn.html','training.html','cache.html','paper_lab.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
-for(const source of ['python_codegen.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
+for(const source of ['python_codegen.js','torch_codegen.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
  assert.ok(html.includes('src="'+source+'"'),source+' loaded in the public workbench');
 }
 for(const doc of ['docs/executable-python-codegen.md','docs/real-model-sampling.md','docs/release-readiness.md']){
