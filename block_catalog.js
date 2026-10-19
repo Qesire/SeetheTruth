@@ -12,6 +12,15 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  nd_gelu_erf:block("四轴 GELU · erf CDF","N-D GELU Erf","activate",["x"],{},
+    "y = 0.5x(1+erf(x/√2))","逐元素精确高斯 CDF 形式的 GELU；区别于 tanh 近似。",
+    "同一张四轴张量并联 GELU、SiLU、Mish，比较负值和梯度。","数值 erf 使用高精度求积；不模拟 GPU 的特殊函数指令。"),
+  nd_silu:block("四轴 SiLU / Swish","N-D SiLU","activate",["x"],{},
+    "y = xσ(x)","逐元素平滑自门控激活，可自由放入四轴 FFN/Attention 数据流。","观察微小负值仍能传播，计算与 ReLU² 的差别。","SiLU 不等于复合 GLU 的两路投影，梯度不自动稀疏执行。"),
+  nd_relu_squared:block("四轴 ReLU²","N-D Squared ReLU","activate",["x"],{},
+    "y = max(0,x)²","显式逐元素平方整流，正半轴导数 2x。","比较 ReLU² 与 GeLU/SiLU 的负半轴及大正输入。","即使输出大面积为零，稠密矩阵乘也不会自动跳过计算。"),
+  nd_mish:block("四轴 Mish","N-D Mish","activate",["x"],{},
+    "y = x tanh(softplus(x))","稳定 Softplus 内核形成非单调平滑激活，保留部分负半轴信息。","测试正负输入和极端数值，并观察反向梯度。","此函数不是所有 Transformer 的默认选择；不要把激活函数的效果混同模型质量。"),
   nd_parameter:block("可训练四轴参数","N-D Trainable Parameter","data",[],
    {values:[[[[0.12,-0.18],[0.31,0.27]]]],
     optimizer:{t:0,m:[[[[0,0],[0,0]]]],v:[[[[0,0],[0,0]]]]}},
@@ -88,6 +97,18 @@
    "y=(x−μ)/sqrt(Var(x)+ε)","每个 token 沿全部特征去中心化再按方差标准化。","与 RMSNorm 比较：LayerNorm 会减均值。","γ=1、β=0 的无仿射版本；方差 correction=0。"),
   l2norm:block("L2 特征归一化","L2 Normalize","norm",["x"],{epsilon:0.000001},
    "y=x/max(||x||₂,ε)","把每个 token 的特征向量映射到近似单位球面。","对比 RMSNorm 的 sqrt(D) 因子。","零向量仍为零；使用 max(norm,ε) 而不是 sqrt(norm²+ε)。"),
+  gelu_erf:block("GELU · erf CDF","GELU Erf","activate",["x"],{},
+    "f(x)=0.5x(1+erf(x/√2))","显式高斯 CDF 版 GELU，与已有 tanh 近似区分。",
+    "将相同输入连接到 GELU(tanh) 与 GELU(erf) 对比微小偏差。","采用高精度数值 erf；不是把 tanh 近似改名为精确式。"),
+  relu_squared:block("ReLU² 平方整流","Squared ReLU","activate",["x"],{},
+    "f(x)=max(0,x)²","正半轴输出平方、导数 2x，负半轴严格为零。",
+    "与 ReLU 对比大正值的增长及梯度变化。","输出稀疏不意味着后续 GEMM 自动跳算。"),
+  mish:block("Mish 激活","Mish","activate",["x"],{},
+    "f(x)=x·tanh(softplus(x))","平滑非单调函数，既包含 Softplus 也包含 Tanh 结构。",
+    "比较与 SiLU/GELU 在负输入上的数值和导数。","属于可选激活函数，并非开源大模型的统一默认。"),
+  leaky_relu:block("Leaky ReLU","Leaky ReLU","activate",["x"],{slope:0.01},
+    "f(x)=x if x≥0 else slope·x","允许负半轴有固定斜率，避免被 ReLU 完全截断。",
+    "修改 slope，在同一组负输入上检查梯度。","零点不可微，教学取正半轴分支的次梯度；slope∈[0,1]。"),
   relu:block("ReLU","ReLU","activate",["x"],{},
    "f(x)=max(0,x)","硬阈值激活：全部负值被裁到零。","对比 SiLU/GELU 负半轴的信息传递。","在零点不可微，这里仅执行前向。"),
   gelu_tanh:block("GELU · tanh 近似","GELU tanh","activate",["x"],{},
@@ -219,6 +240,7 @@
    }
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
+   if(kind==='leaky_relu')float(n.slope,0,1,'Leaky ReLU slope');
    if(kind==='nd_repeat_kv')int(n.queryHeads,1,8,'GQA Query head count');
    if(kind==='nd_rope'){
       int(n.offset,0,64,'N-D RoPE absolute offset');
@@ -297,6 +319,10 @@
      else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
      else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);
      else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
+     else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish'].includes(kind)){
+       const Act=typeof module==='object'&&module.exports?require('./activation_math.js'):globalThis.SeetheTruthActivations;
+       const tensor=inputs.x;value=ND.build(ND.shape(tensor),idx=>Act.value(kind.slice(3),ND.at(tensor,idx),params));
+     }
      else if(kind==='nd_scale')value=ND.scale(inputs.x,params.factor);
      else if(kind==='nd_softmax_last')value=ND.softmaxLast(inputs.x);
      else if(kind==='nd_causal_mask')value=ND.causalMask4(inputs.x,params.queryStart,params.keyStart);
@@ -343,6 +369,10 @@
        return row.map(v=>(v-mean)/Math.sqrt(variance+params.epsilon));});break;
     case 'l2norm':
       value=x.map(row=>{const den=Math.max(Math.hypot(...row),params.epsilon);return row.map(v=>v/den);});break;
+    case 'gelu_erf':case 'relu_squared':case 'mish':case 'leaky_relu':{
+      const Act=typeof module==='object'&&module.exports?require('./activation_math.js'):globalThis.SeetheTruthActivations;
+      value=map(x,v=>Act.value(kind,v,params));break;
+    }
     case 'relu':value=map(x,v=>Math.max(0,v));break;
     case 'gelu_tanh':value=map(x,gelu);break;
     case 'sigmoid':value=map(x,sigmoid);break;
