@@ -114,8 +114,19 @@
       if(targetPorts.has(key))fail("同一输入端口不可连接两次",e.to);
       targetPorts.add(key);edges.push({from:e.from,to:e.to,port:e.port});
     }
-    return {schema:SCHEMA,title:typeof raw.title==="string"?raw.title.slice(0,80):"未命名实验",
-      nodes,edges};
+    const normalized={schema:SCHEMA,title:typeof raw.title==="string"?raw.title.slice(0,80):"未命名实验",nodes,edges};
+    if(raw.paperPatches!==undefined){
+      if(!Array.isArray(raw.paperPatches)||raw.paperPatches.length>12)fail("invalid paper patch lineage");
+      normalized.paperPatches=raw.paperPatches.filter(p=>p&&ids.has(p.outputId)&&ids.has(p.baseId)).map(p=>{
+        if(p.paper!=="lora"||!/^[A-Za-z0-9_-]{1,36}$/.test(p.aId||"")||
+           !/^[A-Za-z0-9_-]{1,36}$/.test(p.bId||"")||
+           !ids.has(p.aId)||!ids.has(p.bId)||!Number.isSafeInteger(p.rank)||p.rank<1||p.rank>8||
+           !finite(p.alpha)||p.alpha<=0||p.alpha>64)fail("invalid LoRA rewrite lineage");
+        return {paper:"lora",outputId:p.outputId,baseId:p.baseId,
+                aId:p.aId,bId:p.bId,rank:p.rank,alpha:p.alpha};
+      });
+    }
+    return normalized;
   }
   function order(graph){
     const byId=new Map(graph.nodes.map(n=>[n.id,n]));
