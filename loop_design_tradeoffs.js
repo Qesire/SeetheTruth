@@ -148,6 +148,7 @@ function comparisons(){
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function keyFor(graph,id){
  if(!graph||!graph.title?.includes("Loop")||!graph.nodes?.some(n=>n.id===id))return null;
+ if(/任务 (?:39|40)/.test(graph.title)&&["loss","logits"].includes(id))return "sharing"; // legacy fixed-depth recipes have final-only CE
  if(graph.nodes.some(n=>n.id==="short_consistency")){
   if(["loss","base_loss","deep_teacher","short_consistency","cons_weight"].includes(id))return "consistency";
  }
