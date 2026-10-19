@@ -26,7 +26,7 @@ for(const route of ['learn.html','training.html','cache.html','paper_lab.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
-for(const source of ['python_codegen.js','torch_codegen.js','loop_transformer.js','loop_consistency.js','loop_design_tradeoffs.js','training_objective.js','paper_graph_rewrites.js','industrial_source_inspector.js','model_trace.js','model_trace_bridge.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
+for(const source of ['python_codegen.js','torch_codegen.js','loop_transformer.js','loop_consistency.js','loop_design_tradeoffs.js','architecture_why.js','training_objective.js','paper_graph_rewrites.js','industrial_source_inspector.js','model_trace.js','model_trace_bridge.js','paper_hover.js','block_catalog.js','graph_readiness.js']){
  assert.ok(html.includes('src="'+source+'"'),source+' loaded in the public workbench');
 }
 for(const doc of ['docs/executable-python-codegen.md','docs/real-model-sampling.md','docs/release-readiness.md']){
