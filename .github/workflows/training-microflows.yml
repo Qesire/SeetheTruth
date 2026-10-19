@@ -8,6 +8,8 @@ on:
       - 'paper_hover.js'
       - 'block_catalog.js'
       - 'python_codegen.js'
+      - 'torch_codegen.js'
+      - 'tests/torch_codegen_contracts.js'
       - 'tests/python_codegen_contracts.js'
       - 'tests/release_surface_contracts.js'
       - 'README.md'
@@ -82,7 +84,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
-      - run: node --check python_codegen.js && node tests/python_codegen_contracts.js
+      - run: node --check python_codegen.js && node --check torch_codegen.js && node tests/python_codegen_contracts.js
       - run: node tests/write_python_export_examples.js
       - uses: actions/upload-artifact@v4
         with:
