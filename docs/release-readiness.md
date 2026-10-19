@@ -31,7 +31,7 @@
 
 ## Non-blocking for alpha; mandatory before related claims
 
-- **Actual model measurements:** no claims of true TinyStories/MoE/RL activations, speed or model quality until pinned `REAL_CAPTURE` traces are committed, validated and distinctly visible. This becomes a beta gate for real-model teaching examples.
+- **Actual model measurements:** a pinned TinyStories-1M CPU forward/backward trace has now run twice and replayed exactly on [the recorded CI workflow](https://github.com/Qesire/SeetheTruth/actions/runs/39217748548), with real Chromium screenshot artifacts. This covers **one linear module**, not complete LLM equivalence, GPU throughput, MoE routing or real RL rollouts. The local file importer still labels unattested user-supplied JSON as structural verification only.
 - **Arbitrary codegen coverage:** `python_codegen.js` intentionally rejects unsupported node types; do not call the current compiler general PyTorch training.
 - **Large tensor performance:** simulation is bounded and CPU-browser-oriented. GPU validation and actual model inference are not required for the learning-first alpha.
 - **Paper coverage:** modules and paper *patches* differ; both require mathematical contracts, shape/axis semantics and primary sources. A symbolic patch is not an executable operator.
