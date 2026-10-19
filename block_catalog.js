@@ -12,6 +12,10 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  nd_elu:block("四轴 ELU","N-D Exponential Linear Unit","activate",["x"],{alpha:1},
+    "x>0?x:α(expm1(x))","逐元素指数线性单元，负半轴渐近 -α；保持任意四轴形状。","在四轴 GQA 参数与 MSE 间自由插入并检查梯度。","x=0 处 α≠1 不可微，采用左支次导数。"),
+  nd_hardswish:block("四轴 HardSwish","N-D HardSwish","activate",["x"],{},
+    "x·ReLU6(x+3)/6","轻量分段门控激活，含 -3 与 3 的不可微转折。","观察 HardSwish 与连续 SiLU 的量化友好近似关系。","在边界采用指定分段次导数，不能据此断言性能提升。"),
   nd_gelu_erf:block("四轴 GELU · erf CDF","N-D GELU Erf","activate",["x"],{},
     "y = 0.5x(1+erf(x/√2))","逐元素精确高斯 CDF 形式的 GELU；区别于 tanh 近似。",
     "同一张四轴张量并联 GELU、SiLU、Mish，比较负值和梯度。","数值 erf 使用高精度求积；不模拟 GPU 的特殊函数指令。"),
@@ -24,6 +28,10 @@
   opt_adamw:block("AdamW · 一步更新","AdamW Functional Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01},
     "θ⁺ = AdamW(θ,g), zero prior moments","独立积木计算一次 bias-corrected AdamW 更新；适合与其他优化器在同一画布上比较。",
     "给四个优化器接入同一 θ 和 g，观察不同的更新轨迹。","只计算一步预览，不直接修改 Parameter；连续训练请使用上方优化器选择器。"),
+  opt_adam:block("Adam · 耦合 L2","Adam (coupled L2) Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01},
+    "g'=g+λθ; m=β₁m+(1−β₁)g'; v=β₂v+(1−β₂)g'²","经典 Adam 将 L2 项并入梯度和动量，与 AdamW 解耦不同。","将 Adam 与 AdamW 接到相同权重和梯度，单步对照。","默认从零状态预览，完整多步状态由工作台训练事务保存。"),
+  opt_adagrad:block("Adagrad · 累积平方梯度","Adagrad Accumulator Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01,lrDecay:0},
+    "vₜ=vₜ₋₁+(g+λθ)²; θ'=θ−ηg_eff/(√vₜ+ε)","累计所有历史梯度平方，区别于 RMSprop 的指数滑动平均。","逐步观察常梯度下有效更新幅度缩小。","此处初始 accumulator=0；默认无 lr_decay，可显式设置。"),
   opt_sgd_momentum:block("SGD · Momentum","SGD Momentum Functional Step","training",["parameter","gradient"],{lr:0.01,weightDecay:0.01,momentum:0.9},
     "m = μm + g + λθ; θ⁺=θ−ηm","纯函数式从零动量开始执行一次 SGD with momentum + coupled weight decay。",
     "与 Lion 的 sign 方向和 AdamW 自适应更新比较。","本积木前向预览只有一次；真实连续步骤通过 Train 事务持久记录动量。"),
@@ -123,6 +131,10 @@
     "修改 slope，在同一组负输入上检查梯度。","零点不可微，教学取正半轴分支的次梯度；slope∈[0,1]。"),
   relu:block("ReLU","ReLU","activate",["x"],{},
    "f(x)=max(0,x)","硬阈值激活：全部负值被裁到零。","对比 SiLU/GELU 负半轴的信息传递。","在零点不可微，这里仅执行前向。"),
+  elu:block("ELU 指数线性单元","ELU","activate",["x"],{alpha:1},
+   "x>0?x:α(exp(x)−1)","指数型负半轴激活，参数 α 改变负饱和区域。","对照 ReLU、Leaky ReLU 的负激活及梯度。","α≠1 时零点不连续可导，数值差分应避开零点。"),
+  hardswish:block("HardSwish","HardSwish","activate",["x"],{},
+   "x·ReLU6(x+3)/6","以分段线性门控近似 Swish，常见于轻量网络。","观察 -3 与 +3 的折点与零梯度区。","不等价于 SiLU；不意味着更快的 GPU kernel。"),
   gelu_tanh:block("GELU · tanh 近似","GELU tanh","activate",["x"],{},
    "0.5x[1+tanh(√(2/π)(x+0.044715x³))]","近似 Gaussian CDF 门控的平滑激活。","将负值测试与 ReLU/SiLU 对比。","显式采用 PyTorch approximate='tanh'，并非默认 erf/CDF 精确版。"),
   sigmoid:block("Sigmoid","Sigmoid","activate",["x"],{},
@@ -253,6 +265,8 @@
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
    if(kind==='leaky_relu')float(n.slope,0,1,'Leaky ReLU slope');
+   if(kind==='elu'||kind==='nd_elu')float(n.alpha,0.000001,10,'ELU alpha');
+   if(kind==='opt_adagrad')float(n.lrDecay,0,1,'Adagrad lr decay');
    if(kind.startsWith('opt_')){
      float(n.lr,0.00000001,1,'optimizer learning rate');
      float(n.weightDecay,0,1,'optimizer weight decay');
@@ -337,7 +351,7 @@
      else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
      else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);
      else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
-     else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish'].includes(kind)){
+     else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish','nd_elu','nd_hardswish'].includes(kind)){
        const Act=typeof module==='object'&&module.exports?require('./activation_math.js'):globalThis.SeetheTruthActivations;
        const tensor=inputs.x;value=ND.build(ND.shape(tensor),idx=>Act.value(kind.slice(3),ND.at(tensor,idx),params));
      }
@@ -353,9 +367,9 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
-    case 'opt_adamw':case 'opt_sgd_momentum':case 'opt_rmsprop':case 'opt_lion':{
+    case 'opt_adamw':case 'opt_adam':case 'opt_sgd_momentum':case 'opt_rmsprop':case 'opt_adagrad':case 'opt_lion':{
       const Opt=typeof module==='object'&&module.exports?require('./optimizer_rules.js'):globalThis.SeetheTruthOptimizerRules;
-      const optimizer=kind==='opt_adamw'?'adamw':kind==='opt_sgd_momentum'?'sgd_momentum':kind==='opt_rmsprop'?'rmsprop':'lion';
+      const optimizer=kind==='opt_adamw'?'adamw':kind==='opt_sgd_momentum'?'sgd_momentum':kind==='opt_rmsprop'?'rmsprop':kind==='opt_adam'?'adam':kind==='opt_adagrad'?'adagrad':'lion';
       const update=Opt.step(inputs.parameter,inputs.gradient,null,{...params,optimizer});
       value=update.parameter;
       internals={update:{shape:dims(update.update),values:update.update},
@@ -397,7 +411,7 @@
        return row.map(v=>(v-mean)/Math.sqrt(variance+params.epsilon));});break;
     case 'l2norm':
       value=x.map(row=>{const den=Math.max(Math.hypot(...row),params.epsilon);return row.map(v=>v/den);});break;
-    case 'gelu_erf':case 'relu_squared':case 'mish':case 'leaky_relu':{
+    case 'gelu_erf':case 'relu_squared':case 'mish':case 'leaky_relu':case 'elu':case 'hardswish':{
       const Act=typeof module==='object'&&module.exports?require('./activation_math.js'):globalThis.SeetheTruthActivations;
       value=map(x,v=>Act.value(kind,v,params));break;
     }
