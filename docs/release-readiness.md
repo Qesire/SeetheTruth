@@ -12,7 +12,7 @@
 
 ## Verified candidate inventory
 
-- `learning_lab.js`: 11 original kinds plus 105 `block_catalog.js` definitions = **116 registered kinds**.
+- `learning_lab.js`: 11 original kinds plus 106 `block_catalog.js` definitions = **117 registered kinds**.
 - `learn.html`: 36 distinct guided preset identifiers, plus a `blank` canvas. These counts are verified by `tests/release_surface_contracts.js`.
 - Graphs: bounded (48 nodes, 96 edges), DAG and port/shape validation; the *chosen upstream closure* may be runnable while unrelated incomplete nodes remain on the canvas. Never require a model-specific template.
 - NumPy codegen: full and selected-branch exports, source tensor overrides, fail-closed unsupported operations, intermediate-value parity against JS. For supported differentiable subgraphs, the separate PyTorch CPU backend now emits real training/AdamW/checkpoint code; unsupported ops fail closed.
@@ -50,7 +50,7 @@ For each failing gate: record input graph, exception or numerical discrepancy, w
 
 ## Suggested release note outline
 
-**What works:** Scratch-like free graph editing, 116 registered block kinds, 36 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
+**What works:** Scratch-like free graph editing, 117 registered block kinds, 36 curated lessons, formula/paper inspector and hover, bounded numerical steps/gradient/optimizer flows, NumPy standalone export for supported graphs, optional code/evidence exploration.
 
 **Not included:** generic trainable Python/PyTorch graph export, full-precision real models, GPU timings, actual RL rollout, unsupported operator VJPs or every paper patch being executable.
 
