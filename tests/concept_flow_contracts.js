@@ -58,6 +58,7 @@ function perKind(k){
    if(port==='ids'||port==='labels')inputs[port]=[2,1];
    else if(k==='gqa')inputs[port]=[2,port==='q'?8:4];
    else if(k==='masked_softmax')inputs[port]=[2,2];
+   else if(k==='token_depth_mask'&&port==='depths')inputs[port]=[2,1];
    else if(k==='matmul')inputs[port]=port==='a'?[2,4]:[4,4];
    else if(k==='response_token_reshape'&&port==='x')inputs[port]=[4,1];
    else if(k==='response_advantage_broadcast'&&port==='advantage')inputs[port]=[2,1];
@@ -86,6 +87,8 @@ function perKind(k){
  for(const [port,sh] of Object.entries(inputs)){
    if(port==='ids'||port==='labels')values[port]=mock(sh,()=>0);
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
+   else if(k==='token_depth_mask'&&port==='depths')values[port]=[[0],[1]];
+   else if(k==='state_mask_blend'&&port==='mask')values[port]=[[1,1,1,1],[0,0,0,0]];
    else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
    else if(k==='masked_grpo_objective'&&port==='mask')values[port]=mock(sh,()=>1);
    else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')values[port]=[[0],[1]];
