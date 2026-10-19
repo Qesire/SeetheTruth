@@ -8,6 +8,7 @@
 })(typeof window!=="undefined"?window:{},function(root){"use strict";
 const isNode=typeof module==="object"&&module.exports;
 const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
+const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SUPPORTED=new Set([
  "input","parameter","nd_input","nd_parameter","linear","matmul","nd_batched_matmul",
@@ -40,9 +41,10 @@ function compile(raw,options={}){
  if(bad.length)throw Error("PyTorch 不支持的积木: "+bad.map(n=>n.id+"("+n.kind+")").join(", ")+"；不会导出占位或伪训练代码");
  const forward=L.evaluate(graph),out=new Map(forward.steps.map(s=>[s.id,s]));
  const edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
- const target=options.lossId||[...sorted].reverse().find(n=>["mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind))?.id||null;
- if(options.lossId&&(!sorted.some(n=>n.id===target)||!["mse","nd_mse","mae_loss","cross_entropy"].includes(sorted.find(n=>n.id===target).kind)))
-   throw Error("PyTorch training requires an explicit supported scalar loss");
+ const lossProof=Objective.analyze(graph);
+ const target=options.lossId||lossProof.preferred||null;
+ if(target&&(!lossProof.isLoss(target)||out.get(target)?.shape?.join(",")!=="1,1"))
+   throw Error("PyTorch requires a [1,1] scalar derived from supported CE/MSE/MAE losses via nonnegative Scale/Add");
  const init=[],body=[],metadata=[];
  const src=(id,port)=>{
    const from=edges.get(id+":"+port);
