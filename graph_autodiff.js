@@ -174,7 +174,7 @@ function backward(raw,forward,opts={}){
   }
   if(kind==="mse"||kind==="mae_loss"){
     const a=inp(id,"prediction"),b=inp(id,"target"),size=a.length*a[0].length;
-    send(id,"prediction",a.map((row,i)=>row.map((v,j)=>2*(v-b[i][j])*d[0][0]/size)));
+    send(id,"prediction",a.map((row,i)=>row.map((v,j)=>(kind==="mse"?2*(v-b[i][j]):Math.sign(v-b[i][j]))*d[0][0]/size)));
     cut(id,"target","target data is fixed during optimization");continue;
   }
   if(kind==="row_mean"||kind==="row_sum"){
