@@ -6,6 +6,8 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ rope_paper:["RoFormer: Enhanced Transformer with Rotary Position Embedding","https://arxiv.org/abs/2104.09864"],
+ hf_cache:["Hugging Face Transformers: KV Cache implementation guide","https://huggingface.co/docs/transformers/cache_explanation"],
  gqa_paper:["GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints","https://aclanthology.org/2023.emnlp-main.298/"],
  tensor_views:["PyTorch tensor views / reshape / permute","https://docs.pytorch.org/docs/stable/tensor_view.html"],
  broadcasting:["PyTorch broadcasting semantics","https://docs.pytorch.org/docs/stable/notes/broadcasting.html"],
@@ -51,6 +53,9 @@ const sources=Object.freeze({
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
  nd_parameter:["四轴 Parameter 不是每次重播种子的输入，而是 JSON 工程中具有稳定节点身份的张量值 θ[B,H,T,D]。同一个参数输出可以同时连到多个消费者，反向传播按节点 ID 汇合 VJP。","训练状态保存 θ 以及独立的 AdamW m/v 张量和 t 步数；每一步都重新运行当前 DAG Forward，再计算反向梯度和下一次权重数值。PyTorch Parameter 和 AdamW 是标准来源。","仅有界 Float64 CPU 教学；这并不是 GPU 上真实的大模型训练。修改参数值后必须重置矩阵形状一致的动量，不能沿用原状态。","将课程 29/30 中的 Q/K/V 从多个输入替换为共享 Parameter，观察各 Head 梯度总和、两步 AdamW、导出再恢复第三步。","pytorch,adamw,gqa_paper"],
+ nd_rope:["标准相邻通道对 RoPE 对第 (2i,2i+1) 个通道执行二维正交旋转，角度 (offset+t)/base^(2i/R)。位置索引必须对应当前 Query 和 Key 的真实绝对 Token 位置。","RoFormer (Su et al., 2021) 用正交旋转把绝对位置信息写进 Q/K，并使点积含相对位置信息；开源模型还有 split-half 等配对习惯及额外 RoPE scaling。","本积木采用明确的 adjacent-pair 约定；不要与 split-half 权重布局直接混用。旋转维 R 必须为偶数、不得超过 D。","先计算 RoPE(完整 K,offset=0)，再把 K 分为 prefix[0,2) 与新 Token[2,3)，以 offset=0/2 旋转并拼接，核对每个元素。","rope_paper,transformer"],
+ nd_cache_read:["纯函数式地读取 [B,H,T,D] 的 Token 窗口 [start,start+length)，不修改上游 Cache 或输入张量。","Hugging Face 的 DynamicCache 在实际解码过程中按层维护 KV 张量；读取 prefix 和新 Token 是学习这一行为的可拆分积木。","该积木只保存一张可复现的快照视图；不是浏览器外持续生效的缓存服务，也不假装测量真实 Cache 命中率。","让原始 K/V 既连接到前缀读取，又连接到当前位置读取，最后写入 Append；检查读取后两个片段元素不丢失。","hf_cache,tensor_views"],
+ nd_cache_append:["要求两输入 Batch、KV Head 和 Channel 维一致，仅沿 Token 轴把 segment 追加到 cache。完整 K/V 历史由同一张可编辑 DAG 表示，所有输入保持不变。","Hugging Face Transformers DynamicCache 的逻辑是随新 Token 将 Key/Value 追加到已缓存的 Token 序列；GQA 通常在 KV Head 轴保留更少的头。","这是可测试的不可变追加表达，不是实际 KV 内存原地写、预分配 StaticCache 或环形缓存。注意不能重复追加同一 Token。","分别旋转完整 Key 和分段 Key，再验证 Append 的绝对 RoPE 结果相同；V 不应用 RoPE。","hf_cache,gqa_paper,rope_paper"],
  nd_input:["显式生成轴次序 [B,H,T,D] 的 4D 合成张量，按行主序储存。形状如 [1,2,3,4] 表示一个批次、两个头、三个时间坐标、每个四维通道。","常见 Transformer 计算会把批次、头、Token 与通道作为独立轴；不同实现实际轴顺序可能不同。","轴名仅是当前课程约定，形状数值不意味着真实模型参数。全部数值有 512 元素上限。","独立改变 H 与 T，看 MatMul 是否受内维约束。","transformer,tensor_views"],
  nd_permute:["Permute 按 π 指定的新轴索引取旧轴位置；例如 [B,H,T,D] → [B,T,H,D] 对应 π=(0,2,1,3)。数据地址意义改变，而不是随意改标签。","PyTorch permute/view 的 stride 与可能的连续化区别非常重要；本教学内核执行真实值重排，未模拟真实 stride 或物理显存。","轴值必须构成完整的 0、1、2、3 置换；reshape 不等于 permute。","设置 0,2,1,3，再反向设置 0,2,1,3，检查输出与输入逐元素一致。","tensor_views"],
  nd_reshape:["Reshape 在行主序下保留每个元素的线性顺序，把数量不变的元素重新组织到 [B,H,T,D]。","真实模型中常把合并特征维重新解释为 Head × HeadDim，但此前必须保证维度积可整除。","reshape 不移动 Head/Token 的逻辑轴；和 transpose 不可交换。","把 [6,4] 改为 [1,2,3,4]，再 Flatten，比较一维展开次序。","tensor_views"],
