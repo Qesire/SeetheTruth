@@ -172,6 +172,11 @@ function backward(raw,forward,opts={}){
     send(id,"v",mm(tr(probabilities),d));send(id,"q",mm(ds,k));send(id,"k",mm(tr(ds),q));
     local[id]={vjp:"dV=PᵀdY, dP=dYVᵀ, dS=softmax-VJP/√d, dQ=dS K, dK=dSᵀ Q"};continue;
   }
+  if(kind==="slice_rows"){
+    const x=inp(id,"x"),dx=z(x);
+    for(let i=0;i<d.length;i++)for(let j=0;j<d[0].length;j++)dx[p.start+i][j]+=d[i][j];
+    send(id,"x",dx);local[id]={vjp:"VJP places each selected time-row gradient back into its original position; others remain zero"};continue;
+  }
   if(kind==="pos_encoding"){send(id,"x",d);local[id]={vjp:"Absolute sinusoidal positional encoding adds fixed constants; ∂Y/∂X=I"};continue;}
   if(kind==="gather_rows"){
     const bank=inp(id,"x"),ids=inp(id,"indices"),dx=z(bank);
