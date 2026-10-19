@@ -1,6 +1,6 @@
 # SeetheTruth — 用积木理解并执行大模型计算
 
-SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy Python 程序**。
+SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy 前向程序或 PyTorch CPU 可训练程序**。
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
@@ -21,7 +21,7 @@ python atlas_server.py --port 8765
 3. 主动切换**微型数值模式**后，可以观察中间张量、注意力、局部梯度及适用的训练事务。
 4. 选中任意积木，查看来源论文、数学公式、计算步骤、工业惯例、误区和可证伪实验。论文解析也支持悬停预览。
 5. 在导出选项中选 **NumPy Python**（独立前向计算）或 **PyTorch CPU**（可训练子集的真实 autograd、AdamW 与 checkpoint）。
-6. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为独立 NumPy Python 文件；不支持的节点会明确拒绝，不生成假代码。
+6. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为所选后端的独立 Python 文件；不支持的节点会明确拒绝，不生成假代码。
 
 NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需要 `python -m pip install torch`。后者的完整使用和真实执行合同见 [PyTorch 独立可训练代码](docs/pytorch-executable-training.md)。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
 
@@ -33,13 +33,13 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 | 学习内容 | **35 门引导课程**，另有空白自由画布 | 课程是教学组合，不代表完整复刻开源模型 |
 | 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图；可对选定 MatMul 执行真实 LoRA 低秩图重写 | 图重写必须重新通过数值/梯度合同，不代表 GPU 加速 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
-| 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 两套后端均明确拒绝不支持的算子；PyTorch 仅覆盖已验证的 2D/4D 可训练子集，不是任意架构 |
+| 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
 | 真实证据 | 可选 Python AST、PyTorch Runtime Trace / Profiler；真实小模型采集器和本地 JSON 溯源检查器 | 真实样本必须运行指定不可变模型版本，未复跑的数据仅结构验证，不伪造 kernel/吞吐量 |
 
 ### 三个关键语义边界
 
 - **逻辑可执行**：允许自由组合；只有端口、形状、参数、拓扑和实际已实现的算子语义会限制运行。形状合法并不代表算法有训练价值。
-- **解释、模拟、实测分离**：符号推演（SYMBOLIC）、确定性教学数值（SYNTHETIC）和带不可变模型修订/模块定位的真实采样（REAL_CAPTURE）在界面和导出中不能混同。真实小模型采集工具已有，但没有通过正式样本验收的数据不宣称为真实模型统计。
+- **解释、模拟、实测分离**：符号推演（SYMBOLIC）、确定性教学数值（SYNTHETIC）和带不可变模型修订/模块定位的真实采样（REAL_CAPTURE）在界面和导出中不能混同。固定修订的 TinyStories-1M CPU 采集及独立二次复跑已通过；用户本地导入但未独立复跑的 JSON 仍仅属于来源声明。
 - **导出不能降级为伪代码**：遇到不支持的算子，应清楚报出积木 ID 和算子类型；不得用预计算常数、固定输出或空实现来假装可运行。
 
 ## 其他入口
@@ -60,12 +60,15 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 ```bash
 node tests/release_surface_contracts.js
 node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
+node tests/torch_codegen_extensions_contracts.js  # torch + numpy
+node tests/moe_executable_codegen_contracts.js    # torch + numpy
 node tests/paper_graph_rewrites_contracts.js
 node tests/model_trace_contracts.js
 node tests/block_catalog_contracts.js
 node tests/graph_readiness_contracts.js
 node tests/graph_autodiff_contracts.js
 node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
+node tests/python_codegen_extensions_contracts.js
 ```
 
 浏览器验收使用 `python -m pip install playwright`、`python -m playwright install chromium`，再运行 `python tests/browser_catalog_screenshots.py`。CI 对候选分支进行数值合同、JavaScript↔NumPy 中间量一致性、真实 Chromium 操作/截图、源码审计和静态行为验证。
