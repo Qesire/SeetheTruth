@@ -25,7 +25,7 @@
     regularize:"训练/推理行为差异",routing:"离散路由与专家集合",training:"策略概率/奖励与梯度语义"
   });
   const unary=new Set(["rmsnorm","silu","softmax","layernorm","l2norm",
-    "relu","gelu_tanh","gelu_erf","relu_squared","mish","leaky_relu","sigmoid","tanh","softplus","scale","bias","square",
+    "relu","gelu_tanh","gelu_erf","relu_squared","mish","leaky_relu","elu","hardswish","sigmoid","tanh","softplus","scale","bias","square",
     "dropout_demo","pos_encoding","rope2d","temperature","qk_norm","logit_softcap","detach_demo","residual_scale","partial_rope","log_softmax"]);
   const binary=new Set(["add","mul","subtract","divide","swiglu","geglu"]);
   const reduced=new Set(["row_mean","row_sum","row_var","row_logsumexp"]);
