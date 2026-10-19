@@ -1,155 +1,74 @@
-## 产品核心：Scratch 式大模型原理学习（不需要 GPU）
+# SeetheTruth — 用积木理解并执行大模型计算
 
-SeetheTruth 默认是**可搭建、可单步推演的学习环境**：45 种积木的数学功能、形状变化、计算依赖和错误原因都可以在不运行任何矩阵乘法的情况下理解。打开 `learn.html` 后，默认选择 **“原理推演”**；如果希望亲手看小矩阵数值，再主动切换 **“小矩阵数值演示”**。两者都无需 GPU。
+SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy Python 程序**。
 
-真实模型运行、PyTorch/CUDA Profiler 和大规模矩阵计算**不是默认能力或核心验收条件**。它们将来可作为单独安装的外接 adapter 使用；现有研究型源码图谱和性能工具保持可选，不替代学习功能。
+> 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
-完整的三层能力设计、数值证据边界和未来外接协议见 [Learning-first architecture](docs/learning-first-architecture.md)。
+## 立即体验
 
-# SeetheTruth
-
-SeetheTruth 是一个面向大模型学习与研究的交互式全息计算图浏览器（MODEL ATLAS HOLOGRAPH）。
-
-## 核心目标
-- **结构→模块→算子→矩阵→张量**五级 3D 计算图与相机钻取。
-- 细化 Attention / GQA / RoPE / KV Cache / FFN / AdaLN 的逻辑数据流、轴重排、广播、mask 与矩阵收缩。
-- 解释每个节点的设计目的、数学函数、张量契约、训练和推理差异。
-- 用 Python AST 对源码做**无执行**静态解析；明确标注源码事实、约定推断和教学模板。
-- 训练、推理与 RL 的工作流是概念模型；不应冒充某个模型的真实执行轨迹。
-
-## 使用
-1. 直接打开 [index.html](./index.html) 体验教学模板（浏览器需要同时加载仓库内的 `tensor_subgraph.js`）。
-2. 进入 **架构** 视图，依次进入 **Block → 算子 → 矩阵 → 张量**。
-3. 选择 Attention / FFN / AdaLN，单击节点查看右侧数学解释，双击下钻。
-4. 本地源码解析（解析器及服务端文件见仓库）：
-   `python atlas_server.py --port 8765`，打开 `http://127.0.0.1:8765`。
-
-## 新增：运行时实测与反向传播（Runtime Trace）
-
-不再局限于配置/AST 推断。实验性 RuntimeTrace 在**用户主动运行的可信 PyTorch 脚本中**记录 ATen、module、shape、stride、dtype、梯度与显式 optimizer.step；导出图后可在前端钻取。
-
-    python examples/runtime_trace_demo.py
-    python atlas_server.py --port 8765
-
-将产生的 examples/runtime_trace_demo.json 导入浏览器。需要安装 PyTorch；静态 AST 解析仍不依赖 torch。
-
-使用方法、数据隐私与精度边界：[Runtime Trace 文档](docs/runtime-trace.md)。
-
-**重要：** HTTP 服务器从不执行被分析的源码；RuntimeTrace 只有用户显式导入并在自己的脚本中调用才会运行。图内 ATen 是观察到的算子，不是 GPU kernel 发射或完整 Autograd DAG。
-
-## 证据边界
-3D 张量视图展示**逻辑张量运算**：实际执行可能使用融合 kernel、FlashAttention、tensor parallel 或无物化的 GQA 广播。符号形状不是运行时实测，不表示真实 kernel 数量或显存布局。要确认真实调用路径、dtype、stride 和实际分支，需要结合源码实现及 runtime trace。
-
-## 项目结构
-- `index.html`: 全息 3D 浏览器
-- `tensor_subgraph.js`: Tensor micrograph 的教学分解与契约
-- `atlas_parser.py`: Python AST 静态计算图解析器
-- `atlas_server.py`: 本地受限源码分析 HTTP 服务
-- `runtime_trace.py`: 显式启用的 PyTorch 动态观测器
-- `docs/runtime-trace.md`: 采集、证据等级与限制
-- `examples/`: 静态图测试源代码
-- `tests/`: 一致性与安全测试
-
-当前为研究原型，并非模型执行引擎。
-
-## 运行效率与代表性张量可视化
-
-新增 [Performance & Tensor Observatory](telemetry.html)：真实 PyTorch profiler 的 ATen self time、模块 Host 时间与 tensor shape/stride/dtype；显式开启数值采样可展示热力图（带符号/幅值/零值）、直方图、矩阵切片。
+需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
 
 ```bash
-python examples/telemetry_demo.py
+git clone https://github.com/Qesire/SeetheTruth.git
+cd SeetheTruth
 python atlas_server.py --port 8765
 ```
 
-打开 http://127.0.0.1:8765/telemetry.html 并导入生成的 JSON。**默认不采集数值；性能测量与数值采样建议分成两次运行。** [技术与隐私说明](docs/telemetry.md)。
+浏览器打开 **http://127.0.0.1:8765/learn.html**。要体验本 README 描述的完整新功能，请切换到正在审查的 [PR #21 候选分支](https://github.com/Qesire/SeetheTruth/pull/21)；在其合并前，默认 `main` 仍是旧版。
 
-## 学术与业界机制共识（新增）
+1. 选择一门引导课程，或从空白画布自由连线；端口、DAG、形状和参数有效性会进行验证，**不会因为不符合某种模型模板而禁止连接**。
+2. 默认使用**原理推演**，只追踪运算意义、形状和依赖，不执行矩阵计算。
+3. 主动切换**微型数值模式**后，可以观察中间张量、注意力、局部梯度及适用的训练事务。
+4. 选中任意积木，查看来源论文、数学公式、计算步骤、工业惯例、误区和可证伪实验。论文解析也支持悬停预览。
+5. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为独立 NumPy Python 文件；不支持的节点会明确拒绝，不生成假代码。
 
-选择模块节点后，右侧新增 **ACADEMIC CONSENSUS** 知识层：典型数学公式 → 局部机制 → 预期终端效果 → 适用前提与测量建议，并提供原始论文链接。涵盖 Attention、GQA、RoPE、FFN、归一化、MoE、AdaLN、FlashAttention、语言模型损失、AdamW、PPO、GRPO。**与 AST 的源码事实和 Runtime Trace 的观测事实分离；不保证目标模型获得文献里的效果。**
+运行生成的 Python 文件另外需要 `python -m pip install numpy`。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
 
-知识条目见 [`consensus_knowledge.js`](./consensus_knowledge.js)，说明见 [机制共识文档](./docs/mechanism-consensus.md)，验证命令 `node tests/consensus_contracts.js`。
+## 当前候选功能（以 PR #21 为准）
 
-## 真实源码的矩阵与张量证据视图（实验性）
+| 能力 | 已实现范围 | 明确限制 |
+| --- | --- | --- |
+| 积木库 | **116 种积木**：11 种基本计算积木 + 105 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
+| 学习内容 | **35 门引导课程**，另有空白自由画布 | 课程是教学组合，不代表完整复刻开源模型 |
+| 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图 | 论文事实不等于指定模型源码事实 |
+| 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
+| 代码生成 | 从已验证的图拓扑生成可独立运行的 **NumPy Python**，并对比 JavaScript 全部中间张量 | **只覆盖已支持的算子及纯函数式更新**；未生成可持续训练的 PyTorch checkpoint |
+| 真实证据 | 可选 Python AST 解析、PyTorch Runtime Trace、Profiler，同次 Pass 的 CPU 代价归因 | 不执行陌生代码，不伪造 kernel/吞吐量，不自动下载真实权重 |
 
-用 `python atlas_server.py --port 8765` 分析本地 Python 源码目录，再切换整体 / Block / 算子 / 矩阵 / 张量：源码导入后可以在当前调用层级和其嵌套模块中筛选有源码依据的运算（不再仅依赖教学模板）。已加载的显式绝对 `from module import Class as Alias` 可以解析同名类冲突及真实跨文件 `forward`，未知或未加载依赖会保留未解析证据。矩阵标签只识别明确的线性/GEMM 调用，不把自定义类名称臆断为 GEMM；所有源码图的张量 shape 仍标记为**未经运行验证**。完整范围、外部库限制、投影容量和验证方式见 [Source evidence drill](docs/source-evidence-drill.md)。
+### 三个关键语义边界
 
+- **逻辑可执行**：允许自由组合；只有端口、形状、参数、拓扑和实际已实现的算子语义会限制运行。形状合法并不代表算法有训练价值。
+- **解释、模拟、实测分离**：符号推演（SYMBOLIC）、确定性教学数值（SYNTHETIC）和带不可变模型修订/模块定位的真实采样（REAL_CAPTURE）在界面和导出中不能混同。真实小模型采集工具已有，但没有通过正式样本验收的数据不宣称为真实模型统计。
+- **导出不能降级为伪代码**：遇到不支持的算子，应清楚报出积木 ID 和算子类型；不得用预计算常数、固定输出或空实现来假装可运行。
 
-## 一次真实 Pass 的计算成本与源码证据
+## 其他入口
 
-已支持在**同一个用户显式执行的 PyTorch Pass**中联合采集 RuntimeTrace 和
-Profiler：调用 `same_pass_evidence.VerifiedPass`，为每次模块调用记录独占 ATen
-CPU 自耗时、包含下级的成本、真实张量 shape/stride/dtype 与调用序号。
-依赖父子调用关系自底向上汇总，避免把子模块的 ATen 成本再次作为父模块独占成本。
-主全息图的运行模块 inspector 显示同次成本，Telemetry 页面也可展开逐次调用。
-源码版本一致时仍可用此前的 SHA-256/行号验证为节点绑定源码证据。
+- [Learning Studio](learn.html)：产品主入口、自由积木及代码导出。
+- [训练状态教学](training.html)：独立的前向—损失—反向—梯度累积—AdamW/SGD 状态示例。
+- [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
+- [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
+- [训练微流程](micro_training.html)：有界自动微分、MoE、PPO 示例。
+- [源码与结构图](index.html)：静态源码解释、全息结构与可选 Runtime Trace。
+- [性能和张量观测](telemetry.html)：显式实测的 profiler 与可选数值采样。
 
-快速 CPU 验收：`python examples/same_pass_demo.py`。
-说明与计时口径：[Performance & Tensor Observatory](docs/telemetry.md)。
-所有 Profiler 数字都属于**有插桩的单次测量**，不是未插桩模型吞吐率；
-含子模块成本不能跨父子相加，CUDA profiler 归因时间不等于设备执行关键路径。
+## 验证与开发
 
-## Scratch 式大模型学习实验台（新增）
-
-本项目新增 [Learning Studio](learn.html)：在一张可以拖拽、连线、修改参数的工作台上，自行拼出微型 FFN、残差、单头 Attention 与 Loss。选择积木可观察数学公式和设计意图；按“运行微型计算”后逐步查看 **真实由浏览器数值计算得到的小矩阵、shape、Attention 分数与 Softmax 权重**。可尝试断线挑战、修复输入端口、保存或导入本地课程工程 JSON。
+无需训练大型模型，主要合同可以用 Node 22 检查：
 
 ```bash
-python atlas_server.py --port 8765
-# 浏览器打开 http://127.0.0.1:8765/learn.html
+node tests/release_surface_contracts.js
+node tests/block_catalog_contracts.js
+node tests/graph_readiness_contracts.js
+node tests/graph_autodiff_contracts.js
+node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
 ```
 
-学习实验台的权重是教学用固定伪权重；输入由确定性种子生成，矩阵最大 8×16。**它不执行任何真实 LLM 权重，不包含训练反向传播、真实 GPU 用时或 RL rollout。** 原有 [全息源码/运行分析器](index.html) 和性能显微镜保持不变。升级方向、支持的积木、限制和逐阶段研究型课程设计见 [Learning Studio Roadmap](docs/learning-studio.md)。
+浏览器验收使用 `python -m pip install playwright`、`python -m playwright install chromium`，再运行 `python tests/browser_catalog_screenshots.py`。CI 对候选分支进行数值合同、JavaScript↔NumPy 中间量一致性、真实 Chromium 操作/截图、源码审计和静态行为验证。
 
-验证：`node tests/learning_lab_contracts.js` 和真实浏览器 CI。
+## 发布状态和文档
 
+截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-## 多维张量与 GQA / RoPE / Decode（教学实验）
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[架构优先级](docs/learning-first-architecture.md)。
 
-新文件 tensor_ir.js 保存微型张量的命名轴、真实计算数值和可选择的 Head 切片。Learning Studio 新增 **任务 05 · GQA / RoPE / Causal Attention** 和 **任务 06 · Decode 读取已有 KV 前缀**。积木支持切换 Query Head 数、KV Head 数、因果 Mask 和 RoPE，在检查器内逐次展开 Q/K/V Heads、旋转、scores、Mask、Softmax probabilities 与输出拼接。
-
-验证命令：node tests/semantic_tensor_ir_contracts.js。启动 python atlas_server.py --port 8765，在浏览器访问 http://127.0.0.1:8765/learn.html 。
-
-这些是**真实计算的有界微型教学数值**，而不是运行真实 LLM 或 GPU。Decode 示例只读取提供的 K/V 前缀，尚未实现可持续更新的 KV Cache。数学合同及测试见 docs/learning-studio.md。
-
-## Stateful KV Cache 学习与真实截图验收
-
-新增 [KV Cache 状态机实验室](cache.html)。Prefill 将投影 K/V 实际写入独立 Session 的缓存数组；每一步 Decode 仅追加当前 token 的 K/V，之后使用完整已缓存前缀计算 GQA 注意力。页面展示缓存槽位、Key/Value 数值矩阵、逐 Head 注意力概率及数学 GEMM FLOPs。
-
-测试 node tests/kv_cache_contracts.js 将逐 token 输出与完整 causal 前缀重算逐元素比较。通过 python tests/browser_cache_screenshots.py 使用真实 Chromium 截图并验证 DOM 中的缓存槽位、矩阵单元格和布局。四张 PNG 及 manifest.json 上传到 GitHub Actions 的 seethetruth-kv-real-chromium-screenshots artifact（14 天保留）。
-
-启动：python atlas_server.py --port 8765，访问 http://127.0.0.1:8765/cache.html。
-
-限定：这是确定性教学数值模拟，没有实际大模型权重、采样、真实 GPU latency，也没有复杂批次或 Paged Attention。实际缓存数组更新已实现，但不代表 PyTorch/HF/KV cache 的具体物理数据结构。
-
-## 45 个可执行数学积木 · Scratch 式大模型学习
-
-Learning Studio 现在包含 **45 种真的进行有限二维 Float64 数值计算的积木**，而非只有说明文字的占位节点。新增 34 种，覆盖 Token ID/Embedding、位置编码、矩阵切片/拼接/转置、LayerNorm、GELU、SwiGLU/GEGLU、Causal Mask、Masked Softmax、Temperature、Top-k、固定随机数演示的 Dropout、CrossEntropy、KL(P||Q) 等。12 个计算课程和自由编辑模式依旧允许拖拽、插口连线、调参、断线、数值单步观测与撤销。
-
-工作台左栏现在首先呈现可搜索、可按 13 类筛选的积木库，并提供自动适配图谱宽度以避免输出节点被截断。完整执行定义、形状限制、PyTorch 数值口径与未实现能力见 [积木合同说明](docs/block-catalog.md)。
-
-数值验证：`node tests/block_catalog_contracts.js`；真实截图与交互验证：`python tests/browser_catalog_screenshots.py`。GitHub Actions 会产生可查看的 Chromium PNG 截图，包括全部目录、SwiGLU 搜索、损失分类、SwiGLU 数值链、分类交叉熵及因果 Mask 计算。每张截图源自真实浏览器内联计算，而非概念效果图。
-
-本版本仍为教学微型数值执行器；自动微分/反向传播、Optimizer、真实模型权重与 GPU 计时尚未实现，不属于 45 个积木。
-
-## 45 种积木的深入解读与业界经验
-
-学习工作台现在为全部 45 种积木提供逐项的 **数学机制、分步计算流、业界常见实现习惯、易混淆断言、亲手验证问题及公开来源链接**。重点模块还会进一步显示“机制→下游效果→成立条件→判别观察”的学术论证路径；这些知识不依赖 GPU 或大模型执行。
-
-打开 [Learning Studio](learn.html)，选择例如 **GQA、SwiGLU、LayerNorm 或 CrossEntropy**，在右侧“积木深度讲解”展开各部分。知识来源标明为公共论文或 PyTorch/Hugging Face 官方文档，不代表已经审查你打开的某个真实模型。会明确区分 GQA 的缓存收益与真实加速、FlashAttention 的 IO 优化与数学公式、GELU 精确/近似形式、标签 shift、Dropout 的真实训练随机性等。
-
-知识体系的原则与证据边界见 [积木深度讲解设计](docs/block-knowledge-deep-dives.md)。验证：`node tests/block_knowledge_contracts.js`，以及 `python tests/browser_block_knowledge.py`（真实 Chromium，截图会随 CI 上传）。
-
-## 分层展开完整大模型模块（Learning Studio）
-
-进入 [学习工作台](learn.html)，在左侧选择 **“从 Decoder Layer 进入”**，即可沿六个数学阶段进入 GQA Attention、FFN、Normalization 与 Residual，并进一步展开到 **QKᵀ、分数缩放、Softmax、PV** 或 **gate/up → SiLU → Hadamard → down** 等原子计算。点击任意阶段还会关联既有的数学/工程惯例/易错点知识卡。
-
-这是 **8 种复合学习视图，不是额外增加 8 种可执行算子**；45 种已有积木仍是底层单一算子表。默认只做定性的形状、语义、连接与条件推演，不生成大矩阵或要求 GPU。小矩阵数值模式独立可选。
-
-关键验收不是仅截图：`tests/composite_atlas_contracts.js` 会逐元素比较父级与展开后 SwiGLU、Attention 的独立计算结果，并检查实际 Decoder 双残差与输出 shape。`tests/browser_composite_hierarchy.py` 使用真正 Chromium 逐层点击生成截图。详见 [分层积木设计与数学验收](docs/hierarchical-composite-learning.md)。
-
-## 第九阶段 · 训练状态和优化器积木（原理优先，无 GPU）
-
-新增 [Training Studio](training.html)：**14 种训练状态积木**，以可验证的标量学习问题逐步解释 Parameter → Forward → Loss → Backward（链式法则）→ 有效 batch 梯度累积 → SGD/AdamW Optimizer Step。默认只生成符号与状态依赖，不做数值计算；用户可以主动开启独立的标量解析检验，不需要 GPU、模型权重或 PyTorch。
-
-系统显式区分模型参数、`.grad` 缓冲区、AdamW 的 m/v 动量和 t 更新计数。支持 1/2 microbatch、1/2 optimizer step 的比较，以及“错误清除梯度”“错误忽略归一化”的教学反例；每个积木附详细数学、工程惯例、误区和 PyTorch 原始合同链接。45 种现有计算积木保持不变，新增 14 种**训练概念／状态积木**不冒充已有微矩阵执行器。
-
-数值合同与真实浏览器截图验收见 [训练教学语义规范](docs/training-learning-contracts.md)。
+项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
