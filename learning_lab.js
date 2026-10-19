@@ -453,6 +453,54 @@
         ["q_proj","attend","q"],["k_proj","attend","k"],["v_proj","attend","v"],
         ["attend","loss","prediction"],["target","loss","target"]
       ];
+    }else if(name==="causal_transformer_lm"){
+      title="任务 37 · 可训练因果 Transformer · QKᵀ→Mask→Softmax→PV→CE";
+      // Pure composition of individual, reusable mathematics blocks.
+      // Every projection is an independent trainable Parameter source.
+      const mat=(rows,cols,seed)=>Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>
+        Number((Math.sin((i+1)*.47+(j+1)*.31+seed)*.24).toFixed(8))));
+      const P=(id,x,y,v)=>N(id,"parameter",x,y,{values:v,
+        optimizer:{t:0,m:v.map(row=>row.map(()=>0)),v:v.map(row=>row.map(()=>0))}});
+      nodes=[
+        N("token_ids","token_ids",20,160,{rows:4,vocab:8,seed:1}),
+        N("prefix","slice_rows",260,65,{start:0,length:3}),
+        N("labels","slice_rows",260,1220,{start:1,length:3}),
+        P("embedding_table",20,420,mat(8,4,1)),
+        N("lookup","gather_rows",510,180),
+        N("pos","pos_encoding",735,180),
+        P("wq",770,480,mat(4,4,2)),
+        P("wk",770,700,mat(4,4,3)),
+        P("wv",770,920,mat(4,4,4)),
+        N("q","matmul",1030,50),N("k","matmul",1030,290),N("v","matmul",1030,535),
+        N("kt","transpose2d",1265,300),
+        N("scores","matmul",1495,180),
+        N("scaled","scale",1710,175,{factor:0.5}),
+        N("mask","causal_mask",1920,465),
+        N("probs","masked_softmax",2140,180),
+        N("context","weighted_sum",2345,175),
+        N("residual","add",2545,175),
+        N("norm","rmsnorm",2745,175,{epsilon:1e-5}),
+        P("lm_head",2560,680,mat(4,8,5)),
+        N("logits","matmul",2960,170),
+        N("loss","cross_entropy",3185,170)
+      ];
+      edges=[
+        ["token_ids","prefix","x"],["token_ids","labels","x"],
+        ["prefix","lookup","indices"],["embedding_table","lookup","x"],
+        ["lookup","pos","x"],
+        ["pos","q","a"],["wq","q","b"],
+        ["pos","k","a"],["wk","k","b"],
+        ["pos","v","a"],["wv","v","b"],
+        ["k","kt","x"],["q","scores","a"],["kt","scores","b"],
+        ["scores","scaled","x"],
+        ["scaled","mask","x"],
+        ["scaled","probs","logits"],["mask","probs","mask"],
+        ["probs","context","weights"],["v","context","values"],
+        ["pos","residual","a"],["context","residual","b"],
+        ["residual","norm","x"],
+        ["norm","logits","a"],["lm_head","logits","b"],
+        ["logits","loss","logits"],["labels","loss","labels"]
+      ];
     }else if(name==="token_lm_trainable"){
       title="任务 36 · 真正的 Next-token 对齐：Token[t] → Label[t+1] → CE → AdamW";
       // Unlike the fixed Embedding teaching node, gather_rows is a real
