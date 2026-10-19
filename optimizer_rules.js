@@ -6,7 +6,7 @@
 const isNode=typeof module==="object"&&module.exports;
 const W=isNode?require("./adamw_micro.js"):root.SeetheTruthAdamW;
 const NDW=isNode?require("./nd_adamw_micro.js"):root.SeetheTruthNDAdamW;
-const KINDS=Object.freeze(["adamw","sgd_momentum","rmsprop","lion"]);
+const KINDS=Object.freeze(["adamw","adam","sgd_momentum","rmsprop","adagrad","lion"]);
 const tensorShape=x=>{const sh=[];let v=x;while(Array.isArray(v)){sh.push(v.length);v=v[0];}return sh;};
 const shapeOK=x=>{const sh=tensorShape(x);if(sh.length!==2&&sh.length!==4)throw Error("optimizer supports only 2D and 4D teaching tensors");if(sh.some(n=>!Number.isSafeInteger(n)||n<1))throw Error("invalid tensor dimensions");const all=[];const walk=(v,d)=>{if(d===sh.length){if(!Number.isFinite(v))throw Error("optimizer tensor must be finite");all.push(v);return;}if(!Array.isArray(v)||v.length!==sh[d])throw Error("ragged optimizer tensor");v.forEach(t=>walk(t,d+1));};walk(x,0);if(all.length>512)throw Error("optimizer tensor exceeds bounded allowance");return sh;};
 const same=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
@@ -23,17 +23,19 @@ function step(parameter,gradient,previous=null,options={}){
  const ms=shapeOK(old.m),vs=shapeOK(old.v);
  if(!same(ms,a)||!same(vs,a))throw Error("optimizer moment dimensions mismatch");
  if(!Number.isSafeInteger(old.t)||old.t<0||old.t>=10000)throw Error("invalid optimizer state step");
- const h={lr:0.01,weightDecay:0.01,beta1:0.9,beta2:kind==="lion"?0.99:0.999,alpha:0.99,eps:1e-8,momentum:0.9,...options};
+ if((kind==="adam"||kind==="adamw"||kind==="rmsprop"||kind==="adagrad")&&map(a,idx=>at(old.v,idx)).flat(Infinity).some(v=>v<0))throw Error("optimizer square accumulator cannot be negative");
+ const h={lr:0.01,weightDecay:0.01,beta1:0.9,beta2:kind==="lion"?0.99:0.999,alpha:0.99,eps:1e-8,momentum:0.9,lrDecay:0,...options};
  if(!Number.isFinite(h.lr)||h.lr<=0||h.lr>1||!Number.isFinite(h.weightDecay)||h.weightDecay<0||h.weightDecay>1||
     !Number.isFinite(h.momentum)||h.momentum<0||h.momentum>=1||!Number.isFinite(h.alpha)||h.alpha<0||h.alpha>=1||
     !Number.isFinite(h.beta1)||h.beta1<0||h.beta1>=1||!Number.isFinite(h.beta2)||h.beta2<0||h.beta2>=1||
-    !Number.isFinite(h.eps)||h.eps<=0||h.eps>1)throw Error("invalid optimizer hyperparameters");
+    !Number.isFinite(h.eps)||h.eps<=0||h.eps>1||!Number.isFinite(h.lrDecay)||h.lrDecay<0||h.lrDecay>1)throw Error("invalid optimizer hyperparameters");
  if(kind==="adamw"){
    const base=(a.length===4?NDW:W).step(parameter,gradient,old,h);
    return {...base,state:{...base.state,kind},optimizer:kind};
  }
  // Unlike AdamW, SGD and RMSprop use coupled L2 decay, as in PyTorch.
  // Lion uses decoupled weight decay and two different momentum mixtures.
+ const timestep=old.t;
  const update=map(a,idx=>{
    const w=at(parameter,idx),g=at(gradient,idx),m=at(old.m,idx),v=at(old.v,idx),effective=g+h.weightDecay*w;
    if(kind==="sgd_momentum"){
@@ -44,16 +46,29 @@ function step(parameter,gradient,previous=null,options={}){
      const square=h.alpha*v+(1-h.alpha)*effective*effective;
      return h.lr*effective/(Math.sqrt(square)+h.eps);
    }
+   if(kind==="adagrad"){
+     const accumulated=v+effective*effective,eta=h.lr/(1+timestep*h.lrDecay);
+     return eta*effective/(Math.sqrt(accumulated)+h.eps);
+   }
+   if(kind==="adam"){
+     const mt=h.beta1*m+(1-h.beta1)*effective,
+           vt=h.beta2*v+(1-h.beta2)*effective*effective;
+     return h.lr*(mt/(1-Math.pow(h.beta1,timestep+1)))/
+       (Math.sqrt(vt/(1-Math.pow(h.beta2,timestep+1)))+h.eps);
+   }
    const c=h.beta1*m+(1-h.beta1)*g;
    return h.lr*(Math.sign(c)+h.weightDecay*w);
  });
  const nextM=map(a,idx=>{
    const w=at(parameter,idx),g=at(gradient,idx),m=at(old.m,idx);
    if(kind==="sgd_momentum")return h.momentum*m+g+h.weightDecay*w;
+   if(kind==="adam")return h.beta1*m+(1-h.beta1)*(g+h.weightDecay*w);
    if(kind==="lion")return h.beta2*m+(1-h.beta2)*g;
    return m;
  });
  const nextV=map(a,idx=>{
+   if(kind==="adam"){const e=at(gradient,idx)+h.weightDecay*at(parameter,idx);return h.beta2*at(old.v,idx)+(1-h.beta2)*e*e;}
+   if(kind==="adagrad"){const e=at(gradient,idx)+h.weightDecay*at(parameter,idx);return at(old.v,idx)+e*e;}
    if(kind!=="rmsprop")return at(old.v,idx);
    const g=at(gradient,idx)+h.weightDecay*at(parameter,idx);
    return h.alpha*at(old.v,idx)+(1-h.alpha)*g*g;
@@ -61,7 +76,7 @@ function step(parameter,gradient,previous=null,options={}){
  const next=map(a,idx=>at(parameter,idx)-at(update,idx));
  shapeOK(next);
  return {parameter:next,update,state:{kind,t:old.t+1,m:nextM,v:nextV},options:h,optimizer:kind,
-  evidence:"SGD/RMSprop coupled L2; Lion decoupled sign step; CPU-only immutable teaching state"};
+  evidence:"Adam/SGD/RMSprop/Adagrad coupled L2; Lion decoupled sign step; CPU-only immutable teaching state"};
 }
 return Object.freeze({step,KINDS});
 });
