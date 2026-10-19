@@ -783,8 +783,20 @@ $("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;runGr
  render();});
 $("#prev").onclick=()=>{if(!run||step<1)return;step--;selected=run.steps[step].id;render();};
 $("#next").onclick=()=>{if(!run||step>=run.steps.length-1)return;step++;selected=run.steps[step].id;render();};
-$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
-$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;render();};
+function restoreOptimizerControls(){
+ const nodes=graph.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter");
+ if(!nodes.length)return;
+ const stored=nodes[0].params.optimizer.config;
+ if(!stored||typeof stored!=="object")return;
+ const choices={lr:"trainLearningRate",weightDecay:"trainWeightDecay",
+   momentum:"trainMomentum",alpha:"trainAlpha",lrDecay:"trainLRDecay"};
+ for(const [key,id] of Object.entries(choices)){
+   const control=$("#"+id),value=stored[key];
+   if(control&&Number.isFinite(value)&&[...control.options].some(o=>o.value===String(value)))control.value=String(value);
+ }
+}
+$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;restoreOptimizerControls();render();};
+$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;restoreOptimizerControls();render();};
 $("#save").onclick=()=>{
  const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="seethetruth-learning-project.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -794,7 +806,7 @@ $("#load").addEventListener("change",async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{if(file.size>65536)throw Error("文件大于 64 KiB，不允许导入");
   graph=L.validateGraph(JSON.parse(await file.text()));L.order(graph);
-  undo=[];redo=[];run=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;from=null;render();say("已导入学习工程，内容未经执行。");
+  undo=[];redo=[];run=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;from=null;restoreOptimizerControls();render();say("已导入学习工程，内容未经执行。");
  }catch(err){say("导入被拒绝："+err.message,true);}finally{e.target.value="";}
 });
 window.addEventListener("resize",drawWires);
