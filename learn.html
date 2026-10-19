@@ -739,7 +739,7 @@ function render(){
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length+(runScope?" · 分支 "+runScope:""):"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
- $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse"].includes(n.kind));
+ $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse","mae_loss"].includes(n.kind));
  $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
  $("#applyLoRA").disabled=!graph.nodes.some(n=>n.id===selected&&n.kind==="matmul");
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse");
