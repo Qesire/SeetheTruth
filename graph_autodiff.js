@@ -3,6 +3,7 @@
  */
 (function(root,factory){const api=factory(root);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphAutodiff=api;})(typeof window!=="undefined"?window:{},function(root){"use strict";
 const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):root.SeetheTruthLearning;
+const Objective=typeof module==="object"&&module.exports?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Expert=typeof module==="object"&&module.exports?require("./expert_ffn_vjp.js"):root.SeetheTruthExpertVJP;
 const NDVJP=typeof module==="object"&&module.exports?require("./nd_autodiff.js"):root.SeetheTruthNDVJP;
 const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):root.SeetheTruthND;
@@ -31,7 +32,9 @@ function backward(raw,forward,opts={}){
  const values=new Map(),byId=new Map(nodes.map(n=>[n.id,n])),edges=new Map();
  for(let i=0;i<nodes.length;i++){const step=trace[i],n=nodes[i];if(step.id!==n.id||step.kind!==n.kind||!finite(step.values))throw Error("stale or invalid forward trace");values.set(n.id,step.values);}
  for(const e of graph.edges)edges.set(e.to+":"+e.port,e.from);
- const chosen=opts.targetId||[...nodes].reverse().find(n=>values.get(n.id).length===1&&values.get(n.id)[0].length===1&&(n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss"||n.kind==="cross_entropy"||n.kind==="masked_grpo_objective"))?.id;
+ const proof=Objective.analyze(graph);
+ const chosen=opts.targetId||proof.preferred||[...nodes].reverse().find(n=>n.kind==="masked_grpo_objective")?.id;
+ if(chosen&&!proof.isLoss(chosen)&&byId.get(chosen)?.kind!=="masked_grpo_objective")throw Error("target is not a valid loss-derived scalar objective");
  if(!chosen||!byId.has(chosen)||values.get(chosen).length!==1||values.get(chosen)[0].length!==1)throw Error("choose scalar loss node for graph reverse pass");
  const grads=new Map(),routes=[],cuts=[],local={};
  const src=(id,port)=>{const v=edges.get(id+":"+port);if(!v)throw Error("missing gradient input "+id+"."+port);return v;};
