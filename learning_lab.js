@@ -261,6 +261,11 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="loopformer_consistency"){
+      const Consistency=typeof module==="object"&&module.exports?require("./loop_consistency.js"):globalThis.SeetheTruthLoopConsistency;
+      if(!Consistency)throw Error("LoopFormer-inspired source graph builder unavailable");
+      return Consistency.build();
+    }
     if(/^loop_transformer_[123]$/.test(name)){
       const Composer=typeof module==="object"&&module.exports?require("./loop_transformer.js"):globalThis.SeetheTruthLoopTransformer;
       if(!Composer)throw Error("Looped Transformer source graph builder is not loaded");
