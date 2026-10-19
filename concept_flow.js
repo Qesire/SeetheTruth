@@ -105,6 +105,10 @@
         "N-D MatMul batch/head axes cannot broadcast",n.id);
       output=[Math.max(a[0],b[0]),Math.max(a[1],b[1]),a[2],b[3]];
       rule="在每个批次和头中只沿 K 轴收缩；B/H 轴允许 singleton 广播";
+    }else if(["opt_adamw","opt_sgd_momentum","opt_rmsprop","opt_lion"].includes(kind)){
+      const [a,b]=ports(n,inputs,"parameter","gradient");
+      by(equal(a,b),kind+" parameter and gradient shape mismatch",n.id);
+      output=a.slice();rule="对给定 Parameter 和 Gradient 从零历史状态计算一步 "+L.defs[kind].en+"，仅返回下一参数矩阵，不修改外部图或维护多步状态";
     }else if(kind==="input"){output=[p.rows,p.width];rule="输入连续表征，建立 token 轴 T 和特征轴 D";}
     else if(kind==="parameter"){output=[p.values.length,p.values[0].length];rule="节点 ID 为可训练参数身份；值与 AdamW 状态属于 JSON 工程，每次训练更新产生新版本快照";}
     else if(kind==="token_ids"){output=[p.rows,1];rule="产生每个 token 的离散类别索引 [T,1]";}
