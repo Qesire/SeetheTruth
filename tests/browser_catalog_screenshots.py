@@ -338,6 +338,32 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_free_mixed_loss_mae_optimizer_and_export(self):
+        p=self.page
+        p.locator('[data-preset="trainable_swiglu"]').click()
+        p.locator('[data-add="mae_loss"]').click()
+        mae=p.locator("#blocks .block").last.get_attribute("data-node")
+        self.assertEqual(p.locator('[data-node="'+mae+'"]').get_attribute("data-readiness"),"missing")
+        for upstream,port in (("down","prediction"),("target","target")):
+            p.locator('[data-out="'+upstream+'"]').click()
+            p.locator('[data-in="'+mae+'"][data-port="'+port+'"]').click()
+        self.assertEqual(p.locator('[data-node="'+mae+'"]').get_attribute("data-readiness"),"ready")
+        p.locator("#studyMode").select_option("numeric")
+        p.locator('[data-node="'+mae+'"] .block-head').click()
+        self.assertFalse(p.locator("#trainStep").is_disabled())
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 1 步",p.locator("#status").inner_text())
+        self.assertIn("AdamW step 1",p.locator("#trainSummary").inner_text())
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as downloaded:
+            p.locator("#exportPython").click()
+        source=Path(downloaded.value.path()).read_text(encoding="utf-8")
+        self.assertIn(".abs().mean()",source)
+        self.assertIn("loss.sum().backward()",source)
+        self.assertIn("torch.optim.AdamW",source)
+        self.assertIn("PyTorch CPU",p.locator("#status").inner_text())
+        self.shot("55-real-mae-graph-training-export.png")
+
     def test_torch_export_is_real_autograd_and_not_fake_fallback(self):
         p=self.page
         p.locator('[data-preset="trainable_attention"]').click()
