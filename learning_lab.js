@@ -454,7 +454,7 @@
         ["attend","loss","prediction"],["target","loss","target"]
       ];
     }else if(name==="token_lm_trainable"){
-      title="任务 36 · 可训练 Token Embedding → Logits → CrossEntropy → AdamW";
+      title="任务 36 · 真正的 Next-token 对齐：Token[t] → Label[t+1] → CE → AdamW";
       // Unlike the fixed Embedding teaching node, gather_rows is a real
       // differentiable lookup into one shared trainable Parameter table.
       const matrix=(rows,cols,seed)=>Array.from({length:rows},(_,r)=>Array.from({length:cols},(_,c)=>
@@ -463,17 +463,19 @@
         values,optimizer:{t:0,m:values.map(row=>row.map(()=>0)),v:values.map(row=>row.map(()=>0))}
       });
       nodes=[
-        N("token_ids","token_ids",25,145,{rows:3,vocab:8,seed:1}),
-        N("labels","token_ids",25,700,{rows:3,vocab:8,seed:4}),
-        P("embedding_table",25,370,matrix(8,4,1)),
-        N("lookup","gather_rows",330,220),
-        P("lm_head",330,610,matrix(4,8,2)),
-        N("logits","matmul",645,215),
-        N("log_probs","log_softmax",935,55),
-        N("loss","cross_entropy",955,300)
+        N("token_ids","token_ids",25,145,{rows:4,vocab:8,seed:1}),
+        N("input_tokens","slice_rows",300,80,{start:0,length:3}),
+        N("labels","slice_rows",300,780,{start:1,length:3}),
+        P("embedding_table",25,435,matrix(8,4,1)),
+        N("lookup","gather_rows",585,220),
+        P("lm_head",585,620,matrix(4,8,2)),
+        N("logits","matmul",890,215),
+        N("log_probs","log_softmax",1180,55),
+        N("loss","cross_entropy",1190,300)
       ];
       edges=[
-        ["token_ids","lookup","indices"],["embedding_table","lookup","x"],
+        ["token_ids","input_tokens","x"],["token_ids","labels","x"],
+        ["input_tokens","lookup","indices"],["embedding_table","lookup","x"],
         ["lookup","logits","a"],["lm_head","logits","b"],
         ["logits","log_probs","x"],["logits","loss","logits"],["labels","loss","labels"]
       ];
