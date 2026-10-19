@@ -20,9 +20,10 @@ python atlas_server.py --port 8765
 2. 默认使用**原理推演**，只追踪运算意义、形状和依赖，不执行矩阵计算。
 3. 主动切换**微型数值模式**后，可以观察中间张量、注意力、局部梯度及适用的训练事务。
 4. 选中任意积木，查看来源论文、数学公式、计算步骤、工业惯例、误区和可证伪实验。论文解析也支持悬停预览。
-5. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为独立 NumPy Python 文件；不支持的节点会明确拒绝，不生成假代码。
+5. 在导出选项中选 **NumPy Python**（独立前向计算）或 **PyTorch CPU**（可训练子集的真实 autograd、AdamW 与 checkpoint）。
+6. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为独立 NumPy Python 文件；不支持的节点会明确拒绝，不生成假代码。
 
-运行生成的 Python 文件另外需要 `python -m pip install numpy`。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
+NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需要 `python -m pip install torch`。后者的完整使用和真实执行合同见 [PyTorch 独立可训练代码](docs/pytorch-executable-training.md)。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
 
 ## 当前候选功能（以 PR #21 为准）
 
@@ -32,7 +33,7 @@ python atlas_server.py --port 8765
 | 学习内容 | **35 门引导课程**，另有空白自由画布 | 课程是教学组合，不代表完整复刻开源模型 |
 | 原理解释 | 详细数学/论文知识卡、源码指针和论文悬停视图 | 论文事实不等于指定模型源码事实 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
-| 代码生成 | 从已验证的图拓扑生成可独立运行的 **NumPy Python**，并对比 JavaScript 全部中间张量 | **只覆盖已支持的算子及纯函数式更新**；未生成可持续训练的 PyTorch checkpoint |
+| 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 两套后端均明确拒绝不支持的算子；PyTorch 仅覆盖已验证的 2D/4D 可训练子集，不是任意架构 |
 | 真实证据 | 可选 Python AST 解析、PyTorch Runtime Trace、Profiler，同次 Pass 的 CPU 代价归因 | 不执行陌生代码，不伪造 kernel/吞吐量，不自动下载真实权重 |
 
 ### 三个关键语义边界
@@ -57,6 +58,7 @@ python atlas_server.py --port 8765
 
 ```bash
 node tests/release_surface_contracts.js
+node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
 node tests/block_catalog_contracts.js
 node tests/graph_readiness_contracts.js
 node tests/graph_autodiff_contracts.js
@@ -69,6 +71,6 @@ node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
 
 截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
 
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[架构优先级](docs/learning-first-architecture.md)。
+设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
