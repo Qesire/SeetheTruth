@@ -36,6 +36,8 @@ assert.ok(guided.includes('video_causal_conv3d'),'lesson 53 registered');
 assert.ok(html.includes('src="inference_ops.js"'),'inference CPU kernels must be loaded');
 assert.ok(server.includes('"/inference_ops.js"'),'inference CPU module must have HTTP route');
 assert.ok(server.includes('"/deepinfer_worker_events.js"'),'Worker event engine must be served');
+assert.ok(server.includes('"/deepinfer_zos_metadata.js"'),'source-derived numerical metadata module served');
+assert.ok(read("deepinfer_worker_lab.html").includes('src="deepinfer_zos_metadata.js"'),"metadata runner loaded before event engine");
 assert.ok(server.includes('"/deepinfer_worker_lab.js"'),'Worker browser controller must be served');
 assert.ok(html.includes('href="deepinfer_worker_lab.html"'),'Learning Studio must link to Worker event simulator');
 assert.ok(html.includes('src="deepinfer_runtime_ops.js"'),'DeepInfer runtime module must be loaded');
