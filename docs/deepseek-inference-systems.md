@@ -1,7 +1,12 @@
 # DeepSeek-inspired inference systems: executable primitives and faithful evidence tiers
 
-**Source status (2026-10-20).** DeepSeek publicly stated it did **not** release the original internal inference engine as a unified ready-to-deploy server. The internal code grew from an earlier vLLM fork, depends heavily on internal infrastructure and is being contributed as reusable mechanisms and collaborations instead:
-https://github.com/deepseek-ai/open-infra-index/blob/main/OpenSourcing_DeepSeek_Inference_Engine/README.md
+**Source status (2026-10-20, corrected following the same-day release).** DeepSeek **released its real internal DeepInfer inference framework today**, including runtime, C++ scheduler, model execution, sampling, optimised operators and distributed-parallel machinery: https://github.com/deepseek-ai/DeepInfer . This supersedes earlier pre-release claims that only independent kernels were available. The released edition explicitly supports **offline inference** for DeepSeek-V4.1-Flash on **NVIDIA SM100 / Huawei Ascend 950**. DeepInfer's own README explicitly states that a full online inference service still requires an external KV cache system, VE/Prefill/Decode disaggregation and cross-DP load balancing; therefore **released inference framework ≠ complete turn-key online serving deployment**.
+
+DeepSeek also released the distinct API/prompt/protocol adaptation library https://github.com/deepseek-ai/deepseek-recipe . This Rust/Python library handles Messages / Chat Completions / Responses formats, DeepSeek V4/V4.1 prompt rendering, tokenization, multimodal image preprocessing, streaming and output parsing; the caller still supplies inference execution, tool execution and HTTP transport.
+
+Prior historical position (now superseded): https://github.com/deepseek-ai/open-infra-index/blob/main/OpenSourcing_DeepSeek_Inference_Engine/README.md
+
+For full initial source-level audit and reproducible inspection paths see [DeepInfer day-zero source audit](deepinfer-day0-source-audit.md).
 
 Do not conflate **DeepSeek Harness** (an agent/plugin execution harness) with a model inference/serving engine; or **DeepSpec** (draft-model training + speculative acceptance evaluation) with the serving engine.
 
@@ -9,7 +14,7 @@ Do not conflate **DeepSeek Harness** (an agent/plugin execution harness) with a 
 
 | Official component | Concern | Why it exists | What this workbench actually executes |
 | --- | --- | --- | --- |
-| [DeepSelect](https://github.com/deepseek-ai/DeepSelect) (2026-09-10 v1.0) | Sparse Attention Lightning Indexer and top-k sampler | DSA selects a small subset of context; fast Top-K is a bandwidth/selection workload, not a GEMM | Deterministic, tie-stable Top-K indices over actual tiny scores |
+| [DeepInfer](https://github.com/deepseek-ai/DeepInfer) (released 2026-10-20) | Offline inference engine / C++ scheduler / worker / model executor | Interleave scheduling, variable-length speculative verification, CP/EP/EPLB and source-grounded execution | **No full DeepInfer service replica yet**: current SeetheTruth only executes a bounded component-level CPU graph |\n| [deepseek-recipe](https://github.com/deepseek-ai/deepseek-recipe) | API adapters / prompt rendering / tokenization | Separate wire protocols from model execution and make input/output semantics reproducible | No recipe-compatible protocol server or tokenizer integration yet |\n| [DeepSelect](https://github.com/deepseek-ai/DeepSelect) (2026-09-10 v1.0) | Sparse Attention Lightning Indexer and top-k sampler | DSA selects a small subset of context; fast Top-K is a bandwidth/selection workload, not a GEMM | Deterministic, tie-stable Top-K indices over actual tiny scores |
 | [FlashMLA](https://github.com/deepseek-ai/FlashMLA) (current API) | Fused sparse MLA decode/prefill, quantized paged cache | Avoid full context QK work, improve KV residency and fused IO | Exact selected-index QK/softmax/PV math, separate physical-page address lookup |
 | [DeepEP](https://github.com/deepseek-ai/DeepEP) | MoE all-to-all dispatch/combine and overlap | Expert weights live across EP GPUs; tokens must move to expert owners and back | Existing routed-expert math; **no** simulated RDMA/NVLink byte-accurate network kernel |
 | [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) | Dense, quantized, routed, fused expert GEMM | Tensor Core efficiency, quantization and reduced launches | Existing real Gemm/MatMul and graph arithmetic counts, **not** low-level FP8 hardware behavior |
@@ -53,4 +58,4 @@ The graph engine's current bounded 2D carrier is a transparent limitation. For r
 - `tests/browser_multimodal.py`: real Chromium numeric execution, source-card proof, independent generated Python downloads and screenshots.
 - GitHub CI gates preserve existing training, video, static, and real-source regressions.
 
-This increment is an **inference computation teaching layer**, not the complete DeepSeek serving stack or a performance evaluation.
+This increment is an **inference computation teaching layer**, not a reconstruction of today's open-source DeepInfer offline engine or a performance evaluation. DeepInfer's currently released offline inference runtime is a new verifiable upstream reference; its missing full-service integration components must not be claimed as included.
