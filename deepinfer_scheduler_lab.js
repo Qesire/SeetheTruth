@@ -1,5 +1,17 @@
 (function(){"use strict";const S=window.SeetheTruthSchedulerWorkflow;if(!S)throw Error("Scheduler workflow module missing");
 const $=id=>document.getElementById(id),SVG="http://www.w3.org/2000/svg";
+const scenarioForPolicy=name=>{
+ const base=S.EXAMPLES[name];
+ // A terminated preempted request must not be re-admitted by a later Prefill
+ // fixture. Trim the pressure example into a valid terminal-only policy case.
+ if(name==="pressure"&&$("stopPreempted").checked){
+  const copy=JSON.parse(JSON.stringify(base));
+  copy.cycles=[copy.cycles[0],
+   {outputLens:{B:5,C:2},after:[{op:"finish",id:"B"},{op:"finish",id:"C"}]}];
+  return copy;
+ }
+ return base;
+};
 let spec=S.EXAMPLES.pressure,run=S.simulate(spec),index=0;
 const htmlSafe=t=>String(t); // UI only uses textContent; no HTML interpolation
 function el(t,attrs={},txt){const e=document.createElement(t);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(txt!==undefined)e.textContent=htmlSafe(txt);return e}
