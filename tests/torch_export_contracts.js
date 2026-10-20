@@ -13,7 +13,7 @@ const broken=JSON.parse(JSON.stringify(graph));
 broken.edges=broken.edges.filter(e=>!(e.to==='up'&&e.port==='x'));
 assert.throws(()=>X.compile(broken),/Missing input port/);
 const unsupported=JSON.parse(JSON.stringify(graph));
-unsupported.nodes[1].kind='gqa';
+unsupported.nodes.find(n=>n.id==='act').kind='gelu_tanh';
 assert.throws(()=>X.compile(unsupported),/unavailable/);
 const addGraph=L.validateGraph({
  schema:L.SCHEMA,title:'branch',nodes:[
