@@ -14,7 +14,7 @@ cd SeetheTruth
 python atlas_server.py --port 8765
 ```
 
-浏览器打开 **http://127.0.0.1:8765/learn.html**。要体验本 README 描述的完整新功能，请切换到正在审查的 [PR #21 候选分支](https://github.com/Qesire/SeetheTruth/pull/21)；在其合并前，默认 `main` 仍是旧版。
+浏览器打开 **http://127.0.0.1:8765/learn.html**。当前完整学习工作台已进入 main；涉及新多模态积木的功能请以对应 PR 的合并状态和 CI 为准。
 
 1. 选择一门引导课程，或从空白画布自由连线；端口、DAG、形状和参数有效性会进行验证，**不会因为不符合某种模型模板而禁止连接**。
 2. 默认使用**原理推演**，只追踪运算意义、形状和依赖，不执行矩阵计算。
@@ -25,13 +25,13 @@ python atlas_server.py --port 8765
 
 NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需要 `python -m pip install torch`。后者的完整使用和真实执行合同见 [PyTorch 独立可训练代码](docs/pytorch-executable-training.md)。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
 
-## 当前候选功能（以 PR #21 为准）
+## 当前学习工作台功能
 
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
-| 积木库 | **119 种积木**：11 种基本计算积木 + 108 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **45 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
-| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
+| 积木库 | **123 种积木**：11 种基本计算积木 + 112 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
+| 学习内容 | **49 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
+| 多模态 | 图像 Patchify、音频真实 Hann-STFT 功率谱与对数压缩、视频 Tubelet，另有图像/音频/视频三路交叉注意力的可执行积木图；NumPy、PyTorch CPU 代码导出 | 采用受限二维载体、合成数据和明确轴映射；尚无真实图片/音频/视频解码、ViT/ViViT 权重、Whisper Mel 滤波及 Wan VAE 3D 因果缓存 |\n| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
 | 真实证据 | 可选 Python AST、PyTorch Runtime Trace / Profiler；真实小模型采集器和本地 JSON 溯源检查器 | 真实样本必须运行指定不可变模型版本，未复跑的数据仅结构验证，不伪造 kernel/吞吐量 |
