@@ -12,7 +12,7 @@ const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
- ...SOURCES,"vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
+ ...SOURCES,"vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
@@ -301,6 +301,16 @@ function compile(raw,options={}){
      const W=Array.from({length:dim},(_,k)=>Array.from({length:cols},(_,j)=>weight(id,j,k)));
      const bias=Array.from({length:cols},(_,j)=>weight(id,97,j));
      expression='('+port("x")+' @ np.asarray(json.loads('+encoded(W)+'),dtype=np.float64) + np.asarray(json.loads('+encoded(bias)+'),dtype=np.float64))';
+   }else if(kind==="vision_conv2d"){
+     const x=port("x"),w=port("kernel"),C=p.channels,kh=p.kernelHeight,kw=p.kernelWidth,S=p.stride,O=p.outChannels;
+     const oh=Math.floor((p.height-kh)/S)+1,ow=Math.floor((p.width-kw)/S)+1;
+     expression='np.asarray([[sum('+x+'[y*'+S+'+dy,(col*'+S+'+dx)*'+C+'+ci]*'+w+'[co,(dy*'+kw+'+dx)*'+C+'+ci] for dy in range('+kh+') for dx in range('+kw+') for ci in range('+C+')) for col in range('+ow+') for co in range('+O+')] for y in range('+oh+')],dtype=np.float64)';
+   }else if(kind==="audio_mel_filterbank"){
+     const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
+     expression='('+port("x")+' @ np.asarray('+JSON.stringify(Adv.melWeights(p))+',dtype=np.float64))';
+   }else if(kind==="diffusion_ddim_step"){
+     const a=p.alphaT,b=p.alphaPrevious;
+     expression='('+JSON.stringify(Math.sqrt(b/a))+'*'+port("x")+' + '+JSON.stringify(Math.sqrt(1-b)-Math.sqrt(b*(1-a)/a))+'*'+port("epsilon")+')';
    }else if(kind==="vision_patchify"){
      const x=port("x"),H=p.height,W=p.width,C=p.channels,ph=p.patchHeight,pw=p.patchWidth;
      expression=x+'.reshape('+[H,W,C].join(',')+').reshape('+[H/ph,ph,W/pw,pw,C].join(',')+').transpose(0,2,1,3,4).reshape(-1,'+(ph*pw*C)+')';
