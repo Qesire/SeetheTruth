@@ -7,7 +7,7 @@ const scenarioForPolicy=name=>{
  if(name==="pressure"&&$("stopPreempted").checked){
   const copy=JSON.parse(JSON.stringify(base));
   copy.cycles=[copy.cycles[0],
-   {outputLens:{B:5,C:2},after:[{op:"finish",id:"B"},{op:"finish",id:"C"}]}];
+   {outputLens:{B:5,C:2},after:[{op:"finish",id:"C"}]}];
   return copy;
  }
  return base;
