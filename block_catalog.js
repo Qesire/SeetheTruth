@@ -12,6 +12,21 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  deepinfer_mtp_confidence_schedule:block("DeepInfer 置信度 Draft 长度分配","DSpark Variable MTP Query Length","inference",["remap","prev_confidence"],{totalQ:5},
+    "cumprod(confidence[remap[i],:]); top-(totalQ-N) globally, stable by flattened index; seqlens_q=1+wins",
+    "逐字对照 DeepInfer 官方 schedule_mtp_varlen.py 的 PyTorch Reference：累乘历史逐 Token 置信度，稳定全局排序，按预算把可选 Draft 数分配给不同序列。",
+    "改变前一批序列置信度或 remap=-1，查看同一 totalQ 下的每序列 query 长度；不等同于逐行阈值判断。",
+    "这里只计算可变长度选择；尚无真实 Worker ZOS、GPU TileLang Kernel、Draft 推理或显存性能。"),
+  deepinfer_yoco_swa_mask:block("DeepInfer YoCo · Mask 重放","YoCo SWA Bounded Replay · Mask","inference",["q","k","v"],{window:2,keepTokens:3,backtracking:1},
+    "SWA(q_t,k_j): 0<=t-j<window, t>=T-keep; masked prefix returns zero rows",
+    "显示完整 Q 布局，针对消费者层保持最近 keepTokens 条 Query 的滑动窗口注意力，早于保留边界的示例输出按遮蔽置零。",
+    "与 Compact 对照，验证保留后缀的注意力输出逐项相等，同时比较逻辑 Query 数量。",
+    "注意：这是官方 mask/compact 的有界数学示例，而不是复制其多 Chunk SWA metadata、Indexer Pivots 或真正 YoCo 网络。"),
+  deepinfer_yoco_swa_compact:block("DeepInfer YoCo · Compact 重放","YoCo SWA Bounded Replay · Compact","inference",["q","k","v"],{window:2,keepTokens:3,backtracking:1},
+    "Only queries t>=T-keep computed; full-length absolute K windows preserved",
+    "保留的 Q 从原序列中紧凑提取，计算严格对应 Mask 版本后缀的 SWA；真实减少消费者 Query 行数，不能误把 key 重排成相对 index。",
+    "与 Mask 输出最后 keepTokens 行逐元素比较；改变 keepTokens 并检查 window+backtracking 边界约束。",
+    "真实 DeepInfer 还有 Chunk、SWA cache、后退状态和更复杂的 mask/compact 布局；未逐字段复现，不承诺 GPU 延迟。"),
   inference_topk:block("推理 Top-K 稳定选取","Stable TopK Index Selection","inference",["scores"],{topk:2},
     "indices[t]=argTopK(scores[t,:]); tie: lower token index first",
     "以真实数值选出每行排名最高的 K 个下标；相等分数按原始下标升序稳定打破平局。供稀疏注意力 Indexer 或 Token 采样候选使用。",
@@ -321,6 +336,10 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(["deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact"].includes(kind)){
+     const Op=typeof module==="object"&&module.exports?require("./deepinfer_runtime_ops.js"):globalThis.SeetheTruthDeepInferRuntime;
+     if(!Op)fail("DeepInfer runtime model unavailable");Op.validate(kind,n);
+   }
    if(["inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify"].includes(kind)){
      const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
      if(!Op)fail("inference mathematical kernels unavailable");Op.validate(kind,n);
@@ -467,6 +486,10 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'deepinfer_mtp_confidence_schedule':case 'deepinfer_yoco_swa_mask':case 'deepinfer_yoco_swa_compact':{
+      const Op=typeof module==="object"&&module.exports?require("./deepinfer_runtime_ops.js"):globalThis.SeetheTruthDeepInferRuntime;
+      if(!Op)fail("DeepInfer runtime model unavailable");value=Op.execute(kind,inputs,params);break;
+    }
     case 'inference_topk':case 'inference_sparse_attention':case 'inference_paged_kv_read':case 'inference_greedy_verify':{
       const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
       if(!Op)fail("inference mathematical kernels unavailable");
