@@ -1496,5 +1496,35 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             self.assertNotIn("无法运行",p.locator("#status").inner_text())
 
 
+    def test_architecture_tradeoffs_real_browser_math_errors_and_screenshot(self):
+        """The release entrypoint must resolve and recompute visible analytical values."""
+        p=self.page
+        self.assertEqual(p.locator('a[href="tradeoffs.html"]').count(),1)
+        response=p.goto(self.base+"/tradeoffs.html",wait_until="domcontentloaded")
+        self.assertEqual(response.status,200)
+        p.wait_for_function("window.SeetheTruthTradeoffs && document.querySelectorAll('.metric').length===12")
+        sections=p.locator("[data-model]")
+        self.assertEqual(sections.count(),3)
+        gqa=sections.nth(0)
+        self.assertIn("512 MiB",gqa.locator(".metrics").inner_text())
+        self.assertIn("2,048 MiB",gqa.locator(".metrics").inner_text())
+        self.assertIn("75%",gqa.locator(".metrics").inner_text())
+        gqa.locator('input[name="kvHeads"]').fill("1")
+        self.assertIn("64 MiB",gqa.locator(".metrics").inner_text())
+        self.assertIn("96.88%",gqa.locator(".metrics").inner_text())
+        gqa.locator('input[name="heads"]').fill("7")
+        self.assertIn("divisible",gqa.locator('[role="alert"]').inner_text())
+        gqa.locator('input[name="heads"]').fill("32")
+        self.assertEqual(gqa.locator('[role="alert"]').count(),0)
+        self.assertIn("25%",sections.nth(1).locator(".metrics").inner_text())
+        self.assertIn("16.67%",sections.nth(2).locator(".metrics").inner_text())
+        shot=p.screenshot(path=str(DEST/"61-architecture-tradeoffs-real-computed.png"),
+                          full_page=True,animations="disabled")
+        self.assertTrue(shot.startswith(b"\\x89PNG\\r\\n\\x1a\\n"))
+        self.assertGreater(len(shot),10000)
+        self.assertFalse(p.evaluate("document.documentElement.scrollWidth>innerWidth+2"),
+                         "Architecture tradeoffs page has horizontal overflow")
+
+
 if __name__=="__main__":
     unittest.main()
