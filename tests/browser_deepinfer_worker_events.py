@@ -48,7 +48,7 @@ class DeepInferWorkerBrowser(unittest.TestCase):
         p.locator('#zosChart svg rect.event').first.click()
         self.assertIn('Dependencies:',p.locator('#details').inner_text())
         p.screenshot(path=str(OUT/'zos-vs-nonzos-default.png'),full_page=True,animations='disabled')
-        p.locator('#postTime').fill('9')
+        p.locator('#postTime').evaluate("(el) => { el.value='9'; el.dispatchEvent(new Event('input', {bubbles:true})); }")
         self.assertEqual(p.locator('#postValue').inner_text(),'9')
         self.assertNotEqual(p.locator('#deltaTime').inner_text(),'—')
         with p.expect_download() as d:
