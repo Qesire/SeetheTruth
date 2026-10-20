@@ -4,7 +4,7 @@ const seq=(seqId,q,k,blocks,stateId=0,isPlaceholder=false)=>({
  seqId,seqlenQ:q,seqlenK:k,blockTable:blocks,stateId,isPlaceholder});
 const input={blockSize:4,maxNumBlocks:4,maxSeqlenQ:3,blockTableCompressRatio:2,
  needDefaultSeqlens:true,sequences:[
- seq('B',2,10,[7,4,99],11),seq('C',1,5,[3,2],12),
+ seq('B',2,8,[7,4,99],11),seq('C',1,3,[3,2],12),
  seq('PAD',1,1,[8],13,true)]};
 const packed=D.prepare(input);
 assert.deepEqual(packed.numBlocks,[2,1,1]);
@@ -14,7 +14,7 @@ assert.deepEqual(packed.cuSeqlensQ,[2,3,4]);
 assert.deepEqual(packed.stateIds,[11,12,13]);
 assert.deepEqual(packed.isPlaceholder,[false,false,true]);
 assert.deepEqual(packed.seqlensQ,[2,1,1]);
-assert.deepEqual(packed.seqlensK,[10,5,1]);
+assert.deepEqual(packed.seqlensK,[8,3,1]);
 assert.equal(packed.totalQ,4);
 assert.equal(packed.tokensPerBlock,2);
 const noDefaults=D.prepare({...input,needDefaultSeqlens:false});
