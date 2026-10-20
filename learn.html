@@ -175,7 +175,7 @@ input[type="file"]{display:none}
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
     <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
-    <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
+    <button class="btn small" id="save">↧ 保存</button><button class="btn small" id="exportTorch" type="button">↧ PyTorch (.py)</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
   <section id="compositeNavigator" class="composite-nav" aria-label="复合模块逐层展开" hidden>
@@ -213,7 +213,7 @@ input[type="file"]{display:none}
 </div>
 <script src="tensor_ir.js"></script>
 <script src="block_catalog.js"></script>
-<script src="learning_lab.js"></script>
+<script src="learning_lab.js"></script><script src="torch_export.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
@@ -569,6 +569,16 @@ $("#prev").onclick=()=>{if(!run||step<1)return;step--;selected=run.steps[step].i
 $("#next").onclick=()=>{if(!run||step>=run.steps.length-1)return;step++;selected=run.steps[step].id;render();};
 $("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
 $("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
+$("#exportTorch").onclick=()=>{
+ try{
+  const result=window.SeetheTruthTorchExport.compile(graph);
+  const blob=new Blob([result.code],{type:"text/x-python;charset=utf-8"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="seethetruth_graph.py";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  say("已导出 "+result.nodeCount+" 个节点的可执行 PyTorch 代码；与浏览器教学计算同样使用固定伪权重。");
+ }catch(err){say("PyTorch 导出失败："+err.message,true);}
+};
 $("#save").onclick=()=>{
  const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="seethetruth-learning-project.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
