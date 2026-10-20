@@ -1,0 +1,58 @@
+name: Android teaching APK
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  assemble-teaching-apk:
+    name: Compile offline teaching WebView APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # ubuntu-latest already includes the Android SDK and modern sdkmanager.
+      # Do not run setup-android@v3: it tries to install the retired 'tools' package.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android SDK 35 using preinstalled SDK manager
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          MANAGER="$(find "$SDK/cmdline-tools" -maxdepth 4 -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          "$MANAGER" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
+      - name: Check teaching-only asset policy
+        run: node tests/android_teaching_contracts.js
+      - name: Assemble signed debug APK (not a Play Store release)
+        run: gradle -p android --no-daemon :app:assembleDebug --stacktrace
+      - name: Verify real APK contains offline lessons but no Python/backend
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -t "$APK" > /dev/null
+          for f in android_teaching.html android_teaching_mode.js learn.html block_catalog.js deepinfer_scheduler_lab.html; do
+            unzip -Z1 "$APK" | grep -Fx "assets/$f" >/dev/null || { echo "Missing bundled $f"; exit 1; }
+          done
+          if unzip -Z1 "$APK" | grep -E '^assets/.*\.(py|pt|pth|ckpt|safetensors)$'; then
+            echo "Forbidden backend or model weight file in teaching APK"
+            exit 1
+          fi
+          sha256sum "$APK"
+          ls -lh "$APK"
+      - name: Upload installable Android teaching APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-android-teaching-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

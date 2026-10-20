@@ -8,6 +8,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **DeepInfer Decode 状态重建：** Worker 实验室现已将 C++ `prepare_decode_zos_inputs` 压缩块表、累计 Query Offset，与 `refresh_for_sampling` 的 MTP 槽位转移和 Golden Token 窗口绑定到同一真实计算 Step。全部为**可重复的小规模 CPU 参考算术**，并不执行 GPU 页分配或 DeepInfer 完整 Serving。参见 [源码与验证](docs/deepinfer-decode-blocktable-refresh.md)。\n\n**KV 资源生命周期实验室：** [DeepInfer BlockManager / Scheduler 状态回放](deepinfer_kv_lifecycle_lab.html) 已加入真正可执行的小规模 FIFO 物理块分配、引用计数、Fork 共享与 Partial-Tail Clone、请求回收及抢占重计算/停止对照。源码级边界和不支持的真实 GPU 操作详见 [KV 生命周期审计](docs/deepinfer-kv-lifecycle.md)。页面不进行 GPU 实测或推断吞吐。\n\n**DeepInfer Scheduler→KV→Worker 联合实验：** [Decode 资源竞争与跨步执行实验室](deepinfer_scheduler_lab.html) 已连接 C++ Scheduler `_schedule_decode` 的输出长度优先级/抢占规则、BlockManager 有限物理 KV 块状态与 Worker 跨 Step 因果事件。WAITING 的重计算请求只允许经显式 Prefill 准入，不会在释放 KV 后继续 Forward。当前不包含分布式步型投票、真实 Prefill 算法或性能测量。参见 [源码数学与调度边界](docs/deepinfer-scheduler-workflow.md)。
 
+**Android 教学版 APK：** 正在以离线 WebView 形式提供独立移动课堂，仅保留积木、论文解析、多模态与推理课程交互，不含代码生成、文件下载、模型训练/部署或实验产物。源代码在 [android/](android/)，工作流 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 编译并发布签名的测试版 APK 工件；构建状态以 GitHub Actions 为准。独立教学入口为 [android_teaching.html](android_teaching.html)。
+
 ## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：

@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · Android 模型课堂</title>
+<style>
+:root{color-scheme:dark;--bg:#071321;--text:#eaf6ff;--line:#30516a;--mint:#72ead1;--muted:#a6c1d2}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 100% 0%,#1f4960,var(--bg) 67%);color:var(--text);font:15px/1.62 system-ui,"Microsoft YaHei",sans-serif}main{margin:auto;max-width:920px;padding:24px 17px 54px}
+.eyebrow{font:700 11px Consolas,monospace;color:#92dceb;letter-spacing:.16em}h1{font-size:30px;line-height:1.25;letter-spacing:-.03em;margin:10px 0}p{color:var(--muted);margin:8px 0 14px}h2{font-size:17px;margin:23px 0 12px}a{color:inherit;text-decoration:none}.hero{padding:24px 19px 28px;background:#0e2539;border:1px solid var(--line);border-radius:17px}.hero b{color:var(--mint)}.main-cta{display:block;border-radius:10px;background:#17677a;padding:13px;text-align:center;font-weight:700;margin-top:18px;min-height:48px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{display:block;min-height:131px;background:#10283f;border:1px solid var(--line);border-radius:13px;padding:15px;position:relative}.card:active{background:#22556a}.card strong{display:block;font-size:16px;color:#edfbff}.card .eyebrow{display:block;margin-bottom:7px;font-size:10px}.card p{font-size:12px;line-height:1.5;margin:6px 0 16px}.card .arrow{position:absolute;bottom:9px;right:12px;color:var(--mint)}.help{background:#0d2434;padding:15px;border:1px solid #31536a;border-radius:10px;margin-top:24px}.help p{font-size:12px}
+@media(max-width:520px){.cards{grid-template-columns:1fr}h1{font-size:27px}.card{min-height:107px}}
+</style></head><body><main>
+<div class="hero"><div class="eyebrow">SEETHE TRUTH / MOBILE LEARNING</div>
+<h1>像搭积木一样<br><b>理解大模型</b></h1>
+<p>以真实的数学计算流理解语言、图像、音频与视频模型。阅读论文机制、探索架构取舍，并通过小规模交互案例观察推理系统的状态变化。</p>
+<p>这是<strong>纯教学版</strong>：保留原理推演、积木搭建与交互演示，不生成 Python 程序、实验文件、训练产物，也不需要 GPU 或服务器。</p>
+<a class="main-cta" href="learn.html">打开完整积木课堂 →</a></div>
+<h2>专题课程</h2>
+<div class="cards">
+<a class="card" href="learn.html"><span class="eyebrow">01 · ARCHITECTURE</span><strong>Transformer 积木与架构</strong><p>Attention、GQA、MoE、FFN、RMSNorm、优化器与训练目标，逐层展开计算与论文解释。</p><span class="arrow">↗</span></a>
+<a class="card" href="learn.html?mission=image_vit_patch"><span class="eyebrow">02 · MULTIMODAL</span><strong>图像 / 音频 / 视频</strong><p>ViT Patch、音频频谱、Video Tubelet、跨模态 Attention 等入门图例。</p><span class="arrow">↗</span></a>
+<a class="card" href="tradeoffs.html"><span class="eyebrow">03 · TRADEOFFS</span><strong>为什么这么设计？</strong><p>比较 GQA、MoE 和循环 Transformer 的内存、运算与架构取舍。</p><span class="arrow">↗</span></a>
+<a class="card" href="paper_lab.html"><span class="eyebrow">04 · PAPER</span><strong>论文机制学习</strong><p>由学术论文定位模块、追踪等价计算变换与设计动机。</p><span class="arrow">↗</span></a>
+<a class="card" href="deepinfer_worker_lab.html"><span class="eyebrow">05 · INFERENCE</span><strong>DeepInfer Worker 时间线</strong><p>探索 Scheduler、Forward、Sample 与 ZOS 延迟处理之间的依赖。</p><span class="arrow">↗</span></a>
+<a class="card" href="deepinfer_kv_lifecycle_lab.html"><span class="eyebrow">06 · CACHE</span><strong>KV Cache 生命周期</strong><p>观察块分配、共享引用计数、Copy-on-Write、抢占与重计算。</p><span class="arrow">↗</span></a>
+<a class="card" href="deepinfer_scheduler_lab.html"><span class="eyebrow">07 · SERVING</span><strong>Scheduler → KV → Worker</strong><p>模拟有限 KV 资源下的请求竞争、排序、抢占和资源证明。</p><span class="arrow">↗</span></a>
+<a class="card" href="cache.html"><span class="eyebrow">08 · MEMORY</span><strong>缓存与推理基础</strong><p>可视化 Attention 中间状态、KV 复用和 Token 处理逻辑。</p><span class="arrow">↗</span></a>
+</div>
+<section class="help"><div class="eyebrow">ABOUT THIS EDITION</div><p>教学算法与理论示例来自 SeetheTruth 项目。部分交互仅为 CPU/JavaScript 小规模模型，并非商业 GPU 系统的运行测量。论文原始网页可选择由系统浏览器打开；本应用的课程资源本身可离线使用。</p></section>
+</main></body></html>

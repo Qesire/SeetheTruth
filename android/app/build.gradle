@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'io.github.qesire.seethetruth'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'io.github.qesire.seethetruth.teaching'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0-teaching'
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main.assets.srcDir(layout.buildDirectory.dir('generated/teaching-assets'))
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.13.0'
+}
+
+// Include only browser teaching content, not Python servers, generated files,
+// Git metadata, training checkpoints, datasets, or the desktop export pipeline.
+def stageTeachingAssets = tasks.register('stageTeachingAssets', Sync) {
+    from(rootProject.projectDir.parentFile) {
+        include '*.html'
+        include '*.js'
+        include '*.css'
+        include '*.svg'
+        include '*.png'
+        include '*.webp'
+    }
+    into(layout.buildDirectory.dir('generated/teaching-assets'))
+}
+tasks.named('preBuild').configure { dependsOn(stageTeachingAssets) }
