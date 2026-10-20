@@ -1,12 +1,12 @@
 'use strict';
 const assert=require('node:assert/strict');
 const L=require('../learning_lab.js'),C=require('../concept_flow.js'),B=require('../block_catalog.js');
-assert.equal(C.coveredKinds.length,45);
+assert.equal(C.coveredKinds.length,L.KINDS.length);
 assert.deepEqual(new Set(C.coveredKinds),new Set(L.KINDS));
 const mock=(shape,fn=(i,j)=>(i+1)*.1+j*.12)=>
  Array.from({length:shape[0]},(_,i)=>Array.from({length:shape[1]},(_,j)=>fn(i,j)));
 const presetNames=['ffn','residual','attention','loss','gqa','decode','swiglu',
- 'norm','embedding','classifier','mask','sampling','blank'];
+ 'norm','embedding','classifier','mask','sampling','mla_lite','moe_route','grpo_signals','moe_expert_ffn','mla_cache','grpo_objective','autodiff_core','moe_backward','trainable_core','nd_attention_lesson','nd_causal_attention','nd_gqa_attention','nd_mqa_attention','nd_trainable_gqa','nd_trainable_mqa','nd_cached_gqa_decode','activation_gallery','optimizer_compare','activation_extension','optimizer_decay_compare','blank'];
 for(const name of presetNames){
  const g=L.preset(name),con=C.evaluate(g),num=L.evaluate(g);
  assert.equal(con.evidence,C.EVIDENCE);
@@ -22,12 +22,62 @@ for(const name of presetNames){
  }
 }
 function perKind(k){
+ if(k.startsWith('nd_')){
+  if(k==='nd_rope'){
+    const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
+    const input=ND.seedTensor([1,2,3,4],5),actual=B.execute(n,{x:input});
+    assert.deepEqual(C.analyze(n,{x:[1,2,3,4]}).shape,actual.shape);return;
+  }
+  if(k==='nd_parameter'){
+   const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
+   const expected=ND.shape(n.params.values),sym=C.analyze(n,{}),num=B.execute(n,{});
+   assert.deepEqual(sym.shape,expected);assert.deepEqual(num.shape,expected);return;
+  }
+  const ND=require('../nd_tensor.js'),d=L.defs[k],n={id:k,kind:k,params:d.params};
+  const sample=(sh,seed)=>ND.seedTensor(sh,seed);
+  let inputs={};
+  if(k==='nd_permute'||k==='nd_flatten'||k==='nd_reduce_sum'||k==='nd_scale'||k==='nd_softmax_last'||k==='nd_causal_mask')inputs={x:sample([1,2,3,4],2)};
+  else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish','nd_elu','nd_hardswish'].includes(k))inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_repeat_kv')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_cache_read')inputs={x:sample([1,2,3,4],2)};
+  else if(k==='nd_cache_append')inputs={cache:sample([1,2,2,4],2),segment:sample([1,2,1,4],3)};
+  else if(k==='nd_mse')inputs={prediction:sample([1,2,3,4],2),target:sample([1,2,3,4],3)};
+  else if(k==='nd_reshape')inputs={x:sample([6,4],2)};
+  else if(k==='nd_expand4d')inputs={x:sample([3,4],2)};
+  else if(k==='nd_broadcast_add')inputs={a:sample([1,2,3,4],2),b:sample([1,1,3,4],3)};
+  else if(k==='nd_batched_matmul')inputs={a:sample([1,2,3,4],2),b:sample([1,2,4,3],3)};
+  const shapes=Object.fromEntries(Object.entries(inputs).map(([port,value])=>[port,ND.shape(value)]));
+  const inferred=C.analyze(n,shapes),actual=B.execute(n,inputs);
+  assert.deepEqual(inferred.shape,actual.shape,k+' multidimensional shape parity');
+  assert.deepEqual(actual.shape,ND.shape(actual.values),k+' runtime shape validity');
+  return;
+ }
+
  const d=L.defs[k],n={id:k,kind:k,params:{...d.params}},inputs={};
  for(const port of d.ports){
    if(port==='ids'||port==='labels')inputs[port]=[2,1];
    else if(k==='gqa')inputs[port]=[2,port==='q'?8:4];
    else if(k==='masked_softmax')inputs[port]=[2,2];
+   else if(k==='token_depth_mask'&&port==='depths')inputs[port]=[2,1];
    else if(k==='matmul')inputs[port]=port==='a'?[2,4]:[4,4];
+   else if(k==='response_token_reshape'&&port==='x')inputs[port]=[4,1];
+   else if(k==='response_advantage_broadcast'&&port==='advantage')inputs[port]=[2,1];
+   else if(k==='cache_read_prefix'&&port==='cache')inputs[port]=[3,4];
+   else if(k==='cache_write_segment'&&port==='cache')inputs[port]=[2,4];
+   else if(k==='cache_write_segment'&&port==='segment')inputs[port]=[1,4];
+   else if(k==='low_rank_project')inputs[port]=port==='x'?[2,4]:port==='down'?[4,2]:[2,4];
+   else if(k==='row_bias_add')inputs[port]=port==='bias'?[1,4]:[2,4];
+   else if(k==='weighted_sum')inputs[port]=port==='weights'?[2,2]:[2,4];
+   else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')inputs[port]=[2,1];
+   else if(['dispatch_routed_tokens','expert_linear_bank'].includes(k)&&port==='indices')inputs[port]=[2,2];
+   else if(k==='dispatch_routed_tokens'&&port==='x')inputs[port]=[2,2];
+   else if(k==='expert_linear_bank'&&port==='x')inputs[port]=[4,2];
+   else if(k==='expert_linear_bank'&&port==='weights')inputs[port]=[4,2];
+   else if(k==='routed_weighted_reduce'&&port==='values')inputs[port]=[4,2];
+   else if(k==='routed_weighted_reduce'&&port==='gates')inputs[port]=[2,2];
+   else if(k==='gather_routed_bank'&&port==='indices')inputs[port]=[2,2];
+   else if(k==='expert_bank_mix'&&port==='gates')inputs[port]=[2,1];
+   else if(k==='sliding_window_mask')inputs[port]=[2,2];
    else inputs[port]=[2,4];
  }
  const result=C.analyze(n,inputs);
@@ -37,6 +87,13 @@ function perKind(k){
  for(const [port,sh] of Object.entries(inputs)){
    if(port==='ids'||port==='labels')values[port]=mock(sh,()=>0);
    else if(k==='masked_softmax'&&port==='mask')values[port]=[[1,0],[1,1]];
+   else if(k==='token_depth_mask'&&port==='depths')values[port]=[[0],[1]];
+   else if(k==='state_mask_blend'&&port==='mask')values[port]=[[1,1,1,1],[0,0,0,0]];
+   else if(k==='masked_router_topk'&&port==='mask')values[port]=mock(sh,()=>1);
+   else if(k==='masked_grpo_objective'&&port==='mask')values[port]=mock(sh,()=>1);
+   else if(['gather_rows','scatter_add','router_gate_weights','expert_bank_mix'].includes(k)&&port==='indices')values[port]=[[0],[1]];
+   else if(['dispatch_routed_tokens','expert_linear_bank'].includes(k)&&port==='indices')values[port]=[[0,1],[1,0]];
+   else if(k==='gather_routed_bank'&&port==='indices')values[port]=[[0,1],[1,0]];
    else if(k==='kl_prob')values[port]=mock(sh,()=>1/sh[1]);
    else values[port]=mock(sh);
  }
@@ -69,4 +126,4 @@ assert.throws(()=>C.analyze({id:'bad',kind:'gqa',params:{heads:3,kvHeads:2,causa
 const broken=L.preset('ffn');broken.edges.pop();assert.throws(()=>C.evaluate(broken),/未连接/);
 assert.ok(C.evaluate(L.preset('classifier')).steps.find(s=>s.kind==='cross_entropy')
  .conditions.some(x=>x.includes('标签')));
-console.log('QUALITATIVE / all 45 block contracts, 12 lessons + free build, large abstract shape PASS');
+console.log('QUALITATIVE / all '+L.KINDS.length+' block contracts, presets + free build, large abstract shape PASS');

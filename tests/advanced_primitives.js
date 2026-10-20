@@ -1,0 +1,13 @@
+const assert=require("node:assert/strict");
+const C=require("../block_catalog.js"),L=require("../learning_lab.js"),K=require("../block_knowledge.js");
+const run=(kind,inputs={},params={})=>C.execute({id:"test",kind,params},inputs);
+assert.equal(K.validate().cards,L.KINDS.length);
+assert.deepEqual(run("gather_rows",{x:[[1,2],[3,4]],indices:[[1],[0],[1]]}).values,[[3,4],[1,2],[3,4]]);
+assert.deepEqual(run("scatter_add",{indices:[[0],[0],[2]],values:[[1,2],[3,4],[5,6]]},{rows:3}).values,[[4,6],[0,0],[5,6]]);
+assert.deepEqual(run("repeat_kv_rows",{x:[[2,3],[4,5]]},{groups:2}).values,[[2,3],[2,3],[4,5],[4,5]]);
+const lse=run("row_logsumexp",{x:[[1000,1001]]}).values[0][0];
+assert.ok(Math.abs(lse-(1001+Math.log1p(Math.exp(-1))))<1e-10);
+assert.throws(()=>run("gather_rows",{x:[[1]],indices:[[1]]}),/out of bounds/);
+assert.throws(()=>run("scatter_add",{indices:[[3]],values:[[2]]},{rows:2}),/out of bounds/);
+for(const kind of ["gather_rows","scatter_add","row_logsumexp","repeat_kv_rows"])assert.ok(K.get(kind).refs.length);
+console.log("four primitive mathematical contracts PASS");

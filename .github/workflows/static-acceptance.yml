@@ -23,6 +23,18 @@ jobs:
         run: python tests/browser_acceptance.py
       - name: Screenshot-backed KV Cache visual acceptance
         run: python tests/browser_cache_screenshots.py
+      - name: Real model provenance import and no-false-evidence Chromium acceptance
+        run: python tests/browser_real_model_lab.py
+      - name: Archive evidence-only trace inspector screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-model-trace-browser-structural-only
+          path: |
+            real_model_screenshots/*.png
+            real_model_screenshots/manifest.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Screenshot-backed 45-block library and numerical lesson acceptance
         run: python tests/browser_catalog_screenshots.py
       - name: Archive visible 45-block catalogue screenshots

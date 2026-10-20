@@ -1,0 +1,58 @@
+'use strict';
+const assert=require('node:assert/strict');
+const L=require('../learning_lab.js'),R=require('../graph_readiness.js');
+const N=(id,kind,params={},x=10,y=20)=>({id,kind,params,x,y});
+const E=(from,to,port)=>({from,to,port});
+const g={schema:L.SCHEMA,title:'Free graph: unconventional composition, no model template',
+ nodes:[N('x','input',{rows:3,width:2,seed:1}),N('w','input',{rows:2,width:4,seed:2}),
+        N('proj','matmul'),N('act','relu'),N('transpose','transpose2d'),N('scores','softmax')],
+ edges:[E('x','proj','a'),E('w','proj','b'),E('proj','act','x'),
+        E('act','transpose','x'),E('transpose','scores','x')]};
+const ok=R.check(g);
+assert.equal(ok.executable,true);assert.equal(ok.readyCount,6);
+assert.deepEqual(ok.nodes.find(n=>n.id==='scores').shape,[4,3]);
+assert.equal(ok.firstError,null);
+const numeric=R.check(g,{numeric:true});
+assert.equal(numeric.numeric.ok,true);
+assert.equal(numeric.numeric.steps,6);
+assert.equal(L.evaluate(g).steps.at(-1).shape[1],3);
+const incomplete=JSON.parse(JSON.stringify(g));
+incomplete.edges=incomplete.edges.filter(e=>e.from!=='w');
+const pending=R.check(incomplete);
+assert.equal(pending.executable,false);
+assert.deepEqual(pending.nodes.find(n=>n.id==='proj').ports,['b']);
+assert.equal(pending.nodes.find(n=>n.id==='act').status,'blocked');
+assert.equal(pending.nodes.find(n=>n.id==='w').status,'ready');
+assert.equal(pending.errorCount,0);
+const mis=JSON.parse(JSON.stringify(g));
+mis.nodes.find(n=>n.id==='w').params.rows=3;
+const wrong=R.check(mis);
+assert.equal(wrong.executable,false);
+assert.equal(wrong.nodes.find(n=>n.id==='proj').status,'shape-error');
+assert.match(wrong.nodes.find(n=>n.id==='proj').reason,/MatMul|匹配|不匹配|内维/);
+assert.equal(wrong.nodes.find(n=>n.id==='scores').status,'blocked');
+const corrected=JSON.parse(JSON.stringify(mis));
+corrected.nodes.find(n=>n.id==='w').params.rows=2;
+assert.equal(R.check(corrected).executable,true);
+const cycle=JSON.parse(JSON.stringify(g));
+cycle.edges.push(E('scores','act','x'));
+const cyc=R.check(cycle);
+assert.equal(cyc.executable,false);
+assert.match(cyc.structuralError,/同一输入端口|循环/);
+const free=L.preset('blank');
+free.nodes.push(N('unused','softmax'));
+const partial=R.check(free);
+assert.equal(partial.nodes.find(n=>n.id==='x').status,'ready');
+assert.equal(partial.nodes.find(n=>n.id==='unused').status,'missing');
+assert.equal(partial.executable,false);
+free.edges.push(E('x','unused','x'));
+assert.equal(R.check(free).executable,true);
+const valueDependent={schema:L.SCHEMA,title:'Shape valid, illegal runtime token ID',
+ nodes:[N('ids','token_ids',{rows:3,vocab:16,seed:1}),N('embedding','embedding',{vocab:2,width:4})],
+ edges:[E('ids','embedding','ids')]};
+assert.equal(R.check(valueDependent).executable,true,'shape validity alone cannot evaluate concrete token indices');
+const invalidNumeric=R.check(valueDependent,{numeric:true});
+assert.equal(invalidNumeric.executable,false);
+assert.equal(invalidNumeric.numeric.ok,false);
+assert.match(invalidNumeric.numeric.reason,/Embedding ID|类别|范围/);
+console.log('Free graph readiness PASS: arbitrary untemplated shapes, staged wiring, recovery, blocked propagation and no semantic gates');

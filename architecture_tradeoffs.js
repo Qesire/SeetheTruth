@@ -15,8 +15,8 @@
     [layers,heads,kvHeads,headDim,context,batch,bytes].forEach((v,i)=>integer(v,['layers','heads','kvHeads','headDim','context','batch','bytes'][i]));
     if(heads%kvHeads!==0)throw new RangeError('query heads must be divisible by KV heads');
     const total=2*layers*batch*context*kvHeads*headDim*bytes;
-    if(!Number.isSafeInteger(total))throw new RangeError('cache exceeds safe integer precision');
     const mha=2*layers*batch*context*heads*headDim*bytes;
+    if(!Number.isSafeInteger(total)||!Number.isSafeInteger(mha))throw new RangeError('cache exceeds safe integer precision');
     return {bytes:total,mhaBytes:mha,ratio:kvHeads/heads,saving:1-kvHeads/heads,groupSize:heads/kvHeads,
       assumptions:'K/V only, per-token cache storage; excludes allocator fragmentation, metadata and latency'};
   }

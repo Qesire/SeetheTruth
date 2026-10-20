@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · Real Model Evidence</title>
+<style>
+:root{color-scheme:dark;--bg:#07111c;--pane:#102637;--line:#325066;--ink:#e5f5fa;--dim:#a3bfcd;--cyan:#76e5db;--violet:#b29de5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0%,#18324e 0,transparent 40%),var(--bg);color:var(--ink);font:14px/1.6 system-ui,sans-serif}
+main{max-width:1260px;margin:auto;padding:32px 22px 70px}a{color:var(--cyan)}header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:20px}
+.kicker{font:700 10px/1.5 ui-monospace,monospace;color:var(--cyan);letter-spacing:.13em}h1{font-size:29px;margin:5px 0}h2{font-size:17px;margin:0 0 12px}p{margin:6px 0;color:var(--dim)}strong{color:var(--ink)}
+.panel{border:1px solid var(--line);border-radius:13px;background:var(--pane);padding:20px;margin:17px 0}
+.guide{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:780px){.guide,.cols{grid-template-columns:1fr}main{padding:16px}h1{font-size:24px}}
+button,.upload{cursor:pointer;border:1px solid #518797;border-radius:7px;background:#123c4b;color:#e5ffff;padding:8px 12px;display:inline-block}button:hover,.upload:hover{background:#1a5263}
+input[type=file]{max-width:100%}#status{padding:10px 12px;background:#0b2331;border-left:3px solid var(--cyan);margin-top:12px;overflow-wrap:anywhere}#status.error{border-color:#fead97}
+.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.metric{border:1px solid #355366;padding:11px;border-radius:8px;min-width:0}.metric label{display:block;color:var(--dim);font-size:11px}.metric b{font:700 17px/1.4 ui-monospace,monospace}
+.sample{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px}.cell{font:10px/1.4 ui-monospace,monospace;border:1px solid #456076;border-radius:2px;padding:4px 2px;text-align:center;overflow:hidden;white-space:nowrap}.sampleNote{font-size:12px;margin-bottom:8px}
+pre{white-space:pre-wrap;word-break:break-all;background:#0b1a27;border:1px solid var(--line);padding:12px;border-radius:8px;font:12px/1.7 ui-monospace,monospace}code{color:#a7ecdb}
+</style></head><body><main>
+<header><div><div class="kicker">SOURCE-LEVEL TENSOR OBSERVATORY / NO FABRICATED EVIDENCE</div><h1>真实小模型 · 张量证据实验室</h1><p>严格区分真实采集声明、数学派生与合成教学示例。这个页面仅读取本地文件，不运行上传的模型源码。</p></div><nav><a href="learn.html">← 积木工作台</a>　<a href="index.html">源码图谱</a></nav></header>
+<div class="guide"><section class="panel"><h2>1 · 生成真实模型证据</h2><p>在装有 CPU PyTorch / Transformers 与模型文件的环境运行可审计的采集脚本。</p>
+<pre>python scripts/capture_model_trace.py \
+  --model roneneldan/TinyStories-1M \
+  --revision &lt;完整 40 位提交 SHA&gt; \
+  --out tinystories-real-trace.json</pre>
+<p>脚本执行真实 Forward + Backward，记录指定 Linear 模块的数值统计和模型版本。需在线获取或预先缓存模型；不要求 GPU。</p></section>
+<section class="panel"><h2>2 · 导入和检查来源</h2><label class="upload" for="traceUpload">选择真实采集 JSON</label><input type="file" id="traceUpload" accept="application/json,.json" aria-label="导入模型采集数据">
+<div id="status" role="status" aria-live="polite">尚未导入：没有任何真实模型统计可显示。</div><p>验证范围：来源字段、修订 SHA、shape、样本/统计量内部一致性。仅凭 JSON 不能独立证明其来自真实模型；需要重跑指定 revision。</p></section></div>
+<section id="capture" hidden aria-label="导入采集的模型证据">
+<div class="panel"><div class="kicker">PROVENANCE / SOURCE CLAIM</div><h2 id="modelName">—</h2><div id="metadata"></div><p id="evidenceCaution">结构有效 ≠ 真实性已被独立审计。</p></div>
+<div class="cols">
+<section class="panel"><div class="kicker">PARAMETER / EXACT MODULE IDENTITY</div><h2>权重与梯度</h2><div id="paramStats"></div></section>
+<section class="panel"><div class="kicker">ACTIVATION SAMPLES / FLATTENED VALUES</div><h2>真实采样声明值 · 前向输入/输出</h2><div id="activationStats"></div></section>
+</div>
+</section>
+<section class="panel"><h2>证据边界</h2><p>数值切片只保留样本顺序，不恢复被截断的 Tensor 全部轴；不得将局部采样矩阵冒充完整 GEMM 运算，也不根据样本推断实际 GPU kernel、训练性能或硬件瓶颈。</p><p>只有能定位同一模型完整 revision、相同模块和计算目标，并可独立重现采样数值，才能把记录进一步提升为可复现实测证据。</p></section>
+</main><script src="model_trace.js"></script>
+<script>
+(()=>{"use strict";
+const $=q=>document.querySelector(q),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=n=>Number(n).toPrecision(5);
+function metric(label,n){return '<div class="metric"><label>'+esc(label)+'</label><b>'+esc(fmt(n))+'</b></div>';}
+function plot(samples,caption){
+ const max=Math.max(1e-12,...samples.map(Math.abs));
+ return '<p class="sampleNote">'+esc(caption)+' · '+samples.length+' 个数值。颜色仅编码采样相对幅值，非原始高维布局。</p>'+
+ '<div class="sample" role="img" aria-label="'+esc(caption)+' 的有序数值热图">'+samples.map(x=>{
+ const mag=Math.min(1,Math.abs(x)/max),hue=x>=0?183:17;
+ return '<div class="cell" title="'+esc(x)+'" style="background:hsla('+hue+',70%,49%,'+(0.13+mag*.68)+')">'+esc(fmt(x))+'</div>';
+ }).join('')+'</div>';
+}
+function stats(info,title){
+ return '<h3>'+esc(title)+' ['+esc(info.shape.join(' × '))+']</h3><div class="metric-grid">'+
+ metric("mean",info.mean)+metric("RMS",info.rms)+metric("min",info.min)+
+ metric("max",info.max)+metric("L2",info.l2)+metric("zero fraction",info.zeroFraction)+'</div>'+
+ plot(info.sample,"前 "+info.sample.length+" / "+info.count+" 个元素（非完整矩阵）");
+}
+async function load(file){
+ if(!file||file.size>256*1024)throw Error("请选择不超过 256 KiB 的合法采集 JSON");
+ const value=JSON.parse(await file.text()),summary=window.SeetheTruthTrace.validate(value),p=value.provenance;
+ $("#modelName").textContent=summary.source;
+ $("#metadata").innerHTML='<div class="metric-grid">'+
+ '<div class="metric"><label>模块身份</label><strong>'+esc(summary.module)+'</strong></div>'+
+ '<div class="metric"><label>CPU Forward + Backward</label><strong>'+esc(p.framework+" / "+p.dtype)+'</strong></div>'+
+ metric("CLM loss",summary.loss)+'</div>'+
+ '<p>模型 revision：<code>'+esc(p.revision)+'</code> · tokens='+esc(p.tokenIds?.length??"—")+' · 采集目标='+esc(p.objective||"—")+'</p>';
+ $("#paramStats").innerHTML=stats(summary.weight,"Parameter W")+stats(summary.gradient,"∂L/∂W");
+ $("#activationStats").innerHTML=plot(summary.activations.input,"模块输入")+plot(summary.activations.output,"模块输出");
+ $("#capture").hidden=false;
+ $("#status").classList.remove("error");
+ $("#status").textContent="JSON 内部合同有效 · 来源声明已记录 · 仍需按 revision 独立复跑才可标记为已验证 REAL_CAPTURE。";
+}
+$("#traceUpload").addEventListener("change",async e=>{
+ try{await load(e.target.files?.[0]);}
+ catch(err){$("#capture").hidden=true;$("#status").classList.add("error");$("#status").textContent="采集数据未通过验证："+err.message;}
+ finally{e.target.value="";}
+});
+})();
+</script></body></html>

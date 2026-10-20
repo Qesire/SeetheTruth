@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeetheTruth · Model Learning Studio</title>
-<!-- Architecture comparison lives in a separate analytical lab, not the micro-executor. -->
 <style>
 :root{color-scheme:dark;--bg:#08111e;--line:#24465e;--muted:#8daec4;--text:#e7f7ff;--cyan:#63e2f1;--mint:#6feac2;--amber:#f4ba7b;--violet:#b8a2ff;--surface:#0e2132}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#14364b 0%,#08111e 46%,#060c16 100%);color:var(--text);font:13px/1.55 "Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
@@ -45,7 +44,9 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .board-viewport::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 38% 48%,#19506b45,transparent 65%);z-index:0}
 #board{width:1290px;height:800px;position:relative;z-index:1}
 #wires{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.graph-readiness{display:flex;gap:11px;flex-wrap:wrap;align-items:center;padding:5px 12px;background:#09202c;border-top:1px solid #254858;color:#a3c7d7;font-size:11px}.graph-readiness strong{color:#b0f9d7}.graph-readiness .readiness-issue{border:1px solid #a38357;background:#33281e;color:#ffe2af;padding:2px 8px;border-radius:6px}.block[data-readiness="shape-error"]{outline:2px solid #eaa05b;outline-offset:2px}.block[data-readiness="missing"]{border-color:#b99562}.block[data-readiness="blocked"]{border-style:dashed}
 .block{position:absolute;width:220px;min-height:124px;background:#0d2233;border:1px solid #34566d;border-top:3px solid var(--accent,#57cee0);border-radius:12px;box-shadow:0 10px 30px #0005;z-index:2;user-select:none}
+.block.outside-run{opacity:.68;filter:saturate(.74)}
 .block.selected{box-shadow:0 0 0 2px #68d8ed,0 12px 32px #0007}.block.executing{box-shadow:0 0 0 3px #ffcb83,0 0 32px #db9d5d6e}
 .block.category-data{--accent:#7ec6fc}.block.category-compute{--accent:#61e3c7}.block.category-norm{--accent:#b7a4ff}.block.category-activate{--accent:#d8a1ee}.block.category-combine{--accent:#f4ba7b}.block.category-attention{--accent:#ae94fc}.block.category-loss{--accent:#f5a4ae}
 .block-head{padding:9px 11px;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:grab;border-bottom:1px solid #244154}
@@ -56,7 +57,8 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 .socket{width:13px;height:13px;border:2px solid #689bb6;background:#112b3c;border-radius:50%;display:inline-block;flex-shrink:0}
 .port[data-type="out"] .socket{background:#2cb5c8;border-color:#8de6ed}
 .port.connected .socket{background:#53c7a9;border-color:#b4f1d5}
-.port.pending .socket{outline:3px solid #ffd08a}.port:hover .socket{outline:2px solid #adf1fb}
+.port.pending .socket{outline:3px solid #ffd08a}.port.preview-compatible .socket{outline:2px solid #66e2c4}.port.preview-incompatible .socket{outline:2px solid #f3a06d}.port.preview-pending .socket{outline:2px dashed #eac284}.port.preview-invalid .socket{outline:2px solid #f18589}
+.port.preview-compatible{color:#adf6d9}.port.preview-incompatible{color:#ffc59e}.port:hover .socket{outline:2px solid #adf1fb}
 .port-clear{border:0;background:transparent;color:#b9a0a0;font-size:14px}
 .block-foot{display:flex;justify-content:space-between;padding:5px 11px 9px;color:#8bb4c3;font-size:10px}
 .block-delete{background:none;border:0;color:#afcbd3;font-size:15px}
@@ -129,12 +131,17 @@ input[type="file"]{display:none}
 .composite-launch:hover{background:#195268}
 @media(max-width:800px){.composite-nav.overview .composite-stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.composite-nav.overview .composite-stages{grid-template-columns:1fr}}
+</style><style>
+#paperHoverInspector{position:fixed;z-index:3000;max-height:calc(100vh - 24px);overflow:auto;background:#10293a;color:#eaf9ff;border:1px solid #56b9c4;border-radius:13px;box-shadow:0 15px 55px #000c;padding:16px 18px;font-size:12px;line-height:1.55}
+#paperHoverInspector[hidden]{display:none}#paperHoverInspector h3{font-size:16px;margin:8px 0 9px}#paperHoverInspector h4{font-size:12px;color:#84e9dc;margin:13px 0 3px}#paperHoverInspector p{margin:0;color:#c7e1ed}#paperHoverInspector code{white-space:normal;overflow-wrap:anywhere;display:block;background:#08202d;border-radius:7px;padding:9px;color:#f1dbaa}
+#paperHoverInspector .phi-heading{display:flex;justify-content:space-between;align-items:center;color:#9bdacc;letter-spacing:.07em;font:10px monospace}#paperHoverInspector button{background:transparent;border:1px solid #437186;color:#c4e6f3;border-radius:6px;padding:2px 8px;cursor:pointer}#paperHoverInspector .phi-references{display:grid;gap:4px;margin:9px 0}#paperHoverInspector .phi-references a{color:#8ee7f3;text-decoration:underline}#paperHoverInspector small{display:block;border-top:1px solid #2a5a6b;padding-top:9px;margin-top:10px;color:#96bbcb}
+.real-sample-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}.real-sample-toolbar input{max-width:100%;font-size:11px}.real-sample-hint,.real-sample-source,.real-sample-warning{font-size:11px;overflow-wrap:anywhere}.real-sample-source{font-family:ui-monospace,monospace}.real-sample-warning{border-top:1px solid #476374;margin-top:10px;padding-top:8px;color:#f1c9a4}.real-sample-header{display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap}.real-sample-header span{font:10px ui-monospace,monospace;color:#97d6ce}.real-sample-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}.real-sample-metric{background:#0b2231;border:1px solid #376275;border-radius:6px;padding:7px;min-width:0}.real-sample-metric span,.real-sample-metric small{display:block;color:#b4d5df;font-size:10px}.real-sample-metric b{font-family:ui-monospace,monospace}.real-sample-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin:5px 0 10px}.real-sample-cell{border:1px solid #496478;border-radius:3px;text-align:center;min-width:0;font:10px/1.5 ui-monospace,monospace;padding:2px;overflow:hidden}.real-sample-title{font-size:11px;color:#bce8df;margin:10px 0 2px}
 </style></head><body>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
@@ -162,6 +169,39 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="classifier"><span class="num">10</span><span>Classifier 与 CE Loss<span class="desc">Logits、概率与训练目标</span></span></button>
   <button class="mission" data-preset="mask"><span class="num">11</span><span>亲手构造 Causal Mask<span class="desc">Mask=0 保证概率严格为零</span></span></button>
   <button class="mission" data-preset="sampling"><span class="num">12</span><span>温度、贪心与 Top-k<span class="desc">Logits 到候选类别的路径</span></span></button>
+  <button class="mission" data-preset="mla_lite"><span class="num">13</span><span>MLA · KV/Q 压缩<span class="desc">共享 latent + 解耦 RoPE（单头教学）</span></span></button>
+  <button class="mission" data-preset="moe_route"><span class="num">14</span><span>MoE · 专家路由<span class="desc">Bias → 组选择 → Top-k → Gather</span></span></button>
+  <button class="mission" data-preset="grpo_signals"><span class="num">15</span><span>GRPO · 训练前置信号<span class="desc">Token Logprob + Group Advantage</span></span></button>
+  <button class="mission" data-preset="moe_expert_ffn"><span class="num">16</span><span>MoE · 真实小型专家 FFN<span class="desc">Top-k Token Dispatch → 三层专家投影 → SwiGLU → 汇合 + Shared Expert</span></span></button>
+  <button class="mission" data-preset="mla_cache"><span class="num">17</span><span>MLA · 压缩 KV Cache<span class="desc">写入/读取 + Absorb Query + 数值等价对照</span></span></button>
+  <button class="mission" data-preset="grpo_objective"><span class="num">18</span><span>GRPO · 完整损失计算流<span class="desc">Logprob → Ratio/Clip → Reference KL → Masked Loss</span></span></button>
+  <button class="mission" data-preset="autodiff_core"><span class="num">19</span><span>统一反向传播 · 共享参数<span class="desc">MatMul → RMSNorm → SwiGLU → Attention → MSE，反向梯度汇合</span></span></button>
+  <button class="mission" data-preset="moe_backward"><span class="num">20</span><span>MoE · 专家参数与 Gate 反向<span class="desc">Expert W1/W3/W2 梯度累积 + Router Gate VJP + MSE</span></span></button>
+  <button class="mission" data-preset="trainable_core"><span class="num">21</span><span>可训练参数 · 真正闭环<span class="desc">共享 Parameter → Forward → Backward → AdamW → Forward</span></span></button>
+  <button class="mission" data-preset="trainable_attention"><span class="num">22</span><span>Q/K/V · 三组参数训练<span class="desc">Attention 独立投影矩阵 → MSE → AdamW</span></span></button>
+  <button class="mission" data-preset="trainable_swiglu"><span class="num">23</span><span>SwiGLU FFN · 可训练 W1/W3/W2<span class="desc">门控/上投影/下投影共享完整训练机制</span></span></button>
+  <button class="mission" data-preset="trainable_moe"><span class="num">24</span><span>MoE · 可训练专家权重库<span class="desc">固定 Top-k 路由选择 + 独立专家权重 AdamW</span></span></button>
+  <button class="mission" data-preset="nd_attention_lesson"><span class="num">25</span><span>四轴自由张量 · Multi-Head GEMM<span class="desc">[B,H,T,D] → MatMul → Head 广播 → Token 归约 → 2D/4D 转换</span></span></button>
+  <button class="mission" data-preset="nd_causal_attention"><span class="num">26</span><span>可组合四轴因果多头 Attention<span class="desc">QKᵀ → Scale → Causal Mask → Softmax → PV，逐 Head 数值验证</span></span></button>
+  <button class="mission" data-preset="nd_gqa_attention"><span class="num">27</span><span>GQA · 4Q / 2KV Head</span><span class="desc">KV Head 共享、因果 Attention、四轴反向梯度</span></button>
+  <button class="mission" data-preset="nd_mqa_attention"><span class="num">28</span><span>MQA · 4Q / 1KV Head</span><span class="desc">一组 KV Head 服务所有 Query Head，检查梯度汇合</span></button>
+  <button class="mission" data-preset="nd_trainable_gqa"><span class="num">29</span><span>GQA · 四轴参数训练</span><span class="desc">四维 Q/K/V · Forward → VJP → AdamW → Forward</span></button>
+  <button class="mission" data-preset="nd_trainable_mqa"><span class="num">30</span><span>MQA · 四轴参数训练</span><span class="desc">单 KV Head 更新、动量与梯度共享验证</span></button>
+  <button class="mission" data-preset="nd_cached_gqa_decode"><span class="num">31</span><span>GQA · RoPE 与 KV Cache 增量解码<span class="desc">Prefill 读取 → KV 追加 → 绝对 RoPE → 当前 Token Attention</span></span></button>
+  <button class="mission" data-preset="activation_gallery"><span class="num">32</span><span>激活函数 · 数值和梯度对比<span class="desc">GELU CDF / tanh、Mish、ReLU²、SiLU、Leaky ReLU</span></span></button>
+  <button class="mission" data-preset="optimizer_compare"><span class="num">33</span><span>优化器积木 · 四算法对照<span class="desc">相同 θ 和梯度，比较 AdamW / SGD / RMSprop / Lion</span></span></button>
+  <button class="mission" data-preset="activation_extension"><span class="num">34</span><span>ELU 与 HardSwish · 数值和导数<span class="desc">2D / 4D 独立激活，比较负半轴和分段折点</span></span></button>
+  <button class="mission" data-preset="optimizer_decay_compare"><span class="num">35</span><span>Adam / AdamW / Adagrad / RMSprop 对照<span class="desc">耦合 L2 与解耦衰减；累计梯度与指数平均</span></span></button>
+  <button class="mission" data-preset="token_lm_trainable"><span class="num">36</span><span>Next-token → 可训练 Embedding → CE<span class="desc">时间轴标签右移、共享表梯度与续训</span></span></button>
+  <button class="mission" data-preset="causal_transformer_lm"><span class="num">37</span><span>可训练 Causal Attention → Next-token<span class="desc">Q/K/V、三角 Mask、Softmax、残差、CrossEntropy、AdamW</span></span></button>
+  <button class="mission" data-preset="industrial_gqa_rope_tied"><span class="num">38</span><span>Qwen3 风格 GQA / RoPE / 权重绑定<span class="desc">逐头 QK Norm、2:1 KV 共享、正交旋转与真实参数复用</span></span></button>
+  <button class="mission" data-preset="loop_transformer_two"><span class="num">39</span><span>Looped Transformer ×2 · 共享完整 Block<span class="desc">2 次潜空间迭代，同一 Q/K/V + Attention + SwiGLU 权重，多路径梯度</span></span></button>
+  <button class="mission" data-preset="loop_transformer_three"><span class="num">40</span><span>Looped Transformer ×3 · 深度可扩展<span class="desc">计算深度增至 3 次，参数数量完全不变；测试因果性与断点续训</span></span></button>
+  <button class="mission" data-preset="loop_transformer_2"><span class="num">41</span><span>Ouro 启发 · 共享循环 + 多深度监督<span class="desc">每轮独立 CE，按深度加权总损失；切换 1/2/3 次且保留参数和优化器状态</span></span></button>
+  <button class="mission" data-preset="loopformer_consistency"><span class="num">42</span><span>LoopFormer 动机 · 长短深度一致性<span class="desc">深层 Detach 教师与浅层 MSE；“为什么”含真实参数/FLOPs 对照与方案边界</span></span></button>
+  <button class="mission" data-preset="mor_token_depth_budget"><span class="num">44</span><span>MoR 启发 · 按 Token 选择循环预算<span class="desc">逐 Token 0/1/2 次状态更新、硬停止、BPTT；保留退出位置状态，不虚报稀疏加速</span></span></button>
+  <button class="mission" data-preset="loop_residual_scaling"><span class="num">43</span><span>Loop Residual Scaling · 为什么按轮缩放？<span class="desc">2026 论文：1 / 1/√N / 1/N，控制变量，真实 loss 与梯度对照</span></span></button>
+  <button class="mission" data-preset="loop_input_injection"><span class="num">45</span><span>Huginn-Linear · 原输入重新注入<span class="desc">共享 W[state;input]，解释信息保留、计算成本与稳定性；真实反传和 Python 导出</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -173,8 +213,14 @@ input[type="file"]{display:none}
    <div class="row">
     <button class="btn small" id="undo">↶ 撤销</button><button class="btn small" id="redo">↷ 重做</button>
     <button class="btn small" id="zoomOut" type="button" title="缩小画布" aria-label="缩小画布">−</button>
-    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button>
+    <button class="btn small" id="zoomFit" type="button" title="自适应画布">适配</button><button class="btn small" id="autoLayout" type="button" title="仅整理积木位置；保留连线、参数和节点身份">整理布局</button><button class="btn small" id="checkGraph" type="button" title="检查当前自由搭建计算图的输入端口、张量形状与可执行性，不要求任何固定模型结构">检查可运行性</button>
+    <button class="btn small" id="applyLoRA" type="button" title="对选定 MatMul 执行 LoRA 真实图重写；W0 可以是只读 Input 或自动冻结的 Parameter">LoRA · 改造矩阵乘</button>
+    <select id="loopDepth" aria-label="计算循环深度" title="在新 Ouro 启发的多深度监督任务中调整循环深度" disabled><option value="1">循环 ×1</option><option value="2">循环 ×2</option><option value="3">循环 ×3</option></select><button class="btn small" id="applyLoopDepth" type="button" disabled title="调整循环次数，保留全部共享参数值和 AdamW 状态；旧的深度加权目标会重建">调整 Loop 深度</button>
+    <select id="loopResidualRule" aria-label="循环残差缩放规则" disabled title="只改变两个循环轮次的四个 Residual Scale，严格保留权重与优化器状态"><option value="unit">ε = 1</option><option value="inverse_sqrt">ε = 1 / √N</option><option value="inverse_loops">ε = 1 / N</option></select><button class="btn small" id="applyLoopResidual" type="button" disabled>比较 Loop 残差</button>
     <button class="btn small" id="zoomIn" type="button" title="放大画布" aria-label="放大画布">＋</button>
+    <select id="pythonBackend" aria-label="Python 导出后端" title="NumPy 前向计算 / PyTorch CPU 可训练子集"><option value="numpy">NumPy · 数值执行</option><option value="torch">PyTorch · 自动微分与训练</option></select>
+     <select id="exportScope" aria-label="Python 代码导出范围" title="完整图或仅所选节点的上游依赖"><option value="full">Python · 全图</option><option value="selected">Python · 所选分支</option></select>
+    <button class="btn small" id="exportPython" title="真正生成可独立执行的 NumPy Python 源码，不支持的算子将明确报错">⌘ 导出 .py</button>
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
@@ -193,43 +239,92 @@ input[type="file"]{display:none}
     <option value="concept" selected>原理推演 · 默认</option>
     <option value="numeric">小矩阵数值演示 · 可选</option>
   </select>
- </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
+ </label><button class="btn primary" id="run">▶ 推演计算逻辑</button><button class="btn" id="runBranch" type="button" title="只运行所选积木及其全部上游依赖；画布其他未完成的积木不影响该分支">▶ 运行选中分支</button><button class="btn" id="backward" type="button" disabled title="数值前向完成后，分析可求导积木的反向梯度；不更新模型">∂ 反向梯度</button><label class="study-mode-label" for="trainOptimizer">优化器 <select id="trainOptimizer" aria-label="训练优化器选择"><option value="adamw">AdamW</option><option value="adam">Adam · coupled L2</option><option value="sgd_momentum">SGD · Momentum</option><option value="rmsprop">RMSprop</option><option value="adagrad">Adagrad</option><option value="lion">Lion</option></select></label><label class="study-mode-label" for="trainLearningRate">学习率 <select id="trainLearningRate" aria-label="当前优化器学习率"><option value="0.001">0.001</option><option value="0.004">0.004</option><option value="0.01" selected>0.01</option><option value="0.03">0.03</option></select></label>
+  <label class="study-mode-label" for="trainWeightDecay">权重衰减 <select id="trainWeightDecay" aria-label="当前优化器权重衰减"><option value="0">0</option><option value="0.01" selected>0.01</option><option value="0.1">0.1</option></select></label>
+  <label class="study-mode-label" for="trainCount">步数 <select id="trainCount" aria-label="连续训练步数"><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></label>
+  <details id="optimizerAdvanced" style="display:inline-block;vertical-align:middle;position:relative">
+   <summary class="btn small" style="cursor:pointer;list-style:none" title="高级超参数：不同优化器读取不同选项">优化器超参数</summary>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;position:absolute;right:0;top:100%;z-index:60;padding:10px;background:#112d3e;border:1px solid #3e6276;border-radius:8px;min-width:310px">
+    <label class="study-mode-label">SGD momentum <select id="trainMomentum" aria-label="SGD momentum"><option value="0">0</option><option value="0.5">0.5</option><option value="0.9" selected>0.9</option><option value="0.99">0.99</option></select></label>
+    <label class="study-mode-label">RMSprop alpha <select id="trainAlpha" aria-label="RMSprop alpha"><option value="0.9">0.9</option><option value="0.99" selected>0.99</option><option value="0.999">0.999</option></select></label>
+    <label class="study-mode-label">Adagrad lr_decay <select id="trainLRDecay" aria-label="Adagrad lr decay"><option value="0" selected>0</option><option value="0.1">0.1</option><option value="0.5">0.5</option><option value="1">1</option></select></label>
+   </div>
+  </details>
+  <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 优化器更新，逐步重新计算 Forward/Backward，并保存独立的状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
+   <div class="graph-readiness" id="graphReadiness" aria-label="自由计算图的张量形状与连线就绪状态"></div>
+   <details id="pythonExportPanel" hidden aria-label="生成的可执行 Python 代码"><summary><span id="pythonExportCaption">已生成可执行 Python（NumPy） · 查看源代码</span></summary><p class="hint" id="pythonExportHelp">可通过 <code>pip install numpy</code> 安装依赖，然后运行下载的 .py 文件。输入可由 run_graph(overrides=...) 修改。</p><button id="copyPython" class="btn small" type="button">复制源码</button><pre id="pythonExportSource" style="max-height:300px;overflow:auto;white-space:pre;font-size:11px;tab-size:2;"></pre></details>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
   </div>
  </main>
  <aside class="inspector">
   <div class="kicker">04 / EXPLORE THE MATH</div><h2 id="inspectorTitle">选择一个积木</h2>
   <div class="badge" id="evidence">QUALITATIVE CONTRACT · 无矩阵执行</div>
+  <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
   </section>
+  <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
+    <div class="kicker">REAL MODEL REFERENCE / 真实观测 · 与教学运算分离</div>
+    <p class="hint">将真实 CPU 模型的采样关联到所选 Linear、MatMul 或 Parameter。只读展示，不替换当前计算。</p>
+    <div class="real-sample-toolbar"><input id="traceReferenceFile" type="file" accept="application/json,.json" aria-label="关联真实模型采集 JSON"><button class="btn small" id="bindRealTrace" type="button" disabled>关联选中积木</button><button class="btn small" id="clearRealTrace" type="button" disabled>清除</button></div>
+    <div class="hint" id="traceReferenceStatus">尚未导入真实观测；当前矩阵均为教学数据。</div>
+    <div id="realTracePanel"></div>
+  </section>
   <div class="section"><div class="kicker">实验参数</div><div id="parameters"><p class="hint">输入和线性层可调维度。</p></div></div>
   <div class="section"><div class="kicker">RUN TRACE / 每步变化</div><div id="trace"><p class="hint">运行后出现逐步计算轨迹。</p></div><div id="metrics"></div></div>
-  <div class="section"><div class="kicker">TENSOR & SEMANTIC FLOW / 张量与机制</div><div id="shape">shape: —</div><div id="matrix"><p class="hint">运行并选择一步以查看数值矩阵。</p></div><div id="intermediates"></div></div>
+  <div class="section"><div class="kicker">TENSOR & SEMANTIC FLOW / 张量与机制</div><div id="shape">shape: —</div><div id="matrix"><p class="hint">运行并选择一步以查看数值矩阵。</p></div><div id="intermediates"></div></div><div class="section" aria-label="训练梯度和停止梯度边界"><div class="kicker">REVERSE FLOW / 局部梯度与截断位置</div><div id="gradientInspector"><p class="hint">数值模式下支持 GRPO 及 MSE 计算图的有界反向分析；默认不创建梯度或更新权重。</p></div></div>
   <div class="section"><div class="kicker">学习提示与证据界限</div><p id="lesson"></p><div class="equation" id="caution"></div></div>
  </aside>
 </div>
 <script src="tensor_ir.js"></script>
+<script src="nd_tensor.js"></script>
+<script src="activation_math.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
+<script src="loop_transformer.js"></script>
+<script src="loop_input_injection.js"></script>
+<script src="adaptive_token_depth.js"></script>
+<script src="loop_consistency.js"></script>
+<script src="loop_design_tradeoffs.js"></script>
+<script src="architecture_why.js"></script>
+<script src="training_objective.js"></script>
 <script src="consensus_knowledge.js"></script>
 <script src="block_knowledge.js"></script>
 <script src="concept_flow.js"></script>
+<script src="branch_execution.js"></script>
+<script src="graph_readiness.js"></script>
+<script src="python_codegen.js"></script>
+<script src="torch_codegen.js"></script>
 <script src="composite_atlas.js"></script>
+<script src="paper_graph_rewrites.js"></script>
+<script src="model_trace.js"></script>
+<script src="model_trace_bridge.js"></script>
+<script src="industrial_source_inspector.js"></script>
+<script src="paper_hover.js"></script>
+<script src="graph_layout.js"></script>
+<script src="grpo_backward.js"></script>
+<script src="expert_ffn_vjp.js"></script>
+<script src="nd_autodiff.js"></script>
+<script src="graph_autodiff.js"></script>
+<script src="adamw_micro.js"></script>
+<script src="nd_adamw_micro.js"></script>
+<script src="optimizer_rules.js"></script>
+<script src="train_state.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,
-  A=window.SeetheTruthComposites,$=q=>document.querySelector(q);
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧"};
-const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化"};
+const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
+const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[],zoomOverride=null;
+let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
+let realTrace=null,realAssociationId=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -237,22 +332,22 @@ function mutate(fn){
  const before=clone(graph);
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
   // Duplicate change events and idempotent connections must not consume history.
-  if(JSON.stringify(before)===JSON.stringify(valid)){render();return;}
-  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;step=-1;render();
- }catch(e){render();say(e.message,true);}
+  if(JSON.stringify(before)===JSON.stringify(valid)){render();return false;}
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
+ }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{activeComposite=null;compositeHistory=[];zoomOverride=null;graph=L.preset(name);undo=[];redo=[];run=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
 }
 function openComposite(id,history){
- try{
+ try{backwardTrace=null;trainStatus=null;
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
-  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;
-  run=null;step=-1;from=null;selected=g.nodes[0].id;
+  activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
+  run=null;runGraph=null;runScope=null;step=-1;from=null;selected=g.nodes[0].id;
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.remove("active"));
   render();say("已打开 "+next.title+"。可逐层展开或执行符号推演；不要求 GPU。");
  }catch(e){say(e.message,true);}
@@ -266,7 +361,7 @@ function focusGraphNode(id){
  requestAnimationFrame(drawWires);
 }
 function adjustZoom(next,focus=true){
- zoomOverride=next===null?null:Math.max(.25,Math.min(1.5,Math.round(next*100)/100));
+ zoomOverride=next===null?null:Math.max(.25,Math.min(1.5,Math.round(next*100)/100));zoomMode=next===null?"readable":"manual";
  render();
  if(focus&&zoomOverride!==null)focusGraphNode(selected);
  else {$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;}
@@ -312,19 +407,34 @@ function renderComposite(){
 $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
 $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
-$("#zoomFit").onclick=()=>adjustZoom(null);
+$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;const width=Math.max(480,$("#viewport").clientWidth)-24;zoomOverride=Math.max(.25,Math.min(1,width/extent));zoomMode="fit";render();$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;};
+$("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;zoomMode="readable";render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
  else setPreset("ffn");
 };
 
 function newId(g){let id;do{id="lab"+(++seq);}while(g.nodes.some(n=>n.id===id));return id;}
+function freeBlockPosition(nodes,x,y){
+ const originalX=Math.max(8,Math.min(9600,Math.round(x))),originalY=Math.max(8,Math.min(9600,Math.round(y)));
+ const clear=(px,py)=>nodes.every(n=>Math.abs(n.x-px)>=246||Math.abs(n.y-py)>=250);
+ if(clear(originalX,originalY))return {x:originalX,y:originalY};
+ // Search nearby positions rather than imposing a predetermined model layout.
+ for(let radius=1;radius<=30;radius++)for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+   if(Math.max(Math.abs(dx),Math.abs(dy))!==radius)continue;
+   const px=Math.max(8,Math.min(9600,originalX+dx*266)),py=Math.max(8,Math.min(9600,originalY+dy*270));
+   if(clear(px,py))return {x:px,y:py};
+ }
+ throw Error("当前画布没有安全的空余放置位置");
+}
 function addBlock(kind,x=480,y=360){
- mutate(g=>{const id=newId(g);
-   g.nodes.push({id,kind,x:Math.max(8,Math.min(1060,Math.round(x))),y:Math.max(8,Math.min(650,Math.round(y))),params:{}});
-   selected=id;return g;
+ const ok=mutate(g=>{const id=newId(g),pos=freeBlockPosition(g.nodes,x,y);
+   g.nodes.push({id,kind,...pos,params:{}});selected=id;return g;
  });
- say("已添加 "+L.defs[kind].title+"。用输出和输入插口建立连接。");
+ if(ok){
+   say("已添加 "+L.defs[kind].title+"，已避让现有积木；可任意拖动和连线。");
+   requestAnimationFrame(()=>focusGraphNode(selected));
+ }
 }
 function renderPalette(){
  const matches=L.KINDS.filter(k=>{
@@ -350,18 +460,21 @@ function renderCategoryButtons(){
  });
 }
 function renderBlocks(){
+ const nodeReadiness=new Map((readinessSnapshot?.nodes||[]).map(item=>[item.id,item]));
  const connected=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
  $("#blocks").innerHTML=graph.nodes.map(n=>{
   const d=L.defs[n.kind],ports=d.ports.map(p=>{
     const wired=connected.has(n.id+":"+p);
     return '<div class="port-row"><button class="port '+(wired?'connected':'')+'" data-in="'+esc(n.id)+'" data-port="'+esc(p)+'" aria-label="'+esc(n.id+' '+p)+' 输入"><span class="socket"></span>'+esc(p)+(wired?' · '+esc(connected.get(n.id+":"+p)):' · ?')+'</button>'+(wired?'<button class="port-clear" data-unlink="'+esc(n.id)+'" data-port="'+esc(p)+'" title="断开连接">×</button>':'')+'</div>';
   }).join("");
-  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+'</span></div></div>';
+  const readiness=nodeReadiness.get(n.id),state=readiness?.status||"unknown";
+  const shapeLabel=readiness?.shape?.join("×")||(state==="missing"?"待连线":state==="blocked"?"待上游":state==="shape-error"?"形状错误":"—");
+  return '<div class="block category-'+d.category+(selected===n.id?' selected':'')+(run&&step>=0&&run.steps[step]?.id===n.id?' executing':'')+(runScope&&run&&!run.steps.some(x=>x.id===n.id)?' outside-run':'')+'" data-node="'+esc(n.id)+'" data-paper-patch="'+esc((graph.paperPatches||[]).find(p=>p.outputId===n.id)?.paper||"")+'" data-industrial-ref="'+esc(window.SeetheTruthIndustrialSources?.kind(graph,n.id)||"")+'" data-readiness="'+esc(state)+'" title="'+esc(readiness?.reason||("输出形状 "+shapeLabel))+'" style="left:'+n.x+'px;top:'+n.y+'px"><div class="block-head" data-grab="'+esc(n.id)+'"><div><div class="block-name">'+(categories[d.category]||"◇")+' '+esc(d.title)+'</div><div class="block-kind">'+esc(n.id)+' · '+esc(d.en)+'</div></div><button class="block-delete" data-delete="'+esc(n.id)+'" title="删除积木">×</button></div><div class="block-mid"><div class="block-formula">'+esc(d.formula)+'</div><div class="block-ports">'+ports+'<div class="port-row" style="justify-content:flex-end"><button class="port" data-out="'+esc(n.id)+'" data-type="out" aria-label="'+esc(n.id)+' 输出">OUT <span class="socket"></span></button></div></div></div><div class="block-foot"><span>'+esc(d.category.toUpperCase())+'</span><span>'+(studyMode()==="concept"?'CONCEPT':'MICRO')+' · '+esc(shapeLabel)+'</span></div></div>';
  }).join("");
- document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。现在点击目标输入圆点。");};});
+ document.querySelectorAll("[data-out]").forEach(b=>{b.onclick=()=>{from=b.dataset.out;updatePending();say("已选中 "+from+" 的输出。绿色=形状兼容，橙色=冲突，虚线=待判断；任何形状提示都不阻止自由连接。");};});
  document.querySelectorAll("[data-in]").forEach(b=>{b.onclick=()=>{
   if(!from){say("先点击上游模块的 OUT，再点击该输入端口。",true);return;}
-  const src=from;from=null;mutate(g=>L.connect(g,src,b.dataset.in,b.dataset.port));say("连接已更新。再次运行以验证形状。");
+  const src=from;from=null;if(mutate(g=>L.connect(g,src,b.dataset.in,b.dataset.port)))say("连线已更新。无需遵循任何预设架构；形状实时验证，数值运行时再检查具体值。");
  };});
  document.querySelectorAll("[data-unlink]").forEach(b=>{b.onclick=()=>mutate(g=>{g.edges=g.edges.filter(e=>!(e.to===b.dataset.unlink&&e.port===b.dataset.port));return g;});});
  document.querySelectorAll("[data-delete]").forEach(b=>{b.onclick=()=>mutate(g=>{g.nodes=g.nodes.filter(n=>n.id!==b.dataset.delete);g.edges=g.edges.filter(e=>e.from!==b.dataset.delete&&e.to!==b.dataset.delete);if(selected===b.dataset.delete)selected=g.nodes[0]?.id||null;return g;});});
@@ -372,7 +485,18 @@ function renderBlocks(){
  }));
  updatePending();requestAnimationFrame(drawWires);
 }
-function updatePending(){document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("pending",b.dataset.out===from));}
+function updatePending(){
+ document.querySelectorAll("[data-out]").forEach(b=>b.classList.toggle("pending",b.dataset.out===from));
+ document.querySelectorAll("[data-in]").forEach(b=>{
+   for(const cls of ["preview-compatible","preview-incompatible","preview-pending","preview-invalid"])b.classList.remove(cls);
+   b.removeAttribute("data-preview");b.removeAttribute("title");
+   if(!from)return;
+   const result=Readiness.preview(graph,from,b.dataset.in,b.dataset.port);
+   b.classList.add("preview-"+result.status);b.dataset.preview=result.status;
+   b.title=(result.sourceShape?result.sourceShape.join("×")+" → ":"")+result.reason+
+      "。这是建议，不会禁止您自由接线。";
+ });
+}
 function startDrag(e){
  if(e.target.closest("button"))return;
  const h=e.currentTarget,id=h.dataset.grab,n=graph.nodes.find(q=>q.id===id);
@@ -382,8 +506,8 @@ function startDrag(e){
  const scale=Number($("#board").style.zoom)||1;
  h.setPointerCapture(e.pointerId);
  dragging={id,h,original};
- const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(1060,initial.x+(ev.clientX-sx)/scale)),
- sy2=Math.max(8,Math.min(650,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
+ const move=ev=>{if(!dragging)return;const sx2=Math.max(8,Math.min(9600,initial.x+(ev.clientX-sx)/scale)),
+ sy2=Math.max(8,Math.min(9600,initial.y+(ev.clientY-sy)/scale));n.x=Math.round(sx2);n.y=Math.round(sy2);
  const el=document.querySelector('[data-node="'+id+'"]');if(el){el.style.left=n.x+"px";el.style.top=n.y+"px";}
  drawWires();
  };
@@ -410,6 +534,19 @@ function drawWires(){
 }
 function matrixHTML(matrix,label){
  const m=matrix;if(!Array.isArray(m)||!m.length)return "";
+ if(Array.isArray(m[0])&&Array.isArray(m[0][0])){
+   const dims=window.SeetheTruthND.shape(m),axes=dims.slice(0,-2);
+   const menus=axes.map((count,i)=>'<label class="study-mode-label">axis '+i+
+      ' <select data-nd-slice="'+i+'" aria-label="四维张量切片 axis '+i+'">'+
+      Array.from({length:count},(_,j)=>'<option value="'+j+'">'+j+' / '+(count-1)+'</option>').join('')+
+      '</select></label>').join('');
+   let plane=m;for(let i=0;i<axes.length;i++)plane=plane[0];
+   return '<div class="nd-tensor-view"><div class="kicker">'+esc(label)+' · '+dims.join("×")+
+      ' · '+dims.length+'D / 各轴独立选择</div><div class="row" style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">'+menus+
+      '</div><div class="nd-plane">'+matrixHTML(plane,'axis slice '+axes.map(()=>0).join('/'))+'</div>'+
+      '<p class="hint">本视图只展示当前前导轴的二维切片，数值执行仍覆盖完整张量。</p></div>';
+ }
+
  const cols=m[0].length, vals=m.flat(),max=Math.max(.1,...vals.map(x=>Math.abs(x)));
  return '<div class="kicker" style="margin-top:12px">'+esc(label)+' · '+m.length+'×'+cols+'</div><div style="display:grid;grid-template-columns:repeat('+cols+',minmax(24px,1fr));gap:3px;margin-top:7px">'+m.map(row=>row.map(v=>{
   const alpha=(.12+.54*Math.min(1,Math.abs(v)/max)).toFixed(3);
@@ -471,16 +608,42 @@ function renderKnowledge(d,n){
 
 function inspect(){
  const n=graph.nodes.find(x=>x.id===selected),d=n&&L.defs[n.kind];
+ const realStatus=$("#traceReferenceStatus"),realPanel=$("#realTracePanel");
+ $("#bindRealTrace").disabled=!realTrace||!n||!TraceBridge.supportedKinds.includes(n.kind);
+ $("#clearRealTrace").disabled=!realTrace;
+ if(realTrace&&realAssociationId===selected&&n){
+   try{
+     realPanel.innerHTML=TraceBridge.render(realTrace,n);
+     realStatus.textContent="关联到 "+selected+" · 只读参考，不参与当前教学计算和导出";
+   }catch(err){realPanel.replaceChildren();realStatus.textContent="观测关联无效："+err.message;}
+ }else{
+   realPanel.replaceChildren();
+   realStatus.textContent=realTrace?(realAssociationId?"采集已关联节点 "+realAssociationId+"；选择该节点查看，或将采集关联到当前积木":"采集已载入；请选择 Linear、MatMul 或 Parameter 并点击关联"):
+     "尚未导入真实观测；当前矩阵均为教学数据。";
+ }
  $("#inspectorTitle").textContent=d?d.title:"选择一个积木";
  $("#formula").textContent=d?d.formula:"Y=F(X)";
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
  $("#caution").textContent=d?d.caution:"学习优先的概念推演；默认不运行 GPU 或大型矩阵。";
- $("#blockKnowledge").innerHTML=renderKnowledge(d,n);
- $("#parameters").innerHTML=d?Object.keys(d.params).map(k=>
+ const patch=(graph.paperPatches||[]).find(p=>p.outputId===selected&&p.paper==="lora");
+ $("#blockKnowledge").innerHTML=(window.SeetheTruthDesignTradeoffs?.render(graph,n?.id)||"")+(window.SeetheTruthArchitectureWhy?.render(graph,n)||"")+(window.SeetheTruthIndustrialSources?.render(window.SeetheTruthIndustrialSources.kind(graph,n?.id))||"")+renderKnowledge(d,n)+(patch?
+   '<div class="knowledge-part" style="margin-top:12px"><strong>LoRA · PAPER GRAPH REWRITE</strong>'+
+   '<p>此 Add 是一次论文计算图改造：W₀ 保持只读（Parameter 将显式冻结），ΔW=(α/r)AB。输出 Y=XW₀+(α/r)(XA)B；rank='+patch.rank+'，α='+patch.alpha+'。</p>'+
+   '<p>原输出 ID 保持不变；A/B 为独立 Parameter，权重 B 以零初始化。改造后若继续手动重新连线，应重新验证等价性。</p>'+
+   '<a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener noreferrer">LoRA · Hu et al. 原始论文 ↗</a></div>':'');
+ $("#parameters").innerHTML=d?((n.kind==="parameter"||n.kind==="nd_parameter")?
+   '<div class="hint">稳定参数身份：<strong>'+esc(n.id)+'</strong> · '+(n.params.frozen?'冻结 / 不参加 optimizer.step · ':'可训练 · ')+esc(n.params.optimizer.kind||'adamw')+' step '+esc(n.params.optimizer.t)+'</div>'+
+   '<label class="param">Parameter values (JSON, 2D/4D)<textarea id="parameterMatrix" rows="4" style="width:100%;min-height:82px;background:#071623;color:#defaff;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical">'+esc(JSON.stringify(n.params.values))+'</textarea></label>'+
+   '<p class="hint">编辑张量后重置当前优化器的累积状态。训练步骤保存在 JSON 并随撤销/重做恢复。</p>'
+   :Object.keys(d.params).map(k=>
   '<label class="param">'+esc(k)+ (typeof d.params[k]==="boolean" ?
    '<select data-param="'+esc(k)+'"><option value="true" '+((n.params[k]??d.params[k])?'selected':'')+'>true / 开启</option><option value="false" '+(!(n.params[k]??d.params[k])?'selected':'')+'>false / 关闭</option></select>'
-   :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>':"";
+   :'<input type="number" step="'+(k==="epsilon"?"any":"1")+'" data-param="'+esc(k)+'" value="'+esc(n.params[k]??d.params[k])+'">')+'</label>').join("")||'<p class="hint">此积木没有独立可编辑参数。</p>'):"";
+ if(n&&(n.kind==="parameter"||n.kind==="nd_parameter"))$("#parameterMatrix").addEventListener("change",e=>{try{
+   const matrix=JSON.parse(e.target.value),id=n.id;
+   mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params.values=matrix;const zero=target.kind==="nd_parameter"?window.SeetheTruthND.build(window.SeetheTruthND.shape(matrix),()=>0):matrix.map(row=>row.map(()=>0));target.params.optimizer={kind:target.params.optimizer.kind||"adamw",t:0,m:zero,v:JSON.parse(JSON.stringify(zero))};return g;});
+ }catch(err){say("参数矩阵 JSON 无效："+err.message,true);}});
  document.querySelectorAll("[data-param]").forEach(input=>input.addEventListener("change",()=>{
    const name=input.dataset.param, v=input.tagName==="SELECT"?input.value==="true":Number(input.value),id=selected;
    mutate(g=>{const target=g.nodes.find(x=>x.id===id);target.params[name]=v;return g;});
@@ -507,8 +670,13 @@ function inspect(){
      (active.flops!==null?'<div class="metric"><span>教学 GEMM 运算量</span><b>'+active.flops+'</b></div>':'')+
      '<div class="hint">可统计 GEMM 主项：'+run.totalKnownFlops+' FLOPs；未包含非线性或控制开销，非真实硬件测量。</div>':
      '<div class="hint">暂无该积木的逐步输出；运行后向前单步执行。</div>';
-   $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · float64 teaching matrix":"shape: —";
+   $("#shape").textContent=active?"shape = ["+active.shape.join(", ")+"] · Float64 教学张量":"shape: —";
    $("#matrix").innerHTML=active?matrixHTML(active.values,"输出数值"):'<p class="hint">单步运行后，此处显示真实计算的微型矩阵。</p>';
+   $("#matrix").querySelectorAll("[data-nd-slice]").forEach(control=>control.onchange=()=>{
+     const values=[...$("#matrix").querySelectorAll("[data-nd-slice]")].map(el=>Number(el.value));
+     let view=active.values;for(const index of values)view=view[index];
+     $("#matrix .nd-plane").innerHTML=matrixHTML(view,"轴切片 "+values.join("/"));
+   });
    $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>{
      const axes=Array.isArray(val.axes)?' [ '+val.axes.map((axis,i)=>axis+'='+val.shape[i]).join(' · ')+' ]':'';
      const options=val.tensor&&val.tensor.shape.length===4&&val.tensor.shape[1]>1?
@@ -520,6 +688,32 @@ function inspect(){
        (val.note?'<p class="hint">'+esc(val.note)+'</p>':'')+'</details>';
    }).join(""):"";
  }
+ const grade=$("#gradientInspector");
+ if(!backwardTrace){
+   grade.innerHTML='<p class="hint">数值演示完成后点击「∂ 反向梯度」，对支持的组合图计算梯度。奖励、旧策略、参考策略和离散动作只作为固定输入。</p>';
+ }else if(!n||!active){
+   grade.innerHTML='<p class="hint">选择已经运行过的积木以检查其 dLoss/dOutput。</p>';
+ }else{
+   const adjoint=backwardTrace.gradients[n.id],isActive=backwardTrace.pathIds.includes(n.id),
+         cuts=backwardTrace.cutEdges.filter(e=>e.from===n.id||e.nodeId===n.id),
+         local=backwardTrace.local[n.id],sat=local?.clipSaturated;
+   grade.innerHTML='<p class="hint">'+(isActive?'参与可求导的计算路径。':'未连接到损失反向路径，显示零梯度（或固定输入）。')+'</p>'+
+      matrixHTML(adjoint,'∂Loss / ∂ 本积木输出')+
+      (local?.vjp?'<div class="equation">'+esc(local.vjp)+'</div>':'')+
+      (sat?matrixHTML(sat.values,'策略截断饱和位置：1=无 ratio 梯度'):'')+
+      (cuts.length?'<div class="hint">停止梯度：'+cuts.map(x=>esc(x.reason)).join('；')+'</div>':'')+
+      '<p class="hint">有界小矩阵 VJP；不等于完整模型训练，离散路由与不支持的模块不伪造梯度。</p>';
+   const weightUse=n.kind==="input"&&isActive&&graph.edges.some(e=>e.from===n.id&&graph.nodes.some(t=>t.id===e.to&&((e.port==="b"&&t.kind==="matmul")||(e.port==="weights"&&t.kind==="expert_linear_bank"))));
+   if(weightUse){
+     grade.innerHTML+='<div class="section"><div class="kicker">OPTIMIZER / 仅预览</div><button class="btn small" id="adamwPreview" type="button">预览 AdamW 单步更新</button><div id="adamwResult" class="hint">将此输入暂视为训练参数，不改变 seed 或前向计算图。对应 <a href="https://arxiv.org/abs/1711.05101" target="_blank" rel="noopener noreferrer">AdamW 原始论文</a>：权重衰减与自适应梯度更新解耦。</div></div>';
+     $("#adamwPreview").onclick=()=>{try{
+       const out=AdamW.step(active.values,adjoint,null,{lr:0.01,weightDecay:0.01});
+       $("#adamwResult").innerHTML='<p class="hint">AdamW：lr=0.01，β₁=0.9，β₂=0.999，decoupled weight decay=0.01；第一步使用零动量。</p>'+
+         matrixHTML(out.update,"参数更新 Δθ（从参数减去）")+matrixHTML(out.parameter,"AdamW 更新后的参数预览")+
+         '<p class="hint">仅一次独立计算；没有将参数写回积木工程，也没有触发第二次 Forward。</p>';
+     }catch(err){$("#adamwResult").textContent="优化器预览失败："+err.message;}};
+   }
+ }
  document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
    const entry=active.internals[el.dataset.stage];if(!entry?.tensor)return;
    const head=Number(el.value),tensor=entry.tensor;
@@ -527,48 +721,236 @@ function inspect(){
    el.closest("details").querySelector(".tensor-stage-preview").innerHTML=matrixHTML(matrix,el.dataset.stage+" · head "+head);
  });
 }
+function renderTrainingMetrics(info){
+ const losses=[info.history[0].beforeLoss,...info.history.map(h=>h.afterLoss)];
+ const ymin=Math.min(...losses),ymax=Math.max(...losses),span=Math.max(1e-8,ymax-ymin);
+ const points=losses.map((v,i)=>[(15+i*270/Math.max(1,losses.length-1)).toFixed(1),(73-57*(v-ymin)/span).toFixed(1)]);
+ const path=points.map(p=>p.join(",")).join(" ");
+ const chart='<svg viewBox="0 0 300 92" width="100%" height="100" role="img" aria-label="Loss history across optimizer steps" style="display:block;background:#081c29;border:1px solid #25475a;border-radius:8px"><polyline points="'+path+'" fill="none" stroke="#6ee6ce" stroke-width="2.5"/>'+
+    points.map((p,i)=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" fill="#b0f6eb"><title>Step '+i+': '+losses[i].toFixed(8)+'</title></circle>').join("")+
+    '<text x="10" y="87" font-size="9" fill="#9dbdd0">Step 0</text><text x="240" y="87" font-size="9" fill="#9dbdd0">Step '+(losses.length-1)+'</text></svg>';
+ const latest=info.history.at(-1).records;
+ const rows=latest.map(rec=>'<div class="hint" style="display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #24465e;padding:3px 0">'+
+   '<strong>'+esc(rec.id)+'</strong><span>‖∇θ‖₂ '+rec.gradientNorm.toExponential(3)+' · ‖Δθ‖₂ '+rec.updateNorm.toExponential(3)+'</span></div>').join("");
+ return chart+'<div class="kicker" style="margin-top:8px">参数组 / 最后一步梯度与更新范数</div>'+rows;
+}
+function renderReadiness(){
+ const info=readinessSnapshot,root=$("#graphReadiness");
+ if(info.structuralError){root.textContent="结构检查失败："+info.structuralError;return;}
+ root.innerHTML='<strong>自由搭建 · '+info.readyCount+'/'+info.nodes.length+' 个积木形状已确定</strong>'+
+  (info.executable?'<span>输入完整 · 形状通过 · 可运行</span>':'<span>缺少输入 '+info.missingCount+' · 形状错误 '+info.errorCount+' · 等待上游 '+info.blockedCount+'</span>')+
+  info.nodes.filter(n=>["missing","shape-error"].includes(n.status)).slice(0,2)
+  .map(n=>'<button class="readiness-issue" data-readiness-node="'+esc(n.id)+'">'+esc(n.id)+'：'+esc(n.reason)+'</button>').join("");
+ root.querySelectorAll("[data-readiness-node]").forEach(b=>b.onclick=()=>{selected=b.dataset.readinessNode;render();focusGraphNode(selected);});
+}
 function render(){
+ const kinds=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind)).map(n=>n.params.optimizer.kind||"adamw");
+ if(kinds.length&&kinds.every(k=>k===kinds[0]))$("#trainOptimizer").value=kinds[0];
+ readinessSnapshot=Readiness.check(graph);
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const fit=Math.max(.22,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const fit=Math.max(.72,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
  const factor=zoomOverride===null?fit:zoomOverride;
  $("#board").style.width=extent+"px";
+ $("#board").style.height=Math.max(800,...graph.nodes.map(n=>n.y+175))+30+"px";
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
- $("#fitLabel").textContent=(zoomOverride===null?"自动适配 ":"手动放大 ")+Math.round(factor*100)+"% · 点击节点查看解释";
+ $("#fitLabel").textContent=(zoomMode==="fit"?"自动适配 ":zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
- $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length:"尚未运行";
+ $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length+(runScope?" · 分支 "+runScope:""):"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;
+ $("#backward").disabled=!run||run.mode==="concept"||!(runGraph||graph).nodes.some(n=>["masked_grpo_objective","mse","nd_mse","mae_loss","cross_entropy"].includes(n.kind));
+ $("#runBranch").disabled=!selected||!graph.nodes.some(n=>n.id===selected);
+ $("#applyLoRA").disabled=!graph.nodes.some(n=>n.id===selected&&n.kind==="matmul");
+ const loopState=window.SeetheTruthLoopTransformer?.inspect(graph);
+ $("#applyLoopDepth").disabled=!(loopState?.loops>0&&loopState.linked)||graph.title.startsWith("任务 43");
+ let residualState=null;
+ try{residualState=window.SeetheTruthLoopTransformer?.inspectResidualScaling(graph);}catch(e){}
+ $("#applyLoopResidual").disabled=!residualState;
+ $("#loopResidualRule").disabled=!residualState;
+ if(residualState&&residualState.rule!=="user_defined")$("#loopResidualRule").value=residualState.rule;
+ $("#loopDepth").disabled=$("#applyLoopDepth").disabled;
+ if(loopState?.loops>0)$("#loopDepth").value=String(loopState.loops);
+ $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss"||n.kind==="cross_entropy");
+ $("#trainSummary").hidden=!trainStatus;
+ if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
- renderBlocks();inspect();
+ renderBlocks();renderReadiness();inspect();
 }
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
+$("#applyLoRA").onclick=()=>{
+ try{
+   const outputId=selected;
+   const updated=PaperRewrite.lora(graph,outputId,{rank:2,alpha:2});
+   if(mutate(()=>updated.graph)){
+     selected=outputId;render();
+     say("LoRA 图重写已完成：冻结 W0，只训练低秩 A/B，前向初始化等价（最大误差 "+updated.delta.toExponential(1)+"）。数学来源 arXiv:2106.09685，可查看选中积木的论文解释。");
+   }
+ }catch(err){say("LoRA 重写拒绝："+err.message,true);}
+};
+$("#applyLoopResidual").onclick=()=>{
+ try{
+   window.SeetheTruthLoopTransformer.inspectResidualScaling(graph);
+   const choice=$("#loopResidualRule").value;
+   const coef=choice==="unit"?1:choice==="inverse_sqrt"?1/Math.sqrt(2):choice==="inverse_loops"?.5:NaN;
+   if(!Number.isFinite(coef))throw Error("invalid residual rule");
+   const changed=mutate(g=>{
+     for(const n of g.nodes)if(/^r[01]_(attn_delta|ffn_delta)$/.test(n.id))n.params.factor=coef;
+     g.title="任务 43 · Loop Residual Scaling ×2 · "+choice+" (ε="+coef.toFixed(6)+")";
+     return g;
+   });
+   if(changed){selected="loss";render();say("Loop 残差已设为 "+choice+" (ε="+coef.toFixed(6)+")；原 Parameter 值、AdamW 动量及教学数据保留。请打开 WHY 面板比较实际执行的损失和梯度，不代表训练收益。");}
+ }catch(err){say("残差方案拒绝："+err.message,true);}
+};
+$("#applyLoopDepth").onclick=()=>{
+ try{
+   const to=Number($("#loopDepth").value);
+   const state=window.SeetheTruthLoopTransformer.resize(graph,to);
+   if(mutate(()=>state.graph)){
+     selected="loss";render();
+     say("循环深度 "+state.oldLoops+" → "+state.newLoops+"；"+state.preservedParameterIds.length+
+       " 个共享参数的实际值与 AdamW 一阶/二阶状态完全保留。多深度损失权重按照新的循环次数重新计算。");
+   }
+ }catch(err){say("深度调整被拒绝："+err.message,true);}
+};
 $("#challenge").onclick=()=>{
  if(!graph.edges.length){say("当前工程没有连线可拆，请先连接两个模块。",true);return;}
  let last=graph.edges[graph.edges.length-1];
  mutate(g=>{g.edges=g.edges.slice(0,-1);selected=last.to;return g;});
  say("挑战：已拆除 "+last.from+" → "+last.to+"."+last.port+"。试着重新连接，修复形状依赖后运行。");
 };
-$("#run").onclick=()=>{try{run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);step=0;selected=run.steps[0].id;
+$("#checkGraph").onclick=()=>{
+ const proof=Readiness.check(graph,{numeric:studyMode()==="numeric"});
+ if(proof.executable){
+   say("✓ 当前任意组合通过"+(proof.numeric?.ok?"实际 CPU 小张量执行":"张量形状及端口")+"检查；不要求模型模板。");
+ }else{
+   const problem=proof.firstError;
+   if(problem?.nodeId)selected=problem.nodeId;
+   render();
+   say("尚不可运行："+(problem?.reason||proof.structuralError||"未知原因")+"。连线可保留并继续修正。",true);
+   if(problem?.nodeId)focusGraphNode(problem.nodeId);
+ }
+};
+$("#runBranch").onclick=()=>{try{
+ if(!selected)throw Error("请选择需要运行的输出积木");
+ const targetId=selected,outcome=Branch.execute(graph,targetId,studyMode());
+ run=outcome.trace;runGraph=outcome.graph;runScope=targetId;step=run.steps.length-1;backwardTrace=null;
+ render();
+ say("✓ 仅运行 "+targetId+" 的 "+run.steps.length+" 个上游积木；画布保留 "+outcome.omittedCount+" 个未参与本次分支的积木。");
+ }catch(err){say("当前分支尚不可运行："+err.message,true);if(err.nodeId){selected=err.nodeId;render();focusGraphNode(selected);}}
+};
+$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
- catch(e){run=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
-$("#studyMode").addEventListener("change",()=>{run=null;step=-1;$("#run").textContent=studyMode()==="concept"?
+ catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
+$("#trainOptimizer").onchange=()=>{
+ const nextKind=$("#trainOptimizer").value;
+ const before=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind));
+ if(!before.length)return;
+ if(before.every(n=>(n.params.optimizer.kind||"adamw")===nextKind))return;
+ const reset=matrix=>matrix.map(x=>Array.isArray(x)?reset(x):0);
+ const ok=mutate(g=>{for(const n of g.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind))){
+   const blank=reset(n.params.values);
+   n.params.optimizer={kind:nextKind,t:0,m:blank,v:JSON.parse(JSON.stringify(blank))};
+ }return g;});
+ if(ok)say("已切换到 "+nextKind+" 并重置所有参数的优化器状态（可撤销）；原有权重数值保留。");
+};
+$("#trainStep").onclick=()=>{try{
+ if(studyMode()!=="numeric")throw Error("先切换至小矩阵数值模式");
+ const possibleLosses=window.SeetheTruthTrainingObjective.analyze(graph).choices.map(id=>graph.nodes.find(n=>n.id===id));
+ const selectedLoss=possibleLosses.find(n=>n.id===selected)||
+   possibleLosses.find(n=>n.id===runScope)||possibleLosses.find(n=>n.id==="loss")||(possibleLosses.length===1?possibleLosses[0]:null);
+ if(!selectedLoss)throw Error("请先选择要训练的 MSE、四轴 MSE、MAE 或 CrossEntropy 损失积木（多损失时须明确选中）");
+ const previous=clone(graph),options={
+   count:Number($("#trainCount").value),optimizer:$("#trainOptimizer").value,lr:Number($("#trainLearningRate").value),
+   weightDecay:Number($("#trainWeightDecay").value),momentum:Number($("#trainMomentum").value),
+   alpha:Number($("#trainAlpha").value),lrDecay:Number($("#trainLRDecay").value),targetId:selectedLoss.id
+ },result=Train.steps(previous,options);
+ undo.push(previous);if(undo.length>40)undo.shift();redo=[];
+ graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
+ trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};
+ render();say("已提交 "+result.history.length+" 步 "+options.optimizer+"：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
+ }catch(err){say("训练未提交："+err.message,true);}};
+$("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");const target=runGraph||graph;backwardTrace=target.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(target,run):GeneralReverse.backward(target,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};
+$("#studyMode").addEventListener("change",()=>{backwardTrace=null;run=null;runGraph=null;runScope=null;step=-1;$("#run").textContent=studyMode()==="concept"?
  "▶ 推演计算逻辑":"▶ 运行小矩阵示例";
  say(studyMode()==="concept"?"已切换到原理推演：只分析模块依赖、形状与功能，不执行矩阵计算。":
    "已切换到可选小矩阵实验：使用固定教学数值，无需 GPU 或真实权重。");
  render();});
 $("#prev").onclick=()=>{if(!run||step<1)return;step--;selected=run.steps[step].id;render();};
 $("#next").onclick=()=>{if(!run||step>=run.steps.length-1)return;step++;selected=run.steps[step].id;render();};
-$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
-$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;step=-1;selected=graph.nodes[0].id;render();};
+function restoreOptimizerControls(){
+ const nodes=graph.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter");
+ if(!nodes.length)return;
+ const stored=nodes[0].params.optimizer.config;
+ if(!stored||typeof stored!=="object")return;
+ const choices={lr:"trainLearningRate",weightDecay:"trainWeightDecay",
+   momentum:"trainMomentum",alpha:"trainAlpha",lrDecay:"trainLRDecay"};
+ for(const [key,id] of Object.entries(choices)){
+   const control=$("#"+id),value=stored[key];
+   if(control&&Number.isFinite(value)&&[...control.options].some(o=>o.value===String(value)))control.value=String(value);
+ }
+}
+$("#undo").onclick=()=>{if(!undo.length)return;redo.push(clone(graph));graph=undo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;restoreOptimizerControls();render();};
+$("#redo").onclick=()=>{if(!redo.length)return;undo.push(clone(graph));graph=redo.pop();run=null;runGraph=null;runScope=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;restoreOptimizerControls();render();};
+let currentPythonSource="";
+$("#exportPython").onclick=()=>{
+ try{
+   const scoped=$("#exportScope").value==="selected";
+   if(scoped&&!selected)throw Error("先选中作为代码输出的积木");
+   const useTorch=$("#pythonBackend").value==="torch";
+   const output=(useTorch?TorchCodegen:Codegen).compile(graph,scoped?{targetId:selected}:{});
+   $("#pythonExportCaption").textContent=useTorch?"已生成 PyTorch CPU 自动微分训练代码 · 查看源代码":"已生成 NumPy 数值执行代码 · 查看源代码";
+   $("#pythonExportHelp").textContent=useTorch?"需本地安装 torch。GraphRuntime.forward() / .train(steps=...) / .save_checkpoint(path) / .load_checkpoint(path)；不可导出路由等尚不支持的算子。":"需本地安装 numpy。用 run_graph(overrides=...) 修改输入和重新计算全部中间张量。";
+   currentPythonSource=output.source;
+   $("#pythonExportSource").textContent=output.source;
+   $("#pythonExportPanel").hidden=false;
+   const blob=new Blob([output.source],{type:"text/x-python;charset=utf-8"});
+   const url=URL.createObjectURL(blob),link=document.createElement("a");
+   link.href=url;link.download=output.filename;link.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+   say("已生成独立执行的 "+(useTorch?"PyTorch CPU":"NumPy")+" Python · "+output.nodes.length+" 个计算节点 · "+
+       (scoped?"所选分支":"完整图")+"。运行依赖 "+(useTorch?"torch":"numpy")+"；本页面不执行 Python。");
+ }catch(err){say("Python 导出失败："+err.message,true);}
+};
+$("#copyPython").onclick=async()=>{
+ if(!currentPythonSource)return;
+ try{await navigator.clipboard.writeText(currentPythonSource);say("已复制生成的 Python 源码。");}
+ catch(err){say("剪贴板不可用，请从下方代码框复制。",true);}
+};
+$("#traceReferenceFile").addEventListener("change",async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ realTrace=null;realAssociationId=null;
+ try{
+   if(file.size>256*1024)throw Error("采集 JSON 不得超过 256 KiB");
+   const candidate=JSON.parse(await file.text());
+   window.SeetheTruthTrace.validate(candidate);
+   realTrace=candidate;
+   const current=graph.nodes.find(n=>n.id===selected);
+   if(current&&TraceBridge.supportedKinds.includes(current.kind))realAssociationId=selected;
+   inspect();
+   say("模型观测 JSON 已通过结构校验；"+(realAssociationId?"只读关联积木 "+realAssociationId:"请选择兼容积木关联")+"。需复跑 pinned revision 才能独立验证来源。");
+ }catch(err){inspect();say("模型观测拒绝："+err.message,true);}
+ finally{e.target.value="";}
+});
+$("#bindRealTrace").onclick=()=>{
+ try{
+   const target=graph.nodes.find(n=>n.id===selected);
+   if(!realTrace)throw Error("尚未载入采集 JSON");
+   TraceBridge.describe(realTrace,target);
+   realAssociationId=selected;inspect();say("观测已只读关联 "+selected+"，不改变任何张量或计算图。");
+ }catch(err){say("关联失败："+err.message,true);}
+};
+$("#clearRealTrace").onclick=()=>{
+ realTrace=null;realAssociationId=null;inspect();say("已清除本页模型观测，不更改学习工程。");
+};
 $("#save").onclick=()=>{
  const blob=new Blob([JSON.stringify(graph,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="seethetruth-learning-project.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -578,12 +960,12 @@ $("#load").addEventListener("change",async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{if(file.size>65536)throw Error("文件大于 64 KiB，不允许导入");
   graph=L.validateGraph(JSON.parse(await file.text()));L.order(graph);
-  undo=[];redo=[];run=null;step=-1;selected=graph.nodes[0].id;from=null;render();say("已导入学习工程，内容未经执行。");
+  undo=[];redo=[];run=null;backwardTrace=null;trainStatus=null;step=-1;selected=graph.nodes[0].id;from=null;restoreOptimizerControls();render();say("已导入学习工程，内容未经执行。");
  }catch(err){say("导入被拒绝："+err.message,true);}finally{e.target.value="";}
 });
 window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
-renderCategoryButtons();renderPalette();render();
+renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
 </script></body></html>

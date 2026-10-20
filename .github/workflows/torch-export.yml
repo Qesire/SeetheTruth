@@ -1,0 +1,56 @@
+name: Real CPU PyTorch Training Codegen
+on:
+  pull_request:
+    paths:
+      - 'torch_codegen.js'
+      - 'learning_lab.js'
+      - 'block_catalog.js'
+      - 'nd_tensor.js'
+      - 'train_state.js'
+      - 'graph_autodiff.js'
+      - 'learn.html'
+      - 'atlas_server.py'
+      - 'tests/torch_codegen_contracts.js'
+      - 'tests/torch_codegen_extensions_contracts.js'
+      - 'tests/moe_executable_codegen_contracts.js'
+      - 'tests/token_embedding_ce_codegen_contracts.js'
+      - 'tests/causal_transformer_codegen_contracts.js'
+      - 'tests/industrial_gqa_tied_codegen_contracts.js'
+      - 'tests/loop_transformer_codegen_contracts.js'
+      - 'loop_input_injection.js'
+      - 'tests/loop_input_injection_contracts.js'
+      - 'tests/loop_depth_supervision_contracts.js'
+      - 'tests/loop_consistency_tradeoffs_contracts.js'
+      - 'tests/loop_residual_scaling_contracts.js'
+      - 'adaptive_token_depth.js'
+      - 'tests/adaptive_token_depth_contracts.js'
+      - 'loop_consistency.js'
+      - 'loop_design_tradeoffs.js'
+      - 'loop_transformer.js'
+      - 'training_objective.js'
+      - 'python_codegen.js'
+      - '.github/workflows/torch-export.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'torch_codegen.js'
+      - 'tests/torch_codegen_contracts.js'
+      - '.github/workflows/torch-export.yml'
+jobs:
+  torch-cpu-executable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
+      - run: node --check torch_codegen.js
+      - run: node --check loop_input_injection.js && node tests/loop_input_injection_contracts.js
+      - run: node tests/adaptive_token_depth_contracts.js
+      - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js && node tests/token_embedding_ce_codegen_contracts.js && node tests/causal_transformer_codegen_contracts.js && node tests/industrial_gqa_tied_codegen_contracts.js && node tests/loop_transformer_codegen_contracts.js && node tests/loop_depth_supervision_contracts.js && node tests/loop_consistency_tradeoffs_contracts.js && node tests/loop_residual_scaling_contracts.js

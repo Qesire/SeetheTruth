@@ -1,0 +1,12 @@
+const assert=require("node:assert/strict");const {Tape,moeBackward,ppo,stats}=require("../micro_training_flows.js");
+const close=(x,y,tol=1e-9)=>assert.ok(Math.abs(x-y)<tol, x+" != "+y);
+const t=new Tape(),x=t.input([[1,2]]),w=t.parameter("shared",[[2],[3]]),a=t.matmul(x,w),b=t.matmul(x,t.parameter("shared",[[2],[3]])),y=t.add(a,b),loss=t.meanSquare(y,[[0]]);
+close(t.value(loss)[0][0],256);t.backward(loss);close(t.gradients().shared[0][0],64);close(t.gradients().shared[1][0],128);
+assert.equal(t.parameters.size,1);assert.equal(t.events.filter(e=>e.phase==="vjp"&&e.to===w).length,2);
+t.backward(loss);close(t.gradients().shared[0][0],128);t.zeroGrad();assert.equal(t.gradients().shared,null);
+const m=moeBackward([[1,2],[2,1]],[[[1],[0]],[[0],[1]]],[[5,0],[0,5]],[[0],[0]]);
+assert.deepEqual(m.counts,[1,1]);close(m.loss,1);close(m.gradExpert[0][0][0],1);close(m.gradExpert[1][1][0],1);assert.equal(m.gradRouter,null);
+const c=moeBackward([[1,2],[2,1]],[[[1],[0]],[[0],[1]]],[[5,0],[5,0]],[[0],[0]],{capacity:1});assert.equal(c.routed[1].accepted,false);assert.equal(c.output[1][0],0);
+const p=ppo([0,0],[0,0],0,1);close(p.ratio,1);close(p.loss,-1);close(p.gradLogits[0],-.5);close(p.gradLogits[1],.5);
+const clipped=ppo([5,-5],[0,0],0,1,.2);assert.equal(clipped.active,false);close(clipped.gradLogits[0],0);
+assert.deepEqual(stats([[1,0],[-1,0]]).shape,[2,2]);console.log("micro_training_flows: 18 checks PASS");

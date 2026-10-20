@@ -1,0 +1,13 @@
+const assert=require("node:assert/strict"),P=require("../paper_patches.js");const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
+const x=[[1,2]],w=[[1,0],[0,1]],a=[[1],[2]],b=[[3,4]];
+const l=P.lora(x,w,a,b,2);assert.deepEqual(l.output,[[31,42]]);assert.equal(l.contract.frozenBase,true);
+const d=P.dora(x,w,a,b,[[2,3]],1);assert.deepEqual(d.output.length,1);
+for(let j=0;j<2;j++)near(Math.hypot(...d.effectiveWeight.map(row=>row[j])),[2,3][j]);
+const q=[[1,0],[0,1]],k=[[1,0],[0,1]],v=[[3,4],[5,6]];
+const full=P.onlineAttention(q,k,v,2),tile=P.onlineAttention(q,k,v,1);
+for(let i=0;i<2;i++)for(let j=0;j<2;j++)near(full.output[i][j],tile.output[i][j]);
+assert.equal(full.schedule.storesFullAttention,false);
+assert.equal(P.validateCatalog().variants,5);
+assert.throws(()=>P.dora(x,[[0,0],[0,0]],[[0],[0]],[[0,0]],[[1,1]]),/zero direction/);
+assert.throws(()=>P.lora(x,w,[[1]],b),/invalid LoRA dimensions/);
+console.log("paper patches numerical contracts PASS");

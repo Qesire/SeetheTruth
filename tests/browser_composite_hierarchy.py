@@ -39,7 +39,7 @@ class CompositeHierarchyChromium(unittest.TestCase):
         self.errors=[]
         self.p.on("pageerror",lambda e:self.errors.append(str(e)))
         self.p.goto(self.base+"/learn.html",wait_until="domcontentloaded")
-        self.p.wait_for_function("document.querySelectorAll('#palette [data-add]').length===45")
+        self.p.wait_for_function("window.SeetheTruthLearning && document.querySelectorAll('#palette [data-add]').length===window.SeetheTruthLearning.KINDS.length")
     def tearDown(self):
         self.assertEqual(self.errors,[],"JavaScript errors")
         self.p.close()
@@ -89,7 +89,7 @@ class CompositeHierarchyChromium(unittest.TestCase):
         for _ in range(3):
             p.locator("#zoomIn").click()
         self.assertGreaterEqual(float(p.locator("#board").evaluate("(e) => e.style.zoom")),0.9)
-        self.assertIn("手动放大",p.locator("#fitLabel").inner_text())
+        self.assertIn("手动缩放",p.locator("#fitLabel").inner_text())
         visible=p.evaluate("""() => {
             const vp=document.querySelector('#viewport').getBoundingClientRect();
             const qk=document.querySelector('[data-node="qk"]').getBoundingClientRect();
