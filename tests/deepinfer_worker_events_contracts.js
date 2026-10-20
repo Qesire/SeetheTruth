@@ -33,8 +33,11 @@ for(const run of [zos,serial,pending]){
  }
  for(const resource of ['CPU','GPU']){
   const events=run.events.filter(e=>e.resource===resource);
-  for(let i=1;i<events.length;i++)
+  for(let i=1;i<events.length;i++){
    assert.ok(events[i-1].end<=events[i].start,resource+' double-booked');
+   assert.ok(events[i].dependsOn.includes(events[i-1].id),
+    resource+' missing explicit resource predecessor edge');
+  }
  }
  const ids=run.released.map(x=>x.step);
  assert.equal(ids.length,new Set(ids).size,'requests may be delivered only once');
