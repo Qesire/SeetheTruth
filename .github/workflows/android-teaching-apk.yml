@@ -30,8 +30,10 @@ jobs:
           test -x "$MANAGER"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           "$MANAGER" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
-      - name: Check teaching-only asset policy
-        run: node tests/android_teaching_contracts.js
+      - name: Check Android offline policy and shared PC curriculum
+        run: |
+          node tests/android_teaching_contracts.js
+          node tests/teaching_curriculum_contracts.js
       - name: Assemble signed debug APK (not a Play Store release)
         run: gradle -p android --no-daemon :app:assembleDebug --stacktrace
       - name: Verify real APK contains offline lessons but no Python/backend
@@ -40,7 +42,7 @@ jobs:
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -t "$APK" > /dev/null
-          for f in android_teaching.html android_teaching_mode.js learn.html block_catalog.js deepinfer_scheduler_lab.html; do
+          for f in teaching.html teaching_curriculum.js teaching_hub.js deepinfer_prefill_policy.js mobile_teaching.css teaching_edition.js android_teaching.html android_teaching_mode.js learn.html block_catalog.js deepinfer_scheduler_lab.html; do
             unzip -Z1 "$APK" | grep -Fx "assets/$f" >/dev/null || { echo "Missing bundled $f"; exit 1; }
           done
           if unzip -Z1 "$APK" | grep -E '^assets/.*\.(py|pt|pth|ckpt|safetensors)$'; then
