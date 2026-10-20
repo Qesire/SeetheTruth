@@ -348,7 +348,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("为什么 Loop Transformer",info)
         self.assertIn("xLLM-Loop",info)
         self.assertIn("Winject",info)
-        self.assertIn("额外",info)
+        self.assertIn("每轮增加",info)
         self.assertEqual(p.locator('[data-node="Winject"]').get_attribute("data-industrial-ref"),"loop_injection")
         p.locator('[data-node="Winject"] .block-head').hover()
         p.locator("#paperHoverInspector").wait_for(state="visible",timeout=5000)
