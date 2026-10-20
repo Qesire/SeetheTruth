@@ -19,6 +19,14 @@ assert.equal(pressure.summary.recomputes,2);
 assert.equal(pressure.summary.finalFreeBlocks,6);
 assert.equal(pressure.worker.steps.length,4);
 assert.equal(pressure.worker.released.length,4);
+assert.equal(pressure.executionProof.length,4);
+pressure.executionProof.forEach((proof,i)=>{
+ assert.equal(proof.forwardEvent,'s'+i+'-forward');
+ assert.deepEqual(proof.batch,pressure.worker.steps[i].sequenceIds);
+ for(const id of proof.batch)assert.ok(proof.physicalBlockTables[id].length>0,
+   'ownership must be frozen BEFORE possible end-of-cycle completion: '+id);
+});
+assert.deepEqual(pressure.executionProof[2].physicalBlockTables.A,pressure.decisions[2].dispatchBlocks.A);
 pressure.decisions.forEach((d,i)=>{
  assert.deepEqual(d.scheduled,pressure.worker.steps[i].sequenceIds,'Worker batch must equal scheduled KV ownership batch');
  assert.ok(!d.scheduled.some(id=>d.preempted.some(p=>p.id===id)), 'preempted cannot forward in current step');
