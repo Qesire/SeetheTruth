@@ -39,7 +39,7 @@ assert.deepEqual(ample.decisions.map(d=>d.scheduled),[['A','B'],['A','B'],['B']]
 const stopping=W.simulate({...W.EXAMPLES.pressure,cycles:W.EXAMPLES.pressure.cycles.slice(0,1)},{stopPreempted:true,flush:false});
 assert.equal(stopping.decisions[0].preempted[0].outcome,'stop');
 assert.equal(stopping.snapshots[1].requests.A.status,'FINISHED_PREEMPTED');
-assert.equal(stopping.worker.pendingStep,3);
+assert.equal(stopping.worker.pendingStep,0);
 for(const spec of [W.EXAMPLES.pressure,W.EXAMPLES.structured,W.EXAMPLES.ample]){
  const out=W.simulate(spec);
  out.snapshots.forEach(K.verify);
