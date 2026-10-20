@@ -74,7 +74,7 @@ class DeepInferKVBrowser(unittest.TestCase):
         p.locator("#timeline .entry").last.click()
         last=p.evaluate("window.SeetheTruthLastKVState")
         self.assertEqual(last["requests"]["X"]["status"],"FINISHED_PREEMPTED")
-        self.assertEqual(last["free"].length if False else len(last["free"]),4)
+        self.assertEqual(len(last["free"]),4)
         p.locator("#operations").evaluate('(e)=>{e.closest("details").open=true;}')
         p.locator("#operations").fill('{"config":{"numBlocks":4,"blockSize":4},"ops":[{"op":"arrive","id":"A","tokenLen":16},{"op":"allocate","id":"A"}]}')
         p.locator("#apply").click()
