@@ -17,6 +17,8 @@ on:
       - 'tests/causal_transformer_codegen_contracts.js'
       - 'tests/industrial_gqa_tied_codegen_contracts.js'
       - 'tests/loop_transformer_codegen_contracts.js'
+      - 'loop_input_injection.js'
+      - 'tests/loop_input_injection_contracts.js'
       - 'tests/loop_depth_supervision_contracts.js'
       - 'tests/loop_consistency_tradeoffs_contracts.js'
       - 'tests/loop_residual_scaling_contracts.js'
@@ -49,5 +51,6 @@ jobs:
       - run: python -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
       - run: node --check torch_codegen.js
+      - run: node --check loop_input_injection.js && node tests/loop_input_injection_contracts.js
       - run: node tests/adaptive_token_depth_contracts.js
       - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js && node tests/token_embedding_ce_codegen_contracts.js && node tests/causal_transformer_codegen_contracts.js && node tests/industrial_gqa_tied_codegen_contracts.js && node tests/loop_transformer_codegen_contracts.js && node tests/loop_depth_supervision_contracts.js && node tests/loop_consistency_tradeoffs_contracts.js && node tests/loop_residual_scaling_contracts.js
