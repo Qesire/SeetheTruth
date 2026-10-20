@@ -15,6 +15,17 @@ const UT="https://arxiv.org/abs/1807.03819";
 const HUGINN="https://github.com/seal-rg/recurrent-pretraining";
 const MOR="https://github.com/raymin0223/mixture_of_recursions";
 const ENTRIES=Object.freeze({
+ loop_injection:Object.freeze({
+  title:"Huginn / xLLM-Loop · 为什么重新注入初始表示？",
+  formula:"H'₀ = [H₀; E] W_inj; H'₁ = [H₁; E] W_inj; H_{r+1}=Fθ(H'ᵣ)",
+  flow:"完整 Loop Transformer 两轮 Attention/SwiGLU 不复制一份参数；每轮入口先用同一块 Winject[8,4] 将当前状态与初始 Token Embedding[3,4] 拼接后线性变换（本课 bias=False）。后续经过真正的因果 Attention 与 FFN；梯度在共享 Winject 汇聚。",
+  practice:"xLLM-Loop 源码 LinearInputInjection 明确执行 cat([state,input_embeds],dim=-1) 再做 2d→d Projection；Huginn 在每个 recurrent block update 前做 injection。这让原输入能直接到达多次迭代的深度入口。",
+  trap:"保留原始输入信息不是自动带来准确率收益；每轮多一个 Linear GEMM 和更大的 concat 激活。本教学图没有 Huginn prelude/coda、层级状态、分布式 TP 和真实权重，bias=False。重连后不能继续冒称忠实源码。",
+  exercise:"设置 Winject=[I;0] 与无注入 Loop 逐节点对齐；改为 [I;0.15I] 后检查两轮状态差异、共享参数有限差分、AdamW 恢复，以及最后 Token 不影响此前位置。",
+  epistemic:"SOURCE_ALIGNED_LINEAR_INJECTION_BIAS_FALSE; FULL_CPU_VJP_NOT_FULL_HUGINN",
+  papers:[{id:"code",title:"xLLM-Loop · real LinearInputInjection source",url:"https://github.com/ifm-ai/xllm-loop/blob/main/xllm/models/looped.py"},
+          {id:"part2",title:"Towards Looped Models Done Right II · input injection ablations",url:"https://arxiv.org/abs/2610.06833"}]
+ }),
  mor_hard:Object.freeze({title:"MoR · 为什么逐 Token 分配不同循环深度？",formula:"budget[t]∈{0,1,2}; Mᵣ[t,d]=1 iff budget[t]≥r; Hᵣ=where(Mᵣ,Fθ(Hᵣ₋₁),Hᵣ₋₁)",
  flow:"第 44 课两轮 Attention/SwiGLU 复用八组共享 Parameter。每轮计算 candidate，再通过 0/1 二值 Mask 选择更新或保留上一轮状态；已退出 Token 的旧隐藏向量可继续作为后续 Attention 的 K/V 上下文。离散预算不可导。",
  practice:"MoR 将循环参数共享与 Token 级自适应深度结合；只有通过实际压缩活跃 Token、控制 Attention K/V 缓存和 kernel 调度，才能将可省的算术量转换为真实执行收益。",
@@ -46,6 +57,14 @@ const IDS=Object.freeze({
  mask:"mask",scale0:"mask",scale1:"mask",prob0:"mask",prob1:"mask",
 });
 function kind(graph,id){
+ if(graph?.title==="任务 45 · Huginn-Linear 启发 · 共享循环输入重新注入"){
+   const Injector=typeof module==="object"&&module.exports?require("./loop_input_injection.js"):
+     (typeof window!=="undefined"?window.SeetheTruthLoopInjection:null);
+   try{if(!Injector)throw Error("not loaded");Injector.inspect(graph);}catch(e){return null;}
+   return ["Winject","lookup","r0_injection_concat","r1_injection_concat",
+     "r0_injected_state","r1_injected_state","r0_attn_norm","r1_attn_norm","loss"].includes(id)?"loop_injection":null;
+ }
+
  if(graph?.title==="任务 44 · MoR 启发 · 逐 Token 硬深度预算与状态停止"){
    const Adaptive=typeof module==="object"&&module.exports?
      require("./adaptive_token_depth.js"):
