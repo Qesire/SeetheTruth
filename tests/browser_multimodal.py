@@ -68,5 +68,36 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(p.locator('#palette [data-add="audio_stft_power"]').count(),1)
         self.assertEqual(p.locator('#palette [data-add="video_tubelet"]').count(),1)
 
+
+    def test_trainable_conv_mel_and_ddim_real_browser(self):
+        p=self.page
+        cases=[
+          ("vision_learned_conv","conv","vision_conv2d","F.conv2d"),
+          ("audio_mel_chain","mel","audio_mel_filterbank","torch.tensor"),
+          ("diffusion_ddim_chain","step_t","diffusion_ddim_step","torch")
+        ]
+        for i,(preset,node,kind,torch_anchor) in enumerate(cases):
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator('[data-node="'+node+'"]').count(),1)
+            p.locator("#run").click()
+            self.assertNotIn("尚未运行",p.locator("#stepInfo").inner_text())
+            p.locator('[data-node="'+node+'"] .block-head').click()
+            self.assertGreaterEqual(p.locator("#blockKnowledge .knowledge-sources a").count(),1)
+            p.locator("#pythonBackend").select_option("numpy")
+            with p.expect_download() as d:
+                p.locator("#exportPython").click()
+            script=Path(d.value.path()).read_text(encoding="utf8")
+            self.assertIn("# "+kind,script)
+            p.locator("#pythonBackend").select_option("torch")
+            with p.expect_download() as d:
+                p.locator("#exportPython").click()
+            script=Path(d.value.path()).read_text(encoding="utf8")
+            self.assertIn(torch_anchor,script)
+            p.screenshot(path=str(DEST/("advanced-%02d-"%i+preset+".png")),
+                         full_page=True,animations="disabled")
+        self.assertEqual(p.locator('#palette [data-add="vision_conv2d"]').count(),1)
+        self.assertEqual(p.locator('#palette [data-add="audio_mel_filterbank"]').count(),1)
+        self.assertEqual(p.locator('#palette [data-add="diffusion_ddim_step"]').count(),1)
+
 if __name__=="__main__":
     unittest.main()

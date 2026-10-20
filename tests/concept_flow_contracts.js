@@ -53,6 +53,16 @@ function perKind(k){
   return;
  }
 
+ if(['vision_conv2d','audio_mel_filterbank','diffusion_ddim_step'].includes(k)){
+  const p=L.defs[k].params,n={id:k,kind:k,params:{...p}};
+  const dims=k==='vision_conv2d'?{x:[4,4],kernel:[2,4]}:k==='audio_mel_filterbank'?{x:[3,3]}:{x:[2,4],epsilon:[2,4]};
+  const values=Object.fromEntries(Object.entries(dims).map(([key,sh])=>[key,mock(sh,(i,j)=>
+    k==='audio_mel_filterbank'?0.1+(i+j)/4:0.2+i*.1+j*.05)]));
+  const inferred=C.analyze(n,dims),actual=B.execute(n,values);
+  assert.deepEqual(inferred.shape,actual.shape,k+' named HWC/Mel/DDIM shape parity');
+  assert.ok(actual.values.flat(Infinity).every(Number.isFinite));
+  return;
+ }
  if(['vision_patchify','video_tubelet','audio_stft_power','audio_log_power'].includes(k)){
   const p=L.defs[k].params,n={id:k,kind:k,params:{...p}};
   const dims=k==='vision_patchify'?[4,4]:k==='video_tubelet'?[8,2]:k==='audio_stft_power'?[1,8]:[3,3];

@@ -6,6 +6,8 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ ddim_source:["Diffusers official deterministic DDIM scheduler epsilon path, alpha cumulative products and clipping options","https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py"],
+
  vit_patch:["Hugging Face ViT patch projection source: Conv2d kernel=stride=patch_size","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vit/modeling_vit.py"],
  vivit_tubelet:["Hugging Face ViViT tubelet embedding: 3D convolution + sequence flatten","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vivit/modeling_vivit.py"],
  whisper_audio:["OpenAI Whisper audio: windowed STFT, mel filters and log normalization","https://github.com/openai/whisper/blob/main/whisper/audio.py"],
@@ -68,6 +70,10 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ vision_conv2d:["输入按 HWC 格式从 [H,W·Cin] 恢复每像素的通道向量；显式 kernel=[Cout,Kh·Kw·Cin] 是真正的参数端口。输出高度和宽度由 valid 互相关的 floor((size-kernel)/stride)+1 决定，每个输出通道沿全部局部邻域加权求和。","PyTorch Conv2d 实现的是 cross-correlation 而不是数学上反转权重的卷积。ViT 常把 patch embedding 实现为 kernel=stride=patch_size 的可训练 Conv2d；相比无权重 Patchify，它融合重排与线性投影。","不支持 padding、dilation、groups、bias 与高级算法选择；JavaScript 数值合同不自动意味着具有 Conv2D VJP。独立 PyTorch 脚本可通过显式 Parameter 和 autograd 计算真实权重梯度。","将 [4,4] 灰度图与 [2,4] 卷积核连接，手动计算左上角输出并与 PyTorch 对照；再修改 kernel 权重确认输出变化。","vit_patch"],
+ audio_mel_filterbank:["STFT 给出 [frame,Nfft/2+1] 非负功率。本块根据采样率和 HTK m=2595log10(1+f/700) 构造 Mel 上等间距的 band-edge，计算三角形频域权重矩阵，然后做真实频率轴到 Mel 频带轴的线性求和。","实际 Whisper 使用离线存放的特定 Mel filters，以及日志压缩、相对裁剪和归一化；HTK 未做 Slaney 面积归一化，且极小 FFT 下部分窄带可能得到零输出。独立来源只证明概念而非数值等价。","本积木不是 Whisper 的完整 log-Mel；仅接受频率数匹配 fftSize 的非负功率，禁止负值。这里的 sampleRate 是频率坐标比例，不代表实际对导入音频重采样。","STFT Power → HTK Mel → Log Power 三步依次插入，检查三角频带是否重叠、每帧带宽缩减和空频带在低 Nfft 时的零响应。","whisper_audio"],
+ diffusion_ddim_step:["按 epsilon prediction 从当前带噪 latent xt 和噪声估计 ε 恢复 x0=(xt−√(1−αt) ε)/√αt，再按 eta=0 的 DDIM 方向项重建较早一步的 xprev。两路张量必须同形，αprod_previous≥αprod_t。","Diffusers DDIMScheduler 使用 alpha_cumprod[t]、alpha_cumprod[prev]、可选 prediction_type、eta 随机项、阈值与 sample clipping；本积木只保留 epsilon/eta=0 且没有阈值裁剪的确定性特例，绝不混用 DDPM 方差或 flow-matching ODE。","给出 xt 与 ε 并不意味着网络曾执行预测，也不会计算最终生成图像；多步采样需正确串联时序和调度的 alpha 值，不能对每步任意选择 alpha 而声称来自真实模型。","令 alphaT=0.36、alphaPrevious=0.64、ε=0，核对 xprev/xt=4/3；再把 epsilon 改成非零并复核两个系数，观察轨迹变化。","ddim_source"],
+
  vision_patchify:["明确从行优先排列的 [H,W·C] 重构 HWC，再按空间网格提取不重叠 Ph×Pw Patch，排列为 [N,Ph·Pw·C]；数值位置逐点保留。","ViT 官方实现将 Patch Embedding 通过卷积核大小与步幅均为 patch_size 的 Conv2d 实现；Patchify 仅是无需学习的张量重排，后续还要做投影，不能将两者等同。","这一实现不进行图像解码、插值和 CLS/位置 Embedding；没有训练好的卷积权重。贴有 ViT 来源不意味着本积木等价于 ViT 完整编码器。","用 H=W=4，Ph=Pw=2 查看四个 Patch 的原始索引顺序，再用 Linear 投影、Attention 组合 ViT 核心计算路径。","vit_patch"],
  video_tubelet:["对 [T·H,W·C] 帧优先载体恢复 THWC，按 Pt×Ph×Pw 提取时空 Tubelet，顺序为时间 Tubelet→空间 y→空间 x，内部顺序为 dt,dy,dx,c。","ViViT 的 Tubelet Embedding 使用 3D 卷积按时空块切分并学习投影；Wan2.2 VAE 的因果 3D 卷积另含有时间 padding 和流式缓存状态，不应与这一步静态无重叠展平相混淆。","本积木没有实际视频容器解码、音画同步、3D 卷积权重、重叠卷积、时间因果缓存；固定 Pt 也不是自适应帧率采样。","对 T=4,H=2,W=2,Pt=2,Ph=2,Pw=1 测试 Tubelet [4,4]，然后对比 Pt=1 时 Token 数增加、每个 Token 维减少。","vivit_tubelet,wan_vae"],
  audio_stft_power:["对单声道 [1,N] 数值波形以 fftSize=Nfft、hop 为步长取非重叠或重叠帧；周期 Hann 窗点乘后计算每一帧的实数 DFT 正频率功率 |X|²。","Whisper 官方 log_mel_spectrogram 使用 Hann-window torch.stft、功率谱、Mel 滤波矩阵及对数压缩；本块只实现其中可独立验证的 STFT 功率步，不包含 Mel 滤波或音频解码。","不允许将 fftSize=4/hop=2 的课堂数值解释为 Whisper 官方 16kHz/NFFT400/HOP160 采样或真实听觉信号。这里不做 centered padding，因此边界帧也不同。","输入 [1,8] 改 hop 2→1，看时间帧数改变；再接 Log Power，观察幅度平方、频率轴和静音 floor。","whisper_audio"],

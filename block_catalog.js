@@ -12,6 +12,24 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  vision_conv2d:block("视觉 HWC 卷积投影","Real Conv2D Cross-Correlation","vision",["x","kernel"],
+    {height:4,width:4,channels:1,kernelHeight:2,kernelWidth:2,stride:2,outChannels:2},
+    "Y[y,x,co] = Σ_(dy,dx,ci) X[y·s+dy,x·s+dx,ci] · W[co,dy,dx,ci]",
+    "使用显式 kernel 端口提供权重，计算与 PyTorch Conv2d 相同的互相关；二维载体按 HWC 解释，输出仍是 [Hout,Wout·Cout]。",
+    "将 2×4 可训练 Parameter 连接到 kernel；对比 ViT patch embedding 在 stride=patch 时的特殊 Conv2D 情况。",
+    "没有 padding、dilation、groups 或 bias；不等同于已训练 ViT 权重，也不代表真实 GPU kernel 延迟。"),
+  audio_mel_filterbank:block("音频 HTK-Mel 三角滤波","Audio Mel Triangular Filterbank","audio",["x"],
+    {fftSize:4,bands:2,sampleRate:8000},
+    "M[t,m] = Σ_k S[t,k] · triangular_HTK(k·sampleRate/Nfft,m)",
+    "把真正的非负短时功率谱映射到 HTK Mel 频带；各三角带在 Mel 频率上等距，权重作为透明确定性常量。",
+    "接在 Hann-STFT Power 后，再连 Log10；改变 bands 观察 [frame,mel] 形状与不同频带响应。",
+    "这里是 HTK 三角带，不是 Slaney-normalized Whisper/OpenAI Mel 滤波器；没有音频采样、重采样、VAD 或边界补零。"),
+  diffusion_ddim_step:block("扩散 DDIM 确定性去噪一步","Deterministic DDIM ε Step","generative",["x","epsilon"],
+    {alphaT:0.36,alphaPrevious:0.64},
+    "x0=(xt−√(1−αt)·ε)/√αt; xprev=√αprev·x0+√(1−αprev)·ε",
+    "执行真实的 epsilon 预测参数化、eta=0 的 DDIM 单步更新，显式保留同形的带噪 latent 和预测噪声分支。",
+    "用同一 xt 对比 epsilon=0 与非零值，再组合多个按 alpha 累积乘积递增的去噪步骤。",
+    "不包含任何 U-Net/DiT 预测器、随机 eta、阈值裁剪、调度时间表、CFG 或实际图像解码；不能据此判断生成质量。"),
   vision_patchify:block("图像空间 Patch 展平","Image Patchify (HWC → Tokens)","vision",["x"],
     {height:4,width:4,channels:1,patchHeight:2,patchWidth:2},
     "[H,W·C] → [(H/Ph)(W/Pw),Ph·Pw·C]",
@@ -276,6 +294,10 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(["vision_conv2d","audio_mel_filterbank","diffusion_ddim_step"].includes(kind)){
+     const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
+     if(!Adv)fail("multimodal advanced kernel unavailable");Adv.validate(kind,n);
+   }
    if(["vision_patchify","video_tubelet","audio_stft_power","audio_log_power"].includes(kind)){
      const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
      if(!Multi)fail("multimodal kernel unavailable");Multi.validate(kind,n);
@@ -409,6 +431,11 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'vision_conv2d':case 'audio_mel_filterbank':case 'diffusion_ddim_step':{
+      const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
+      if(!Adv)fail("multimodal advanced kernel unavailable");
+      value=Adv.execute(kind,inputs,params);break;
+    }
     case 'vision_patchify':case 'video_tubelet':case 'audio_stft_power':case 'audio_log_power':{
       const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
       if(!Multi)fail("multimodal kernel unavailable");
