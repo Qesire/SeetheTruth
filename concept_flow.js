@@ -19,6 +19,7 @@
   const groups=Object.freeze({
     data:"数据来源与表征",compute:"特征映射与算术",norm:"归一化：尺度或中心调整",
     vision:"图像空间与 Patch Token",audio:"音频时频表示",video:"视频时空 Tubelet",
+    generative:"扩散模型的噪声状态更新",
     activate:"非线性与权重分布",combine:"信息融合与残差候选",
     attention:"跨 token 信息汇聚",loss:"训练目标（前向定义）",
     shape:"张量轴与布局改变",reduce:"跨特征聚合",position:"位置信息注入",
@@ -36,7 +37,15 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(["vision_patchify","video_tubelet","audio_stft_power","audio_log_power"].includes(kind)){
+    if(["vision_conv2d","audio_mel_filterbank","diffusion_ddim_step"].includes(kind)){
+      const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
+      const tensorShapes=Object.fromEntries(L.defs[kind].ports.map(key=>[key,get(key)]));
+      output=Adv.shape(kind,tensorShapes,p);
+      rule=kind==="vision_conv2d"?"给定 HWC 和明示 2D 卷积参数矩阵，执行互相关，输出 Hout×(Wout·Cout)":
+       kind==="audio_mel_filterbank"?"对真正非负功率频谱应用参数指定的 HTK Mel 三角频带权重投影":
+       "根据两组累积 alpha 参数对 xt 与 epsilon 执行确定性 DDIM 逆扩散一步";
+      conditions.push("仅微型真实数学计算；未推断 pretrained 模型、音频解码或 GPU 性能");
+    }else if(["vision_patchify","video_tubelet","audio_stft_power","audio_log_power"].includes(kind)){
       const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
       const x=get("x");output=Multi.shape(kind,x,p);
       rule=kind==="vision_patchify"?"明确 HWC 网格轴并按非重叠空间 Patch 展平，未执行学习投影":
