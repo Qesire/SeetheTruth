@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · DeepInfer Prefill 课堂</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top right,#1a4660,#071322 65%);color:#eaf6ff;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:15px 22px;gap:13px;border-bottom:1px solid #36536a}nav{display:flex;gap:14px;flex-wrap:wrap}a{color:#8fe2ec}
+main{max-width:1240px;margin:auto;padding:18px;display:grid;gap:16px}.kicker{color:#79cee0;font:700 11px monospace;letter-spacing:.1em}h1{font-size:29px;margin:5px 0}h2{font-size:18px;margin:6px 0 12px}p{color:#aac8d7;margin:8px 0}.two{display:grid;grid-template-columns:1fr 1fr;gap:15px}.panel{background:#11283c;border:1px solid #355771;border-radius:13px;padding:18px;min-width:0}
+.controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:12px 0}label{display:flex;flex-direction:column;gap:5px;min-width:100px}select,input,button{border:1px solid #426980;border-radius:8px;padding:9px;background:#123248;color:#edfaff;font:inherit}button{background:#156878;cursor:pointer}.metric{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metric div{padding:10px;background:#18384e;border:1px solid #36546a;border-radius:9px}.metric strong{display:block;font:700 19px monospace;color:#75e3c0}.metric small{color:#a9c5d4}
+.tokenstrip{display:flex;gap:5px;overflow:auto;padding:10px 0}.token{min-width:45px;padding:9px 4px;text-align:center;background:#26495c;border:1px solid #53718a;border-radius:6px;font:11px monospace}.token.img{background:#463c63}.token.pad{background:#654d2a}.token.selected{outline:2px solid #7cdec5}.details{margin-top:12px;background:#0c2132;border:1px solid #345367;border-radius:8px;padding:11px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 monospace}table{border-collapse:collapse;width:100%;font-size:12px}td,th{padding:9px;text-align:left;border-bottom:1px solid #29465c}th{color:#c2e3ed}code{color:#95dfdf}small{color:#a7c5d4}
+@media(max-width:850px){.two{grid-template-columns:1fr}h1{font-size:25px}}
+</style></head><body>
+<header><strong>SEETHE TRUTH · DEEPINFER PREFILL</strong><nav><a href="android_teaching.html">移动课堂</a><a href="learn.html">积木学习</a><a href="deepinfer_scheduler_lab.html">Decode 调度</a></nav></header>
+<main><section><div class="kicker">PREFILL / DECODE CONTROL FLOW</div><h1>两阶段 Prefill 投票与多模态 Chunk 边界</h1><p>根据 DeepInfer 官方 C++ Scheduler 计算真实的调度决策：NORMAL 模式何时由 Decode 切换 Prefill，以及一张图片的 IMG + PAD Tokens 为什么必须作为完整单位处理。这里的操作是可检验的数学与决策教学，不运行 GPU 服务。</p></section>
+<div class="two"><section class="panel"><div class="kicker">01 · NORMAL ENGINE</div><h2>ALL / ANY 两阶段投票</h2>
+<p>ALL 要求全 DP 组都有 Prefill 需求；ANY 只要求任意 Rank 想执行。在重合点优先 ANY；如果第一轮赞成但无人真正排上任务，则第二轮回退 Decode。</p>
+<div class="controls"><label>Decode 步数<input id="decodeStep" type="number" value="4" min="0" max="100"></label><label>ALL 间隔<input id="allInterval" type="number" value="2" min="1" max="32"></label><label>ANY 间隔<input id="anyInterval" type="number" value="4" min="1" max="32"></label></div>
+<div class="controls"><label>Rank 0 <select id="rank0"><option value="yes">想做，且可排到</option><option value="later">想做，但未排到</option><option value="no">无有效 Prefill</option></select></label>
+<label>Rank 1 <select id="rank1"><option value="no">无有效 Prefill</option><option value="yes">想做，且可排到</option><option value="later">想做，但未排到</option></select></label><button id="evalVote">计算调度</button></div>
+<div class="metric"><div><small>投票点</small><strong id="votePoint">—</strong></div><div><small>执行类型</small><strong id="voteStep">—</strong></div><div><small>执行 Prefill Rank</small><strong id="voteCount">—</strong></div></div>
+<div class="details" id="voteDetail" aria-live="polite"></div></section>
+<section class="panel"><div class="kicker">02 · IMAGE-SAFE CHUNK</div><h2>IMG + PAD Token 不可随意切分</h2>
+<p>在图片 PAD 中间截断，会产生不完整的图片前缀。首个请求可以尝试扩展到图片结束；如果批次预算不足则回退到 IMG 边界。</p>
+<div class="controls"><label>输入场景<select id="scenario"><option value="shrink">预算不足：回退图片前</option><option value="grow">预算充足：保留整张图</option><option value="busy">已有请求：避免 PAD 中间截断</option><option value="aligned">纯文本与 CP 对齐</option></select></label><button id="evalChunk">重新计算</button></div>
+<div class="tokenstrip" id="tokens" aria-label="Token 图片边界示意"></div>
+<div class="metric"><div><small>本次 Q 长度</small><strong id="chunkQ">—</strong></div><div><small>仍待 Prefill</small><strong id="chunkRemaining">—</strong></div><div><small>当前状态</small><strong id="chunkStatus">—</strong></div></div>
+<div class="details" id="chunkDetail" aria-live="polite"></div></section></div>
+<section class="panel"><h2>设计动机与证据边界</h2><table><thead><tr><th>机制</th><th>工程收益</th><th>代价或限制</th></tr></thead><tbody>
+<tr><td>ALL 投票</td><td>减少无事可做的 Rank 陪跑空 Prefill</td><td>孤立新请求可能等待</td></tr>
+<tr><td>ANY 投票</td><td>对孤立 Rank 提供等待上限的机会</td><td>其他 Rank 必须保持步型一致</td></tr>
+<tr><td>第二轮投票</td><td>防止资源不足导致连续空 Prompt</td><td>多一次同步决策</td></tr>
+<tr><td>图片 Chunk 边界</td><td>保护多模态图片单位完整性</td><td>可能缩短本轮工作量</td></tr></tbody></table>
+<p><small>直接依据 <a href="https://github.com/deepseek-ai/DeepInfer/blob/main/csrc/engine/scheduler.hpp" target="_blank" rel="noopener noreferrer">DeepInfer scheduler.hpp 中 NORMAL vote、_schedule_prefill 和 _adjust_chunk_size</a>。图片标志使用符号化 TEXT / IMG / PAD / AUDIO；未复现真实 Token ID、图片 Embedding、GPU Memory、分布式 AllReduce 或物理时间。</small></p></section>
+</main><script src="deepinfer_prefill_policy.js"></script><script src="deepinfer_prefill_lab.js"></script></body></html>

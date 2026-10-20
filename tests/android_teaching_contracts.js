@@ -8,7 +8,7 @@ const home=read('android_teaching.html'),policy=read('android_teaching_mode.js')
 const links=[...home.matchAll(/href="([^"]+)"/g)].map(m=>m[1]);
 const expected=['learn.html','tradeoffs.html','paper_lab.html',
  'deepinfer_worker_lab.html','deepinfer_kv_lifecycle_lab.html',
- 'deepinfer_scheduler_lab.html','cache.html'];
+ 'deepinfer_scheduler_lab.html','deepinfer_prefill_lab.html','cache.html'];
 for(const name of expected){
  assert.ok(links.some(h=>h.split('?')[0]===name),'missing learning entry '+name);
  assert.ok(fs.statSync(path.join(root,name)).isFile(),'missing bundled learning page '+name);
