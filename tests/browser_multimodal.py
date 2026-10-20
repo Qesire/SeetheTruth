@@ -99,5 +99,30 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(p.locator('#palette [data-add="audio_mel_filterbank"]').count(),1)
         self.assertEqual(p.locator('#palette [data-add="diffusion_ddim_step"]').count(),1)
 
+    def test_native_causal_conv3d_real_browser_and_code_export(self):
+        p=self.page
+        p.locator('[data-preset="video_causal_conv3d"]').click()
+        self.assertEqual(p.locator('[data-node="causal_conv"]').count(),1)
+        p.locator('#run').click()
+        self.assertNotIn("尚未运行",p.locator("#stepInfo").inner_text())
+        p.locator('[data-node="causal_conv"] .block-head').click()
+        card=p.locator('#blockKnowledge')
+        self.assertIn("因果",card.inner_text())
+        self.assertGreaterEqual(card.locator('.knowledge-sources a').count(),1)
+        p.locator('#pythonBackend').select_option('numpy')
+        with p.expect_download() as d:
+            p.locator('#exportPython').click()
+        numpy_source=Path(d.value.path()).read_text(encoding='utf8')
+        self.assertIn('for dt in range(2)',numpy_source)
+        p.locator('#pythonBackend').select_option('torch')
+        with p.expect_download() as d:
+            p.locator('#exportPython').click()
+        torch_source=Path(d.value.path()).read_text(encoding='utf8')
+        self.assertIn('F.conv3d(',torch_source)
+        self.assertIn('F.pad(',torch_source)
+        self.assertEqual(p.locator('#palette [data-add="video_causal_conv3d"]').count(),1)
+        p.screenshot(path=str(DEST/'native-5d-causal-conv3d.png'),
+                     full_page=True,animations='disabled')
+
 if __name__=="__main__":
     unittest.main()
