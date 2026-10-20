@@ -25,6 +25,8 @@ python atlas_server.py --port 8765
 
 NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需要 `python -m pip install torch`。后者的完整使用和真实执行合同见 [PyTorch 独立可训练代码](docs/pytorch-executable-training.md)。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
 
+**2026-10-20 DeepInfer 开源状态更正：** DeepSeek 已正式开源 [DeepInfer](https://github.com/deepseek-ai/DeepInfer) 真实离线推理框架及 [deepseek-recipe](https://github.com/deepseek-ai/deepseek-recipe) API/Prompt 转换组件；本项目已有的 TopK/Sparse Attention/Paged KV/Greedy Verify 是独立的 CPU 教学积木，**不是对 DeepInfer 引擎的完整复刻**。详见 [今日源码审计与差异](docs/deepinfer-day0-source-audit.md)。
+
 ## 当前学习工作台功能
 
 | 能力 | 已实现范围 | 明确限制 |
