@@ -82,7 +82,7 @@ $("scenario").addEventListener("change",()=>{
  catch(e){$("status").textContent="场景验证失败："+e.message}
 });
 $("stopPreempted").addEventListener("change",()=>{
- try{const next=S.simulate(spec,{stopPreempted:$("stopPreempted").checked});run=next;index=0;paint()}
+ try{applyNew(scenarioForPolicy($("scenario").value))}
  catch(e){$("status").textContent="无法设置抢占模式："+e.message}
 });
 $("previous").addEventListener("click",()=>{index=Math.max(0,index-1);paint()});
