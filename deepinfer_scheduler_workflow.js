@@ -101,6 +101,7 @@
     if(s.requests[id].status!=="RUNNING"||!s.requests[id].blocks.length)
      fail("scheduled request lacks active physical KV blocks: "+id);
    }
+   const dispatchBlocks=Object.fromEntries(scheduled.map(id=>[id,s.requests[id].blocks.slice()]));
    steps.push({mode:scheduled.length?"decode":"placeholder",sequenceIds:scheduled.slice()});
    const freeBeforeEnd=s.free.slice();
    for(const op of cyc.after||[])run(op,actions);
@@ -108,20 +109,26 @@
    const waitingIDs=Object.keys(s.requests).filter(id=>s.requests[id].status==="WAITING");
    waiting.push(...waitingIDs);
    decisions.push({cycle:idx,scheduled:scheduled.slice(),preempted,blocked,
-    waiting:waiting.slice(),freeBeforeEnd,freeAfter:s.free.slice(),
+    waiting:waiting.slice(),dispatchBlocks,freeBeforeEnd,freeAfter:s.free.slice(),
     kvRevision:s.revision,actions,reason:reason.concat("decode-only: preempted WAITING requests require explicit subsequent prefill admission")});
    snapshots.push(s);
   });
   const worker=Worker.simulate(steps,{zeroOverhead:true,flush,durations});
   if(worker.steps.length!==decisions.length)fail("Worker batch mismatch");
+  const executionProof=[];
   decisions.forEach((d,i)=>{
    if(worker.steps[i].sequenceIds.join(",")!==d.scheduled.join(","))fail("Worker executed unscheduled requests");
+   const forward=worker.events.find(event=>event.step===i&&event.stage==="forward");
+   if(!forward)fail("missing Worker Forward event for scheduled step "+i);
+   if(d.scheduled.some(id=>!d.dispatchBlocks[id]?.length))fail("Worker Forward lacks physically owned KV blocks");
+   executionProof.push({cycle:i,forwardEvent:forward.id,batch:d.scheduled.slice(),
+    physicalBlockTables:d.dispatchBlocks,ownershipPhase:"after Scheduler, before Worker sample/finish"});
   });
   // Resource and owner conservation was checked by K.advance at every change;
   // additionally verify all stored snapshots as independently replayable.
   snapshots.forEach(K.verify);
   return {config:spec.config,setup:spec.setup,cycles:spec.cycles,stopPreempted,
-   decisions,snapshots,worker,
+   decisions,snapshots,worker,executionProof,
    summary:{preemptions:decisions.reduce((sum,d)=>sum+d.preempted.length,0),
     recomputes:decisions.reduce((sum,d)=>sum+d.preempted.filter(p=>p.outcome==="recompute").length,0),
     terminalPreemptions:decisions.reduce((sum,d)=>sum+d.preempted.filter(p=>p.outcome==="stop").length,0),
