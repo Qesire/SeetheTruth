@@ -47,6 +47,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 - [Learning Studio](learn.html)：产品主入口、自由积木及代码导出。
 - [Architecture Trade-off Lab](tradeoffs.html)：交互比较 GQA 缓存、MoE 参数激活比例与 Loop Transformer 参数共享的解析成本；不表示真实 GPU 加速。
 - Learning Studio 的 **GRAPH COST** 折叠面板直接读取当前实际积木 DAG 的合法张量形状，核算明确覆盖的 MatMul/批量 MatMul/Linear MAC 和物理 Parameter 元素；未覆盖算子不计入总 FLOPs，不冒充 GPU 测速。
+  - 同一面板另计融合 Attention/GQA 的 QK/PV GEMM、路由专家 Linear 投影 MAC 与纯函数 Cache 快照元素；可固定当前积木图并与后续修改后的实际图逐项比较差值。不会把这些算术口径当作显存峰值或性能测量。
 - [训练状态教学](training.html)：独立的前向—损失—反向—梯度累积—AdamW/SGD 状态示例。
 - [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
 - [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
