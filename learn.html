@@ -200,6 +200,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="loopformer_consistency"><span class="num">42</span><span>LoopFormer 动机 · 长短深度一致性<span class="desc">深层 Detach 教师与浅层 MSE；“为什么”含真实参数/FLOPs 对照与方案边界</span></span></button>
   <button class="mission" data-preset="mor_token_depth_budget"><span class="num">44</span><span>MoR 启发 · 按 Token 选择循环预算<span class="desc">逐 Token 0/1/2 次状态更新、硬停止、BPTT；保留退出位置状态，不虚报稀疏加速</span></span></button>
   <button class="mission" data-preset="loop_residual_scaling"><span class="num">43</span><span>Loop Residual Scaling · 为什么按轮缩放？<span class="desc">2026 论文：1 / 1/√N / 1/N，控制变量，真实 loss 与梯度对照</span></span></button>
+  <button class="mission" data-preset="loop_input_injection"><span class="num">45</span><span>Huginn-Linear · 原输入重新注入<span class="desc">共享 W[state;input]，解释信息保留、计算成本与稳定性；真实反传和 Python 导出</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -282,6 +283,7 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
+<script src="loop_input_injection.js"></script>
 <script src="adaptive_token_depth.js"></script>
 <script src="loop_consistency.js"></script>
 <script src="loop_design_tradeoffs.js"></script>
