@@ -37,4 +37,13 @@ for(const name of ['inference_sparse_decode','inference_paged_kv','inference_spe
   assert.ok(step.values.flat(Infinity).every(Number.isFinite),name+'/'+step.id);
  }
 }
+const Cost=require('../graph_cost_report.js');
+const paired=Cost.profile(L.preset('inference_sparse_decode'));
+const sparseRow=paired.rows.find(row=>row.id==='sparse');
+const denseRow=paired.rows.find(row=>row.id==='dense');
+assert.equal(sparseRow.attentionMAC,2*2*(4+3),'selected K=2 MAC must use selected keys only');
+assert.equal(denseRow.attentionMAC,2*4*(4+3),'dense MAC must use all Tk=4 keys');
+assert.equal(paired.attentionMAC,84,'cost report counts both actual separate calls');
+assert.ok(paired.unprofiledKinds.some(v=>v.includes('inference_sparse_attention')),
+ 'do not claim Softmax or Indexer hardware FLOPs');
 console.log('INFERENCE_OPS_CONTRACTS_PASS topk ties, sparse softmax, page mapping, causal guard, greedy prefix, four lessons');
