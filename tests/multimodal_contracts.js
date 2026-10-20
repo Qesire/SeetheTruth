@@ -29,7 +29,7 @@ assert.throws(()=>M.shape('vision_patchify',[4,4],{...ip,patchHeight:3}),/divisi
 assert.throws(()=>M.shape('video_tubelet',[8,2],{...vp,frames:3}),/divisible/);
 assert.throws(()=>M.shape('audio_stft_power',[1,8],{fftSize:6,hop:2}),/power-of-two/);
 assert.throws(()=>M.shape('audio_stft_power',[1,3],ap),/waveform/);
-assert.throws(()=>M.shape('video_tubelet',[8,2],{...vp,height:1}),/layout/);
+assert.throws(()=>M.shape('video_tubelet',[8,2],{...vp,width:1}),/layout/);
 const presets=['image_vit_patch','audio_spectrogram','video_vivit_tubelet','multimodal_cross_attention'];
 for(const name of presets){
  const graph=L.preset(name);
