@@ -11,7 +11,7 @@ const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SUPPORTED=new Set([
- "input","parameter","nd_input","nd_parameter","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
+ "input","parameter","nd_input","nd_parameter","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","nd_mse",
  "silu","relu","gelu_tanh","gelu_erf","sigmoid","tanh","softplus",
@@ -66,6 +66,17 @@ function compile(raw,options={}){
      const W=Array.from({length:sh[1]},(_,j)=>Array.from({length:p.out},(_,i)=>weight(id,i,j)));
      const bias=Array.from({length:p.out},(_,i)=>weight(id,97,i));
      expr='('+src(id,"x")+' @ torch.tensor('+JSON.stringify(W)+',dtype=DTYPE) + torch.tensor('+JSON.stringify(bias)+',dtype=DTYPE))';
+   } else if(k==="inference_topk"){
+     expr='torch.argsort('+src(id,"scores")+',dim=1,descending=True,stable=True)[:,:'+p.topk+'].to(DTYPE)';
+   } else if(k==="inference_sparse_attention"){
+     const q=src(id,"q"),k=src(id,"k"),v=src(id,"v"),idx=src(id,"indices");
+     expr='torch.stack([(torch.softmax(('+k+'[ind.to(torch.int64)] @ '+q+'[t])/math.sqrt('+q+'.shape[1]),dim=0) @ '+v+'[ind.to(torch.int64)]) for t,ind in enumerate('+idx+')],dim=0)';
+   } else if(k==="inference_paged_kv_read"){
+     const cache=src(id,"cache"),table=src(id,"blocks"),pos=src(id,"positions"),size=p.pageSize;
+     expr='torch.stack(['+cache+'[int('+table+'[int(loc.item())//'+size+',0].item())*'+size+'+int(loc.item())%'+size+'] for loc in '+pos+'[:,0]],dim=0)';
+   } else if(k==="inference_greedy_verify"){
+     const d=src(id,"draft"),t=src(id,"target");
+     expr='torch.cumprod(('+d+'[:,0]=='+t+'[:'+d+'.shape[0],0]).to(DTYPE),dim=0).unsqueeze(1)';
    } else if(k==="video_causal_conv3d"){
      const x=src(id,"x"),w=src(id,"kernel"),T=p.frames,H=p.height,W=p.width,
        C=p.channels,kt=p.kernelFrames,kh=p.kernelHeight,kw=p.kernelWidth,oc=p.outChannels,S=p.stride;
