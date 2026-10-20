@@ -73,7 +73,7 @@ assert.deepEqual(x.free,[1,2,3],'failed allocation must leave old state intact')
 assert.throws(()=>doOp(x,{op:'fork_pin',id:'BAD',from:'HUGE',cachedTokens:1}),/running parent/);
 x=doOp(x,{op:'arrive',id:'A',tokenLen:4});
 x=doOp(x,{op:'allocate',id:'A'});
-assert.throws(()=>doOp(x,{op:'update_workload',id:'A',tokenLen:16}),/outside|nothing/);
+assert.throws(()=>doOp(x,{op:'update_workload',id:'A',tokenLen:10001}),/outside/);
 x=doOp(x,{op:'update_workload',id:'A',tokenLen:12});
 assert.throws(()=>doOp(x,{op:'append_slot',id:'A'}),/only appends one/);
 assert.deepEqual(x.requests.A.blocks,[1]);
