@@ -43,7 +43,7 @@ const cases=[
  {blockSize:8,maxNumBlocks:8,maxSeqlenQ:3,blockTableCompressRatio:4,needDefaultSeqlens:false,
   sequences:[seq('X',2,12,[1,2,3,4]),seq('PAD',1,1,[7],2,true)]},
  {blockSize:2,maxNumBlocks:4,maxSeqlenQ:1,blockTableCompressRatio:1,needDefaultSeqlens:true,
-  sequences:[seq('U',1,1,[])]},
+  sequences:[seq('U',1,0,[])]},
  {blockSize:4,maxNumBlocks:8,maxSeqlenQ:2,blockTableCompressRatio:2,needDefaultSeqlens:true,
   sequences:[]}
 ];
