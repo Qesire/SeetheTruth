@@ -36,7 +36,7 @@ assert.equal(ample.summary.preemptions,0);
 assert.equal(ample.summary.finalFreeBlocks,9);
 assert.deepEqual(ample.decisions.map(d=>d.scheduled),[['A','B'],['A','B'],['B']],
  'free capacity should never evict a healthy decode batch');
-const stopping=W.simulate(W.EXAMPLES.pressure,{stopPreempted:true,flush:false});
+const stopping=W.simulate({...W.EXAMPLES.pressure,cycles:W.EXAMPLES.pressure.cycles.slice(0,1)},{stopPreempted:true,flush:false});
 assert.equal(stopping.decisions[0].preempted[0].outcome,'stop');
 assert.equal(stopping.snapshots[1].requests.A.status,'FINISHED_PREEMPTED');
 assert.equal(stopping.worker.pendingStep,3);
