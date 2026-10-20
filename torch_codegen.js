@@ -11,7 +11,7 @@ const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SUPPORTED=new Set([
- "input","parameter","nd_input","nd_parameter","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
+ "input","parameter","nd_input","nd_parameter","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","nd_mse",
  "silu","relu","gelu_tanh","gelu_erf","sigmoid","tanh","softplus",
@@ -66,6 +66,13 @@ function compile(raw,options={}){
      const W=Array.from({length:sh[1]},(_,j)=>Array.from({length:p.out},(_,i)=>weight(id,i,j)));
      const bias=Array.from({length:p.out},(_,i)=>weight(id,97,i));
      expr='('+src(id,"x")+' @ torch.tensor('+JSON.stringify(W)+',dtype=DTYPE) + torch.tensor('+JSON.stringify(bias)+',dtype=DTYPE))';
+   } else if(k==="video_causal_conv3d"){
+     const x=src(id,"x"),w=src(id,"kernel"),T=p.frames,H=p.height,W=p.width,
+       C=p.channels,kt=p.kernelFrames,kh=p.kernelHeight,kw=p.kernelWidth,oc=p.outChannels,S=p.stride;
+     const oh=Math.floor((H-kh)/S)+1,ow=Math.floor((W-kw)/S)+1;
+     expr='F.conv3d(F.pad('+x+'.reshape('+T+','+H+','+W+','+C+').permute(3,0,1,2).unsqueeze(0),(0,0,0,0,'+(kt-1)+',0)),'+
+       w+'.reshape('+oc+','+kt+','+kh+','+kw+','+C+').permute(0,4,1,2,3),stride=(1,'+S+','+S+'))'+
+       '.squeeze(0).permute(1,2,3,0).reshape('+(T*oh)+','+(ow*oc)+')';
    } else if(k==="vision_conv2d"){
      const x=src(id,"x"),w=src(id,"kernel"),C=p.channels,kh=p.kernelHeight,kw=p.kernelWidth,S=p.stride,O=p.outChannels;
      const oh=Math.floor((p.height-kh)/S)+1,ow=Math.floor((p.width-kw)/S)+1;

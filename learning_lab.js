@@ -261,6 +261,25 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="video_causal_conv3d"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const weights=[[0.25,-0.1,0.3,0.2],[-0.15,0.4,0.2,-0.25]];
+      const graph={schema:SCHEMA,title:"任务 53 · 真五维 Conv3D：因果 VAE 卷积与历史帧缓存",nodes:[
+        N("frames","input",30,180,{rows:8,width:2,seed:2}),
+        N("kernel3d","parameter",30,440,{values:weights,optimizer:{t:0,
+          m:weights.map(row=>row.map(()=>0)),v:weights.map(row=>row.map(()=>0))}}),
+        N("causal_conv","video_causal_conv3d",330,180),
+        N("activate","silu",620,180),
+        N("temporal_attend","attention",880,180)
+      ],edges:[
+        {from:"frames",to:"causal_conv",port:"x"},
+        {from:"kernel3d",to:"causal_conv",port:"kernel"},
+        {from:"causal_conv",to:"activate",port:"x"},
+        {from:"activate",to:"temporal_attend",port:"q"},
+        {from:"activate",to:"temporal_attend",port:"k"},
+        {from:"activate",to:"temporal_attend",port:"v"}]};
+      return validateGraph(graph);
+    }
     if(["vision_learned_conv","audio_mel_chain","diffusion_ddim_chain"].includes(name)){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       let title,nodes=[],edges=[];

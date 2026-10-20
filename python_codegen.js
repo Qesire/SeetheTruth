@@ -12,7 +12,7 @@ const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
- ...SOURCES,"vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
+ ...SOURCES,"video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
@@ -301,6 +301,15 @@ function compile(raw,options={}){
      const W=Array.from({length:dim},(_,k)=>Array.from({length:cols},(_,j)=>weight(id,j,k)));
      const bias=Array.from({length:cols},(_,j)=>weight(id,97,j));
      expression='('+port("x")+' @ np.asarray(json.loads('+encoded(W)+'),dtype=np.float64) + np.asarray(json.loads('+encoded(bias)+'),dtype=np.float64))';
+   }else if(kind==="video_causal_conv3d"){
+     const x=port("x"),w=port("kernel"),T=p.frames,H=p.height,kt=p.kernelFrames,
+       kh=p.kernelHeight,kw=p.kernelWidth,C=p.channels,oc=p.outChannels,S=p.stride;
+     const oh=Math.floor((H-kh)/S)+1,ow=Math.floor((p.width-kw)/S)+1;
+     expression='np.asarray([[sum('+x+'[(t+dt-'+(kt-1)+')*'+H+'+y*'+S+'+dy,(col*'+S+'+dx)*'+C+'+ci]*'+
+       w+'[outch,((dt*'+kh+'+dy)*'+kw+'+dx)*'+C+'+ci] for dt in range('+kt+') '+
+       'for dy in range('+kh+') for dx in range('+kw+') for ci in range('+C+') '+
+       'if t+dt>='+ (kt-1)+') for col in range('+ow+') for outch in range('+oc+
+       ')] for t in range('+T+') for y in range('+oh+')],dtype=np.float64)';
    }else if(kind==="vision_conv2d"){
      const x=port("x"),w=port("kernel"),C=p.channels,kh=p.kernelHeight,kw=p.kernelWidth,S=p.stride,O=p.outChannels;
      const oh=Math.floor((p.height-kh)/S)+1,ow=Math.floor((p.width-kw)/S)+1;

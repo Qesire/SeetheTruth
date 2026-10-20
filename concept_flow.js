@@ -37,7 +37,12 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(["vision_conv2d","audio_mel_filterbank","diffusion_ddim_step"].includes(kind)){
+    if(kind==="video_causal_conv3d"){
+      const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
+      output=Video.shape({x:get("x"),kernel:get("kernel")},p);
+      rule="真实 [1,T,H,W,C] 输入与 [O,Kt,Kh,Kw,I] 卷积核；左侧补零、时间步长为 1 的因果 3D 互相关，然后转为教育用二维载体";
+      conditions.push("未来帧不参与当前输出；流式缓存独立保留历史 Kt-1 帧，非 GPU 持久 KV Cache");
+    }else if(["vision_conv2d","audio_mel_filterbank","diffusion_ddim_step"].includes(kind)){
       const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
       const tensorShapes=Object.fromEntries(L.defs[kind].ports.map(key=>[key,get(key)]));
       output=Adv.shape(kind,tensorShapes,p);
