@@ -20,6 +20,7 @@
     data:"数据来源与表征",compute:"特征映射与算术",norm:"归一化：尺度或中心调整",
     vision:"图像空间与 Patch Token",audio:"音频时频表示",video:"视频时空 Tubelet",
     generative:"扩散模型的噪声状态更新",
+    inference:"推理服务的采样、验收与调度",
     activate:"非线性与权重分布",combine:"信息融合与残差候选",
     attention:"跨 token 信息汇聚",loss:"训练目标（前向定义）",
     shape:"张量轴与布局改变",reduce:"跨特征聚合",position:"位置信息注入",
@@ -37,7 +38,16 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(kind==="video_causal_conv3d"){
+    if(["inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify"].includes(kind)){
+      const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
+      const inputShapes=Object.fromEntries(L.defs[kind].ports.map(port=>[port,get(port)]));
+      output=Op.shape(kind,inputShapes,p);
+      rule=kind==="inference_topk"?"数值 Top-K 与稳定 tie-break；返回真正整数索引":
+        kind==="inference_sparse_attention"?"按明确 Key 索引做 QK、稳定 Softmax、PV；不模拟 Lightning Indexer":
+        kind==="inference_paged_kv_read"?"从逻辑位置经 Block Table 映射到物理 KV 页和页内槽位":
+        "贪心 speculative 验证仅接收自第 0 步起的连续正确 Draft 前缀";
+      conditions.push("精确的 CPU 教学算术或控制流，并非 DeepSeek GPU Kernel、完整 Serving Engine 或测速");
+    }else if(kind==="video_causal_conv3d"){
       const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
       output=Video.shape({x:get("x"),kernel:get("kernel")},p);
       rule="真实 [1,T,H,W,C] 输入与 [O,Kt,Kh,Kw,I] 卷积核；左侧补零、时间步长为 1 的因果 3D 互相关，然后转为教育用二维载体";

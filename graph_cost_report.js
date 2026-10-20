@@ -65,6 +65,14 @@
        v[1]%p.kvHeads!==0||q[1]/p.heads!==k[1]/p.kvHeads)
      throw Error("GQA attention shape or head divisibility invalid at "+n.id);
     attention=safeProduct([p.heads,q[0],k[0],q[1]/p.heads+v[1]/p.kvHeads],n.id+" GQA MAC");
+   }else if(n.kind==="inference_sparse_attention"){
+    const q=inbound(n,"q"),k=inbound(n,"k"),v=inbound(n,"v"),ix=inbound(n,"indices");
+    if(q.length!==2||k.length!==2||v.length!==2||ix.length!==2||
+      q[0]!==ix[0]||q[1]!==k[1]||k[0]!==v[0]||ix[1]>k[0])
+     throw Error("indexed sparse attention dimensions inconsistent at "+n.id);
+    // Exact QK+PV GEMM terms on selected indices only. TopK indexer, gather and
+    // Softmax are excluded; selection-quality and kernel latency are unknown.
+    attention=safeProduct([q[0],ix[1],q[1]+v[1]],n.id+" sparse attention MAC");
    }else if(n.kind==="expert_linear_bank"){
     const x=inbound(n,"x"),indices=inbound(n,"indices"),weights=inbound(n,"weights");
     if(x.length!==2||indices.length!==2||weights.length!==2||

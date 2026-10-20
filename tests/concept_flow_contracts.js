@@ -53,6 +53,20 @@ function perKind(k){
   return;
  }
 
+ if(['inference_topk','inference_sparse_attention','inference_paged_kv_read','inference_greedy_verify'].includes(k)){
+  const n={id:k,kind:k,params:{...L.defs[k].params}},shapes=
+   k==='inference_topk'?{scores:[2,4]}:
+   k==='inference_sparse_attention'?{q:[2,2],k:[3,2],v:[3,2],indices:[2,2]}:
+   k==='inference_paged_kv_read'?{cache:[4,2],blocks:[2,1],positions:[2,1]}:
+   {draft:[2,1],target:[3,1]};
+  const values=Object.fromEntries(Object.entries(shapes).map(([key,sh])=>[key,mock(sh,(i,j)=>
+   key==='indices'?(j%3):key==='blocks'?i:key==='positions'?i:
+   key==='draft'||key==='target'?i:0.2+i*.1+j*.05)]));
+  const inferred=C.analyze(n,shapes),actual=B.execute(n,values);
+  assert.deepEqual(inferred.shape,actual.shape,k+' inference shape parity');
+  assert.ok(actual.values.flat(Infinity).every(Number.isFinite));
+  return;
+ }
  if(k==='video_causal_conv3d'){
   const p=L.defs[k].params,n={id:k,kind:k,params:{...p}},
    inputShapes={x:[8,2],kernel:[2,4]},

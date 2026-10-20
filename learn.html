@@ -209,7 +209,11 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="vision_learned_conv"><span class="num">50</span><span>图像 · 真正的可训练 Conv2D<span class="desc">HWC → 带 Parameter 权重的跨相关卷积 → SiLU → Attention</span></span></button>
   <button class="mission" data-preset="audio_mel_chain"><span class="num">51</span><span>音频 · HTK Mel 频带编码<span class="desc">Hann STFT Power → 实际三角滤波器 → Log10 → 注意力</span></span></button>
   <button class="mission" data-preset="diffusion_ddim_chain"><span class="num">52</span><span>图像/视频扩散 · DDIM 去噪<span class="desc">两步 epsilon 预测路径、累积 Alpha 合同与可执行采样状态</span></span></button>
-  <button class="mission" data-preset="video_causal_conv3d"><span class="num">53</span><span>视频 · 原生 5D 因果卷积<span class="desc">真实 [B,T,H,W,C] Conv3D、左因果补零、逐帧历史缓存与 PyTorch 梯度</span></span></button>\n  <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
+  <button class="mission" data-preset="video_causal_conv3d"><span class="num">53</span><span>视频 · 原生 5D 因果卷积<span class="desc">真实 [B,T,H,W,C] Conv3D、左因果补零、逐帧历史缓存与 PyTorch 梯度</span></span></button>\n  <button class="mission" data-preset="inference_sparse_decode"><span class="num">54</span><span>DeepSelect / DSA · 稀疏选择<span class="desc">真实 Top-K 索引、稀疏 QK/PV，与 Dense Attention 的并行对照</span></span></button>
+  <button class="mission" data-preset="inference_paged_kv"><span class="num">55</span><span>FlashMLA · KV 页表数学<span class="desc">逻辑 Token 位置、物理 Cache 页面与真实数据读取</span></span></button>
+  <button class="mission" data-preset="inference_speculative"><span class="num">56</span><span>DeepSpec · Draft/Target 验收<span class="desc">贪心推测解码：连续接收前缀、拒绝和 Bonus 定义</span></span></button>
+  <button class="mission" data-preset="inference_paged_sparse"><span class="num">57</span><span>Decode · 分页 KV + 稀疏 Attention<span class="desc">将 Paged KV Read、Top-K、Sparse Attention 拼成可执行解码微图</span></span></button>
+  <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
   <p class="hint">支持本地 JSON 保存、导入、撤销和重做。教学模拟不代表真实模型性能。</p>
@@ -292,6 +296,7 @@ input[type="file"]{display:none}
 <script src="multimodal_ops.js"></script>
 <script src="multimodal_advanced.js"></script>
 <script src="video_causal_conv3d.js"></script>
+<script src="inference_ops.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
@@ -331,8 +336,8 @@ const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const categories={data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
-const categoryNames={data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const categories={inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
+const categoryNames={inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
