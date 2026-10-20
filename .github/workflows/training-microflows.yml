@@ -18,6 +18,9 @@ on:
       - 'multimodal_advanced.js'
       - 'video_causal_conv3d.js'
       - 'inference_ops.js'
+      - 'deepinfer_runtime_ops.js'
+      - 'tests/deepinfer_runtime_contracts.js'
+      - 'tests/deepinfer_runtime_codegen_parity.js'
       - 'tests/inference_ops_contracts.js'
       - 'tests/inference_codegen_parity.js'
       - 'tests/video_causal_conv3d_contracts.js'
@@ -148,6 +151,7 @@ jobs:
       - run: node --check multimodal_advanced.js && node tests/multimodal_advanced_contracts.js
       - run: node --check video_causal_conv3d.js && node tests/video_causal_conv3d_contracts.js
       - run: node --check inference_ops.js && node tests/inference_ops_contracts.js
+      - run: node --check deepinfer_runtime_ops.js && node tests/deepinfer_runtime_contracts.js
       - run: node tests/concept_flow_contracts.js
       - run: node --check nd_tensor.js && node tests/nd_tensor_contracts.js
       - run: node --check nd_autodiff.js && node tests/nd_gqa_autodiff_contracts.js
