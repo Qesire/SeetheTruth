@@ -1,6 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const shared=require('../teaching_curriculum.js');
+assert.equal(shared.lessons.length,8,'mobile APK shares the PC course database');
 const home=read('android_teaching.html'),policy=read('android_teaching_mode.js'),
  activity=read('android/app/src/main/java/io/github/qesire/seethetruth/TeachingActivity.java'),
  manifest=read('android/app/src/main/AndroidManifest.xml'),
@@ -31,7 +33,7 @@ assert.match(activity,/setDownloadListener/);
 assert.match(activity,/shouldInterceptRequest/);
 assert.match(activity,/blocked\(\)/);
 assert.match(activity,/shouldOverrideUrlLoading/);
-assert.match(activity,/android_teaching\.html/);
+assert.match(activity,/teaching\.html\?edition=teaching/);
 assert.match(activity,/android_teaching_mode\.js/);
 assert.doesNotMatch(manifest,/<uses-permission\s+android:name="android.permission.INTERNET"/);
 assert.match(manifest,/android:exported="true"/);
