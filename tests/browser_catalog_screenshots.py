@@ -1520,7 +1520,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("16.67%",sections.nth(2).locator(".metrics").inner_text())
         shot=p.screenshot(path=str(DEST/"61-architecture-tradeoffs-real-computed.png"),
                           full_page=True,animations="disabled")
-        self.assertTrue(shot.startswith(b"\\x89PNG\\r\\n\\x1a\\n"))
+        self.assertTrue(shot.startswith(b"\x89PNG\r\n\x1a\n"))
         self.assertGreater(len(shot),10000)
         self.assertFalse(p.evaluate("document.documentElement.scrollWidth>innerWidth+2"),
                          "Architecture tradeoffs page has horizontal overflow")
