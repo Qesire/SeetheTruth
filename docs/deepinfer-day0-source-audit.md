@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | DeepInfer | https://github.com/deepseek-ai/DeepInfer | Apache-2.0, **offline inference** for DeepSeek-V4.1-Flash, actual model/runtime/sampling/kernel/scheduler code, multi-device execution |
 | deepseek-recipe | https://github.com/deepseek-ai/deepseek-recipe | MIT, Rust libraries and Python bindings for API format conversions, V4/V4.1 prompt rendering/token encoding, tool/stream/output parsing and image preprocessing; **no model inference / tool execution / HTTP transport** |
+
+**Release date precision:** deepseek-recipe's official [CHANGELOG](https://github.com/deepseek-ai/deepseek-recipe/blob/main/CHANGELOG.md) lists **0.1.0 on 2026-09-10** and the API-changing **0.2.0 on 2026-10-20**. Thus today's announcement accompanied DeepInfer and a new recipe version; it was **not the first public release of recipe**. The 0.2 version adds model-specific request defaults, logprob/reasoning-token handling, stronger structured-output handling, special-token-aware rendering, V4.1 deferred tool definitions and image destination filtering; these are not model execution features.
 | DeepSelect / FlashMLA / DeepGEMM / DeepEP | Repos in the deepseek-ai GitHub organization | Building blocks integrated by DeepInfer; their interfaces and supported hardware must be checked against the engine's pinned revision |
 
 Verified against the public `deepseek-ai/DeepInfer` repository on 2026-10-20, especially `README.md` and the source paths below. The first search-indexed commit snapshot was `8b16149741a4935e1dec8cea27853f273b374c5b`. Revalidate against current `main` for subsequent code changes.
