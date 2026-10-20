@@ -6,6 +6,11 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ vit_patch:["Hugging Face ViT patch projection source: Conv2d kernel=stride=patch_size","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vit/modeling_vit.py"],
+ vivit_tubelet:["Hugging Face ViViT tubelet embedding: 3D convolution + sequence flatten","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vivit/modeling_vivit.py"],
+ whisper_audio:["OpenAI Whisper audio: windowed STFT, mel filters and log normalization","https://github.com/openai/whisper/blob/main/whisper/audio.py"],
+ wan_vae:["Wan2.2 video VAE: causal Conv3d and temporal chunk state","https://github.com/Wan-Video/Wan2.2/blob/main/wan/modules/vae2_2.py"],
+
  mor:["Mixture-of-Recursions: adaptive token-level recursive computation (NeurIPS 2025)","https://arxiv.org/abs/2507.10524"],
  adam_official:["PyTorch Adam — coupled L2 and decoupled_weight_decay option","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html"],
  adagrad_official:["PyTorch Adagrad accumulator and learning-rate decay","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adagrad.html"],
@@ -63,6 +68,11 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ vision_patchify:["明确从行优先排列的 [H,W·C] 重构 HWC，再按空间网格提取不重叠 Ph×Pw Patch，排列为 [N,Ph·Pw·C]；数值位置逐点保留。","ViT 官方实现将 Patch Embedding 通过卷积核大小与步幅均为 patch_size 的 Conv2d 实现；Patchify 仅是无需学习的张量重排，后续还要做投影，不能将两者等同。","这一实现不进行图像解码、插值和 CLS/位置 Embedding；没有训练好的卷积权重。贴有 ViT 来源不意味着本积木等价于 ViT 完整编码器。","用 H=W=4，Ph=Pw=2 查看四个 Patch 的原始索引顺序，再用 Linear 投影、Attention 组合 ViT 核心计算路径。","vit_patch"],
+ video_tubelet:["对 [T·H,W·C] 帧优先载体恢复 THWC，按 Pt×Ph×Pw 提取时空 Tubelet，顺序为时间 Tubelet→空间 y→空间 x，内部顺序为 dt,dy,dx,c。","ViViT 的 Tubelet Embedding 使用 3D 卷积按时空块切分并学习投影；Wan2.2 VAE 的因果 3D 卷积另含有时间 padding 和流式缓存状态，不应与这一步静态无重叠展平相混淆。","本积木没有实际视频容器解码、音画同步、3D 卷积权重、重叠卷积、时间因果缓存；固定 Pt 也不是自适应帧率采样。","对 T=4,H=2,W=2,Pt=2,Ph=2,Pw=1 测试 Tubelet [4,4]，然后对比 Pt=1 时 Token 数增加、每个 Token 维减少。","vivit_tubelet,wan_vae"],
+ audio_stft_power:["对单声道 [1,N] 数值波形以 fftSize=Nfft、hop 为步长取非重叠或重叠帧；周期 Hann 窗点乘后计算每一帧的实数 DFT 正频率功率 |X|²。","Whisper 官方 log_mel_spectrogram 使用 Hann-window torch.stft、功率谱、Mel 滤波矩阵及对数压缩；本块只实现其中可独立验证的 STFT 功率步，不包含 Mel 滤波或音频解码。","不允许将 fftSize=4/hop=2 的课堂数值解释为 Whisper 官方 16kHz/NFFT400/HOP160 采样或真实听觉信号。这里不做 centered padding，因此边界帧也不同。","输入 [1,8] 改 hop 2→1，看时间帧数改变；再接 Log Power，观察幅度平方、频率轴和静音 floor。","whisper_audio"],
+ audio_log_power:["对功率谱 S≥0 执行逐元素 log10(max(S,floor))，将强弱功率比变为加法差，并稳定静音的对数下界。","Whisper 官方在 Mel 投影后裁剪到相对最大值 -8 并施加额外仿射变换；本块故意分离局部对数压缩，支持用显式 MatMul 加入真正的滤波矩阵。","不是完整 log-Mel，也不假设任意正矩阵都是 Mel 滤波器；禁止负功率输入，floor 只作为数值下界。","在相同正功率谱上对比 floor=1e-6 和 1e-3，检查低功率单元的数值截断。","whisper_audio"],
+
  opt_adam:["经典 Adam 先构造耦合衰减后的有效梯度 g_eff=g+λθ，然后使一阶、二阶动量都累积 g_eff；与 AdamW 将 λθ 从矩更新中分离不同。","PyTorch Adam 的 decoupled_weight_decay=False 是这里的明确对照语义；不是 AdamW 同义写法。","本积木从零动量预览一步，持久训练时状态 {kind,t,m,v} 存在 Parameter 内；切换策略必须重置旧动量。","将权重衰减设为 0 时 Adam 与 AdamW 等价，再设为 0.1 时比较两组真实参数更新。","adam_official,adamw"],
  opt_adagrad:["Adagrad 维护长期累加器 V_t=V_(t−1)+(g+λθ)^2，下一步根据 sqrt(V_t)+ε 缩放梯度；可独立设置学习率衰减 lrDecay。","与 RMSprop 的指数平均不同，持续同向同幅梯度会不断增加 Adagrad 的分母；这并不自动代表更好的模型收敛。","采用初始累加器 0、无 momentum、耦合 L2；多步状态保存在 optimizer.v 中，可通过 JSON 恢复。","输入常数梯度 2，验证连续两步 v=4、8，改变 lrDecay 查看有效学习率。","adagrad_official,rmsprop_guide"],
  elu:["ELU 在正半轴恒等，负半轴 α·expm1(x)，导数为 α·exp(x)；与 ReLU 的零负区、Leaky ReLU 的线性负区均不同。","PyTorch ELU 明确提供可选 alpha，常用于讨论负值饱和及激活均值；不隐含任何特定模型的默认架构。","当 alpha≠1 时原点左右导数不相同；有限差分应避开 x=0。本实现只做真实小张量计算。","设置 alpha=1/1.3，比对负值输出与有限差分，并将它自由接入 MSE 训练计算图。","elu_official"],
