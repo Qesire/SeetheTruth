@@ -12,6 +12,30 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  vision_patchify:block("图像空间 Patch 展平","Image Patchify (HWC → Tokens)","vision",["x"],
+    {height:4,width:4,channels:1,patchHeight:2,patchWidth:2},
+    "[H,W·C] → [(H/Ph)(W/Pw),Ph·Pw·C]",
+    "按二维网格抽取不重叠图像 Patch，按 row-major、channel-last 顺序展平为 Token。ViT 的 patch embedding 在这一步之后还需要可学习的投影。",
+    "用原始 4×4 灰度像素数值检查 Patch 顺序，再接 Linear 和 Attention；可自由改 Ph/Pw。",
+    "教学输入不是 JPEG 解码；Patchify 不是 Conv2d 的可学习投影，要求整除且受 8×16 预算限制。"),
+  video_tubelet:block("视频时空 Tubelet 展平","Video Tubelet (THWC → Tokens)","video",["x"],
+    {frames:4,height:2,width:2,channels:1,patchFrames:2,patchHeight:2,patchWidth:1},
+    "[T·H,W·C] → [T/Pt·H/Ph·W/Pw,Pt·Ph·Pw·C]",
+    "显式按连续帧与空间区域形成时空 Tubelet。输出 Token 可直接进入时空 Attention。",
+    "改变 Pt=1/2，在同一视频数值上比较时间压缩与 Token 数；Tubelet 顺序为 T→H→W。",
+    "不是 3D Conv 或带权重 VAE；没有视频解码、帧率重采样、因果缓存或压缩感知损失。"),
+  audio_stft_power:block("音频短时傅里叶功率谱","Audio STFT Power","audio",["x"],
+    {fftSize:4,hop:2},
+    "P[f,k]=|Σ_n x[f·hop+n]·hann(n)·exp(-j2πkn/N)|²",
+    "对一维离散采样按周期 Hann 窗截帧，并计算真实离散傅里叶正频率功率谱。",
+    "先输入 [1,8] 波形，观察输出 [3,3]；改 hop 看时间帧轴变化，接 log 压缩形成谱 Token。",
+    "不执行重采样、中心补零、Mel 滤波、真实 Whisper 归一化或样本率解码；受有界窗口限制。"),
+  audio_log_power:block("音频功率谱对数压缩","Audio Log10 Power","audio",["x"],
+    {floor:0.000001},
+    "Y=log10(max(P,floor))",
+    "对非负 STFT 功率谱逐元素取有下界的对数，展示小能量范围的动态压缩。",
+    "在 STFT 后连接本块和 Linear，改变 floor 观察静音处的数值变化。",
+    "这不是完整 Whisper log-Mel：没有 Mel filterbank、相对最大值截断及最终仿射归一化；拒绝负功率。"),
   nd_elu:block("四轴 ELU","N-D Exponential Linear Unit","activate",["x"],{alpha:1},
     "x>0?x:α(expm1(x))","逐元素指数线性单元，负半轴渐近 -α；保持任意四轴形状。","在四轴 GQA 参数与 MSE 间自由插入并检查梯度。","x=0 处 α≠1 不可微，采用左支次导数。"),
   nd_hardswish:block("四轴 HardSwish","N-D HardSwish","activate",["x"],{},
@@ -252,6 +276,10 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(["vision_patchify","video_tubelet","audio_stft_power","audio_log_power"].includes(kind)){
+     const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
+     if(!Multi)fail("multimodal kernel unavailable");Multi.validate(kind,n);
+   }
    if(kind==='nd_parameter'){
      const ND=typeof module==='object'&&module.exports?require('./nd_tensor.js'):globalThis.SeetheTruthND;
      const a=ND.shape(n.values),opt=n.optimizer;
@@ -381,6 +409,11 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'vision_patchify':case 'video_tubelet':case 'audio_stft_power':case 'audio_log_power':{
+      const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
+      if(!Multi)fail("multimodal kernel unavailable");
+      value=Multi.execute(kind,x,params);break;
+    }
     case 'opt_adamw':case 'opt_adam':case 'opt_sgd_momentum':case 'opt_rmsprop':case 'opt_adagrad':case 'opt_lion':{
       const Opt=typeof module==='object'&&module.exports?require('./optimizer_rules.js'):globalThis.SeetheTruthOptimizerRules;
       const optimizer=kind==='opt_adamw'?'adamw':kind==='opt_sgd_momentum'?'sgd_momentum':kind==='opt_rmsprop'?'rmsprop':kind==='opt_adam'?'adam':kind==='opt_adagrad'?'adagrad':'lion';

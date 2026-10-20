@@ -18,6 +18,7 @@
   const pretty=s=>s.join("×");
   const groups=Object.freeze({
     data:"数据来源与表征",compute:"特征映射与算术",norm:"归一化：尺度或中心调整",
+    vision:"图像空间与 Patch Token",audio:"音频时频表示",video:"视频时空 Tubelet",
     activate:"非线性与权重分布",combine:"信息融合与残差候选",
     attention:"跨 token 信息汇聚",loss:"训练目标（前向定义）",
     shape:"张量轴与布局改变",reduce:"跨特征聚合",position:"位置信息注入",
@@ -35,7 +36,15 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(kind==="nd_parameter"){const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):globalThis.SeetheTruthND;output=ND.shape(p.values);rule="节点 ID 是真实小张量参数身份，JSON 存放 θ 及 AdamW 的 m/v/t，多个下游共享同一可求导来源";
+    if(["vision_patchify","video_tubelet","audio_stft_power","audio_log_power"].includes(kind)){
+      const Multi=typeof module==="object"&&module.exports?require("./multimodal_ops.js"):globalThis.SeetheTruthMultimodal;
+      const x=get("x");output=Multi.shape(kind,x,p);
+      rule=kind==="vision_patchify"?"明确 HWC 网格轴并按非重叠空间 Patch 展平，未执行学习投影":
+       kind==="video_tubelet"?"显式 THWC 时空块并按时间、空间顺序组成 Tubelet，未执行 3D 卷积":
+       kind==="audio_stft_power"?"周期 Hann 窗 + 未中心补零的真实离散 STFT 功率，频率轴为 0..N/2":
+       "对非负功率谱按固定 floor 执行 log10；不是标准化的 Mel 谱";
+      conditions.push("仅有界二维教学载体；布局来自积木参数，未解码真实媒体文件");
+    }else if(kind==="nd_parameter"){const ND=typeof module==="object"&&module.exports?require("./nd_tensor.js"):globalThis.SeetheTruthND;output=ND.shape(p.values);rule="节点 ID 是真实小张量参数身份，JSON 存放 θ 及 AdamW 的 m/v/t，多个下游共享同一可求导来源";
     }else if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish","nd_elu","nd_hardswish"].includes(kind)){
       const x=get("x");output=x.slice();rule="按四轴张量每一数值单独执行 "+L.defs[kind].en+"；轴意义与 Tensor 形状不改变，可通过真实 VJP 求梯度";
     }else if(kind==="nd_input"){

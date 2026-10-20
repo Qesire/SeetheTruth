@@ -261,6 +261,61 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    // Multimodal tokens stay explicit: image [H,W*C], video [T*H,W*C],
+    // audio [1,N]. The numerical source is synthetic, not decoded media.
+    if(["image_vit_patch","audio_spectrogram","video_vivit_tubelet","multimodal_cross_attention"].includes(name)){
+      const n=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      let title,nodes=[],edges=[];
+      if(name==="image_vit_patch"){
+        title="任务 46 · 图像 ViT Patchify → Linear → Self-Attention";
+        nodes=[n("pixels","input",20,120,{rows:4,width:4,seed:1}),
+          n("patches","vision_patchify",280,120),
+          n("image_embedding","linear",545,120,{out:4}),
+          n("image_attend","attention",820,120)];
+        edges=[["pixels","patches","x"],["patches","image_embedding","x"],
+          ["image_embedding","image_attend","q"],["image_embedding","image_attend","k"],["image_embedding","image_attend","v"]];
+      }else if(name==="audio_spectrogram"){
+        title="任务 47 · 音频 Waveform → Hann STFT → Log Power → Attention";
+        nodes=[n("wave","input",20,135,{rows:1,width:8,seed:2}),
+          n("spectrum","audio_stft_power",280,135),
+          n("log_power","audio_log_power",535,135),
+          n("audio_embedding","linear",790,135,{out:4}),
+          n("audio_attend","attention",1050,135)];
+        edges=[["wave","spectrum","x"],["spectrum","log_power","x"],
+          ["log_power","audio_embedding","x"],["audio_embedding","audio_attend","q"],
+          ["audio_embedding","audio_attend","k"],["audio_embedding","audio_attend","v"]];
+      }else if(name==="video_vivit_tubelet"){
+        title="任务 48 · 视频 THWC Tubelet → Linear → Self-Attention";
+        nodes=[n("frames","input",20,120,{rows:8,width:2,seed:3}),
+          n("tubelets","video_tubelet",280,120),
+          n("video_embedding","linear",545,120,{out:4}),
+          n("video_attend","attention",820,120)];
+        edges=[["frames","tubelets","x"],["tubelets","video_embedding","x"],
+          ["video_embedding","video_attend","q"],["video_embedding","video_attend","k"],["video_embedding","video_attend","v"]];
+      }else{
+        title="任务 49 · 图像 / 音频 / 视频三路 Token 互注意力融合";
+        nodes=[n("pixels","input",20,30,{rows:4,width:4,seed:1}),
+          n("patches","vision_patchify",280,30),
+          n("image_embedding","linear",540,30,{out:4}),
+          n("wave","input",20,350,{rows:1,width:8,seed:2}),
+          n("spectrum","audio_stft_power",280,350),
+          n("log_power","audio_log_power",540,350),
+          n("audio_embedding","linear",800,350,{out:4}),
+          n("frames","input",20,690,{rows:8,width:2,seed:3}),
+          n("tubelets","video_tubelet",280,690),
+          n("video_embedding","linear",540,690,{out:4}),
+          n("image_audio_cross","attention",1080,145),
+          n("image_audio_video_cross","attention",1370,145)];
+        edges=[["pixels","patches","x"],["patches","image_embedding","x"],
+          ["wave","spectrum","x"],["spectrum","log_power","x"],["log_power","audio_embedding","x"],
+          ["frames","tubelets","x"],["tubelets","video_embedding","x"],
+          ["image_embedding","image_audio_cross","q"],["audio_embedding","image_audio_cross","k"],
+          ["audio_embedding","image_audio_cross","v"],
+          ["image_audio_cross","image_audio_video_cross","q"],["video_embedding","image_audio_video_cross","k"],
+          ["video_embedding","image_audio_video_cross","v"]];
+      }
+      return validateGraph({schema:SCHEMA,title,nodes,edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     if(name==="loop_input_injection"){
       const Injection=typeof module==="object"&&module.exports?require("./loop_input_injection.js"):globalThis.SeetheTruthLoopInjection;
       if(!Injection)throw Error("loop input reinjection builder unavailable");

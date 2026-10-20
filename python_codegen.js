@@ -12,7 +12,7 @@ const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
- ...SOURCES,"linear","matmul","add","mul","subtract","divide","transpose2d",
+ ...SOURCES,"vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
@@ -301,6 +301,17 @@ function compile(raw,options={}){
      const W=Array.from({length:dim},(_,k)=>Array.from({length:cols},(_,j)=>weight(id,j,k)));
      const bias=Array.from({length:cols},(_,j)=>weight(id,97,j));
      expression='('+port("x")+' @ np.asarray(json.loads('+encoded(W)+'),dtype=np.float64) + np.asarray(json.loads('+encoded(bias)+'),dtype=np.float64))';
+   }else if(kind==="vision_patchify"){
+     const x=port("x"),H=p.height,W=p.width,C=p.channels,ph=p.patchHeight,pw=p.patchWidth;
+     expression=x+'.reshape('+[H,W,C].join(',')+').reshape('+[H/ph,ph,W/pw,pw,C].join(',')+').transpose(0,2,1,3,4).reshape(-1,'+(ph*pw*C)+')';
+   }else if(kind==="video_tubelet"){
+     const x=port("x"),T=p.frames,H=p.height,W=p.width,C=p.channels,pt=p.patchFrames,ph=p.patchHeight,pw=p.patchWidth;
+     expression=x+'.reshape('+[T,H,W,C].join(',')+').reshape('+[T/pt,pt,H/ph,ph,W/pw,pw,C].join(',')+').transpose(0,2,4,1,3,5,6).reshape(-1,'+(pt*ph*pw*C)+')';
+   }else if(kind==="audio_stft_power"){
+     const x=port("x"),N=p.fftSize,h=p.hop;
+     expression='np.stack([np.abs(np.fft.rfft('+x+'[0,i:i+'+N+']*np.hanning('+(N+1)+')[:-1]))**2 for i in range(0,'+x+'.shape[1]-'+N+'+1,'+h+')],axis=0)';
+   }else if(kind==="audio_log_power"){
+     expression='np.log10(np.maximum('+port("x")+','+p.floor+'))';
    }else if(kind==="matmul"||kind==="nd_batched_matmul")expression='('+port("a")+' @ '+port("b")+')';
    else if(["add","mul","subtract","divide"].includes(kind))expression='('+port("a")+' '+({add:"+",mul:"*",subtract:"-",divide:"/"}[kind])+' '+port("b")+')';
    else if(kind==="nd_broadcast_add")expression='('+port("a")+' + '+port("b")+')';

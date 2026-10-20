@@ -53,6 +53,15 @@ function perKind(k){
   return;
  }
 
+ if(['vision_patchify','video_tubelet','audio_stft_power','audio_log_power'].includes(k)){
+  const p=L.defs[k].params,n={id:k,kind:k,params:{...p}};
+  const dims=k==='vision_patchify'?[4,4]:k==='video_tubelet'?[8,2]:k==='audio_stft_power'?[1,8]:[3,3];
+  const x=mock(dims,(i,j)=>k==='audio_log_power'?.1+(i+j)/4:i+j);
+  const inferred=C.analyze(n,{x:dims}),actual=B.execute(n,{x});
+  assert.deepEqual(inferred.shape,actual.shape,k+' named modality shape parity');
+  assert.ok(actual.values.flat(Infinity).every(Number.isFinite));
+  return;
+ }
  const d=L.defs[k],n={id:k,kind:k,params:{...d.params}},inputs={};
  for(const port of d.ports){
    if(port==='ids'||port==='labels')inputs[port]=[2,1];
