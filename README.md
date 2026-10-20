@@ -10,6 +10,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **Android 教学版 APK：** 正在以离线 WebView 形式提供独立移动课堂，仅保留积木、论文解析、多模态与推理课程交互，不含代码生成、文件下载、模型训练/部署或实验产物。源代码在 [android/](android/)，工作流 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 编译并发布签名的测试版 APK 工件；构建状态以 GitHub Actions 为准。独立教学入口为 [android_teaching.html](android_teaching.html)。
 
+**DeepInfer Prefill 源码教学：** [ALL/ANY Prefill 投票与图片 Token Chunk 边界实验室](deepinfer_prefill_lab.html) 根据官方 Scheduler 的 NORMAL 引擎投票、资源不足后的第二轮回退、Chunked Prefill 的 CP 对齐预算和 IMG + PAD 保护规则进行确定性计算；不执行实际分布式 AllReduce、GPU Prefill 或图片特征计算。教学页面自动进入 Android 离线 APK。参见 [计算合同与源码对照](docs/deepinfer-prefill-policy.md)。
+
 ## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
