@@ -66,7 +66,7 @@ class DeepInferWorkerBrowser(unittest.TestCase):
         p.screenshot(path=str(OUT/'decode-nooverlap-pending.png'),full_page=True,animations='disabled')
     def test_custom_steps_validation_and_placeholder(self):
         p=self.page
-        p.locator('details summary').click()
+        p.locator('#customSteps').evaluate('(e)=>{ e.closest("details").open=true; }')
         p.locator('#customSteps').fill('[{"mode":"decode","sequenceIds":["A"]},{"mode":"placeholder","sequenceIds":[]},{"mode":"decode","sequenceIds":["A"]}]')
         p.locator('#applySteps').click()
         self.assertIn('已执行合法',p.locator('#editorStatus').inner_text())
