@@ -6,6 +6,12 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ ds_deepselect:["DeepSeek DeepSelect v1.0 TopK: BF16 lightning-indexer and FP32 sampler CUDA interfaces","https://github.com/deepseek-ai/DeepSelect"],
+ ds_flashmla:["DeepSeek FlashMLA 2026-09-30 sparse decode, paged FP8/FP4 KV format breaking changes","https://github.com/deepseek-ai/FlashMLA"],
+ ds_deepspec:["DeepSeek DeepSpec: full-stack draft-model training and speculative-acceptance evaluation","https://github.com/deepseek-ai/DeepSpec"],
+ ds_inference_overview:["DeepSeek Open Infra: modular open-sourcing path instead of original serving engine","https://github.com/deepseek-ai/open-infra-index/blob/main/OpenSourcing_DeepSeek_Inference_Engine/README.md"],
+ ds_3_2_source:["DeepSeek-V3.2-Exp official Indexer and sparse attention CPU semantics","https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/inference/model.py"],
+
  ddim_source:["Diffusers official deterministic DDIM scheduler epsilon path, alpha cumulative products and clipping options","https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py"],
 
  vit_patch:["Hugging Face ViT patch projection source: Conv2d kernel=stride=patch_size","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vit/modeling_vit.py"],
@@ -70,6 +76,11 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ inference_topk:["对每行分数执行可复现 Top-K 排名；由大到小，等值时按 token/index 的原始升序打破平局，输出 [row,K] 真正的整数坐标（以 Float64 教学载体传递）。","DeepSelect 2026.09 官方实现分别为 DSA Lightning Indexer 的 BF16 Top-K、推理采样的 FP32 Top-K 优化；真实 GPU Kernel 关注内存带宽、warp 累积、变量长度与不完整 tile，不是简单排序。","本算子只实现数值选取，没有 CUDA 或 Ascend，加速倍数不从示例矩阵推断；不生成 DeepSeek 学习到的 Indexer Score。","修改 scores 中最大值或设置两个完全相同分数，检查索引结果；连接下一步 Sparse Attention 限定被访问的 KV 行。","ds_deepselect,ds_3_2_source"],
+ inference_sparse_attention:["先检查 Q/K 投影维一致、K/V Token 数相同、所选索引无重复且不超边界；对每个 Query 只对索引给定的 Key 做 QK/sqrt(D)、稳定 Softmax 以及 Values 加权。","DeepSeek-V3.2 的 DSA 由 Lightning Indexer 先筛 Token，后续 Attention 依照 Top-K Mask 执行；FlashMLA 对该计算提供融合 GPU Kernel，可能采用分页、量化存储和专门 layout。","本块模拟的是索引结果给定后的精确数学。没有多头 MLA 的 latent KV、RoPE 拆分、FP8 scale、硬件 Kernel、带宽统计，也不说明索引本身是否保真。","令 K 选出全部历史 token 并与 Dense Attention 检查逐值一致；用少量 Top-K 看实际 QK/PV 算术减少但别将其自动视为 wall-clock 加速。","ds_3_2_source,ds_flashmla"],
+ inference_paged_kv_read:["在教学向量 Cache 中以物理 pageSize 为长度划分页面。逻辑位置 pos 先映射到 blockTable[floor(pos/pageSize)] 再选择物理页面内 pos%pageSize 的行；输出是实际被读取的特征向量。","FlashMLA 支持分页 KV Cache 的索引与变量长 decode，但 2026-09-30 后的 V4.1 稀疏量化 Cache 格式和旧版 V3.2/Hopper 版本不同；同样的逻辑页表并不意味着相同 FP8/FP4 字节布局。","本块没有分配/释放物理页、写入 Cache、量化 scale、DMA、cache coherence 或 head-local KV 压缩；只是可验证的逻辑到物理地址映射。","用 TopK=1 选择每行逻辑位置和物理页表，在 [4,3] physical Cache 中移动 Page 0/1，观察读出的真实数据行发生变化。","ds_flashmla,ds_inference_overview"],
+ inference_greedy_verify:["在当前 draft 所假设的连续前缀条件下，比较 draft[K] 和 target[K+1] 的贪心 Token ID；只接收从开头连续匹配的部分，首次不匹配后所有 draft 均拒绝。下一 Token 是 mismatch 位置的 Target 预测，或全接收时额外的 Target Bonus。","DeepSpec 开源的是 Draft Model 训练与推测解码评测体系。Draft 预测与 Target 验收分离是其计算流的重要机制；可以在此积木上研究 Draft 接收率与 Target 并行验证代价的区别。","这里精确实现仅贪心验收的一个子问题，不包含 sampling-based speculative decoding 的概率接受率、residual distribution、tree attention、Prefix Cache 回滚或实际吞吐。","让 Draft 的第 2 步与 Target 不同，检查输出 mask 为 [1,0,0]；再使全部相同观察 bonus flag，并比较多次 Draft 访问和一次 Target 验证。","ds_deepspec,ds_inference_overview"],
+
  video_causal_conv3d:["从二维载体 [T·H,W·Cin] 恢复精确定义的 [1,T,H,W,Cin]，再按真实 [Cout,Kt,Kh,Kw,Cin] 卷积核计算。第 t 帧输出只使用原始时间 t−Kt+1 到 t，越界历史用零，不访问未来帧。输出本质为 [1,Cout,T,Hout,Wout]，可显式转回二维载体继续连 Attention。","Wan2.2 官方 vae2_2.py 的 CausalConv3d 将 temporal padding 的 2*pT 放在过去侧，允许给出 cache_x，并在残差块里维护历史帧。本块抽取其因果算术原则而非复现整个 VAE；PyTorch F.conv3d 的输入布局为 [B,C,T,H,W]，与这里输入内部使用的 [B,T,H,W,C] 不同，必须 permute 后计算。","不等于可直接运行的 Wan 视频 VAE。这里为 zero-left-pad、空间 valid、时间步长 1、无 bias/no groups/no dilation 的受限子集；原生 rank-5 张量与手工分块状态都有真正的数值实现，但部署效率、持久显存及梯度实现必须分别验证。","针对 Kt=2、T=4 的视频，分别按四个单帧和 [1,2,1] 分块，检验所有时间和通道输出严格相等；改变第 4 帧确认前 3 帧输出保持不变，再核对 PyTorch Conv3d 前向与卷积核 autograd。","wan_vae"],
 
  vision_conv2d:["输入按 HWC 格式从 [H,W·Cin] 恢复每像素的通道向量；显式 kernel=[Cout,Kh·Kw·Cin] 是真正的参数端口。输出高度和宽度由 valid 互相关的 floor((size-kernel)/stride)+1 决定，每个输出通道沿全部局部邻域加权求和。","PyTorch Conv2d 实现的是 cross-correlation 而不是数学上反转权重的卷积。ViT 常把 patch embedding 实现为 kernel=stride=patch_size 的可训练 Conv2d；相比无权重 Patchify，它融合重排与线性投影。","不支持 padding、dilation、groups、bias 与高级算法选择；JavaScript 数值合同不自动意味着具有 Conv2D VJP。独立 PyTorch 脚本可通过显式 Parameter 和 autograd 计算真实权重梯度。","将 [4,4] 灰度图与 [2,4] 卷积核连接，手动计算左上角输出并与 PyTorch 对照；再修改 kernel 权重确认输出变化。","vit_patch"],
