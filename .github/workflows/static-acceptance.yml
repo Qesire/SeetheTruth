@@ -47,6 +47,8 @@ jobs:
             catalog_screenshots/manifest.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Validate DeepInfer source Prefill and image-safe chunk UI in Chromium
+        run: python tests/browser_deepinfer_prefill.py
       - name: Inspect Android teaching-only portal and mobile content in Chromium
         run: python tests/browser_android_teaching.py
       - name: Archive responsive teaching portal screenshots
