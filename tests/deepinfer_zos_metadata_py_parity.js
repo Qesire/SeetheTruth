@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
 const Z=require('../deepinfer_zos_metadata.js');
-const PY=String.raw\`
+const PY=String.raw`
 import sys,json,torch
 c=json.loads(sys.argv[1])
 prev=c["prev"]; current=c["curr"]; nextn=c["nextn"]; pad=c["pad"]
@@ -29,7 +29,7 @@ if nextn>0:
     kref-=torch.where(m>=0,nextn-accepted[m.clamp(min=0)],torch.zeros_like(m))
 k[:len(current)]=kref.tolist()
 print(json.dumps({"r":r+[-1]*(pad-len(current)),"q":q,"k":k}))
-\`.replace(/\\\`/g,'\`');
+`;
 const S=(seqId,seqlenQ,seqlenK,isPlaceholder=false)=>({seqId,seqlenQ,seqlenK,isPlaceholder});
 const tests=[
  {prev:[S('A',1,12),S('B',1,16),S('C',1,9)],
