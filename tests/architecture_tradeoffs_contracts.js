@@ -17,4 +17,8 @@ assert.equal(l.sharedParameters,4*64+3*8*16);
 assert.equal(l.untiedParameters,6*l.sharedParameters);
 assert.equal(l.perTokenProjectionFlops,2*6*l.sharedParameters);
 assert.throws(()=>T.loop({width:8,intermediate:16,steps:1.5}),/integer/);
+assert.throws(()=>T.gqa({layers:1,heads:1000000,kvHeads:1,headDim:10000,context:1000000,bytes:2}),/safe integer/);
+const dense=T.gqa({layers:2,heads:8,kvHeads:8,headDim:16,context:10});
+assert.equal(dense.bytes,dense.mhaBytes);
+assert.equal(dense.saving,0);
 console.log('Architecture tradeoffs: analytical identities and invalid-input contracts PASS');
