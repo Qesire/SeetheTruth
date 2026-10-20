@@ -79,6 +79,8 @@ on:
       - 'tests/train_state_contracts.js'
       - 'tests/trainable_architecture_contracts.js'
       - 'graph_readiness.js'
+      - 'graph_cost_report.js'
+      - 'tests/graph_cost_report_contracts.js'
       - 'tests/graph_readiness_contracts.js'
       - 'branch_execution.js'
       - 'tests/branch_execution_contracts.js'
@@ -125,6 +127,7 @@ jobs:
           retention-days: 14
       - run: node --check micro_training_flows.js && node --check paper_patches.js && node --check paper_hover.js
       - run: node tests/release_surface_contracts.js
+      - run: node --check graph_cost_report.js && node tests/graph_cost_report_contracts.js
       - run: node --check architecture_tradeoffs.js && node tests/architecture_tradeoffs_contracts.js
       - run: node tests/block_catalog_contracts.js
       - run: node tests/concept_flow_contracts.js
