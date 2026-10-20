@@ -125,8 +125,8 @@
    }
    result.push(row);
   }
-  const history=[...state.history,...chunk].slice(-Math.min(K-1,state.processed+T)*p.height)
-    .map(row=>row.slice());
+  const keep=Math.min(K-1,state.processed+T)*p.height;
+  const history=(keep?[...state.history,...chunk].slice(-keep):[]).map(row=>row.slice());
   return {output:result,state:{p:{...p},kernel:state.kernel.map(row=>row.slice()),
     history,processed:state.processed+T}};
  }
