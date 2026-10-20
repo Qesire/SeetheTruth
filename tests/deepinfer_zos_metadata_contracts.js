@@ -32,11 +32,11 @@ assert.deepEqual(Z.prepare([S('B',1,6),S('A',1,5)],[S('A',1,5),S('B',1,5)],
 const rate=Z.prepare([S('B',1,18),S('D',1,5),S('A',1,13)],prev,{nextn:2});
 const varlen=Z.correct(rate,{
  accepted:[1,2,0],variableMtp:true,totalQ:5,
- confidenceRates:[[.9,.8],[.6,.7],[.5,.1]]
+ confidenceRates:[[.9,.8],[.95,.1],[.5,.1]]
 });
 assert.deepEqual(varlen.seqlensQ,[2,1,2],
  'global cumulative confidence ranks: A=0.9, B=0.6 tie? order');
-assert.deepEqual(varlen.seqlensK,[18,5,12]);
+assert.deepEqual(varlen.seqlensK,[19,5,13]);
 assert.deepEqual(varlen.d2hSeqlensQ,[2,1,2]);
 const changed=Z.correct(rate,{accepted:[1,0,0]});
 assert.notDeepEqual(changed.seqlensK,Z.correct(rate,{accepted:[1,2,0]}).seqlensK,
