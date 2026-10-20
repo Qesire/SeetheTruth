@@ -31,6 +31,7 @@
   }
   let parameterElements=0,implicitTeachingWeights=0,coveredMAC=0,logicalOutputElements=0;
   let attentionMAC=0,expertMAC=0,attentionNodes=0,expertNodes=0,cacheSnapshotElements=0;
+  let yocoScheduledQueryRows=0,yocoRetainedQueryRows=0,yocoEligibleQKPairs=0;
   const cacheSnapshots=[];
   let parameterTensors=0,coveredGemmNodes=0,otherOperatorNodes=0;
   const rows=[],unprofiledKinds=new Set();
@@ -65,6 +66,17 @@
        v[1]%p.kvHeads!==0||q[1]/p.heads!==k[1]/p.kvHeads)
      throw Error("GQA attention shape or head divisibility invalid at "+n.id);
     attention=safeProduct([p.heads,q[0],k[0],q[1]/p.heads+v[1]/p.kvHeads],n.id+" GQA MAC");
+   }else if(n.kind==="deepinfer_yoco_swa_mask"||n.kind==="deepinfer_yoco_swa_compact"){
+    const q=inbound(n,"q"),k=inbound(n,"k"),v=inbound(n,"v"),p=n.params;
+    if(q.length!==2||k.length!==2||v.length!==2||q[0]!==k[0]||k[0]!==v[0])
+     throw Error("YoCo math input axes inconsistent");
+    const retained=Math.min(q[0],p.keepTokens),cut=q[0]-retained;
+    const scheduled=n.kind==="deepinfer_yoco_swa_mask"?q[0]:retained;
+    const pairs=Array.from({length:retained},(_,i)=>Math.min(p.window,cut+i+1)).reduce((a,b)=>a+b,0);
+    yocoScheduledQueryRows=safeSum(yocoScheduledQueryRows,scheduled);
+    yocoRetainedQueryRows=safeSum(yocoRetainedQueryRows,retained);
+    yocoEligibleQKPairs=safeSum(yocoEligibleQKPairs,pairs);
+    otherOperatorNodes++;unprofiledKinds.add(n.kind+" (Query-slot and eligible QK pairs only)");
    }else if(n.kind==="inference_sparse_attention"){
     const q=inbound(n,"q"),k=inbound(n,"k"),v=inbound(n,"v"),ix=inbound(n,"indices");
     if(q.length!==2||k.length!==2||v.length!==2||ix.length!==2||
@@ -113,6 +125,7 @@
    physicalParameterElements:parameterElements,implicitTeachingWeightElements:implicitTeachingWeights,
    countedMatmulNodes:coveredGemmNodes,countedMatmulMAC:coveredMAC,countedMatmulFlopTerms:flops,
    logicalOutputElements,unprofiledOperatorNodes:otherOperatorNodes,
+   yocoScheduledQueryRows,yocoRetainedQueryRows,yocoEligibleQKPairs,
    attentionNodes,attentionMAC,expertLinearNodes:expertNodes,expertLinearMAC:expertMAC,
    knownArithmeticMAC,knownArithmeticFlopTerms,cacheSnapshotElements,cacheSnapshots,
    unprofiledKinds:[...unprofiledKinds].sort(),parameterUsage:usage,rows,
@@ -122,7 +135,7 @@
  function compare(left,right){
   const a=profile(left),b=profile(right);
   const metrics=["physicalParameterElements","implicitTeachingWeightElements","countedMatmulMAC",
-    "attentionMAC","expertLinearMAC","knownArithmeticMAC","cacheSnapshotElements"];
+    "attentionMAC","expertLinearMAC","knownArithmeticMAC","cacheSnapshotElements","yocoScheduledQueryRows","yocoRetainedQueryRows","yocoEligibleQKPairs"];
   const deltas=Object.fromEntries(metrics.map(key=>[key,Object.freeze({
    baseline:a[key],candidate:b[key],difference:b[key]-a[key],
    ratio:a[key]===0?null:b[key]/a[key]
