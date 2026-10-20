@@ -4,6 +4,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+**2026-10-20 推理系统时间实验：** [DeepInfer Worker ZOS / 非 ZOS 对照](deepinfer_worker_lab.html) 独立展示跨 Step 的 Scheduler、GPU Forward、上一轮延迟 Post-process、Sample、Flush 的可执行事件依赖图。它以用户输入的假设时长进行可证伪的逻辑调度对照，**不是 DeepInfer 的实测吞吐或框架复刻**。精确来源与限制详见 [时序重建与证据](docs/deepinfer-worker-events.md)。
+
 ## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
