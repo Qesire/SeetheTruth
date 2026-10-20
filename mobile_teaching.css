@@ -1,0 +1,25 @@
+/* Activated only for the education-mode URL; PC full workbench unchanged. */
+body.teaching-edition #exportPython,
+body.teaching-edition #save,
+body.teaching-edition #load,
+body.teaching-edition label[for="load"],
+body.teaching-edition #exportScope,
+body.teaching-edition #pythonBackend,
+body.teaching-edition #pythonExportPanel,
+body.teaching-edition #traceReferenceFile,
+body.teaching-edition #realTraceFile{display:none!important}
+body.teaching-edition .header:after{content:"离线教学 · 不导出产物";color:#79e7d4;font-size:12px;border:1px solid #3c857b;padding:5px 9px;border-radius:9px}
+@media(max-width:700px){
+ body.teaching-edition .app{display:flex;flex-direction:column;height:auto;min-height:0}
+ body.teaching-edition .header{padding:12px;gap:8px;min-height:0}
+ body.teaching-edition .head-actions{max-height:90px;overflow-y:auto;gap:5px}
+ body.teaching-edition .head-actions .btn{font-size:11px;padding:6px 8px;min-height:34px}
+ body.teaching-edition .rail{width:100%;max-height:320px;overflow:auto;padding:13px;border-right:0;border-bottom:1px solid #33536b}
+ body.teaching-edition .stage{width:100%;min-width:0;min-height:580px}
+ body.teaching-edition .inspector{width:100%;max-height:none!important;min-width:0;padding:14px}
+ body.teaching-edition .stage-top{padding:11px;flex-wrap:wrap}
+ body.teaching-edition .board-viewport{height:420px;overflow:auto}
+ body.teaching-edition .playbar{padding:12px;overflow-x:auto}
+ body.teaching-edition .playbar .row{min-width:max-content}
+ body.teaching-edition .btn{touch-action:manipulation}
+}
