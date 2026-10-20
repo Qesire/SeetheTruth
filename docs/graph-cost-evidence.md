@@ -98,3 +98,9 @@ Run `node tests/graph_cost_evidence_extensions.js` and the Chromium cost
 comparison acceptance before using these results as validated mathematical
 claims. Still excluded: GPU kernels, actual time and memory, all optimizer
 FLOPs, softmax and nonlinear costs, measured routing overhead.
+
+The Graph Cost panel also lists each explicitly counted operator and cache snapshot with its
+live tensor shape and scoped operation count. Clicking that row focuses the existing
+block inspector, where the paper/source-backed mechanism explanation remains available
+where supported. This per-node mapping is based on the **node ID in the current DAG**,
+not a fabricated source-attributed GPU profiler event.
