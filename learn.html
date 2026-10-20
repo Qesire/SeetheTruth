@@ -202,6 +202,10 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="mor_token_depth_budget"><span class="num">44</span><span>MoR 启发 · 按 Token 选择循环预算<span class="desc">逐 Token 0/1/2 次状态更新、硬停止、BPTT；保留退出位置状态，不虚报稀疏加速</span></span></button>
   <button class="mission" data-preset="loop_residual_scaling"><span class="num">43</span><span>Loop Residual Scaling · 为什么按轮缩放？<span class="desc">2026 论文：1 / 1/√N / 1/N，控制变量，真实 loss 与梯度对照</span></span></button>
   <button class="mission" data-preset="loop_input_injection"><span class="num">45</span><span>Huginn-Linear · 原输入重新注入<span class="desc">共享 W[state;input]，解释信息保留、计算成本与稳定性；真实反传和 Python 导出</span></span></button>
+  <button class="mission" data-preset="image_vit_patch"><span class="num">46</span><span>图像 · ViT 风格 Patch Token<span class="desc">HWC 空间网格 → Patchify → 可组合线性投影与自注意力</span></span></button>
+  <button class="mission" data-preset="audio_spectrogram"><span class="num">47</span><span>音频 · STFT 时频 Token<span class="desc">Hann STFT 功率谱 → Log10 压缩 → 特征投影与 Attention</span></span></button>
+  <button class="mission" data-preset="video_vivit_tubelet"><span class="num">48</span><span>视频 · ViViT 风格 Tubelet<span class="desc">THWC 时空块 → Tubelet → 特征投影与自注意力</span></span></button>
+  <button class="mission" data-preset="multimodal_cross_attention"><span class="num">49</span><span>多模态 · 图像/音频/视频 Cross-Attention<span class="desc">三路独立 Token 编码 → 两次明确 Q/K/V 交叉注意力</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -282,6 +286,7 @@ input[type="file"]{display:none}
 <script src="tensor_ir.js"></script>
 <script src="nd_tensor.js"></script>
 <script src="activation_math.js"></script>
+<script src="multimodal_ops.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
@@ -322,7 +327,7 @@ const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={data:"◫",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
-const categoryNames={data:"数据",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const categoryNames={data:"数据",vision:"图像",audio:"音频",video:"视频",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
