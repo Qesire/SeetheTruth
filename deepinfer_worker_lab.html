@@ -46,6 +46,16 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 <textarea id="metadataJson" aria-label="数值 QK 元数据 Fixture JSON" spellcheck="false"></textarea></details>
 <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>当前 Step</th><th>上一 Step</th><th>Remap</th><th>Q 修正</th><th>K 基础值</th><th>K 修正</th><th>采样侧 Q/K</th></tr></thead><tbody id="metadataRows"></tbody></table></div>
 </section>
+<section class="panel" id="decodePackedPanel"><div class="row"><h2>Decode KV 分页布局与采样状态</h2><span class="muted">C++ prepare_decode_zos_inputs / refresh_for_sampling 参考计算</span></div>
+<p class="note">选中某个 ZOS 数值修正 Step，按真实整数公式构建 <code>blockTableOffsets</code>、压缩后的物理块 ID、<code>cuSeqlensQ</code>，再用该 Step 已修正的 Query 长度与显式 Cache Token 数刷新采样侧状态。内存页并未在 GPU 上分配。</p>
+<div class="controls"><label class="switch"><input type="checkbox" id="decodeEnabled" checked> 计算 Decode 页表与 MTP 状态</label>
+<button id="applyDecode" type="button">验证 Decode Fixture</button>
+<span id="decodeStatus" role="status" class="muted">已加载显式教学数据</span></div>
+<details style="margin-top:10px"><summary style="cursor:pointer;color:#a2e1ee">查看并编辑 Decode Block Table / MTP 槽位 Fixture</summary>
+<textarea id="decodeJson" spellcheck="false" aria-label="Decode 元数据 Fixture JSON"></textarea></details>
+<div style="overflow:auto;margin-top:12px"><table><thead><tr><th>Step</th><th>物理 Block ID</th><th>Block Offset</th><th>每序列块数</th><th>累计 Q</th><th>Sampler Q/K</th><th>MTP 读 / 写槽位</th><th>Golden Token 窗口</th></tr></thead><tbody id="decodeRows"></tbody></table></div>
+<p class="note">采样槽位转移、Golden Token 读窗口按官方 <code>SequenceMetadata.refresh_for_sampling()</code> 执行；结构化输出 Matcher 仅传递对象，不运行完整语法自动机。</p>
+</section>
 <section class="two">
 <div style="display:grid;gap:20px;min-width:0">
 <article class="panel"><div class="row"><h2>ZOS · 延迟后处理</h2><span class="muted" id="zosInfo"></span></div><div class="chartwrap" id="zosChart"></div></article>
@@ -58,4 +68,4 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 </div></section>
 <section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
 <div style="overflow:auto"><table><thead><tr><th>Step</th><th>模式</th><th>请求</th><th>ZOS 输出交付</th><th>非 ZOS 输出交付</th></tr></thead><tbody id="results"></tbody></table></div></section>
-</main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
+</main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_decode_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
