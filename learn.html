@@ -213,6 +213,8 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="inference_paged_kv"><span class="num">55</span><span>FlashMLA · KV 页表数学<span class="desc">逻辑 Token 位置、物理 Cache 页面与真实数据读取</span></span></button>
   <button class="mission" data-preset="inference_speculative"><span class="num">56</span><span>DeepSpec · Draft/Target 验收<span class="desc">贪心推测解码：连续接收前缀、拒绝和 Bonus 定义</span></span></button>
   <button class="mission" data-preset="inference_paged_sparse"><span class="num">57</span><span>Decode · 分页 KV + 稀疏 Attention<span class="desc">将 Paged KV Read、Top-K、Sparse Attention 拼成可执行解码微图</span></span></button>
+  <button class="mission" data-preset="deepinfer_mtp_budget"><span class="num">58</span><span>DeepInfer · DSpark 全局置信度调度<span class="desc">Remap、置信度累乘、全批稳定排序、固定 Token 预算分配</span></span></button>
+  <button class="mission" data-preset="deepinfer_yoco_replay"><span class="num">59</span><span>DeepInfer · YoCo Mask / Compact<span class="desc">同一 SWA 后缀输出；不同 Query 行数；窗口及后退安全约束</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -297,6 +299,7 @@ input[type="file"]{display:none}
 <script src="multimodal_advanced.js"></script>
 <script src="video_causal_conv3d.js"></script>
 <script src="inference_ops.js"></script>
+<script src="deepinfer_runtime_ops.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
@@ -780,6 +783,9 @@ function render(){
        ["路由专家 Linear MAC（不含通信）",report.expertLinearMAC],
        ["已覆盖数学 MAC 小计（不是全部 FLOPs）",report.knownArithmeticMAC],
        ["显式 Cache 写入后逻辑快照元素总和",report.cacheSnapshotElements],
+       ["YoCo 调度的 Query 行数（非 GPU FLOPs）",report.yocoScheduledQueryRows],
+       ["YoCo 需要保留的 Query 行数",report.yocoRetainedQueryRows],
+       ["YoCo 有效 QK 配对数（不是设备计数）",report.yocoEligibleQKPairs],
        ["逐节点逻辑输出元素总和（非峰值显存）",report.logicalOutputElements]
      ];
      costRoot.replaceChildren(...rows.map(([label,value])=>{
@@ -811,7 +817,7 @@ function render(){
        try{
          const d=window.SeetheTruthGraphCost.compare(graphCostBaseline,graph).deltas;
          const fields=[["物理 Parameter",d.physicalParameterElements],["已覆盖 MAC",d.knownArithmeticMAC],
-           ["Attention MAC",d.attentionMAC],["专家投影 MAC",d.expertLinearMAC],["Cache 快照元素",d.cacheSnapshotElements]];
+           ["Attention MAC",d.attentionMAC],["专家投影 MAC",d.expertLinearMAC],["Cache 快照元素",d.cacheSnapshotElements],["YoCo Query 行数",d.yocoScheduledQueryRows]];
          comparison.replaceChildren(...fields.map(([label,delta])=>{
            const row=document.createElement("div");row.className="metric";
            row.textContent=label+" · 基线 "+nf(delta.baseline)+" → 当前 "+nf(delta.candidate)+

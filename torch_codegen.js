@@ -11,7 +11,7 @@ const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SUPPORTED=new Set([
- "input","parameter","nd_input","nd_parameter","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
+ "input","parameter","nd_input","nd_parameter","deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","nd_mse",
  "silu","relu","gelu_tanh","gelu_erf","sigmoid","tanh","softplus",
@@ -66,6 +66,12 @@ function compile(raw,options={}){
      const W=Array.from({length:sh[1]},(_,j)=>Array.from({length:p.out},(_,i)=>weight(id,i,j)));
      const bias=Array.from({length:p.out},(_,i)=>weight(id,97,i));
      expr='('+src(id,"x")+' @ torch.tensor('+JSON.stringify(W)+',dtype=DTYPE) + torch.tensor('+JSON.stringify(bias)+',dtype=DTYPE))';
+   } else if(k==="deepinfer_mtp_confidence_schedule"){
+     expr="_deepinfer_mtp("+src(id,"remap")+","+src(id,"prev_confidence")+","+p.totalQ+")";
+   } else if(k==="deepinfer_yoco_swa_mask"||k==="deepinfer_yoco_swa_compact"){
+     expr="_deepinfer_yoco("+src(id,"q")+","+src(id,"k")+","+src(id,"v")+","+
+       p.window+","+p.keepTokens+","+p.backtracking+","+
+       JSON.stringify(k==="deepinfer_yoco_swa_mask"?"mask":"compact")+")";
    } else if(k==="inference_topk"){
      expr='torch.argsort('+src(id,"scores")+',dim=1,descending=True,stable=True)[:,:'+p.topk+'].to(DTYPE)';
    } else if(k==="inference_sparse_attention"){
@@ -192,7 +198,7 @@ function compile(raw,options={}){
    body.push('        if not bool(torch.isfinite('+v+').all()): raise ValueError('+py(id+' nonfinite result')+')');
    metadata.push({id,kind:k,shape:t.shape});
  }
- const source=TEMPLATE.replace('__LOSS_ID__',target===null?"None":py(target))
+ const source=TEMPLATE.replace("class GraphRuntime:","\ndef _deepinfer_mtp(remap, rates, budget):\n    mapping=remap[:,0].to(torch.int64)\n    if bool(((mapping < -1)|(mapping >= rates.shape[0])).any()):\n        raise ValueError(\"invalid DeepInfer remap\")\n    if bool(((rates < 0)|(rates > 1)).any()):\n        raise ValueError(\"confidence must be in [0,1]\")\n    selected=torch.where(mapping[:,None]>=0,rates[mapping.clamp(min=0)],torch.zeros((len(mapping),rates.shape[1]),dtype=DTYPE))\n    cum=selected.cumprod(dim=1).reshape(-1)\n    top=torch.argsort(cum,descending=True,stable=True)[:budget-remap.shape[0]]\n    return (1+torch.bincount(top//rates.shape[1],minlength=remap.shape[0])).to(DTYPE).unsqueeze(1)\n\ndef _deepinfer_yoco(q,k,v,window,keep,backtracking,mode):\n    if keep < window+backtracking: raise ValueError(\"invalid YoCo keepTokens bound\")\n    n=q.shape[0]; cut=max(0,n-keep); rows=[]\n    for t in range(cut if mode==\"compact\" else 0,n):\n        if t<cut:\n            rows.append(torch.zeros(v.shape[1],dtype=DTYPE)); continue\n        idx=torch.arange(max(0,t-window+1),t+1,dtype=torch.int64)\n        scores=k[idx]@q[t]/math.sqrt(q.shape[1])\n        rows.append(torch.softmax(scores,dim=0)@v[idx])\n    return torch.stack(rows,dim=0)\n\n"+"\nclass GraphRuntime:").replace('__LOSS_ID__',target===null?"None":py(target))
    .replace('__INITIALIZERS__',init.join("\n")||'        pass')
    .replace('__FORWARD__',body.join("\n")||'        pass');
  return {source,filename:"seethetruth-"+(options.targetId||"training-graph")+"-torch.py",nodes:metadata,

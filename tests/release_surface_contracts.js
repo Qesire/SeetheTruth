@@ -12,7 +12,7 @@ const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');
 assert.equal(new Set(guided).size,guided.length,'each course is represented once');
 const lessons=guided.filter(x=>x!=='blank');
-assert.equal(lessons.length,57,'all 57 guided lessons must appear exactly once');
+assert.equal(lessons.length,59,'all 59 guided lessons must appear exactly once');
 assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
 assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
@@ -35,6 +35,9 @@ assert.ok(server.includes('"/video_causal_conv3d.js"'),'native video operator re
 assert.ok(guided.includes('video_causal_conv3d'),'lesson 53 registered');
 assert.ok(html.includes('src="inference_ops.js"'),'inference CPU kernels must be loaded');
 assert.ok(server.includes('"/inference_ops.js"'),'inference CPU module must have HTTP route');
+assert.ok(html.includes('src="deepinfer_runtime_ops.js"'),'DeepInfer runtime module must be loaded');
+assert.ok(server.includes('"/deepinfer_runtime_ops.js"'),'DeepInfer runtime HTTP route must exist');
+for(const preset of ['deepinfer_mtp_budget','deepinfer_yoco_replay'])assert.ok(guided.includes(preset),'missing DeepInfer source-ground lesson: '+preset);
 for(const preset of ['inference_sparse_decode','inference_paged_kv','inference_speculative','inference_paged_sparse'])assert.ok(guided.includes(preset),'missing inference lesson: '+preset);
 for(const preset of ['vision_learned_conv','audio_mel_chain','diffusion_ddim_chain'])assert.ok(guided.includes(preset),'missing advanced multimodal lesson: '+preset);
 for(const preset of ['image_vit_patch','audio_spectrogram','video_vivit_tubelet','multimodal_cross_attention'])assert.ok(guided.includes(preset),'missing multimodal lesson: '+preset);

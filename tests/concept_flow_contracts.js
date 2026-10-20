@@ -53,6 +53,18 @@ function perKind(k){
   return;
  }
 
+ if(['deepinfer_mtp_confidence_schedule','deepinfer_yoco_swa_mask','deepinfer_yoco_swa_compact'].includes(k)){
+  const n={id:k,kind:k,params:{...L.defs[k].params}};
+  const shapes=k==='deepinfer_mtp_confidence_schedule'?{remap:[3,1],prev_confidence:[2,2]}:
+    {q:[4,3],k:[4,3],v:[4,2]};
+  const values=k==='deepinfer_mtp_confidence_schedule'?{
+    remap:[[0],[1],[-1]],prev_confidence:[[.9,.8],[.5,.5]]
+  }:{q:mock([4,3]),k:mock([4,3]),v:mock([4,2])};
+  const inferred=C.analyze(n,shapes),actual=B.execute(n,values);
+  assert.deepEqual(inferred.shape,actual.shape,k+' shape contract');
+  assert.ok(actual.values.flat(Infinity).every(Number.isFinite));
+  return;
+ }
  if(['inference_topk','inference_sparse_attention','inference_paged_kv_read','inference_greedy_verify'].includes(k)){
   const n={id:k,kind:k,params:{...L.defs[k].params}},shapes=
    k==='inference_topk'?{scores:[2,4]}:

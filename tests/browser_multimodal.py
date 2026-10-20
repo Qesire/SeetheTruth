@@ -155,5 +155,34 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
         for kind in ['inference_topk','inference_sparse_attention','inference_paged_kv_read','inference_greedy_verify']:
             self.assertEqual(p.locator('#palette [data-add="'+kind+'"]').count(),1)
 
+
+    def test_deepinfer_swa_mtp_source_based_lessons_and_downloads(self):
+        p=self.page
+        cases=[
+            ('deepinfer_mtp_budget','mtp','deepinfer_mtp_confidence_schedule','_deepinfer_mtp'),
+            ('deepinfer_yoco_replay','compact','deepinfer_yoco_swa_compact','_deepinfer_yoco')
+        ]
+        for i,(preset,node,kind,helper) in enumerate(cases):
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator('[data-node="'+node+'"]').count(),1)
+            p.locator('#run').click()
+            self.assertNotIn("尚未运行",p.locator('#stepInfo').inner_text())
+            p.locator('[data-node="'+node+'"] .block-head').click()
+            self.assertGreaterEqual(p.locator('#blockKnowledge .knowledge-sources a').count(),1)
+            p.locator('#pythonBackend').select_option('numpy')
+            with p.expect_download() as dl:
+                p.locator('#exportPython').click()
+            script=Path(dl.value.path()).read_text(encoding="utf8")
+            self.assertIn('# '+kind,script)
+            self.assertIn('def '+helper+'(',script)
+            p.locator('#pythonBackend').select_option('torch')
+            with p.expect_download() as dl:
+                p.locator('#exportPython').click()
+            script=Path(dl.value.path()).read_text(encoding="utf8")
+            self.assertIn('def '+helper+'(',script)
+            p.screenshot(path=str(DEST/('deepinfer-%02d-'%i+preset+'.png')),full_page=True,animations='disabled')
+        for kind in ['deepinfer_mtp_confidence_schedule','deepinfer_yoco_swa_mask','deepinfer_yoco_swa_compact']:
+            self.assertEqual(p.locator('#palette [data-add="'+kind+'"]').count(),1)
+
 if __name__=="__main__":
     unittest.main()
