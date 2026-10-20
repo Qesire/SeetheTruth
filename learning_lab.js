@@ -261,6 +261,56 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(["inference_sparse_decode","inference_paged_kv","inference_speculative","inference_paged_sparse"].includes(name)){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      let title,nodes=[],edges=[];
+      if(name==="inference_sparse_decode"){
+        title="任务 54 · DeepSelect Top-K → DSA Selected Attention";
+        nodes=[N("scores","input",20,90,{rows:2,width:4,seed:1}),N("select","inference_topk",270,90,{topk:2}),
+          N("q","input",20,440,{rows:2,width:4,seed:2}),N("k","input",20,650,{rows:4,width:4,seed:3}),
+          N("v","input",20,870,{rows:4,width:3,seed:4}),
+          N("sparse","inference_sparse_attention",555,155,{causal:false,queryOffset:0}),
+          N("dense","attention",580,580)];
+        edges=[["scores","select","scores"],["select","sparse","indices"],["q","sparse","q"],
+          ["k","sparse","k"],["v","sparse","v"],["q","dense","q"],["k","dense","k"],["v","dense","v"]];
+      }else if(name==="inference_paged_kv"){
+        title="任务 55 · FlashMLA 相关概念：Paged KV Cache 地址映射";
+        nodes=[N("cache","input",20,190,{rows:4,width:3,seed:1}),
+          N("page_scores","input",20,480,{rows:2,width:2,seed:2}),
+          N("page_ids","inference_topk",290,475,{topk:1}),
+          N("position_scores","input",20,760,{rows:2,width:4,seed:3}),
+          N("positions","inference_topk",290,760,{topk:1}),
+          N("read","inference_paged_kv_read",600,200,{pageSize:2,logicalLength:4})];
+        edges=[["page_scores","page_ids","scores"],["position_scores","positions","scores"],
+          ["cache","read","cache"],["page_ids","read","blocks"],["positions","read","positions"]];
+      }else if(name==="inference_speculative"){
+        title="任务 56 · DeepSpec 相关：Draft/Target 贪心前缀验收";
+        nodes=[N("draft_logits","input",20,150,{rows:3,width:4,seed:1}),
+          N("target_logits","input",20,550,{rows:4,width:4,seed:2}),
+          N("draft","inference_topk",300,150,{topk:1}),
+          N("target","inference_topk",300,550,{topk:1}),
+          N("accepted","inference_greedy_verify",640,240)];
+        edges=[["draft_logits","draft","scores"],["target_logits","target","scores"],
+          ["draft","accepted","draft"],["target","accepted","target"]];
+      }else{
+        title="任务 57 · Paged KV → Top-K Indexer → Sparse Attention Decode";
+        nodes=[N("cache","input",20,180,{rows:4,width:4,seed:1}),
+          N("page_scores","input",20,470,{rows:2,width:2,seed:2}),
+          N("pages","inference_topk",275,470,{topk:1}),
+          N("position_scores","input",20,760,{rows:2,width:4,seed:3}),
+          N("positions","inference_topk",275,765,{topk:1}),
+          N("read","inference_paged_kv_read",560,300,{pageSize:2,logicalLength:4}),
+          N("q","input",560,35,{rows:2,width:4,seed:4}),
+          N("indexer_scores","input",560,710,{rows:2,width:2,seed:5}),
+          N("select","inference_topk",840,710,{topk:2}),
+          N("sparse","inference_sparse_attention",1080,320,{causal:false,queryOffset:0})];
+        edges=[["page_scores","pages","scores"],["position_scores","positions","scores"],
+          ["cache","read","cache"],["pages","read","blocks"],["positions","read","positions"],
+          ["q","sparse","q"],["read","sparse","k"],["read","sparse","v"],
+          ["indexer_scores","select","scores"],["select","sparse","indices"]];
+      }
+      return validateGraph({schema:SCHEMA,title,nodes,edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     if(name==="video_causal_conv3d"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const weights=[[0.25,-0.1,0.3,0.2],[-0.15,0.4,0.2,-0.25]];
