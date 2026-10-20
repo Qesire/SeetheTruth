@@ -338,6 +338,52 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertEqual(obj["paperPatches"][0]["paper"],"lora")
         self.shot("54-lora-paper-rewrite-trainable-graph.png")
 
+    def test_huginn_linear_source_injection_shared_parameter_why_and_real_exports(self):
+        p=self.page
+        p.locator('[data-preset="loop_input_injection"]').click()
+        self.assertEqual(p.locator("#blocks .block").count(),61)
+        self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
+        p.locator('[data-node="Winject"] .block-head').click()
+        info=p.locator("#blockKnowledge").inner_text()
+        self.assertIn("为什么 Loop Transformer",info)
+        self.assertIn("xLLM-Loop",info)
+        self.assertIn("Winject",info)
+        self.assertIn("额外",info)
+        self.assertEqual(p.locator('[data-node="Winject"]').get_attribute("data-industrial-ref"),"loop_injection")
+        p.locator('[data-node="Winject"] .block-head').hover()
+        p.locator("#paperHoverInspector").wait_for(state="visible",timeout=5000)
+        self.assertIn("LinearInputInjection",p.locator("#paperHoverInspector").inner_text())
+        self.assertIn("bias=False",p.locator("#paperHoverInspector").inner_text())
+        p.locator("#run").click()
+        self.assertIn("✓ 已运行",p.locator("#status").inner_text())
+        p.locator('[data-node="loss"] .block-head').click()
+        p.locator("#backward").click()
+        self.assertIn("反向传播",p.locator("#status").inner_text())
+        p.locator("#trainCount").select_option("2")
+        p.locator("#trainStep").click()
+        self.assertIn("已提交 2 步",p.locator("#status").inner_text())
+        with p.expect_download() as d:
+            p.locator("#save").click()
+        graph=json.loads(Path(d.value.path()).read_text(encoding="utf-8"))
+        weights=[n for n in graph["nodes"] if n["kind"]=="parameter"]
+        self.assertEqual(len(weights),9)
+        self.assertEqual(next(n for n in weights if n["id"]=="Winject")["params"]["optimizer"]["t"],2)
+        p.locator("#pythonBackend").select_option("numpy")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        np=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn('v["r0_injection_concat"]',np)
+        self.assertIn('v["r1_injection_concat"]',np)
+        p.locator("#pythonBackend").select_option("torch")
+        with p.expect_download() as d:
+            p.locator("#exportPython").click()
+        torch=Path(d.value.path()).read_text(encoding="utf-8")
+        self.assertIn('self.parameters["Winject"]',torch)
+        self.assertIn('torch.nn.Parameter',torch)
+        self.assertIn('torch.optim.AdamW',torch)
+        p.locator('[data-node="r1_injected_state"] .block-head').click()
+        self.shot("66-huginn-input-reinjection-real-gradient-source-why.png")
+
     def test_mor_token_depth_halt_source_why_cpu_training_and_two_exports(self):
         p=self.page
         p.locator('[data-preset="mor_token_depth_budget"]').click()
