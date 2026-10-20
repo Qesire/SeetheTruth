@@ -1529,7 +1529,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_live_graph_cost_updates_from_actual_connected_dag(self):
         p=self.page
         p.locator('[data-preset="ffn"]').click()
-        p.locator('#graphCostPanel summary').click()
+        p.locator('#graphCostPanel > summary').click()
         cost=p.locator('#graphCostSummary')
         self.assertIn("192",cost.inner_text(),"FFN MatMul MAC from 3x4x8 and 3x8x4")
         self.assertIn("76",cost.inner_text(),"synthetic Linear weight elements are counted separately")
@@ -1538,6 +1538,35 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("168",cost.inner_text(),"loop-shared physical parameter element count")
         self.assertIn("尚未计入",cost.inner_text(),"partial compute coverage must be disclosed")
         self.assertEqual(self.errors,[])
+
+
+    def test_graph_evidence_attention_moe_cache_and_baseline_counterfactual(self):
+        p=self.page
+        p.locator('[data-preset="ffn"]').click()
+        p.locator('#graphCostPanel > summary').click()
+        p.locator('#freezeGraphBaseline').click()
+        self.assertIn("基线",p.locator('#graphCostComparison').inner_text())
+        self.assertIn("192",p.locator('#graphCostComparison').inner_text())
+        p.locator('[data-preset="gqa"]').click()
+        comp=p.locator('#graphCostComparison')
+        self.assertIn("Attention MAC",comp.inner_text())
+        self.assertIn("已覆盖 MAC",comp.inner_text())
+        self.assertIn("Δ",comp.inner_text())
+        p.locator('[data-preset="moe_expert_ffn"]').click()
+        self.assertIn("路由专家 Linear MAC",p.locator('#graphCostSummary').inner_text())
+        self.assertIn("专家投影 MAC",comp.inner_text())
+        p.locator('[data-preset="nd_cached_gqa_decode"]').click()
+        self.assertIn("Cache 写入后逻辑快照元素总和",p.locator('#graphCostSummary').inner_text())
+        self.assertIn("Cache 快照元素",comp.inner_text())
+        p.locator('#graphCostNodes summary').click()
+        entries=p.locator('#graphCostNodeList button')
+        self.assertGreater(entries.count(),0)
+        entries.first.click()
+        self.assertNotEqual(p.locator('#inspectorTitle').inner_text(),"选择一个积木")
+        shot=p.screenshot(path=str(DEST/'62-live-dag-cost-counterfactual.png'),full_page=True,animations="disabled")
+        self.assertTrue(shot.startswith(b"\x89PNG\r\n\x1a\n"))
+        p.locator('#clearGraphBaseline').click()
+        self.assertIn("固定当前合法图为基线",comp.inner_text())
 
 
 if __name__=="__main__":

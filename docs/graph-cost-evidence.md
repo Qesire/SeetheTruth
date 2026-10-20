@@ -59,3 +59,48 @@ Resolve hardware-backed evidence by graph node and immutable capture source,
 then distinguish (a) algorithmic operation count, (b) materialization/bytes
 and (c) actual profiler/kernel attribution. None should silently inherit a
 more authoritative evidence tier from the others.
+
+## Attention, expert projection and cache extensions (2026-10-20)
+
+`attention` is the two unmasked dense 2D GEMMs, `QK^T` and `PV`:
+`Tq*Tk*(Dk+Dv)` MAC. Fused `gqa` similarly multiplies by `Hq` using
+actual `Hq,Hkv`, `Dk=Q_width/Hq` and `Dv=V_width/Hkv`, with
+`Tq*Tk*Hq*(Dk+Dv)`. For these kinds the synthetic input Q/K/V projections
+are already complete: **do not** add input-projection GEMMs or attribute this
+count to the cache update. Neither includes Softmax, RoPE, masking, bandwidth
+or latency. When the graph decomposes Attention into explicit MatMuls, only
+those MatMuls are counted (no heuristic double-count from naming).
+
+`expert_linear_bank` accounts for every dispatched token-row projected
+through its selected expert matrix: `(T*K)*Din*Dout` MAC. Separate gate,
+expert weight storage, routing, all-to-all, packing and communication are
+not magically included. Under this bounded teaching graph all selected
+rows execute: `Top-k` describes actual mathematical visits, not sparse
+GPU kernel occupancy. The `expert_bank_mix` static vector lookup is **not**
+a conditional Expert FFN and is not included in this count.
+
+`nd_cache_append` and `cache_write_segment` expose logical elements in
+their **resulting immutable snapshot**. The sum of successive snapshots is
+not peak memory, cache residency, allocated HBM or network bytes; there is
+no inferred dtype and the report never assumes K/V separately unless the
+user builds both branches. `nd_repeat_kv` expands a conceptual output,
+but may be only a logical view in deployed models; no physical duplication
+is asserted. Cache-read slicing is likewise not a measured bandwidth event.
+
+`GraphCost.compare(a,b)` rejects incomplete graphs, calculates both actual
+DAG profiles, and exposes `baseline,candidate,difference,ratio` for each
+metric. In the workbench, “固定当前图为基线” deep-copies the **current valid
+connected graph**; subsequent edits or lesson selections recompute exact
+shape-derived deltas. This is not an automatically controlled scientific
+ablation: users must ensure semantic, parameter, data and quality comparability.
+
+Run `node tests/graph_cost_evidence_extensions.js` and the Chromium cost
+comparison acceptance before using these results as validated mathematical
+claims. Still excluded: GPU kernels, actual time and memory, all optimizer
+FLOPs, softmax and nonlinear costs, measured routing overhead.
+
+The Graph Cost panel also lists each explicitly counted operator and cache snapshot with its
+live tensor shape and scoped operation count. Clicking that row focuses the existing
+block inspector, where the paper/source-backed mechanism explanation remains available
+where supported. This per-node mapping is based on the **node ID in the current DAG**,
+not a fabricated source-attributed GPU profiler event.
