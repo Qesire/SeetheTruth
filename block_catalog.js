@@ -12,6 +12,12 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  video_causal_conv3d:block("视频真 5D 因果卷积","Native Rank-5 Causal Conv3D","video",["x","kernel"],
+    {frames:4,height:2,width:2,channels:1,kernelFrames:2,kernelHeight:2,kernelWidth:1,stride:1,outChannels:2},
+    "Y[t,y,x,o] = Σ_(dt,dy,dx,c) X[t+dt−Kt+1,y·s+dy,x·s+dx,c] W[o,dt,dy,dx,c]",
+    "输入二维载体 [T·H,W·C] 会还原为真实 [B,T,H,W,C]；权重为真正的 [O,Kt,Kh,Kw,I]，计算时只向左补零，实现无未来帧泄漏的 3D 互相关。",
+    "连接 8×2 视频输入和 2×4 权重 Parameter；逐步改变时间核长并对比整段前向与分块缓存输出。",
+    "与 Wan 的实际 CausalConv3d 思想一致，但这里不包含空间 same padding、时间降采样、混合精度、VAE 层级或真实视频解码；流式状态由独立数学模块验证。"),
   vision_conv2d:block("视觉 HWC 卷积投影","Real Conv2D Cross-Correlation","vision",["x","kernel"],
     {height:4,width:4,channels:1,kernelHeight:2,kernelWidth:2,stride:2,outChannels:2},
     "Y[y,x,co] = Σ_(dy,dx,ci) X[y·s+dy,x·s+dx,ci] · W[co,dy,dx,ci]",
@@ -294,6 +300,11 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(kind==="video_causal_conv3d"){
+     const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
+     if(!Video)fail("native 5D causal convolution module unavailable");
+     Video.validate(n);
+   }
    if(["vision_conv2d","audio_mel_filterbank","diffusion_ddim_step"].includes(kind)){
      const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
      if(!Adv)fail("multimodal advanced kernel unavailable");Adv.validate(kind,n);
@@ -431,6 +442,11 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'video_causal_conv3d':{
+      const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
+      if(!Video)fail("native 5D causal convolution module unavailable");
+      value=Video.execute(inputs.x,inputs.kernel,params);break;
+    }
     case 'vision_conv2d':case 'audio_mel_filterbank':case 'diffusion_ddim_step':{
       const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
       if(!Adv)fail("multimodal advanced kernel unavailable");
