@@ -53,5 +53,5 @@ invalid.edges=invalid.edges.filter(x=>x.port!=='k');
 assert.throws(()=>Cost.compare(invalid,attention),/Incomplete or invalid graph/);
 const gqaBad=JSON.parse(JSON.stringify(gqa));
 gqaBad.nodes.find(x=>x.id==='g').params.kvHeads=3;
-assert.throws(()=>Cost.profile(gqaBad),/invalid|divis/i);
+assert.throws(()=>Cost.profile(gqaBad),/invalid|divis|整除/i);
 console.log('GRAPH_EVIDENCE_EXTENSIONS_PASS: 2D attention, GQA, routed expert, 4D cache, comparable graph deltas');
