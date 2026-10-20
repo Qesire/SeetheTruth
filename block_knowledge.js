@@ -6,6 +6,10 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ deepinfer_schedule_ref:["DeepInfer official reference: stable-rank cumprod MTP remap and total_q budget","https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/model_executor/layers/tilelang_ops/schedule_mtp_varlen.py"],
+ deepinfer_yoco_ref:["DeepInfer official YoCo mask-vs-compact metadata and equivalence harness","https://github.com/deepseek-ai/DeepInfer/blob/main/examples/yoco/yoco_equiv.py"],
+ deepinfer_yoco_runner:["DeepInfer YoCo prefill constraints, window + max backtracking bound","https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/worker/model_runner.py"],
+
  ds_deepselect:["DeepSeek DeepSelect v1.0 TopK: BF16 lightning-indexer and FP32 sampler CUDA interfaces","https://github.com/deepseek-ai/DeepSelect"],
  ds_flashmla:["DeepSeek FlashMLA 2026-09-30 sparse decode, paged FP8/FP4 KV format breaking changes","https://github.com/deepseek-ai/FlashMLA"],
  ds_deepspec:["DeepSeek DeepSpec: full-stack draft-model training and speculative-acceptance evaluation","https://github.com/deepseek-ai/DeepSpec"],
@@ -76,6 +80,10 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
+ deepinfer_mtp_confidence_schedule:["精确复现 DeepInfer 官方 Python Reference 的预算分配顺序：新序列 remap=-1 的置信度视为 0；已有序列按 remap 读取前一轮各 Draft 位置置信度并逐位置相乘。将全部 (seq,draft_pos) 展平成一列，按累积概率降序、原始扁平索引升序稳定排序，赢得 totalQ-N 个额外 Token 名额。每序列基础长度固定为 1。","相比逐序列独立阈值，这是一项全局共享预算的调度问题。较高的连续 Draft 接收概率会把额外 Query 计算分配给更有可能有效的序列；因此可调度多个序列且允许每个序列生成不等长 Draft。","本积木是 CPU 上对官方 reference 的精确数学重建，不等价于实际 TileLang GPU Kernel 性能、ZOS 的时间数据依赖、置信度头训练或真实 Target 并行验证。","设 remap=[0,1,-1]、前轮置信度=[[.9,.8],[.5,.5]]、totalQ=5，输出必须是 [[3],[1],[1]]；设为 3 则都只有 1，检查同概率的稳定 tie-break。","deepinfer_schedule_ref"],
+ deepinfer_yoco_swa_mask:["输入 Q/K/V 的真实 [T,D] 二维微张量，针对 consumer 层以 SWA 窗口计算注意力。Mask 路径仍输出 T 行，保留末尾 K 行；更早的 Q 行在本数学示例置零，后缀按绝对时间位置索引 K/V。","DeepInfer 官方 YoCo 截断有 off/mask/compact 三种模式。mask 在消费者的计算元数据中保留完整 Query 布局、收窄 SWA 可见域，compact 则丢弃截断前的 Query，从而降低 Query 计算。真实代码使用分 Chunk Pivot 与后退约束。","不能把这个零行演示误认作 DeepInfer 的全部 mask metadata 或真实数值输出；本块仅演示保留后缀的受限注意力。参数 keepTokens 必须覆盖 window+backtracking。","比较同一 Q/K/V、相同 window/keep 下 Mask 输出的最后 K 行与 Compact 输出全部行；改变 K 从 3 到 2 应触发 window+backtracking 下界错误。","deepinfer_yoco_ref,deepinfer_yoco_runner"],
+ deepinfer_yoco_swa_compact:["只对绝对 Token 位置处于末尾 keepTokens 的 Query 计算 SWA。Key 的时间坐标不压缩：每个保留 Query 仍看到其真实历史窗口，输出从 [T,Dv] 变为 [min(T,keepTokens),Dv]。","Compact 的设计目标不是改变保留 Query 的数学结果，而是避免对很早的消费者 Query 执行不必要的工作。官方 example yoco_equiv.py 对 mask/compact 的 metadata 与 logprob 做层次化核验。","与完整 DeepInfer 比缺少跨 Chunk 的真实 Cache 写入、Indexer Pivots 和位置回退处理；不能声称 mask/compact 的计算图及逐层精确一致。","在相同数学输入上用真实执行检查输出后缀逐元素一致，比较 T 与 min(T,K) Query 行数及窗口有效 QK 配对数；不将此数字冒充设备 FLOP/s。","deepinfer_yoco_ref,deepinfer_yoco_runner"],
+
  inference_topk:["对每行分数执行可复现 Top-K 排名；由大到小，等值时按 token/index 的原始升序打破平局，输出 [row,K] 真正的整数坐标（以 Float64 教学载体传递）。","DeepSelect 2026.09 官方实现分别为 DSA Lightning Indexer 的 BF16 Top-K、推理采样的 FP32 Top-K 优化；真实 GPU Kernel 关注内存带宽、warp 累积、变量长度与不完整 tile，不是简单排序。","本算子只实现数值选取，没有 CUDA 或 Ascend，加速倍数不从示例矩阵推断；不生成 DeepSeek 学习到的 Indexer Score。","修改 scores 中最大值或设置两个完全相同分数，检查索引结果；连接下一步 Sparse Attention 限定被访问的 KV 行。","ds_deepselect,ds_3_2_source"],
  inference_sparse_attention:["先检查 Q/K 投影维一致、K/V Token 数相同、所选索引无重复且不超边界；对每个 Query 只对索引给定的 Key 做 QK/sqrt(D)、稳定 Softmax 以及 Values 加权。","DeepSeek-V3.2 的 DSA 由 Lightning Indexer 先筛 Token，后续 Attention 依照 Top-K Mask 执行；FlashMLA 对该计算提供融合 GPU Kernel，可能采用分页、量化存储和专门 layout。","本块模拟的是索引结果给定后的精确数学。没有多头 MLA 的 latent KV、RoPE 拆分、FP8 scale、硬件 Kernel、带宽统计，也不说明索引本身是否保真。","令 K 选出全部历史 token 并与 Dense Attention 检查逐值一致；用少量 Top-K 看实际 QK/PV 算术减少但别将其自动视为 wall-clock 加速。","ds_3_2_source,ds_flashmla"],
  inference_paged_kv_read:["在教学向量 Cache 中以物理 pageSize 为长度划分页面。逻辑位置 pos 先映射到 blockTable[floor(pos/pageSize)] 再选择物理页面内 pos%pageSize 的行；输出是实际被读取的特征向量。","FlashMLA 支持分页 KV Cache 的索引与变量长 decode，但 2026-09-30 后的 V4.1 稀疏量化 Cache 格式和旧版 V3.2/Hopper 版本不同；同样的逻辑页表并不意味着相同 FP8/FP4 字节布局。","本块没有分配/释放物理页、写入 Cache、量化 scale、DMA、cache coherence 或 head-local KV 压缩；只是可验证的逻辑到物理地址映射。","用 TopK=1 选择每行逻辑位置和物理页表，在 [4,3] physical Cache 中移动 Page 0/1，观察读出的真实数据行发生变化。","ds_flashmla,ds_inference_overview"],
