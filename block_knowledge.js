@@ -9,7 +9,7 @@ const sources=Object.freeze({
  ds_deepselect:["DeepSeek DeepSelect v1.0 TopK: BF16 lightning-indexer and FP32 sampler CUDA interfaces","https://github.com/deepseek-ai/DeepSelect"],
  ds_flashmla:["DeepSeek FlashMLA 2026-09-30 sparse decode, paged FP8/FP4 KV format breaking changes","https://github.com/deepseek-ai/FlashMLA"],
  ds_deepspec:["DeepSeek DeepSpec: full-stack draft-model training and speculative-acceptance evaluation","https://github.com/deepseek-ai/DeepSpec"],
- ds_inference_overview:["DeepSeek Open Infra: modular open-sourcing path instead of original serving engine","https://github.com/deepseek-ai/open-infra-index/blob/main/OpenSourcing_DeepSeek_Inference_Engine/README.md"],
+ ds_inference_overview:["DeepInfer official inference engine — released 2026-10-20, currently offline inference, missing complete online service components","https://github.com/deepseek-ai/DeepInfer"],
  ds_3_2_source:["DeepSeek-V3.2-Exp official Indexer and sparse attention CPU semantics","https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/inference/model.py"],
 
  ddim_source:["Diffusers official deterministic DDIM scheduler epsilon path, alpha cumulative products and clipping options","https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py"],
