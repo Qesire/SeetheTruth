@@ -2,7 +2,7 @@
  * CPU/GPU logical resources; times are assumed abstract durations, NEVER measured.
  * Does not execute an actual ML model or DeepInfer C++ runtime.
  */
-(function(root,factory){"use strict";const api=factory(typeof module==="object"&&module.exports?require("./deepinfer_zos_metadata.js"):root.SeetheTruthZOSMetadata);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthDeepInferEvents=api;})(typeof window!=="undefined"?window:{},function(ZOS){"use strict";
+(function(root,factory){"use strict";const api=factory(typeof module==="object"&&module.exports?require("./deepinfer_zos_metadata.js"):root.SeetheTruthZOSMetadata,typeof module==="object"&&module.exports?require("./deepinfer_decode_metadata.js"):root.SeetheTruthDecodeZOS);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthDeepInferEvents=api;})(typeof window!=="undefined"?window:{},function(ZOS,Decode){"use strict";
  const DEFAULT_DURATIONS=Object.freeze({schedule:2,launch:1,correct:1,forward:8,post:4,launchSample:1,sample:2});
  const DEFAULT_STEPS=Object.freeze([
   {mode:"prompt",sequenceIds:["A","B"]},
@@ -37,6 +37,14 @@
  function simulate(steps,opts={zeroOverhead:true}){
   const accepted=validate(steps,opts),config={...DEFAULT_DURATIONS,...opts.durations};
   const fixtures=opts.metadataFixture;
+  const decodeFixture=opts.decodeFixture;
+  if(decodeFixture!==undefined){
+   if(!Decode||!fixtures||!decodeFixture||typeof decodeFixture!=="object"||
+     !Number.isSafeInteger(decodeFixture.step)||decodeFixture.step<0||
+     decodeFixture.step>=accepted.length||!decodeFixture.input||
+     !Array.isArray(decodeFixture.states))
+    fail("decodeFixture requires step, input, states, and a matching metadataFixture");
+  }
   if(fixtures!==undefined){
    if(!ZOS)fail("DeepInfer source metadata module missing");
    if(!fixtures||typeof fixtures!=="object"||!Number.isSafeInteger(fixtures.nextn)||
@@ -99,11 +107,23 @@
        totalQ:fixtures.variableMtp?r.totalQ:null});
       const sampler=r.cachedTokens?ZOS.samplingView(prepared,result,r.cachedTokens):null;
       numerical={prepared,result,sampler};
+      let packedDecode=null;
+      if(decodeFixture&&decodeFixture.step===i){
+       const packed=Decode.prepare(decodeFixture.input);
+       if(packed.sequences.length!==r.sequences.length||
+          packed.sequences.some((v,j)=>v.seqId!==r.sequences[j].seqId||
+           v.seqlenQ!==r.sequences[j].seqlenQ||v.seqlenK!==r.sequences[j].seqlenK))
+        fail("decodeFixture must use exact current-step scheduler seq IDs and uncorrected Q/K");
+       const sampling=Decode.updateForSampling(packed,result,decodeFixture.states,{nextn:fixtures.nextn});
+       packedDecode={packed,sampling};
+      }
       metadataTrace.push({step:i,previousStep:prior.step,
        remap:prepared.remap.slice(),seqlensQ:result.seqlensQ.slice(),
        seqlensK:result.seqlensK.slice(),seqlensKBase:prepared.seqlensKBase.slice(),
        previousAccepted:prev.accepted.slice(),d2hSeqlensQ:result.d2hSeqlensQ,
-       sampler:result&&sampler,notes:"Source C++ remap + exact accepted-token length reference; sampler refresh not executed"});
+       sampler:result&&sampler,decode:packedDecode,
+       notes:packedDecode?"Source C++ Q/K plus compressed block-table and MTP sampling-slot transition; no GPU kernels":
+        "Source C++ remap + accepted-token Q/K; sampling refresh not executed"});
      }
     }
     if(!fixtures||numerical){

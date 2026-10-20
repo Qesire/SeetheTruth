@@ -37,6 +37,9 @@ assert.ok(html.includes('src="inference_ops.js"'),'inference CPU kernels must be
 assert.ok(server.includes('"/inference_ops.js"'),'inference CPU module must have HTTP route');
 assert.ok(server.includes('"/deepinfer_worker_events.js"'),'Worker event engine must be served');
 assert.ok(server.includes('"/deepinfer_zos_metadata.js"'),'source-derived numerical metadata module served');
+assert.ok(server.includes('"/deepinfer_decode_metadata.js"'),"compressed decode metadata source served");
+assert.ok(read("deepinfer_worker_lab.html").includes('src="deepinfer_decode_metadata.js"'),"decode state module loaded");
+assert.ok(read("deepinfer_worker_lab.html").includes('id="decodeRows"'),"decode block-table result table rendered");
 assert.ok(read("deepinfer_worker_lab.html").includes('src="deepinfer_zos_metadata.js"'),"metadata runner loaded before event engine");
 assert.ok(server.includes('"/deepinfer_worker_lab.js"'),'Worker browser controller must be served');
 assert.ok(html.includes('href="deepinfer_worker_lab.html"'),'Learning Studio must link to Worker event simulator');
