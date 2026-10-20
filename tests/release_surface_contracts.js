@@ -12,7 +12,7 @@ const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');
 assert.equal(new Set(guided).size,guided.length,'each course is represented once');
 const lessons=guided.filter(x=>x!=='blank');
-assert.equal(lessons.length,45,'freeze public alpha curriculum number until README is updated');
+assert.equal(lessons.length,49,'all 49 guided learning graphs must appear exactly once');
 assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
 assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
@@ -26,6 +26,9 @@ for(const route of ['learn.html','tradeoffs.html','training.html','cache.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
+assert.ok(html.includes('src="multimodal_ops.js"'),'multimodal numerical core must be loaded');
+assert.ok(server.includes('"/multimodal_ops.js"'),'multimodal numerical core must be served');
+for(const preset of ['image_vit_patch','audio_spectrogram','video_vivit_tubelet','multimodal_cross_attention'])assert.ok(guided.includes(preset),'missing multimodal lesson: '+preset);
 assert.ok(html.includes('src="graph_cost_report.js"'),'live workbench cost analyzer must be loaded');
 assert.ok(server.includes('"/graph_cost_report.js"'),'live cost analyzer served by local HTTP');
 assert.ok(html.includes('id="graphCostPanel"'),'live graph cost panel must exist');
