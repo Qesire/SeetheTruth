@@ -37,9 +37,12 @@
  function simulate(steps,opts={zeroOverhead:true}){
   const accepted=validate(steps,opts),config={...DEFAULT_DURATIONS,...opts.durations};
   const zeroOverhead=opts.zeroOverhead,flush=opts.flush!==false;
-  const events=[],completed=new Map(),resourceReady={CPU:0,GPU:0},requestReady=[];
+  const events=[],completed=new Map(),resourceReady={CPU:0,GPU:0},resourceLast={CPU:null,GPU:null},requestReady=[];
   let prior=null,previousGpuSample=null;
   const add=(step,stage,resource,duration,depends=[],meta={})=>{
+   depends=depends.slice();
+   if(resourceLast[resource]&&!depends.includes(resourceLast[resource]))
+    depends.push(resourceLast[resource]); // serialize resource conflicts as explicit event edges
    for(const dep of depends)if(!completed.has(dep))fail("dependency was not scheduled: "+dep);
    const after=depends.reduce((t,dep)=>Math.max(t,completed.get(dep)),0);
    const start=Math.max(resourceReady[resource],after);
@@ -48,7 +51,7 @@
    const end=start+duration;
    events.push(Object.freeze({id,step,stage,resource,start,end,duration,
      dependsOn:Object.freeze(depends.slice()),meta:Object.freeze({...meta})}));
-   completed.set(id,end);resourceReady[resource]=end;return id;
+   completed.set(id,end);resourceReady[resource]=end;resourceLast[resource]=id;return id;
   };
   const deliver=(step,postEvent,kind)=>{
    const state=accepted[step];
