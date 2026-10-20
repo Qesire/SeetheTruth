@@ -341,7 +341,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_huginn_linear_source_injection_shared_parameter_why_and_real_exports(self):
         p=self.page
         p.locator('[data-preset="loop_input_injection"]').click()
-        self.assertEqual(p.locator("#blocks .block").count(),61)
+        self.assertEqual(p.locator("#blocks .block").count(),62)
         self.assertEqual(p.locator('[data-node="loss"]').get_attribute("data-readiness"),"ready")
         p.locator('[data-node="Winject"] .block-head').click()
         info=p.locator("#blockKnowledge").inner_text()
