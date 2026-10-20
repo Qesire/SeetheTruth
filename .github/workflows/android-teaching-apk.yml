@@ -25,8 +25,11 @@ jobs:
       - name: Install Android SDK 35 using preinstalled SDK manager
         run: |
           set -euo pipefail
-          command -v sdkmanager
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          MANAGER="$(find "$SDK/cmdline-tools" -maxdepth 4 -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          "$MANAGER" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
       - name: Check teaching-only asset policy
         run: node tests/android_teaching_contracts.js
       - name: Assemble signed debug APK (not a Play Store release)
