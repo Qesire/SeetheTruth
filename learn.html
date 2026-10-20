@@ -209,7 +209,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="vision_learned_conv"><span class="num">50</span><span>图像 · 真正的可训练 Conv2D<span class="desc">HWC → 带 Parameter 权重的跨相关卷积 → SiLU → Attention</span></span></button>
   <button class="mission" data-preset="audio_mel_chain"><span class="num">51</span><span>音频 · HTK Mel 频带编码<span class="desc">Hann STFT Power → 实际三角滤波器 → Log10 → 注意力</span></span></button>
   <button class="mission" data-preset="diffusion_ddim_chain"><span class="num">52</span><span>图像/视频扩散 · DDIM 去噪<span class="desc">两步 epsilon 预测路径、累积 Alpha 合同与可执行采样状态</span></span></button>
-  <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
+  <button class="mission" data-preset="video_causal_conv3d"><span class="num">53</span><span>视频 · 原生 5D 因果卷积<span class="desc">真实 [B,T,H,W,C] Conv3D、左因果补零、逐帧历史缓存与 PyTorch 梯度</span></span></button>\n  <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
   <p class="hint">支持本地 JSON 保存、导入、撤销和重做。教学模拟不代表真实模型性能。</p>
@@ -291,6 +291,7 @@ input[type="file"]{display:none}
 <script src="activation_math.js"></script>
 <script src="multimodal_ops.js"></script>
 <script src="multimodal_advanced.js"></script>
+<script src="video_causal_conv3d.js"></script>
 <script src="multimodal_advanced.js"></script>
 <script src="block_catalog.js"></script>
 <script src="learning_lab.js"></script>
