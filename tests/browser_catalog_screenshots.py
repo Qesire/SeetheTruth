@@ -1559,7 +1559,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         self.assertIn("Cache 写入后逻辑快照元素总和",p.locator('#graphCostSummary').inner_text())
         self.assertIn("Cache 快照元素",comp.inner_text())
         shot=p.screenshot(path=str(DEST/'62-live-dag-cost-counterfactual.png'),full_page=True,animations="disabled")
-        self.assertTrue(shot.startswith(b"\\x89PNG\\r\\n\\x1a\\n"))
+        self.assertTrue(shot.startswith(b"\x89PNG\r\n\x1a\n"))
         p.locator('#clearGraphBaseline').click()
         self.assertIn("固定当前合法图为基线",comp.inner_text())
 
