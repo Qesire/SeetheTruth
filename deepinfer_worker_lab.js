@@ -26,6 +26,20 @@ const sampleFixture={
  ]
 };
 let metadataFixture=sampleFixture;
+const sampleDecodeFixture={
+ step:2,
+ input:{blockSize:4,maxNumBlocks:6,maxSeqlenQ:3,blockTableCompressRatio:2,
+  needDefaultSeqlens:true,sequences:[
+   {seqId:"B",seqlenQ:1,seqlenK:13,blockTable:[7,4,8,9],stateId:21,isPlaceholder:false},
+   {seqId:"C",seqlenQ:1,seqlenK:5,blockTable:[2,3],stateId:22,isPlaceholder:false}]},
+ states:[
+  {seqId:"B",cachedTokens:12,outputLen:1,soStatus:2,soMatcher:"example",
+   mtp:{infoSlot:5,hasDraftInfo:true,lastOutputToken:88,goldenTokens:[10,11,12,13,14,15]}},
+  {seqId:"C",cachedTokens:4,outputLen:0,soStatus:0,soMatcher:null,
+   mtp:{infoSlot:0,hasDraftInfo:false,lastOutputToken:-1,goldenTokens:null}}
+ ]
+};
+let decodeFixture=sampleDecodeFixture;
 
 function svg(name,attrs,textContent){
  const e=document.createElementNS(svgNS,name);
@@ -88,6 +102,7 @@ function render(){
      post:Number($("postTime").value)};
    const options={flush:$("flush").checked,durations};
    if($("numericMetadata").checked)options.metadataFixture=metadataFixture;
+   if($("numericMetadata").checked&&$("decodeEnabled").checked)options.decodeFixture=decodeFixture;
    const zos=E.simulate(steps,{...options,zeroOverhead:true});
    const non=E.simulate(steps,{...options,zeroOverhead:false});
    $("zosTime").textContent=zos.makespan;
@@ -121,6 +136,22 @@ function render(){
     metadataRows.push(tr);
    }
    $("metadataRows").replaceChildren(...metadataRows);
+   const decodeRows=[];
+   for(const trace of zos.metadataTrace){
+    if(!trace.decode)continue;
+    const packed=trace.decode.packed,state=trace.decode.sampling;
+    const cells=[String(trace.step),JSON.stringify(packed.blockTables),
+      JSON.stringify(packed.blockTableOffsets),JSON.stringify(packed.numBlocks),
+      JSON.stringify(packed.cuSeqlensQ),
+      state.metadata.map(x=>x.seqId+": "+x.seqlenQ+"/"+x.seqlenK).join(" · "),
+      state.metadata.map(x=>x.seqId+": "+x.mtpInfoReadSlot+"/"+x.mtpInfoWriteSlot).join(" · "),
+      state.metadata.map(x=>x.seqId+": "+JSON.stringify(x.goldenToken)).join(" · ")];
+    const tr=document.createElement("tr");
+    for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.append(td);}
+    decodeRows.push(tr);
+   }
+   $("decodeRows").replaceChildren(...decodeRows);
+   $("decodeStatus").textContent=decodeRows.length+" 项压缩页表与采样状态计算已完成（非 GPU 内存分配）";
    $("metadataStatus").textContent=$("numericMetadata").checked?
      metadataRows.length+" 个跨步元数据修正已执行（合成采样数据）":
      "此场景未启用数值 Fixture；事件顺序仍可独立运行";
@@ -133,6 +164,7 @@ $("scenario").addEventListener("change",()=>{
  if(!selected)return;
  steps=selected.map(x=>({mode:x.mode,sequenceIds:x.sequenceIds.slice()}));
  $("numericMetadata").checked=$("scenario").value==="mixed";
+ $("decodeEnabled").checked=$("scenario").value==="mixed";
  $("customSteps").value=JSON.stringify(steps,null,2);render();
 });
 $("forwardTime").addEventListener("input",render);
@@ -144,6 +176,7 @@ $("applySteps").addEventListener("click",()=>{
    E.validate(raw,{zeroOverhead:true});
    steps=raw.map(x=>({mode:x.mode,sequenceIds:[...x.sequenceIds]}));
    $("numericMetadata").checked=false; // custom steps need matching user-provided fixtures
+   $("decodeEnabled").checked=false;
    render();
  }catch(err){$("editorStatus").textContent="输入被拒绝："+err.message;}
 });
@@ -151,9 +184,19 @@ $("numericMetadata").addEventListener("change",render);
 $("applyMetadata").addEventListener("click",()=>{
  try{
   const parsed=JSON.parse($("metadataJson").value);
-  E.simulate(steps,{zeroOverhead:true,metadataFixture:parsed});
+  E.simulate(steps,{zeroOverhead:true,metadataFixture:parsed,
+   ...($("decodeEnabled").checked?{decodeFixture}: {})});
   metadataFixture=parsed;$("numericMetadata").checked=true;render();
  }catch(err){$("metadataStatus").textContent="元数据 Fixture 被拒绝："+err.message;}
+});
+$("decodeEnabled").addEventListener("change",render);
+$("applyDecode").addEventListener("click",()=>{
+ try{
+  const parsed=JSON.parse($("decodeJson").value);
+  E.simulate(steps,{zeroOverhead:true,metadataFixture,decodeFixture:parsed});
+  decodeFixture=parsed;$("numericMetadata").checked=true;$("decodeEnabled").checked=true;
+  render();
+ }catch(err){$("decodeStatus").textContent="Decode Fixture 被拒绝："+err.message;}
 });
 $("download").addEventListener("click",()=>{
  const result=window.SeetheTruthLastWorkerComparison;
@@ -166,5 +209,6 @@ $("download").addEventListener("click",()=>{
 });
 $("customSteps").value=JSON.stringify(steps,null,2);
 $("metadataJson").value=JSON.stringify(metadataFixture,null,2);
+$("decodeJson").value=JSON.stringify(decodeFixture,null,2);
 render();
 })();
