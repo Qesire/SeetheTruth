@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · Architecture Trade-off Lab</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;background:#08111e;color:#e5f5ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 55% 0%,#143b55,#08111e 65%);min-height:100vh}
+header,main{max-width:1140px;margin:auto;padding:26px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+a{color:#82e4ec}h1{font-size:clamp(26px,4vw,40px);margin:4px 0}h2{margin-top:0}
+small,.muted{color:#a0becd}main{padding-top:0}.panel{background:#102538;border:1px solid #31556c;border-radius:16px;padding:20px;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}.field{display:grid;gap:7px;font-size:13px}
+input{width:100%;background:#071826;border:1px solid #527387;border-radius:8px;color:#f1fcff;padding:11px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}
+.metric{padding:14px;background:#071c2c;border-radius:10px;border:1px solid #31566b}.metric strong{display:block;color:#70e5d5;font-size:22px;overflow-wrap:anywhere}
+.note{color:#b4ccdc;line-height:1.7}code{color:#e1c3f5}
+.error{color:#ffc3aa}nav{display:flex;gap:12px;flex-wrap:wrap}
+</style></head><body>
+<header><div><small>MODEL ATLAS / EXPERIMENTS / COST MODELS</small><h1>Architecture Trade-off Lab</h1><div class="muted">手动改参数，直接计算设计取舍，而不是把论文结论当作真实测速。</div></div>
+<nav><a href="learn.html">学习工作台</a><a href="index.html">模型图谱</a></nav></header>
+<main>
+<section class="panel" data-model="gqa"><h2>01 · GQA / MHA：KV Cache 成本</h2>
+<p class="note">GQA 让多个 Query Head 共享 KV Head。存储量 = 2 × 层数 × Batch × 历史 token 数 × KV Heads × Head Dim × 每元素字节。Head 个数改变的是 KV 存储，不自动证明推理延迟会成比例下降。</p>
+<div class="grid">
+<label class="field">层数<input name="layers" type="number" value="32" min="1"></label>
+<label class="field">Q Heads<input name="heads" type="number" value="32" min="1"></label>
+<label class="field">KV Heads<input name="kvHeads" type="number" value="8" min="1"></label>
+<label class="field">Head Dim<input name="headDim" type="number" value="128" min="1"></label>
+<label class="field">上下文长度<input name="context" type="number" value="4096" min="1"></label>
+<label class="field">Batch<input name="batch" type="number" value="1" min="1"></label>
+<label class="field">字节/元素<input name="bytes" type="number" value="2" min="1"></label>
+</div><div class="metrics" aria-live="polite"></div><p class="note">论文：<a href="https://aclanthology.org/2023.emnlp-main.298/" target="_blank" rel="noopener noreferrer">GQA (2023)</a>。适用条件：KV cache 访存或存储成为瓶颈；不代表训练计算同幅下降。</p></section>
+<section class="panel" data-model="moe"><h2>02 · MoE：总参数与活跃参数</h2>
+<p class="note">以无 bias 的 SwiGLU 专家为示例，每位专家的 gate/up/down 参数数为 <code>3 × hidden × intermediate</code>。Top-k 每 token 仅选若干路由专家，但 router、负载均衡、通信和实际批量效率不计入。</p>
+<div class="grid">
+<label class="field">Tokens<input name="tokens" type="number" value="16" min="1"></label>
+<label class="field">Hidden<input name="hidden" type="number" value="512" min="1"></label>
+<label class="field">Intermediate<input name="intermediate" type="number" value="1024" min="1"></label>
+<label class="field">Routed Experts<input name="experts" type="number" value="8" min="1"></label>
+<label class="field">Top-k<input name="topK" type="number" value="2" min="1"></label>
+<label class="field">Shared Experts<input name="sharedExperts" type="number" value="0" min="0"></label>
+</div><div class="metrics" aria-live="polite"></div><p class="note">参考：<a href="https://arxiv.org/abs/1701.06538" target="_blank" rel="noopener noreferrer">Sparsely-Gated MoE (2017)</a>。设计目的：增加条件参数容量而不让每 token 激活所有专家；通信、路由分布和计算密度决定实际性能。</p></section>
+<section class="panel" data-model="loop"><h2>03 · Loop Transformer：共享权重与循环步数</h2>
+<p class="note">计算同一个 Block 多次，并跨迭代共享参数。共享权重不等于省掉迭代算力。以下只统计 Q/K/V/O 投影与门控 FFN 的参数、每 token 核心投影 FLOPs；不包含注意力矩阵运算。</p>
+<div class="grid">
+<label class="field">Width<input name="width" type="number" value="512" min="1"></label>
+<label class="field">Intermediate<input name="intermediate" type="number" value="1536" min="1"></label>
+<label class="field">循环步数<input name="steps" type="number" value="6" min="1"></label>
+<label class="field">对比：未共享层数<input name="untiedLayers" type="number" value="6" min="1"></label>
+</div><div class="metrics" aria-live="polite"></div><p class="note">参考：<a href="https://arxiv.org/abs/1807.03819" target="_blank" rel="noopener noreferrer">Universal Transformers</a>。循环共享降低权重存储规模，并不能保证收敛、精度或每 token 延迟改善；自适应退出需要额外状态与停止准则。</p></section>
+<p class="note">所有结果均为解析公式的确定性成本估计，<strong>不是</strong>实测延迟、GPU Kernel 统计或对某个开源模型的源码确认。</p></main>
+<script src="architecture_tradeoffs.js"></script><script>
+(function(){
+'use strict';
+const T=window.SeetheTruthTradeoffs;
+const f=n=>n.toLocaleString('en-US',{maximumFractionDigits:2});
+const mib=n=>f(n/(1024*1024))+' MiB';
+const pct=n=>f(100*n)+'%';
+const schema={
+gqa:[['GQA KV Cache',x=>mib(x.bytes)],['MHA KV Cache',x=>mib(x.mhaBytes)],['存储节省',x=>pct(x.saving)],['每组 Q Head',x=>f(x.groupSize)]],
+moe:[['全部专家参数',x=>f(x.totalExpertParameters)],['每 token 活跃专家参数',x=>f(x.activeExpertParametersPerToken)],['活跃比例',x=>pct(x.activeFraction)],['全部 token 的专家 FLOPs',x=>f(x.approxExpertFlops)]],
+loop:[['共享参数',x=>f(x.sharedParameters)],['未共享参数',x=>f(x.untiedParameters)],['共享/未共享',x=>pct(x.parameterRatio)],['投影 FLOPs/token',x=>f(x.perTokenProjectionFlops)]]
+};
+for(const section of document.querySelectorAll('[data-model]')){
+ const type=section.dataset.model,output=section.querySelector('.metrics');
+ function render(){
+  const args={};for(const inp of section.querySelectorAll('input'))args[inp.name]=Number(inp.value);
+  try{const result=T[type](args);
+   output.replaceChildren(...schema[type].map(([label,fn])=>{
+    const card=document.createElement('div');card.className='metric';
+    const t=document.createElement('small');t.textContent=label;
+    const value=document.createElement('strong');value.textContent=fn(result);card.append(t,value);return card;
+   }));
+  }catch(error){const msg=document.createElement('p');msg.className='error';msg.setAttribute('role','alert');msg.textContent=error.message;output.replaceChildren(msg);}
+ }
+ section.addEventListener('input',render);render();
+}
+})();
+</script></body></html>

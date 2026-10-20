@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeetheTruth · Model Learning Studio</title>
+<!-- Architecture comparison lives in a separate analytical lab, not the micro-executor. -->
 <style>
 :root{color-scheme:dark;--bg:#08111e;--line:#24465e;--muted:#8daec4;--text:#e7f7ff;--cyan:#63e2f1;--mint:#6feac2;--amber:#f4ba7b;--violet:#b8a2ff;--surface:#0e2132}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#14364b 0%,#08111e 46%,#060c16 100%);color:var(--text);font:13px/1.55 "Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
@@ -129,6 +130,7 @@ input[type="file"]{display:none}
 @media(max-width:800px){.composite-nav.overview .composite-stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.composite-nav.overview .composite-stages{grid-template-columns:1fr}}
 </style></head><body>
+<a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
