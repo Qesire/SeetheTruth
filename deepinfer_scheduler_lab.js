@@ -77,7 +77,7 @@ const applyNew=(candidate)=>{
  spec=candidate;run=next;index=0;paint();
 };
 $("scenario").addEventListener("change",()=>{
- try{applyNew(S.EXAMPLES[$("scenario").value]);$("editor").value=JSON.stringify(spec,null,2);
+ try{applyNew(scenarioForPolicy($("scenario").value));$("editor").value=JSON.stringify(spec,null,2);
  $("status").textContent="已切换并完整验证资源与事件依赖";}
  catch(e){$("status").textContent="场景验证失败："+e.message}
 });
