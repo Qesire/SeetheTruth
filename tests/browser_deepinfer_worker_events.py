@@ -80,5 +80,29 @@ class DeepInferWorkerBrowser(unittest.TestCase):
         self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.steps.length'),3)
         p.screenshot(path=str(OUT/'placeholder-and-validation.png'),full_page=True,animations='disabled')
 
+
+    def test_source_exact_zos_qk_and_invalid_fixture(self):
+        p=self.page
+        p.wait_for_function('window.SeetheTruthLastWorkerComparison.zos.metadataTrace.length === 2')
+        traces=p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace')
+        self.assertEqual(traces[0]['remap'],[1,-1,-1])
+        self.assertEqual(traces[0]['seqlensQ'],[2,1,1])
+        self.assertEqual(traces[0]['seqlensK'],[14,5,1])
+        self.assertEqual(traces[0]['previousAccepted'],[1,2])
+        self.assertEqual(p.locator('#metadataRows tr').count(),2)
+        p.screenshot(path=str(OUT/'zos-exact-qk-metadata.png'),full_page=True,animations='disabled')
+        p.locator('#metadataJson').evaluate('(e)=>{ e.closest("details").open=true; }')
+        original=p.locator('#metadataJson').input_value()
+        p.locator('#metadataJson').fill('{"nextn":2,"variableMtp":true,"records":[]}')
+        p.locator('#applyMetadata').click()
+        self.assertIn('Fixture 被拒绝',p.locator('#metadataStatus').inner_text())
+        self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace'),traces)
+        p.locator('#metadataJson').fill(original)
+        p.locator('#applyMetadata').click()
+        self.assertIn('已执行',p.locator('#metadataStatus').inner_text())
+        p.locator('#numericMetadata').uncheck()
+        self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace.length'),0)
+        self.assertEqual(p.locator('#metadataRows tr').count(),0)
+
 if __name__=='__main__':
     unittest.main()
