@@ -12,7 +12,7 @@ const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
- ...SOURCES,"video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
+ ...SOURCES,"inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
@@ -301,6 +301,17 @@ function compile(raw,options={}){
      const W=Array.from({length:dim},(_,k)=>Array.from({length:cols},(_,j)=>weight(id,j,k)));
      const bias=Array.from({length:cols},(_,j)=>weight(id,97,j));
      expression='('+port("x")+' @ np.asarray(json.loads('+encoded(W)+'),dtype=np.float64) + np.asarray(json.loads('+encoded(bias)+'),dtype=np.float64))';
+   }else if(kind==="inference_topk"){
+     expression='np.argsort(-'+port("scores")+',axis=1,kind="stable")[:,:'+p.topk+'].astype(np.float64)';
+   }else if(kind==="inference_sparse_attention"){
+     const q=port("q"),k=port("k"),v=port("v"),idx=port("indices");
+     expression='np.stack([(_softmax(('+k+'[ind.astype(np.int64)] @ '+q+'[t])/np.sqrt('+q+'.shape[1])) @ '+v+'[ind.astype(np.int64)]) for t,ind in enumerate('+idx+')],axis=0)';
+   }else if(kind==="inference_paged_kv_read"){
+     const cache=port("cache"),table=port("blocks"),pos=port("positions"),size=p.pageSize;
+     expression='np.stack(['+cache+'[int('+table+'[int(loc)//'+size+',0])*'+size+'+int(loc)%'+size+'] for loc in '+pos+'[:,0]],axis=0)';
+   }else if(kind==="inference_greedy_verify"){
+     const d=port("draft"),t=port("target");
+     expression='np.asarray([[float(np.all('+d+'[:i+1,0]=='+t+'[:i+1,0]))] for i in range('+d+'.shape[0])],dtype=np.float64)';
    }else if(kind==="video_causal_conv3d"){
      const x=port("x"),w=port("kernel"),T=p.frames,H=p.height,kt=p.kernelFrames,
        kh=p.kernelHeight,kw=p.kernelWidth,C=p.channels,oc=p.outChannels,S=p.stride;
