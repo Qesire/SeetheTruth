@@ -98,8 +98,9 @@
  }
  function pushChunk(state,chunk){
   const p=state.p,{OH,OW}=dimensions(p),K=p.kernelFrames;
-  const x=matShape(chunk,"chunk"),T=x[0]/p.height;
-  if(!Number.isSafeInteger(T)||T<1||x[1]!==p.width*p.channels)
+  const dims=matShape(chunk,"chunk"),T=dims[0]/p.height;
+  const x=chunk;
+  if(!Number.isSafeInteger(T)||T<1||dims[1]!==p.width*p.channels)
    fail("stream chunk must contain complete THWC frames");
   if(state.processed+T>p.frames)fail("stream chunk exceeds declared total frames");
   if(state.history.length%p.height||state.history.length>Math.min(K-1,state.processed)*p.height)
