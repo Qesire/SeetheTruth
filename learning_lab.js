@@ -261,6 +261,28 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(["deepinfer_mtp_budget","deepinfer_yoco_replay"].includes(name)){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      let title,nodes,edges;
+      if(name==="deepinfer_mtp_budget"){
+        title="任务 58 · DeepInfer DSpark: Remap → 累积置信度 → 全局固定预算";
+        nodes=[N("remap","parameter",35,115,{values:[[0],[1],[-1]],frozen:true}),
+          N("prev_confidence","parameter",35,375,{values:[[0.9,0.8],[0.5,0.5]],frozen:true}),
+          N("mtp","deepinfer_mtp_confidence_schedule",395,245,{totalQ:5})];
+        edges=[["remap","mtp","remap"],["prev_confidence","mtp","prev_confidence"]];
+      }else{
+        title="任务 59 · DeepInfer YoCo: Mask vs Compact SWA 保留后缀";
+        nodes=[N("q","input",35,110,{rows:4,width:3,seed:1}),
+          N("k","input",35,340,{rows:4,width:3,seed:2}),
+          N("v","input",35,570,{rows:4,width:2,seed:3}),
+          N("mask","deepinfer_yoco_swa_mask",430,130,{window:2,keepTokens:3,backtracking:1}),
+          N("compact","deepinfer_yoco_swa_compact",430,490,{window:2,keepTokens:3,backtracking:1})];
+        edges=[["q","mask","q"],["k","mask","k"],["v","mask","v"],
+          ["q","compact","q"],["k","compact","k"],["v","compact","v"]];
+      }
+      return validateGraph({schema:SCHEMA,title,nodes,
+        edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     if(["inference_sparse_decode","inference_paged_kv","inference_speculative","inference_paged_sparse"].includes(name)){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       let title,nodes=[],edges=[];
