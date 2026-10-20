@@ -12,6 +12,27 @@
  const block=(title,en,category,ports,params,formula,why,lesson,caution)=>
    ({title,en,category,ports,params,formula,why,lesson,caution});
  const defs={
+  inference_topk:block("推理 Top-K 稳定选取","Stable TopK Index Selection","inference",["scores"],{topk:2},
+    "indices[t]=argTopK(scores[t,:]); tie: lower token index first",
+    "以真实数值选出每行排名最高的 K 个下标；相等分数按原始下标升序稳定打破平局。供稀疏注意力 Indexer 或 Token 采样候选使用。",
+    "使用 scores [2,4] 输出 [2,2]；连接 Sparse Attention 的 indices 输入并观察选择的 Key 集合。",
+    "仅是确定性 CPU 排序数学，绝不代表 DeepSelect 特定 CUDA TopK 算法或真实性能。"),
+  inference_sparse_attention:block("稀疏 Key 索引注意力","Indexed Sparse QK/PV Attention","attention",["q","k","v","indices"],{causal:false,queryOffset:0},
+    "softmax((Q_t·K_selected^T)/sqrt(D))·V_selected",
+    "对显式索引集合逐个执行 QK 点积、数值稳定 Softmax 和 PV 加权。模拟 DeepSeek Sparse Attention 的选择后计算步骤。",
+    "先用 TopK 生成 Indexer 位置，再把同一 K/V 输入稀疏注意力。让 K=全部长度可与 Dense Attention 比较。",
+    "选中索引是给定输入，未模拟训练好的 Lightning Indexer、MLA 降维、FP8 KV Cache 或 GPU FlashMLA Kernel。"),
+  inference_paged_kv_read:block("分页 KV Cache 间接索引","Paged KV Logical→Physical Read","memory",["cache","blocks","positions"],
+    {pageSize:2,logicalLength:4},
+    "page=block_table[floor(pos/pageSize)]; KV=cache[page·pageSize+(pos mod pageSize)]",
+    "通过逻辑 Token 位置、Block Table 和物理存储页真实计算分页缓存映射，明确地址转换，不假装连续逻辑序列就是物理布局。",
+    "故意置换两个物理 Page，看相同逻辑 Token 是否读取到新的物理内容；改变 pageSize 核验 offset。",
+    "这是通用 Paged KV 地址转换的微型抽象，不是 FlashMLA v4.1 FP8/FP4 实际格式、页管理器、CUDA 读取或写入调度。"),
+  inference_greedy_verify:block("贪心推测解码前缀校验","Greedy Speculative Verify","inference",["draft","target"],{},
+    "accepted[j]=1 iff all draft[0..j] equal target[0..j]",
+    "逐 Token 比较 Draft 候选与 Target 在该 Draft 前缀条件下的贪心 Token，只有连续匹配前缀可以接收，首次不匹配处由 Target 纠正。",
+    "用两个 TopK(topk=1) 产生 [K,1] Draft 与 [K+1,1] Target 结果，观察拒绝后所有后续 draft mask 归零。",
+    "仅确定性贪心验收的精确子问题；不等于 DeepSpec 的完整训练系统、概率分布接受拒绝、树式 Draft、Bonus Token 自动执行或吞吐测量。"),
   video_causal_conv3d:block("视频真 5D 因果卷积","Native Rank-5 Causal Conv3D","video",["x","kernel"],
     {frames:4,height:2,width:2,channels:1,kernelFrames:2,kernelHeight:2,kernelWidth:1,stride:1,outChannels:2},
     "Y[t,y,x,o] = Σ_(dt,dy,dx,c) X[t+dt−Kt+1,y·s+dy,x·s+dx,c] W[o,dt,dy,dx,c]",
@@ -300,6 +321,10 @@
    Math.cos((col+1)*(index+1)*.17)*.1;
  function validate(kind,params){
    const n={...defs[kind].params,...params};
+   if(["inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify"].includes(kind)){
+     const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
+     if(!Op)fail("inference mathematical kernels unavailable");Op.validate(kind,n);
+   }
    if(kind==="video_causal_conv3d"){
      const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
      if(!Video)fail("native 5D causal convolution module unavailable");
@@ -442,6 +467,11 @@
    let value,internals=null;
    const x=inputs.x,a=inputs.a,b=inputs.b;
    switch(kind){
+    case 'inference_topk':case 'inference_sparse_attention':case 'inference_paged_kv_read':case 'inference_greedy_verify':{
+      const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
+      if(!Op)fail("inference mathematical kernels unavailable");
+      value=Op.execute(kind,inputs,params);break;
+    }
     case 'video_causal_conv3d':{
       const Video=typeof module==="object"&&module.exports?require("./video_causal_conv3d.js"):globalThis.SeetheTruthVideoConv3D;
       if(!Video)fail("native 5D causal convolution module unavailable");
