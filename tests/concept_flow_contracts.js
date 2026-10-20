@@ -53,6 +53,15 @@ function perKind(k){
   return;
  }
 
+ if(k==='video_causal_conv3d'){
+  const p=L.defs[k].params,n={id:k,kind:k,params:{...p}},
+   inputShapes={x:[8,2],kernel:[2,4]},
+   values={x:mock([8,2]),kernel:mock([2,4])};
+  const inferred=C.analyze(n,inputShapes),actual=B.execute(n,values);
+  assert.deepEqual(inferred.shape,actual.shape,'native 5D causal convolution contracts');
+  assert.ok(actual.values.flat(Infinity).every(Number.isFinite));
+  return;
+ }
  if(['vision_conv2d','audio_mel_filterbank','diffusion_ddim_step'].includes(k)){
   const p=L.defs[k].params,n={id:k,kind:k,params:{...p}};
   const dims=k==='vision_conv2d'?{x:[4,4],kernel:[2,4]}:k==='audio_mel_filterbank'?{x:[3,3]}:{x:[2,4],epsilon:[2,4]};
