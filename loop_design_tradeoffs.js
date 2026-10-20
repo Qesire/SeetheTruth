@@ -22,6 +22,17 @@ const SOURCES=Object.freeze({
  deeploop:"https://arxiv.org/abs/2607.13491"
 });
 const DECISIONS=Object.freeze({
+ input_injection:Object.freeze({
+ title:"为什么 Loop Transformer 在反复迭代时重注入原始 Token 表征？",
+ goal:"限制深度循环中初始信息仅依靠上一轮隐状态传播的风险，并给共享计算一个直接接触初始输入的入口；这是一条被前沿模型明确研究、尚需通过任务评估验证的设计假说",
+ mechanism:"每轮入口 h'ᵣ=[hᵣ;E] W_inj，随后 hᵣ₊₁=Fθ(h'ᵣ)。Winject 是唯一的 [8,4] 真实 Parameter，两个轮次共享，同一个原始 E[3,4] 重复参与计算；BPTT 汇总两次访问 Winject 与 E 的梯度。",
+ alternative:"无输入重注入（baseline）；对角注入 exp(-dt·a)h+dt·W E；正交注入（减少与注入方向重复的状态分量）；只向首轮输入一次；融合原输入到循环的门控函数",
+ cost:"每轮增加 Concat[3,8] + [3,8]@[8,4] 一次真实矩阵乘；第 45 课两轮增加 2 次 ×96 MAC、32 个可训练矩阵元素；激活与计算成本增加而不等于吞吐量收益",
+ failure:"如果原始 E 已足以通过残差路径保留，重注入可能重复低层信息、扰动可用的深层 fixed point；若延迟比参数容量更紧，新增投影也可能不划算",
+ test:"在同一初始 E/Wθ 比较无注入、Winject=[I;0]（严格函数等价）和 [I;0.15I]；对照每轮 CE、state RMS、Winject/E 梯度与数值微分，之后必须在真实模型训练中比较任务质量和 GPU 吞吐",
+ sources:[["xLLM-Loop · actual LinearInputInjection", "https://github.com/ifm-ai/xllm-loop/blob/main/xllm/models/looped.py"],
+          ["Towards Looped Models Done Right II · input injection ablation", "https://arxiv.org/abs/2610.06833"]]
+ }),
  residual_scaling:Object.freeze({
  title:"为什么共享循环 Transformer 的残差要按循环次数缩放？",
  goal:"在共享同一个 Transformer Block 多次执行时，控制残差更新沿循环深度累加造成的状态和梯度放大；保持参数存储规模不变",
@@ -184,6 +195,13 @@ function comparisons(){
 }
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function keyFor(graph,id){
+ if(graph?.title==="任务 45 · Huginn-Linear 启发 · 共享循环输入重新注入"){
+   const Injection=typeof module==="object"&&module.exports?require("./loop_input_injection.js"):root.SeetheTruthLoopInjection;
+   try{if(!Injection)throw Error("missing");Injection.inspect(graph);}catch(e){return null;}
+   return ["Winject","lookup","r0_injection_concat","r1_injection_concat","r0_injected_state",
+     "r1_injected_state","r0_attn_norm","r1_attn_norm","loss"].includes(id)?"input_injection":null;
+ }
+
  if(graph?.title==="任务 44 · MoR 启发 · 逐 Token 硬深度预算与状态停止"){
    const MoR=typeof module==="object"&&module.exports?require("./adaptive_token_depth.js"):root.SeetheTruthAdaptiveDepth;
    try{MoR.inspect(graph);}catch(e){return null;}
