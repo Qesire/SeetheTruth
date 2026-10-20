@@ -261,6 +261,41 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(["vision_learned_conv","audio_mel_chain","diffusion_ddim_chain"].includes(name)){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      let title,nodes=[],edges=[];
+      if(name==="vision_learned_conv"){
+        title="任务 50 · 真实卷积核 Parameter → Conv2D → Attention";
+        nodes=[N("pixels","input",30,100,{rows:4,width:4,seed:1}),
+          N("kernel","parameter",30,360,{values:[[0.2,-0.1,0.3,0.4],[-0.1,0.25,0.05,0.3]],
+            optimizer:{t:0,m:[[0,0,0,0],[0,0,0,0]],v:[[0,0,0,0],[0,0,0,0]]}}),
+          N("conv","vision_conv2d",330,170),
+          N("features","silu",590,170),
+          N("spatial_attn","attention",840,170)];
+        edges=[["pixels","conv","x"],["kernel","conv","kernel"],["conv","features","x"],
+          ["features","spatial_attn","q"],["features","spatial_attn","k"],["features","spatial_attn","v"]];
+      }else if(name==="audio_mel_chain"){
+        title="任务 51 · 真实 Hann STFT → HTK Mel → Log10 → Attention";
+        nodes=[N("waveform","input",20,130,{rows:1,width:8,seed:2}),
+          N("power","audio_stft_power",280,130),
+          N("mel","audio_mel_filterbank",535,130),
+          N("logmel","audio_log_power",780,130),
+          N("projection","linear",1020,130,{out:4}),
+          N("audio_attn","attention",1260,130)];
+        edges=[["waveform","power","x"],["power","mel","x"],["mel","logmel","x"],
+          ["logmel","projection","x"],["projection","audio_attn","q"],
+          ["projection","audio_attn","k"],["projection","audio_attn","v"]];
+      }else{
+        title="任务 52 · 扩散 epsilon-DDIM 两步确定性去噪";
+        nodes=[N("latent","input",20,125,{rows:2,width:4,seed:1}),
+          N("pred_noise","input",20,390,{rows:2,width:4,seed:4}),
+          N("step_t","diffusion_ddim_step",340,150,{alphaT:0.36,alphaPrevious:0.64}),
+          N("step_previous","diffusion_ddim_step",620,150,{alphaT:0.64,alphaPrevious:1})];
+        edges=[["latent","step_t","x"],["pred_noise","step_t","epsilon"],
+          ["step_t","step_previous","x"],["pred_noise","step_previous","epsilon"]];
+      }
+      return validateGraph({schema:SCHEMA,title,nodes,edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     // Multimodal tokens stay explicit: image [H,W*C], video [T*H,W*C],
     // audio [1,N]. The numerical source is synthetic, not decoded media.
     if(["image_vit_patch","audio_spectrogram","video_vivit_tubelet","multimodal_cross_attention"].includes(name)){
