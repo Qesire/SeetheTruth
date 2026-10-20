@@ -783,6 +783,9 @@ function render(){
        ["路由专家 Linear MAC（不含通信）",report.expertLinearMAC],
        ["已覆盖数学 MAC 小计（不是全部 FLOPs）",report.knownArithmeticMAC],
        ["显式 Cache 写入后逻辑快照元素总和",report.cacheSnapshotElements],
+       ["YoCo 调度的 Query 行数（非 GPU FLOPs）",report.yocoScheduledQueryRows],
+       ["YoCo 需要保留的 Query 行数",report.yocoRetainedQueryRows],
+       ["YoCo 有效 QK 配对数（不是设备计数）",report.yocoEligibleQKPairs],
        ["逐节点逻辑输出元素总和（非峰值显存）",report.logicalOutputElements]
      ];
      costRoot.replaceChildren(...rows.map(([label,value])=>{
@@ -814,7 +817,7 @@ function render(){
        try{
          const d=window.SeetheTruthGraphCost.compare(graphCostBaseline,graph).deltas;
          const fields=[["物理 Parameter",d.physicalParameterElements],["已覆盖 MAC",d.knownArithmeticMAC],
-           ["Attention MAC",d.attentionMAC],["专家投影 MAC",d.expertLinearMAC],["Cache 快照元素",d.cacheSnapshotElements]];
+           ["Attention MAC",d.attentionMAC],["专家投影 MAC",d.expertLinearMAC],["Cache 快照元素",d.cacheSnapshotElements],["YoCo Query 行数",d.yocoScheduledQueryRows]];
          comparison.replaceChildren(...fields.map(([label,delta])=>{
            const row=document.createElement("div");row.className="metric";
            row.textContent=label+" · 基线 "+nf(delta.baseline)+" → 当前 "+nf(delta.candidate)+
