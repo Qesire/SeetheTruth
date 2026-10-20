@@ -45,7 +45,7 @@ assert.throws(()=>Z.prepare([S('A',1,6),S('A',1,8)],prev,{nextn:2}),/duplicate/)
 assert.throws(()=>Z.prepare([S('A',2,1)],prev,{nextn:2}),/negative/);
 assert.throws(()=>Z.prepare([S('A',1,6)],prev,{nextn:2,paddedLength:0}),/paddedLength/);
 assert.throws(()=>Z.correct(rate,{accepted:[3,0,0]}),/accepted/);
-assert.throws(()=>Z.correct(rate,{accepted:[1,2,0],variableMtp:true,totalQ:9,
+assert.throws(()=>Z.correct(rate,{accepted:[1,2,0],variableMtp:true,totalQ:10,
  confidenceRates:[[.9,.8],[.7,.6],[.5,.4]]}),/totalQ/);
 const steps=[{mode:'prompt',sequenceIds:['A','B']},
  {mode:'decode',sequenceIds:['A','B']},
