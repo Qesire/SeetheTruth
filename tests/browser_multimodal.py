@@ -3,6 +3,8 @@ import threading
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from playwright.sync_api import sync_playwright
 from atlas_server import Handler
 
@@ -37,10 +39,10 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
     def test_all_four_real_multimodal_lessons_and_code_exports(self):
         p=self.page
         cases=[
-          ("image_vit_patch","vision_patchify","patches","Image Patchify"),
-          ("audio_spectrogram","audio_stft_power","spectrum","Audio STFT"),
-          ("video_vivit_tubelet","video_tubelet","tubelets","Video Tubelet"),
-          ("multimodal_cross_attention","audio_log_power","log_power","Audio Log10"),
+          ("image_vit_patch","vision_patchify","patches","vision_patchify"),
+          ("audio_spectrogram","audio_stft_power","spectrum","audio_stft_power"),
+          ("video_vivit_tubelet","video_tubelet","tubelets","video_tubelet"),
+          ("multimodal_cross_attention","audio_log_power","log_power","audio_log_power"),
         ]
         for i,(preset,kind,focus,marker) in enumerate(cases):
             p.locator('[data-preset="'+preset+'"]').click()
@@ -48,7 +50,7 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
             p.locator("#run").click()
             self.assertNotIn("尚未运行",p.locator("#stepInfo").inner_text())
             p.locator('[data-node="'+focus+'"] .block-head').click()
-            self.assertIn("公开",p.locator("#blockKnowledge").inner_text())
+            self.assertGreaterEqual(p.locator("#blockKnowledge .knowledge-sources a").count(),1)
             p.locator("#pythonBackend").select_option("numpy")
             with p.expect_download() as d:
                 p.locator("#exportPython").click()
