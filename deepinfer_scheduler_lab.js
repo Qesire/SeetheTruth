@@ -66,7 +66,8 @@ function paint(){
  $("detail").textContent=JSON.stringify(index?{
   cycle:index-1,scheduled:decision.scheduled,preempted:decision.preempted,
   blockedAdmissions:decision.blocked,waiting:decision.waiting,kvRevision:decision.kvRevision,
-  actions:decision.actions,worker:run.worker.steps[index-1]
+  actions:decision.actions,dispatchOwnershipAtForward:decision.dispatchBlocks,
+  worker:run.worker.steps[index-1],workerForwardEvent:run.executionProof[index-1]?.forwardEvent
  }:{init:spec.setup,physicalKV:state.free,source:"scheduler.hpp::decode"},null,2);
  $("previous").disabled=index===0;$("next").disabled=index===run.cycles.length;
  window.SeetheTruthLastSchedulerState=state;
