@@ -124,5 +124,36 @@ class MultimodalBrowserAcceptance(unittest.TestCase):
         p.screenshot(path=str(DEST/'native-5d-causal-conv3d.png'),
                      full_page=True,animations='disabled')
 
+
+    def test_deepseek_inference_microflow_graphs_and_real_codegen(self):
+        p=self.page
+        cases=[
+            ('inference_sparse_decode','select','inference_topk','torch.argsort'),
+            ('inference_paged_kv','read','inference_paged_kv_read','torch.stack'),
+            ('inference_speculative','accepted','inference_greedy_verify','torch.cumprod'),
+            ('inference_paged_sparse','sparse','inference_sparse_attention','torch.softmax')
+        ]
+        for i,(preset,node,kind,torch_expression) in enumerate(cases):
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator('[data-node="'+node+'"]').count(),1)
+            p.locator('#run').click()
+            self.assertNotIn('尚未运行',p.locator('#stepInfo').inner_text())
+            p.locator('[data-node="'+node+'"] .block-head').click()
+            self.assertGreaterEqual(p.locator('#blockKnowledge .knowledge-sources a').count(),1)
+            p.locator('#pythonBackend').select_option('numpy')
+            with p.expect_download() as download:
+                p.locator('#exportPython').click()
+            numpy_source=Path(download.value.path()).read_text(encoding='utf8')
+            self.assertIn('# '+kind,numpy_source)
+            p.locator('#pythonBackend').select_option('torch')
+            with p.expect_download() as download:
+                p.locator('#exportPython').click()
+            torch_source=Path(download.value.path()).read_text(encoding='utf8')
+            self.assertIn(torch_expression,torch_source)
+            p.screenshot(path=str(DEST/('inference-%02d-'%i+preset+'.png')),
+                         full_page=True,animations='disabled')
+        for kind in ['inference_topk','inference_sparse_attention','inference_paged_kv_read','inference_greedy_verify']:
+            self.assertEqual(p.locator('#palette [data-add="'+kind+'"]').count(),1)
+
 if __name__=="__main__":
     unittest.main()
