@@ -1529,7 +1529,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_live_graph_cost_updates_from_actual_connected_dag(self):
         p=self.page
         p.locator('[data-preset="ffn"]').click()
-        p.locator('#graphCostPanel summary').click()
+        p.locator('#graphCostPanel > summary').click()
         cost=p.locator('#graphCostSummary')
         self.assertIn("192",cost.inner_text(),"FFN MatMul MAC from 3x4x8 and 3x8x4")
         self.assertIn("76",cost.inner_text(),"synthetic Linear weight elements are counted separately")
@@ -1543,7 +1543,7 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
     def test_graph_evidence_attention_moe_cache_and_baseline_counterfactual(self):
         p=self.page
         p.locator('[data-preset="ffn"]').click()
-        p.locator('#graphCostPanel summary').click()
+        p.locator('#graphCostPanel > summary').click()
         p.locator('#freezeGraphBaseline').click()
         self.assertIn("基线",p.locator('#graphCostComparison').inner_text())
         self.assertIn("192",p.locator('#graphCostComparison').inner_text())
