@@ -50,7 +50,9 @@ class DeepInferIntegratedBrowser(unittest.TestCase):
         p.locator("#next").click()
         self.assertEqual(p.evaluate("window.SeetheTruthLastSchedulerRun.decisions[1].preempted[0].id"),"B")
         p.locator("#next").click()
-        self.assertEqual(p.evaluate("window.SeetheTruthLastSchedulerState.requests.A.status"),"RUNNING")
+        self.assertEqual(p.evaluate("window.SeetheTruthLastSchedulerState.requests.A.status"),"FINISHED")
+        self.assertTrue(p.evaluate("window.SeetheTruthLastSchedulerRun.executionProof[2].physicalBlockTables.A.length > 0"),
+                        "request held physical KV before its Forward, then finished at cycle end")
         self.assertEqual(p.evaluate("window.SeetheTruthLastSchedulerRun.decisions[2].scheduled.includes('A')"),True)
         p.screenshot(path=str(DEST/"readmitted-recompute-request.png"),full_page=True,animations="disabled")
         with p.expect_download() as d:
