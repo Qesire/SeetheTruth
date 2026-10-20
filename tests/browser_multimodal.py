@@ -1,0 +1,70 @@
+"""Real Chromium multimodal pipeline acceptance and screenshot evidence."""
+import threading
+import unittest
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+from atlas_server import Handler
+
+DEST=Path("multimodal_screenshots")
+class MultimodalBrowserAcceptance(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        DEST.mkdir(parents=True,exist_ok=True)
+        cls.server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
+        cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True)
+        cls.thread.start()
+        cls.playwright=sync_playwright().start()
+        cls.browser=cls.playwright.chromium.launch(headless=True,args=["--no-sandbox"])
+        cls.base="http://127.0.0.1:"+str(cls.server.server_port)
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        cls.server.shutdown()
+        cls.server.server_close()
+    def setUp(self):
+        self.page=self.browser.new_page(viewport={"width":1500,"height":1000})
+        self.errors=[]
+        self.page.on("pageerror",lambda e:self.errors.append(str(e)))
+        response=self.page.goto(self.base+"/learn.html",wait_until="domcontentloaded")
+        self.assertEqual(response.status,200)
+        self.page.wait_for_function("window.SeetheTruthMultimodal&&window.SeetheTruthBlockKnowledge")
+        self.page.locator("#studyMode").select_option("numeric")
+    def tearDown(self):
+        self.assertEqual(self.errors,[])
+        self.page.close()
+    def test_all_four_real_multimodal_lessons_and_code_exports(self):
+        p=self.page
+        cases=[
+          ("image_vit_patch","vision_patchify","patches","Image Patchify"),
+          ("audio_spectrogram","audio_stft_power","spectrum","Audio STFT"),
+          ("video_vivit_tubelet","video_tubelet","tubelets","Video Tubelet"),
+          ("multimodal_cross_attention","audio_log_power","log_power","Audio Log10"),
+        ]
+        for i,(preset,kind,focus,marker) in enumerate(cases):
+            p.locator('[data-preset="'+preset+'"]').click()
+            self.assertEqual(p.locator('[data-node="'+focus+'"]').count(),1)
+            p.locator("#run").click()
+            self.assertNotIn("尚未运行",p.locator("#stepInfo").inner_text())
+            p.locator('[data-node="'+focus+'"] .block-head').click()
+            self.assertIn("公开",p.locator("#blockKnowledge").inner_text())
+            p.locator("#pythonBackend").select_option("numpy")
+            with p.expect_download() as d:
+                p.locator("#exportPython").click()
+            source=Path(d.value.path()).read_text(encoding="utf8")
+            self.assertIn(marker,source)
+            p.locator("#pythonBackend").select_option("torch")
+            with p.expect_download() as d:
+                p.locator("#exportPython").click()
+            source=Path(d.value.path()).read_text(encoding="utf8")
+            self.assertIn("import torch",source)
+            self.assertIn("class GraphRuntime",source)
+            p.screenshot(path=str(DEST/("%02d-"%i+preset+".png")),full_page=True,animations="disabled")
+        self.assertEqual(len(list(DEST.glob("*.png"))),4)
+        self.assertEqual(p.locator('#palette [data-add="vision_patchify"]').count(),1)
+        self.assertEqual(p.locator('#palette [data-add="audio_stft_power"]').count(),1)
+        self.assertEqual(p.locator('#palette [data-add="video_tubelet"]').count(),1)
+
+if __name__=="__main__":
+    unittest.main()
