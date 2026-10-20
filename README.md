@@ -6,7 +6,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **2026-10-20 推理系统时间实验：** [DeepInfer Worker ZOS / 非 ZOS 对照](deepinfer_worker_lab.html) 独立展示跨 Step 的 Scheduler、GPU Forward、上一轮延迟 Post-process、Sample、Flush 的可执行事件依赖图。它以用户输入的假设时长进行可证伪的逻辑调度对照，**不是 DeepInfer 的实测吞吐或框架复刻**。精确来源与限制详见 [时序重建与证据](docs/deepinfer-worker-events.md)。
 
-**DeepInfer Decode 状态重建：** Worker 实验室现已将 C++ `prepare_decode_zos_inputs` 压缩块表、累计 Query Offset，与 `refresh_for_sampling` 的 MTP 槽位转移和 Golden Token 窗口绑定到同一真实计算 Step。全部为**可重复的小规模 CPU 参考算术**，并不执行 GPU 页分配或 DeepInfer 完整 Serving。参见 [源码与验证](docs/deepinfer-decode-blocktable-refresh.md)。\n\n## 立即体验
+**DeepInfer Decode 状态重建：** Worker 实验室现已将 C++ `prepare_decode_zos_inputs` 压缩块表、累计 Query Offset，与 `refresh_for_sampling` 的 MTP 槽位转移和 Golden Token 窗口绑定到同一真实计算 Step。全部为**可重复的小规模 CPU 参考算术**，并不执行 GPU 页分配或 DeepInfer 完整 Serving。参见 [源码与验证](docs/deepinfer-decode-blocktable-refresh.md)。\n\n**KV 资源生命周期实验室：** [DeepInfer BlockManager / Scheduler 状态回放](deepinfer_kv_lifecycle_lab.html) 已加入真正可执行的小规模 FIFO 物理块分配、引用计数、Fork 共享与 Partial-Tail Clone、请求回收及抢占重计算/停止对照。源码级边界和不支持的真实 GPU 操作详见 [KV 生命周期审计](docs/deepinfer-kv-lifecycle.md)。页面不进行 GPU 实测或推断吞吐。\n\n## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
 
