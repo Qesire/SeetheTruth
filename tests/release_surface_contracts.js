@@ -30,6 +30,7 @@ assert.ok(html.includes('src="graph_cost_report.js"'),'live workbench cost analy
 assert.ok(server.includes('"/graph_cost_report.js"'),'live cost analyzer served by local HTTP');
 assert.ok(html.includes('id="graphCostPanel"'),'live graph cost panel must exist');
 assert.ok(html.includes('id="freezeGraphBaseline"')&&html.includes('id="graphCostComparison"'),'cost counterfactual controls must exist');
+assert.ok(html.includes('id="graphCostNodeList"'),'graph cost evidence must expose per-node inspector links');
 assert.ok(html.includes('href="tradeoffs.html"'),'Learning Studio must link the architecture cost laboratory');
 assert.ok(read('tradeoffs.html').includes('src="architecture_tradeoffs.js"'),'tradeoff page must load its cost model');
 assert.ok(server.includes('"/architecture_tradeoffs.js"'),'cost model must be served by the local web server');
