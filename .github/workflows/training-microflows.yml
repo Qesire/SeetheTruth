@@ -23,6 +23,10 @@ on:
       - 'deepinfer_zos_metadata.js'
       - 'deepinfer_decode_metadata.js'
       - 'deepinfer_kv_lifecycle.js'
+      - 'deepinfer_scheduler_workflow.js'
+      - 'deepinfer_scheduler_lab.js'
+      - 'deepinfer_scheduler_lab.html'
+      - 'tests/deepinfer_scheduler_workflow_contracts.js'
       - 'deepinfer_kv_lifecycle_lab.js'
       - 'deepinfer_kv_lifecycle_lab.html'
       - 'tests/deepinfer_kv_lifecycle_contracts.js'
@@ -170,6 +174,7 @@ jobs:
       - run: node --check deepinfer_zos_metadata.js && node tests/deepinfer_zos_metadata_contracts.js
       - run: node --check deepinfer_decode_metadata.js && node tests/deepinfer_decode_metadata_contracts.js
       - run: node --check deepinfer_kv_lifecycle.js && node --check deepinfer_kv_lifecycle_lab.js && node tests/deepinfer_kv_lifecycle_contracts.js
+      - run: node --check deepinfer_scheduler_workflow.js && node --check deepinfer_scheduler_lab.js && node tests/deepinfer_scheduler_workflow_contracts.js
       - run: node tests/concept_flow_contracts.js
       - run: node --check nd_tensor.js && node tests/nd_tensor_contracts.js
       - run: node --check nd_autodiff.js && node tests/nd_gqa_autodiff_contracts.js
