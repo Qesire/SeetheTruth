@@ -14,6 +14,9 @@ on:
       - 'paper_lab.html'
       - 'paper_hover.js'
       - 'block_catalog.js'
+      - 'multimodal_ops.js'
+      - 'tests/multimodal_contracts.js'
+      - 'tests/multimodal_codegen_parity.js'
       - 'python_codegen.js'
       - 'torch_codegen.js'
       - 'tests/torch_codegen_contracts.js'
@@ -132,6 +135,7 @@ jobs:
       - run: node tests/graph_cost_evidence_extensions.js
       - run: node --check architecture_tradeoffs.js && node tests/architecture_tradeoffs_contracts.js
       - run: node tests/block_catalog_contracts.js
+      - run: node --check multimodal_ops.js && node tests/multimodal_contracts.js
       - run: node tests/concept_flow_contracts.js
       - run: node --check nd_tensor.js && node tests/nd_tensor_contracts.js
       - run: node --check nd_autodiff.js && node tests/nd_gqa_autodiff_contracts.js
