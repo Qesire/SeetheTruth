@@ -45,6 +45,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 ## 其他入口
 
 - [Learning Studio](learn.html)：产品主入口、自由积木及代码导出。
+- [Architecture Trade-off Lab](tradeoffs.html)：交互比较 GQA 缓存、MoE 参数激活比例与 Loop Transformer 参数共享的解析成本；不表示真实 GPU 加速。
 - [训练状态教学](training.html)：独立的前向—损失—反向—梯度累积—AdamW/SGD 状态示例。
 - [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
 - [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
