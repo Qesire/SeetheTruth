@@ -2,7 +2,7 @@
  * CPU/GPU logical resources; times are assumed abstract durations, NEVER measured.
  * Does not execute an actual ML model or DeepInfer C++ runtime.
  */
-(function(root,factory){"use strict";const api=factory();if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthDeepInferEvents=api;})(typeof window!=="undefined"?window:{},function(){"use strict";
+(function(root,factory){"use strict";const api=factory(typeof module==="object"&&module.exports?require("./deepinfer_zos_metadata.js"):root.SeetheTruthZOSMetadata);if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthDeepInferEvents=api;})(typeof window!=="undefined"?window:{},function(ZOS){"use strict";
  const DEFAULT_DURATIONS=Object.freeze({schedule:2,launch:1,correct:1,forward:8,post:4,launchSample:1,sample:2});
  const DEFAULT_STEPS=Object.freeze([
   {mode:"prompt",sequenceIds:["A","B"]},
@@ -36,9 +36,30 @@
  }
  function simulate(steps,opts={zeroOverhead:true}){
   const accepted=validate(steps,opts),config={...DEFAULT_DURATIONS,...opts.durations};
+  const fixtures=opts.metadataFixture;
+  if(fixtures!==undefined){
+   if(!ZOS)fail("DeepInfer source metadata module missing");
+   if(!fixtures||typeof fixtures!=="object"||!Number.isSafeInteger(fixtures.nextn)||
+     fixtures.nextn<0||fixtures.nextn>8||typeof fixtures.variableMtp!=="boolean"||
+     !Array.isArray(fixtures.records)||fixtures.records.length!==accepted.length)
+    fail("metadataFixture must have nextn, variableMtp and one record per step");
+   for(let i=0;i<accepted.length;i++){
+    const r=fixtures.records[i],ids=accepted[i].sequenceIds;
+    if(!r||!Array.isArray(r.sequences)||r.sequences.length!==ids.length||
+      r.sequences.some((seq,j)=>seq.seqId!==ids[j]))fail("metadataFixture sequenceIds mismatch at step "+i);
+    if(!Array.isArray(r.accepted)||r.accepted.length!==ids.length||
+      r.accepted.some(v=>!Number.isSafeInteger(v)||v<0||v>fixtures.nextn))
+     fail("metadataFixture accepted counts invalid at step "+i);
+    if(fixtures.variableMtp&&(!Array.isArray(r.confidenceRates)||r.confidenceRates.length!==ids.length||
+       r.confidenceRates.some(row=>!Array.isArray(row)||row.length!==fixtures.nextn||
+        row.some(v=>typeof v!=="number"||!Number.isFinite(v)||v<0||v>1))))
+      fail("metadataFixture confidence rates invalid at step "+i);
+   }
+  }
   const zeroOverhead=opts.zeroOverhead,flush=opts.flush!==false;
   const events=[],completed=new Map(),resourceReady={CPU:0,GPU:0},resourceLast={CPU:null,GPU:null},requestReady=[];
   let prior=null,previousGpuSample=null;
+  const metadataTrace=[];
   const add=(step,stage,resource,duration,depends=[],meta={})=>{
    depends=depends.slice();
    if(resourceLast[resource]&&!depends.includes(resourceLast[resource]))
@@ -64,11 +85,37 @@
    const launch=add(i,"launch_forward","CPU",config.launch,[scheduled],{
     source:"Worker.execute_model_step launches ModelRunner.execute_main_model"});
    let correction=null;
-   if(prior&&zeroOverhead&&step.mode==="decode"&&prior.sequenceIds.some(id=>step.sequenceIds.includes(id))){
-    correction=add(i,"correct_zos_metadata","GPU",config.correct,[launch,prior.sample],{
-     priorStep:prior.step,remap:step.sequenceIds.map(id=>prior.sequenceIds.indexOf(id)),
-     source:"Worker._correct_seqlens_qk (device-side remap/accepted tokens); varlen may await D2H before sampling"
-    });
+   if(prior&&zeroOverhead&&step.mode!=="placeholder"&&
+     prior.sequenceIds.some(id=>step.sequenceIds.includes(id))){
+    let numerical=null;
+    if(fixtures){
+     const r=fixtures.records[i],prev=fixtures.records[prior.step];
+     const prepared=ZOS.prepare(r.sequences,prev.sequences,{
+      nextn:fixtures.nextn,paddedLength:r.paddedLength??r.sequences.length});
+     if(prepared){
+      const result=ZOS.correct(prepared,{
+       accepted:prev.accepted,variableMtp:fixtures.variableMtp,
+       confidenceRates:fixtures.variableMtp?prev.confidenceRates:null,
+       totalQ:fixtures.variableMtp?r.totalQ:null});
+      const sampler=r.cachedTokens?ZOS.samplingView(prepared,result,r.cachedTokens):null;
+      numerical={prepared,result,sampler};
+      metadataTrace.push({step:i,previousStep:prior.step,
+       remap:prepared.remap.slice(),seqlensQ:result.seqlensQ.slice(),
+       seqlensK:result.seqlensK.slice(),seqlensKBase:prepared.seqlensKBase.slice(),
+       previousAccepted:prev.accepted.slice(),d2hSeqlensQ:result.d2hSeqlensQ,
+       sampler:result&&sampler,notes:"Source C++ remap + exact accepted-token length reference; sampler refresh not executed"});
+     }
+    }
+    if(!fixtures||numerical){
+     correction=add(i,"correct_zos_metadata","GPU",config.correct,[launch,prior.sample],{
+      priorStep:prior.step,remap:numerical?numerical.prepared.remap.slice():
+         step.sequenceIds.map(id=>prior.sequenceIds.indexOf(id)),
+      ...(numerical?{seqlensQ:numerical.result.seqlensQ.slice(),
+        seqlensK:numerical.result.seqlensK.slice(),prevAccepted:numerical.result.acceptedPrevious.slice(),
+        d2h:numerical.result.d2hSeqlensQ!==null}:{}),
+      source:"Worker._correct_seqlens_qk: C++ remap + varlen Q + accepted-token K; D2H timing abstract"
+     });
+    }
    }
    const forward=add(i,"forward","GPU",config.forward,[correction||launch,...(previousGpuSample?[previousGpuSample]:[])],{
     source:"ModelRunner.execute_main_model",mode:step.mode,
@@ -116,6 +163,7 @@
   for(let k=1;k<serializedCpu.length;k++)if(serializedCpu[k].start<serializedCpu[k-1].end)fail("CPU resource overlap");
   return Object.freeze({zeroOverhead,flush,
     durations:Object.freeze(config),steps:accepted,events:frozenEvents,
+    metadataTrace:Object.freeze(metadataTrace),
     released:Object.freeze(requestReady),pendingStep:prior?prior.step:null,
     makespan,resourceBusy:Object.freeze(Object.fromEntries(["CPU","GPU"].map(resource=>
        [resource,events.filter(e=>e.resource===resource).reduce((sum,e)=>sum+e.duration,0)]))),
