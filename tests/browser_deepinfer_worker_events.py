@@ -104,5 +104,35 @@ class DeepInferWorkerBrowser(unittest.TestCase):
         self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace.length'),0)
         self.assertEqual(p.locator('#metadataRows tr').count(),0)
 
+
+    def test_decode_compressed_block_table_and_mtp_slot_real_ui(self):
+        p=self.page
+        p.wait_for_function('window.SeetheTruthLastWorkerComparison.zos.metadataTrace[0].decode !== null')
+        trace=p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace[0]')
+        decoded=trace['decode']
+        self.assertEqual(decoded['packed']['blockTables'],[7,4,8,9,2,3])
+        self.assertEqual(decoded['packed']['blockTableOffsets'],[0,4,6])
+        self.assertEqual(decoded['packed']['numBlocks'],[4,2])
+        self.assertEqual(decoded['packed']['cuSeqlensQ'],[1,2])
+        self.assertEqual(decoded['sampling']['metadata'][0]['seqlenK'],14)
+        self.assertEqual(decoded['sampling']['metadata'][0]['mtpInfoReadSlot'],5)
+        self.assertEqual(decoded['sampling']['metadata'][0]['mtpInfoWriteSlot'],5)
+        self.assertEqual(decoded['sampling']['metadata'][0]['goldenToken'],[11,12,13,14,15])
+        self.assertEqual(decoded['sampling']['states'][0]['mtp']['hasDraftInfo'],False)
+        self.assertEqual(p.locator('#decodeRows tr').count(),1)
+        p.screenshot(path=str(OUT/'decode-compressed-kv-mtp-slots.png'),full_page=True,animations='disabled')
+        p.locator('#decodeJson').evaluate('(el)=>{el.closest("details").open=true;}')
+        original=p.locator('#decodeJson').input_value()
+        p.locator('#decodeJson').fill('{"step":2,"input":{},"states":[]}')
+        p.locator('#applyDecode').click()
+        self.assertIn('Fixture 被拒绝',p.locator('#decodeStatus').inner_text())
+        self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace[0].decode.packed.blockTableOffsets'),[0,4,6])
+        p.locator('#decodeJson').fill(original)
+        p.locator('#applyDecode').click()
+        self.assertIn('已完成',p.locator('#decodeStatus').inner_text())
+        p.locator('#decodeEnabled').uncheck()
+        self.assertEqual(p.locator('#decodeRows tr').count(),0)
+        self.assertEqual(p.evaluate('window.SeetheTruthLastWorkerComparison.zos.metadataTrace[0].decode'),None)
+
 if __name__=='__main__':
     unittest.main()
