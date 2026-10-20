@@ -14,8 +14,9 @@
    {op:"arrive",id:"C",tokenLen:8},{op:"allocate",id:"C"}],
    cycles:[{outputLens:{A:8,B:4,C:1},workloads:{B:{tokenLen:9},C:{tokenLen:9}}},
     {outputLens:{B:5,C:2},after:[{op:"finish",id:"B"}]},
-    {admit:[{id:"A"}],outputLens:{A:9,C:3},workloads:{A:{tokenLen:9}}},
-    {outputLens:{A:10,C:4},after:[{op:"finish",id:"A"},{op:"finish",id:"C"}]}]},
+    {admit:[{id:"A"}],outputLens:{A:9,C:3},workloads:{A:{tokenLen:9}},
+     after:[{op:"finish",id:"A"}]},
+    {outputLens:{C:4},after:[{op:"finish",id:"C"}]}]},
   structured:{config:{numBlocks:5,blockSize:4},setup:[
    {op:"arrive",id:"S",tokenLen:8},{op:"allocate",id:"S"},
    {op:"arrive",id:"B",tokenLen:8},{op:"allocate",id:"B"},
