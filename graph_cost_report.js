@@ -88,6 +88,10 @@
    if(mac!==null){coveredMAC=safeSum(coveredMAC,mac);coveredGemmNodes++;}
    if(attention!==null){attentionMAC=safeSum(attentionMAC,attention);attentionNodes++;}
    if(expert!==null){expertMAC=safeSum(expertMAC,expert);expertNodes++;}
+   if(attention!==null||expert!==null||n.kind==="nd_cache_append"||n.kind==="cache_write_segment"){
+     otherOperatorNodes++;
+     unprofiledKinds.add(n.kind+" (partial accounting)");
+   }
    rows.push({id:n.id,kind:n.kind,shape:shape.slice(),elements,mac,attentionMAC:attention,expertMAC:expert});
   }
   const usage=graph.nodes.filter(n=>n.kind==="parameter"||n.kind==="nd_parameter").map(n=>({
