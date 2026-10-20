@@ -266,8 +266,8 @@
       let title,nodes,edges;
       if(name==="deepinfer_mtp_budget"){
         title="任务 58 · DeepInfer DSpark: Remap → 累积置信度 → 全局固定预算";
-        nodes=[N("remap","parameter",35,115,{values:[[0],[1],[-1]],frozen:true}),
-          N("prev_confidence","parameter",35,375,{values:[[0.9,0.8],[0.5,0.5]],frozen:true}),
+        nodes=[N("remap","parameter",35,115,{values:[[0],[1],[-1]],frozen:true,optimizer:{t:0,m:[[0],[0],[0]],v:[[0],[0],[0]]}}),
+          N("prev_confidence","parameter",35,375,{values:[[0.9,0.8],[0.5,0.5]],frozen:true,optimizer:{t:0,m:[[0,0],[0,0]],v:[[0,0],[0,0]]}}),
           N("mtp","deepinfer_mtp_confidence_schedule",395,245,{totalQ:5})];
         edges=[["remap","mtp","remap"],["prev_confidence","mtp","prev_confidence"]];
       }else{
