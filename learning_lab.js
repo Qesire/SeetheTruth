@@ -261,6 +261,11 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="loop_input_injection"){
+      const Injection=typeof module==="object"&&module.exports?require("./loop_input_injection.js"):globalThis.SeetheTruthLoopInjection;
+      if(!Injection)throw Error("loop input reinjection builder unavailable");
+      return Injection.build();
+    }
     if(name==="mor_token_depth_budget"){
       const MoR=typeof module==="object"&&module.exports?require("./adaptive_token_depth.js"):globalThis.SeetheTruthAdaptiveDepth;
       if(!MoR)throw Error("adaptive depth source builder unavailable");
