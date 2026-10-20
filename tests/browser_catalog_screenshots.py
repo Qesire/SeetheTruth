@@ -1526,5 +1526,19 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                          "Architecture tradeoffs page has horizontal overflow")
 
 
+    def test_live_graph_cost_updates_from_actual_connected_dag(self):
+        p=self.page
+        p.locator('[data-preset="ffn"]').click()
+        p.locator('#graphCostPanel summary').click()
+        cost=p.locator('#graphCostSummary')
+        self.assertIn("192",cost.inner_text(),"FFN MatMul MAC from 3x4x8 and 3x8x4")
+        self.assertIn("76",cost.inner_text(),"synthetic Linear weight elements are counted separately")
+        self.assertIn("非可训练 Parameter",cost.inner_text())
+        p.locator('[data-preset="loopformer_consistency"]').click()
+        self.assertIn("168",cost.inner_text(),"loop-shared physical parameter element count")
+        self.assertIn("尚未计入",cost.inner_text(),"partial compute coverage must be disclosed")
+        self.assertEqual(self.errors,[])
+
+
 if __name__=="__main__":
     unittest.main()

@@ -21,6 +21,8 @@
 
 - `tradeoffs.html` (standalone analytical experiment) and `architecture_tradeoffs.js` are now served from the same local server and tested in release-surface contracts; estimates are not profiler measurements.
 
+- Learning Studio now exposes exact graph-derived physical Parameter and known GEMM MAC counts for any fully shape-valid DAG; tests reject incomplete graphs. Unknown operators make this a partial arithmetic report, never total FLOPs or GPU latency.
+
 ## Release blockers: required before public alpha
 
 | Gate | Current evidence | Completion criterion |

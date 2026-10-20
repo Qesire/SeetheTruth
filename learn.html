@@ -252,6 +252,7 @@ input[type="file"]{display:none}
   </details>
   <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 优化器更新，逐步重新计算 Forward/Backward，并保存独立的状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
    <div class="graph-readiness" id="graphReadiness" aria-label="自由计算图的张量形状与连线就绪状态"></div>
+   <details id="graphCostPanel" class="section" aria-label="当前计算图解析成本统计"><summary>GRAPH COST · 按当前连接图计算</summary><div class="hint" id="graphCostSummary" aria-live="polite"></div></details>
    <details id="pythonExportPanel" hidden aria-label="生成的可执行 Python 代码"><summary><span id="pythonExportCaption">已生成可执行 Python（NumPy） · 查看源代码</span></summary><p class="hint" id="pythonExportHelp">可通过 <code>pip install numpy</code> 安装依赖，然后运行下载的 .py 文件。输入可由 run_graph(overrides=...) 修改。</p><button id="copyPython" class="btn small" type="button">复制源码</button><pre id="pythonExportSource" style="max-height:300px;overflow:auto;white-space:pre;font-size:11px;tab-size:2;"></pre></details>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
   </div>
@@ -295,6 +296,7 @@ input[type="file"]{display:none}
 <script src="concept_flow.js"></script>
 <script src="branch_execution.js"></script>
 <script src="graph_readiness.js"></script>
+<script src="graph_cost_report.js"></script>
 <script src="python_codegen.js"></script>
 <script src="torch_codegen.js"></script>
 <script src="composite_atlas.js"></script>
@@ -747,6 +749,32 @@ function render(){
  const kinds=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind)).map(n=>n.params.optimizer.kind||"adamw");
  if(kinds.length&&kinds.every(k=>k===kinds[0]))$("#trainOptimizer").value=kinds[0];
  readinessSnapshot=Readiness.check(graph);
+ const costRoot=$("#graphCostSummary");
+ if(readinessSnapshot.executable){
+   try{
+     const report=window.SeetheTruthGraphCost.profile(graph);
+     const nf=n=>n.toLocaleString("en-US");
+     const rows=[
+       ["物理 Parameter 元素",report.physicalParameterElements],
+       ["合成 Linear 的教学权重元素（非可训练 Parameter）",report.implicitTeachingWeightElements],
+       ["覆盖的 MatMul 调用",report.countedMatmulNodes],
+       ["覆盖的 MatMul MAC",report.countedMatmulMAC],
+       ["覆盖的 MatMul 算术 FLOP 项",report.countedMatmulFlopTerms],
+       ["逐节点逻辑输出元素总和（非峰值显存）",report.logicalOutputElements]
+     ];
+     costRoot.replaceChildren(...rows.map(([label,value])=>{
+       const line=document.createElement("div");line.className="metric";
+       const key=document.createElement("span");key.textContent=label;
+       const val=document.createElement("b");val.textContent=nf(value);
+       line.append(key,val);return line;
+     }));
+     const note=document.createElement("p");note.className="hint";
+     note.textContent=report.unprofiledKinds.length?
+       "其他算子尚未计入: "+report.unprofiledKinds.join(", ")+"。以上 MAC/FLOP 不是整个模型的总量，也不是 GPU 实测。":
+       "仅对覆盖的 GEMM 给出数学算术量；输出元素总和不代表实际分配内存或 GPU 延迟。";
+     costRoot.append(note);
+   }catch(err){costRoot.textContent="成本报告无法生成："+err.message;}
+ }else costRoot.textContent="计算图未通过输入/形状校验。先完成连接后才能得到成本报告。";
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
