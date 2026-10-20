@@ -11,7 +11,7 @@ const L=isNode?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTrainingObjective;
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const SUPPORTED=new Set([
- "input","parameter","nd_input","nd_parameter","linear","matmul","nd_batched_matmul",
+ "input","parameter","nd_input","nd_parameter","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","nd_mse",
  "silu","relu","gelu_tanh","gelu_erf","sigmoid","tanh","softplus",
@@ -66,6 +66,17 @@ function compile(raw,options={}){
      const W=Array.from({length:sh[1]},(_,j)=>Array.from({length:p.out},(_,i)=>weight(id,i,j)));
      const bias=Array.from({length:p.out},(_,i)=>weight(id,97,i));
      expr='('+src(id,"x")+' @ torch.tensor('+JSON.stringify(W)+',dtype=DTYPE) + torch.tensor('+JSON.stringify(bias)+',dtype=DTYPE))';
+   } else if(k==="vision_patchify"){
+     const x=src(id,"x"),H=p.height,W=p.width,C=p.channels,ph=p.patchHeight,pw=p.patchWidth;
+     expr=x+'.reshape('+[H,W,C].join(',')+').reshape('+[H/ph,ph,W/pw,pw,C].join(',')+').permute(0,2,1,3,4).reshape(-1,'+(ph*pw*C)+')';
+   } else if(k==="video_tubelet"){
+     const x=src(id,"x"),T=p.frames,H=p.height,W=p.width,C=p.channels,pt=p.patchFrames,ph=p.patchHeight,pw=p.patchWidth;
+     expr=x+'.reshape('+[T,H,W,C].join(',')+').reshape('+[T/pt,pt,H/ph,ph,W/pw,pw,C].join(',')+').permute(0,2,4,1,3,5,6).reshape(-1,'+(pt*ph*pw*C)+')';
+   } else if(k==="audio_stft_power"){
+     const x=src(id,"x"),N=p.fftSize,h=p.hop;
+     expr='torch.fft.rfft('+x+'.reshape(-1).unfold(0,'+N+','+h+') * torch.hann_window('+N+',periodic=True,dtype=DTYPE),dim=-1).abs().square()';
+   } else if(k==="audio_log_power"){
+     expr='torch.log10(torch.clamp('+src(id,"x")+',min='+p.floor+'))';
    } else if(["matmul","nd_batched_matmul"].includes(k))expr='('+src(id,"a")+' @ '+src(id,"b")+')';
    else if(["add","mul","subtract","divide"].includes(k))expr='('+src(id,"a")+' '+({add:"+",mul:"*",subtract:"-",divide:"/"}[k])+' '+src(id,"b")+')';
    else if(k==="nd_broadcast_add")expr='('+src(id,"a")+' + '+src(id,"b")+')';
