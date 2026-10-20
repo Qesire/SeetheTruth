@@ -36,7 +36,7 @@ class AndroidLearningBrowser(unittest.TestCase):
         r=p.goto(self.base+"/android_teaching.html")
         self.assertEqual(r.status,200)
         self.assertIn("模型课堂",p.title())
-        self.assertEqual(p.locator(".cards .card").count(),8)
+        self.assertEqual(p.locator(".cards .card").count(),9)
         self.assertTrue(p.locator("text=纯教学版").is_visible())
         p.screenshot(path=str(OUT/"android-home-390px.png"),full_page=True,animations="disabled")
         p.locator('a[href="learn.html?mission=image_vit_patch"]').click()
