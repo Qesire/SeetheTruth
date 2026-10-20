@@ -59,6 +59,10 @@ on:
       - 'concept_flow.js'
       - 'learning_lab.js'
       - 'learn.html'
+      - 'tradeoffs.html'
+      - 'architecture_tradeoffs.js'
+      - 'tests/architecture_tradeoffs_contracts.js'
+      - 'atlas_server.py'
       - 'graph_layout.js'
       - 'tests/graph_layout_contracts.js'
       - 'tests/model_gate_composition.js'
@@ -121,6 +125,7 @@ jobs:
           retention-days: 14
       - run: node --check micro_training_flows.js && node --check paper_patches.js && node --check paper_hover.js
       - run: node tests/release_surface_contracts.js
+      - run: node --check architecture_tradeoffs.js && node tests/architecture_tradeoffs_contracts.js
       - run: node tests/block_catalog_contracts.js
       - run: node tests/concept_flow_contracts.js
       - run: node --check nd_tensor.js && node tests/nd_tensor_contracts.js
