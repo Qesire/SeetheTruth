@@ -47,6 +47,16 @@ jobs:
             catalog_screenshots/manifest.json
           if-no-files-found: warn
           retention-days: 14
+      - name: Execute DeepInfer Worker event graph in real Chromium
+        run: python tests/browser_deepinfer_worker_events.py
+      - name: Archive real Worker CPU GPU timeline screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-deepinfer-worker-zos-timelines
+          path: deepinfer_worker_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Validate real image/audio/video composition and exports in Chromium
         run: python tests/browser_multimodal.py
       - name: Archive multimodal visual evidence

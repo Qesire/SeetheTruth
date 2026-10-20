@@ -21,7 +21,7 @@ assert.match(readme,/不支持的节点会明确拒绝/,'do not imply arbitrary 
 assert.match(readme,/无需 GPU/,'GPU must not be mandatory for learning');
 assert.match(readme,/TinyStories-1M CPU 采集及独立二次复跑已通过/,'pinned real-model replay evidence must be disclosed');
 assert.match(readme,/用户本地导入但未独立复跑的 JSON 仍仅属于来源声明/,'unattested imported JSON must not be promoted to real-model evidence');
-for(const route of ['learn.html','tradeoffs.html','training.html','cache.html','paper_lab.html','micro_training.html','real_model_lab.html','index.html','telemetry.html']){
+for(const route of ['learn.html','tradeoffs.html','training.html','cache.html','paper_lab.html','micro_training.html','real_model_lab.html','deepinfer_worker_lab.html','index.html','telemetry.html']){
  assert.ok(fs.existsSync(path.join(root,route)),route+' actually exists');
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
@@ -35,6 +35,9 @@ assert.ok(server.includes('"/video_causal_conv3d.js"'),'native video operator re
 assert.ok(guided.includes('video_causal_conv3d'),'lesson 53 registered');
 assert.ok(html.includes('src="inference_ops.js"'),'inference CPU kernels must be loaded');
 assert.ok(server.includes('"/inference_ops.js"'),'inference CPU module must have HTTP route');
+assert.ok(server.includes('"/deepinfer_worker_events.js"'),'Worker event engine must be served');
+assert.ok(server.includes('"/deepinfer_worker_lab.js"'),'Worker browser controller must be served');
+assert.ok(html.includes('href="deepinfer_worker_lab.html"'),'Learning Studio must link to Worker event simulator');
 assert.ok(html.includes('src="deepinfer_runtime_ops.js"'),'DeepInfer runtime module must be loaded');
 assert.ok(server.includes('"/deepinfer_runtime_ops.js"'),'DeepInfer runtime HTTP route must exist');
 for(const preset of ['deepinfer_mtp_budget','deepinfer_yoco_replay'])assert.ok(guided.includes(preset),'missing DeepInfer source-ground lesson: '+preset);

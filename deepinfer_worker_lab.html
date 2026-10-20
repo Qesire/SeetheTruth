@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeetheTruth · DeepInfer Worker 时序实验室</title>
+<style>
+:root{color-scheme:dark;--bg:#071120;--panel:#102438;--line:#2a4a60;--text:#e9f5ff;--muted:#95aec2;--green:#6ee1c3;--cyan:#6ccbe9;--orange:#f4ba7c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% -15%,#1b4260,#071120 65%);color:var(--text);font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+a{color:#91def4;text-decoration:none}a:hover{text-decoration:underline}button,select,input,textarea{font:inherit}button,select{background:#16324a;border:1px solid #426279;color:#ecf8ff;border-radius:8px;padding:8px 12px;cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--orange)}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 30px;border-bottom:1px solid var(--line);background:#091828aa;flex-wrap:wrap}
+header strong{letter-spacing:.18em;font-size:17px}header b{color:var(--cyan)}nav{display:flex;gap:20px}
+main{max-width:1420px;margin:auto;padding:28px;display:grid;gap:20px}
+h1{font-size:30px;line-height:1.2;margin:8px 0}h2{font-size:18px;margin:0 0 10px}p{margin:8px 0}small,.muted{color:var(--muted)}.kicker{color:var(--cyan);font:600 11px/1.5 Consolas,monospace;letter-spacing:.17em}
+.panel{border:1px solid var(--line);background:#102439d9;border-radius:14px;padding:19px;min-width:0;box-shadow:0 8px 24px #0002}
+.controls{display:flex;gap:16px;align-items:end;flex-wrap:wrap}label{display:flex;flex-direction:column;gap:5px;min-width:150px}label small{color:#aec6d4}.controls input{accent-color:#6ee1c3} .switch{flex-direction:row;align-items:center;gap:8px;min-width:auto}
+.two{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,1fr);gap:20px}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric{border:1px solid #37536a;background:#132c40;border-radius:11px;padding:13px}.metric strong{display:block;font:700 25px/1.5 Consolas,monospace;color:var(--green)}
+.chartwrap{overflow-x:auto}svg{display:block;min-width:760px;width:100%;height:auto}svg rect.event{cursor:pointer;stroke:#a8d8e8;stroke-opacity:.25;stroke-width:1.1;rx:4}svg rect.event:hover{stroke:#fff;stroke-width:2.5}svg text{fill:#cbe6f0;font:12px "Segoe UI",sans-serif}svg .axis{stroke:#426278;stroke-dasharray:3 6}svg .caption{fill:#85a9c0;font-size:11px}
+#details{min-height:136px;white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1c2c;border:1px solid #37536a;border-radius:10px;padding:14px;font:12px/1.6 Consolas,monospace}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:8px 9px;border-bottom:1px solid #28455a;text-align:left}th{color:#b8d5e5}td{color:#dcebf6}td.num{font:12px Consolas,monospace}
+textarea{width:100%;height:135px;resize:vertical;background:#071a2b;color:#deefff;border:1px solid #45647e;border-radius:9px;padding:12px;font:12px/1.45 Consolas,monospace}
+code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{color:#ffc28f}.note{font-size:12px;color:#aec6d4;line-height:1.65}
+.row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#bdd4e0}.swatch{display:inline-block;height:9px;width:9px;border-radius:2px;margin-right:6px}
+@media(max-width:900px){.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}main{padding:14px}header{padding:14px}}
+</style></head><body>
+<header><div><strong>SEETHE<b>TRUTH</b></strong><div class="muted">INFERENCE SYSTEMS / DEEPINFER WORKER</div></div>
+<nav><a href="learn.html">← 返回积木工作台</a><a href="https://github.com/Qesire/SeetheTruth/blob/main/docs/deepinfer-worker-events.md" target="_blank">源码映射说明</a></nav></header>
+<main>
+<section><div class="kicker">EXECUTABLE STEP-LEVEL EVENT MODEL</div><h1>DeepInfer Worker · ZOS 时序实验室</h1>
+<p>将真实的 <code>Schedule → Forward → Post-process previous → Sample → Defer / Flush</code> 控制流转为<strong>有依赖的 CPU/GPU 事件</strong>。所有时长均为可调的假设单位，<strong class="warn">不是 DeepInfer 实测延迟</strong>。</p></section>
+<section class="panel"><div class="row"><h2>实验输入</h2><span class="muted">源码：worker.py · llm_engine.py</span></div>
+<div class="controls">
+<label><small>请求场景</small><select id="scenario"><option value="mixed">Prefill + Decode + 重映射</option><option value="decode">连续 Decode</option><option value="nooverlap">不同请求，无交集</option><option value="placeholder">含 Placeholder Step</option></select></label>
+<label><small>Forward 占用时间：<output id="forwardValue">8</output></small><input id="forwardTime" type="range" min="1" max="20" value="8"></label>
+<label><small>Post-process 时间：<output id="postValue">4</output></small><input id="postTime" type="range" min="1" max="12" value="4"></label>
+<label class="switch"><input id="flush" type="checkbox" checked> 结束后显式 Flush</label>
+<button id="download" type="button">导出事件 JSON</button>
+</div>
+<details style="margin-top:13px"><summary style="cursor:pointer;color:#9bdbef">编辑自定义 Step 序列（纯本地，最大 12 步）</summary><p class="note">每项指定 mode: prompt / decode / placeholder，以及 sequenceIds 数组。请求 ID 用于推导前后步 remap 交集；这里不运行模型。</p>
+<textarea id="customSteps" spellcheck="false" aria-label="自定义 Step JSON"></textarea><button id="applySteps" type="button">验证并使用这组 Step</button><span id="editorStatus" role="status" class="muted"></span></details>
+</section>
+<div class="metrics" id="metrics"><div class="metric"><small>ZOS 总时长</small><strong id="zosTime">—</strong></div><div class="metric"><small>非 ZOS 总时长</small><strong id="blockingTime">—</strong></div><div class="metric"><small>假设差值（非测速）</small><strong id="deltaTime">—</strong></div></div>
+<section class="two">
+<div style="display:grid;gap:20px;min-width:0">
+<article class="panel"><div class="row"><h2>ZOS · 延迟后处理</h2><span class="muted" id="zosInfo"></span></div><div class="chartwrap" id="zosChart"></div></article>
+<article class="panel"><div class="row"><h2>非 ZOS · 当步同步</h2><span class="muted" id="blockingInfo"></span></div><div class="chartwrap" id="blockingChart"></div></article>
+</div>
+<div style="display:grid;gap:20px;align-content:start;min-width:0">
+<article class="panel"><h2>事件详情 / 依赖</h2><div id="details" role="status">选择时间线中的事件，查看它的输入依赖、序列 remap、来源及假设起止时间。</div></article>
+<article class="panel"><h2>严格的模型边界</h2><p class="note">CPU 和 GPU 各为单资源事件队列；只有合法依赖满足后才能执行。ZOS 允许将上轮 Sample 的 CPU 后处理放到下一轮 Forward 发起后，产生潜在重叠。</p><p class="note">元数据修正按上一轮采样事件建立依赖，但这里<strong>没有</strong>实现 C++ Scheduler、CUDA Graph、真实 Token 接收、H2D/D2H 时间、设备并行流、EP/CP 或 KV 内存生命周期。</p></article>
+<article class="panel"><h2>技术依据</h2><p class="note"><a href="https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/worker/worker.py" target="_blank" rel="noopener noreferrer">官方 Worker.execute_model_step</a> 定义四阶段以及 Prompt/非 ZOS 的当步处理与 ZOS Decode 的延迟处理。</p><p class="note"><a href="https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/engine/llm_engine.py" target="_blank" rel="noopener noreferrer">官方 LLMEngine.step</a> 调用 C++ Scheduler 并安排 Worker 步骤。</p></article>
+</div></section>
+<section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
+<div style="overflow:auto"><table><thead><tr><th>Step</th><th>模式</th><th>请求</th><th>ZOS 输出交付</th><th>非 ZOS 输出交付</th></tr></thead><tbody id="results"></tbody></table></div></section>
+</main><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
