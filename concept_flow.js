@@ -38,7 +38,14 @@
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
-    if(["inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify"].includes(kind)){
+    if(["deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact"].includes(kind)){
+      const Op=typeof module==="object"&&module.exports?require("./deepinfer_runtime_ops.js"):globalThis.SeetheTruthDeepInferRuntime;
+      output=Op.shape(kind,Object.fromEntries(L.defs[kind].ports.map(port=>[port,get(port)])),p);
+      rule=kind==="deepinfer_mtp_confidence_schedule"?
+        "DeepInfer schedule_mtp_varlen 官方参考：remap 置信度累乘、全局稳定排序与分配 totalQ-N 个候选":
+        "YoCo bounded SWA 实例：mask 保留完整 Query 布局；compact 只计算后缀 Query";
+      conditions.push("mask/compact 为受限数学投影而非真实 Chunk/Pivots 复刻；MTP 数学次序遵循 DeepInfer Python Reference");
+    }else if(["inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify"].includes(kind)){
       const Op=typeof module==="object"&&module.exports?require("./inference_ops.js"):globalThis.SeetheTruthInference;
       const inputShapes=Object.fromEntries(L.defs[kind].ports.map(port=>[port,get(port)]));
       output=Op.shape(kind,inputShapes,p);
