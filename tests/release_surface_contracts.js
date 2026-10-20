@@ -39,6 +39,10 @@ assert.ok(server.includes('"/deepinfer_worker_events.js"'),'Worker event engine 
 assert.ok(server.includes('"/deepinfer_zos_metadata.js"'),'source-derived numerical metadata module served');
 assert.ok(server.includes('"/deepinfer_decode_metadata.js"'),"compressed decode metadata source served");
 assert.ok(server.includes('"/deepinfer_kv_lifecycle.js"'),'KV lifecycle engine exposed');
+assert.ok(server.includes('"/deepinfer_scheduler_workflow.js"'),'Scheduler/Worker integrated model HTTP route');
+assert.ok(server.includes('"/deepinfer_scheduler_lab.js"'),'Scheduler/Worker visual controller HTTP route');
+assert.ok(html.includes('href="deepinfer_scheduler_lab.html"'),'Learning Studio links integrated scheduler');
+assert.ok(read("deepinfer_scheduler_lab.html").includes('id="decisionRows"'),'Scheduler decision table exists');
 assert.ok(server.includes('"/deepinfer_kv_lifecycle_lab.js"'),'KV lifecycle controller exposed');
 assert.ok(html.includes('href="deepinfer_kv_lifecycle_lab.html"'),'Learning Studio provides KV lifecycle entry');
 assert.ok(read('deepinfer_kv_lifecycle_lab.html').includes('id="blocks"'),'real block pool UI exists');
