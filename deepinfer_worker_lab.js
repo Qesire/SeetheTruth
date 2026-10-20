@@ -12,6 +12,21 @@ const scenarios={
               {mode:"placeholder",sequenceIds:[]},{mode:"decode",sequenceIds:["A"]}]
 };
 let steps=scenarios.mixed;
+const seq=(seqId,seqlenQ,seqlenK)=>({seqId,seqlenQ,seqlenK});
+const sampleFixture={
+ nextn:2,variableMtp:true,records:[
+  {sequences:[seq("A",1,8),seq("B",1,9)],accepted:[1,2],
+   confidenceRates:[[0.9,0.8],[0.6,0.4]],totalQ:2,cachedTokens:[7,8]},
+  {sequences:[seq("A",1,10),seq("B",1,12)],accepted:[1,2],
+   confidenceRates:[[0.6,0.4],[0.9,0.8]],totalQ:2,cachedTokens:[9,11]},
+  {sequences:[seq("B",1,13),seq("C",1,5)],accepted:[1,0],
+   confidenceRates:[[0.8,0.7],[0.5,0.4]],totalQ:3,cachedTokens:[12,4],paddedLength:3},
+  {sequences:[seq("B",1,14),seq("C",1,6)],accepted:[2,1],
+   confidenceRates:[[0.9,0.8],[0.5,0.3]],totalQ:3,cachedTokens:[13,5]}
+ ]
+};
+let metadataFixture=sampleFixture;
+
 function svg(name,attrs,textContent){
  const e=document.createElementNS(svgNS,name);
  for(const [k,v] of Object.entries(attrs||{}))e.setAttribute(k,String(v));
@@ -71,8 +86,10 @@ function render(){
  try{
    const durations={...E.DEFAULT_DURATIONS,forward:Number($("forwardTime").value),
      post:Number($("postTime").value)};
-   const zos=E.simulate(steps,{zeroOverhead:true,flush:$("flush").checked,durations});
-   const non=E.simulate(steps,{zeroOverhead:false,flush:$("flush").checked,durations});
+   const options={flush:$("flush").checked,durations};
+   if($("numericMetadata").checked)options.metadataFixture=metadataFixture;
+   const zos=E.simulate(steps,{...options,zeroOverhead:true});
+   const non=E.simulate(steps,{...options,zeroOverhead:false});
    $("zosTime").textContent=zos.makespan;
    $("blockingTime").textContent=non.makespan;
    $("deltaTime").textContent=String(non.makespan-zos.makespan);
@@ -93,6 +110,20 @@ function render(){
     rows.push(tr);
    }
    $("results").replaceChildren(...rows);
+   const metadataRows=[];
+   for(const trace of zos.metadataTrace){
+    const tr=document.createElement("tr");
+    const cols=[String(trace.step),String(trace.previousStep),
+      JSON.stringify(trace.remap),JSON.stringify(trace.seqlensQ),
+      JSON.stringify(trace.seqlensKBase),JSON.stringify(trace.seqlensK),
+      trace.sampler?trace.sampler.map(x=>x.seqId+": "+x.seqlenQ+"/"+x.seqlenK).join(", "):"未提供 cache token fixture"];
+    for(const cell of cols){const td=document.createElement("td");td.textContent=cell;tr.append(td);}
+    metadataRows.push(tr);
+   }
+   $("metadataRows").replaceChildren(...metadataRows);
+   $("metadataStatus").textContent=$("numericMetadata").checked?
+     metadataRows.length+" 个跨步元数据修正已执行（合成采样数据）":
+     "此场景未启用数值 Fixture；事件顺序仍可独立运行";
    window.SeetheTruthLastWorkerComparison={zos,non};
    $("editorStatus").textContent="已执行合法事件图；时间为假设值。";
  }catch(err){$("editorStatus").textContent="输入被拒绝："+err.message;}
@@ -101,6 +132,7 @@ $("scenario").addEventListener("change",()=>{
  const selected=scenarios[$("scenario").value];
  if(!selected)return;
  steps=selected.map(x=>({mode:x.mode,sequenceIds:x.sequenceIds.slice()}));
+ $("numericMetadata").checked=$("scenario").value==="mixed";
  $("customSteps").value=JSON.stringify(steps,null,2);render();
 });
 $("forwardTime").addEventListener("input",render);
@@ -111,8 +143,17 @@ $("applySteps").addEventListener("click",()=>{
    const raw=JSON.parse($("customSteps").value);
    E.validate(raw,{zeroOverhead:true});
    steps=raw.map(x=>({mode:x.mode,sequenceIds:[...x.sequenceIds]}));
+   $("numericMetadata").checked=false; // custom steps need matching user-provided fixtures
    render();
  }catch(err){$("editorStatus").textContent="输入被拒绝："+err.message;}
+});
+$("numericMetadata").addEventListener("change",render);
+$("applyMetadata").addEventListener("click",()=>{
+ try{
+  const parsed=JSON.parse($("metadataJson").value);
+  E.simulate(steps,{zeroOverhead:true,metadataFixture:parsed});
+  metadataFixture=parsed;$("numericMetadata").checked=true;render();
+ }catch(err){$("metadataStatus").textContent="元数据 Fixture 被拒绝："+err.message;}
 });
 $("download").addEventListener("click",()=>{
  const result=window.SeetheTruthLastWorkerComparison;
@@ -124,5 +165,6 @@ $("download").addEventListener("click",()=>{
  setTimeout(()=>URL.revokeObjectURL(url),500);
 });
 $("customSteps").value=JSON.stringify(steps,null,2);
+$("metadataJson").value=JSON.stringify(metadataFixture,null,2);
 render();
 })();

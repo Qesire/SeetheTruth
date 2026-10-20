@@ -37,6 +37,15 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 <textarea id="customSteps" spellcheck="false" aria-label="自定义 Step JSON"></textarea><button id="applySteps" type="button">验证并使用这组 Step</button><span id="editorStatus" role="status" class="muted"></span></details>
 </section>
 <div class="metrics" id="metrics"><div class="metric"><small>ZOS 总时长</small><strong id="zosTime">—</strong></div><div class="metric"><small>非 ZOS 总时长</small><strong id="blockingTime">—</strong></div><div class="metric"><small>假设差值（非测速）</small><strong id="deltaTime">—</strong></div></div>
+<section class="panel" id="zosMetadataPanel"><div class="row"><h2>跨步 Q/K 元数据修正 · C++ / TileLang Reference</h2><span class="muted">精确整数计算 · 合成采样数值 · 不运行 GPU Kernel</span></div>
+<p class="note">这里的 <code>seqlenQ</code>、<code>seqlenK</code>、上一轮已接收 Token 数和置信度由下方显式 Fixture 提供。只有 ZOS 延迟结果与当前序列相交时才修正；无交集时按官方 C++ 逻辑短路。</p>
+<div class="controls"><label class="switch"><input id="numericMetadata" type="checkbox" checked> 运行真实 Q/K 元数据算术</label>
+<button id="applyMetadata" type="button">验证并应用 Fixture</button><span id="metadataStatus" role="status" class="muted">已启用明确的教学样例</span></div>
+<details style="margin-top:12px"><summary style="cursor:pointer;color:#a2e1ee">编辑各步 SequenceMetadata、采样接收数与历史置信度 JSON</summary>
+<p class="note">必须逐步提供 sequences、accepted、confidenceRates；其中 remap 按序列 ID 与前一批自动计算。显式 nextn=2，variableMtp=true。变更普通场景时会暂停这组独立 Fixture，直至重新确认。</p>
+<textarea id="metadataJson" aria-label="数值 QK 元数据 Fixture JSON" spellcheck="false"></textarea></details>
+<div style="overflow:auto;margin-top:12px"><table><thead><tr><th>当前 Step</th><th>上一 Step</th><th>Remap</th><th>Q 修正</th><th>K 基础值</th><th>K 修正</th><th>采样侧 Q/K</th></tr></thead><tbody id="metadataRows"></tbody></table></div>
+</section>
 <section class="two">
 <div style="display:grid;gap:20px;min-width:0">
 <article class="panel"><div class="row"><h2>ZOS · 延迟后处理</h2><span class="muted" id="zosInfo"></span></div><div class="chartwrap" id="zosChart"></div></article>
@@ -49,4 +58,4 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 </div></section>
 <section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
 <div style="overflow:auto"><table><thead><tr><th>Step</th><th>模式</th><th>请求</th><th>ZOS 输出交付</th><th>非 ZOS 输出交付</th></tr></thead><tbody id="results"></tbody></table></div></section>
-</main><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
+</main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
