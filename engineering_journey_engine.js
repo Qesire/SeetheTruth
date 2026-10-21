@@ -64,17 +64,10 @@ function create(opts={}){
   return {index:idx,analytic:analytic.gradient[idx],finiteDifference:(plus-minus)/(2*eps),absoluteError:Math.abs(analytic.gradient[idx]-(plus-minus)/(2*eps))};
  }
  function trainStep(){
-  const g=inspectGradient(),previous=W.slice(),beta1=0.9,beta2=0.999,eps=1e-8;
-  t++;
-  for(let i=0;i<W.length;i++){
-   m[i]=beta1*m[i]+(1-beta1)*g.gradient[i];
-   v[i]=beta2*v[i]+(1-beta2)*g.gradient[i]**2;
-   const mh=m[i]/(1-beta1**t),vh=v[i]/(1-beta2**t);
-   W[i]-=config.lr*(mh/(Math.sqrt(vh)+eps)+config.weightDecay*W[i]);
-  }
-  return {step:t,batchLoss:g.loss,gradNorm:g.gradNorm,updateNorm:Math.hypot(...W.map((x,i)=>x-previous[i])),firstSample:g.sample,train:evaluate('train'),validation:evaluate('validation')};
+  const g=inspectGradient(),update=applyGradient(g.gradient);
+  return {step:update.step,batchLoss:g.loss,gradNorm:g.gradNorm,updateNorm:update.updateNorm,
+   firstSample:g.sample,train:evaluate('train'),validation:evaluate('validation')};
  }
-
  function gradientForPairs(items){
   ensure(Array.isArray(items)&&items.length>=1&&items.length<=512,'microbatch must contain 1–512 examples');
   for(const p of items)ensure(p&&Number.isInteger(p.x)&&p.x>=0&&p.x<V&&Number.isInteger(p.y)&&p.y>=0&&p.y<V,'invalid training token pair');
