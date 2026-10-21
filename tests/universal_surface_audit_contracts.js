@@ -22,7 +22,7 @@ const cap=src['capabilities.html'];assert.ok(cap.includes('id="surfaceAuditRows"
 assert.ok(cap.includes('universal_surface_audit.js'));
 const accidental={...src,'learn.html':src['learn.html'].replace('<script src="compute_microscope.js"></script>','')};
 assert.throws(()=>Audit.analyze(accidental),/universal capability regression/);
-const stale={...src,'training.html':src['training.html'].replace('<script src="training_flow.js"></script>','<script src="compute_microscope.js"></script><script src="compute_microscope_ui.js"></script>')};
+const stale={...src,'paper_lab.html':src['paper_lab.html'].replace('<script src="paper_patches.js"></script>','<script src="compute_microscope.js"></script><script src="compute_microscope_ui.js"></script><script src="paper_patches.js"></script>')};
 assert.throws(()=>Audit.analyze(stale),/audit status stale/);
 const missing={...src};delete missing['paper_lab.html'];assert.throws(()=>Audit.analyze(missing),/missing actual page/);
 console.log('SURFACE_AUDIT_PASS '+JSON.stringify(evidence.counts)+' core adapters tested; independent surfaces stay clearly flagged');
