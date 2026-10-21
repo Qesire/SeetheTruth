@@ -277,11 +277,11 @@ input[type="file"]{display:none}
   <div class="badge" id="evidence">QUALITATIVE CONTRACT · 无矩阵执行</div>
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
+  <section class="section" aria-label="通用计算透视：支持任意已执行积木与静态依赖"><div class="kicker">UNIVERSAL COMPUTE MICROSCOPE · 源码 / 依赖 / 数值 / 单次乘加</div><p class="hint">基础能力：全部积木均可查看执行顺序、上游依赖和张量形状；有界 1D–5D 张量可切片点击坐标，Linear / MatMul 可逐乘加验证。静态推演与真实模型观测严格分级。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
   </section>
-  <section class="section" aria-label="通用计算透视：支持任意已执行积木与静态依赖"><div class="kicker">UNIVERSAL COMPUTE MICROSCOPE · 源码 / 依赖 / 数值 / 单次乘加</div><p class="hint">基础能力：全部积木均可查看执行顺序、上游依赖和张量形状；支持的 2D 数值算子可点击坐标，Linear / MatMul 可逐乘加验证。静态推演与真实模型观测严格分级。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
    <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
     <div class="kicker">REAL MODEL REFERENCE / 真实观测 · 与教学运算分离</div>
     <p class="hint">将真实 CPU 模型的采样关联到所选 Linear、MatMul 或 Parameter。只读展示，不替换当前计算。</p>
