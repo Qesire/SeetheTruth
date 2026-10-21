@@ -23,7 +23,7 @@ function mount(container){if(!container||!container.replaceChildren)throw Error(
   container.append(el('p','EVIDENCE · '+frame.disclaimer,'sm-warning'));
  }
  function show(f,index=0){Engine.validate(f);frame=f;selected=Math.max(0,Math.min(f.steps.length-1,index));view();}
- view();return Object.freeze({show,get frame(){return frame;},get selected(){return selected;}});
+ view();return Object.freeze({show,clear(){frame=null;selected=0;view();},get frame(){return frame;},get selected(){return selected;}});
 }
 return Object.freeze({mount});
 });
