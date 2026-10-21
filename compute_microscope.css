@@ -6,6 +6,7 @@
 .cmp-steps{display:flex;flex-wrap:nowrap;gap:5px;max-width:100%;overflow-x:auto;padding:9px 0;scrollbar-width:thin}
 .cmp-step{flex:0 0 auto;border:1px solid #34576c;background:#102c3b;border-radius:7px;color:#a8cbd6;font:11px system-ui,sans-serif;padding:8px;max-width:180px;white-space:normal}
 .cmp-step[aria-current="step"]{color:#f0ffff;background:#1b525a;border-color:#69ddce}
+.cmp-substeps{padding:8px 0;border-top:1px solid #305a6b}.cmp-sublist{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0}.cmp-substep{border:1px solid #436980;background:#0e3543;color:#cbefee;padding:7px;border-radius:7px;font-size:10px;min-height:37px}.cmp-substep[aria-current="step"]{background:#1e6570;border-color:#8eeddc}
 .cmp-meta{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:8px 0}
 .cmp-meta span,.cmp-label{font:10px/1.5 ui-monospace,Consolas,monospace;color:#a4cbcf;overflow-wrap:anywhere}
 .cmp-deps{padding:8px 0;border-top:1px solid #345469;border-bottom:1px solid #345469}
