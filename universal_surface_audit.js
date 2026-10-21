@@ -1,0 +1,48 @@
+/* Maintainable, falsifiable inventory of teaching screens. Not every independent
+ * semantic runtime belongs inside the tensor microscope: classify precisely. */
+(function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthSurfaceAudit=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
+const screens=Object.freeze([
+['learn.html','自由积木与训练/推理','tensor','结构、数学、张量、Linear/MatMul、Attention 内部算子'],
+['wan_ffn_lab.html','Wan FFN 官方源码','tensor','固定源码步骤、张量、逐乘加和通道删除反事实'],
+['deepinfer_kv_lifecycle_lab.html','KV 物理块生命周期','state','FIFO、引用计数、逐操作状态差分'],
+['deepinfer_worker_lab.html','Worker 执行时序','state','事件因果 DAG、CPU/GPU 假设排队状态'],
+['training.html','标量训练循环','specialized','标量梯度累积与优化器事件已有专用 UI，尚未转换为通用 State Frame'],
+['micro_training.html','MoE / PPO / VJP 微实验','specialized','独立微训练算子已可执行，缺少通用内部阶段适配器'],
+['cache.html','KV Cache 数学','specialized','自带 Cache Token/Head 视图，尚未装配共用状态显微镜'],
+['deepinfer_scheduler_lab.html','Scheduler + KV + Worker','specialized','已组合计算，但尚未对接统一状态显微镜'],
+['deepinfer_prefill_lab.html','Prefill Vote 与多模态 Chunk','specialized','策略判断独立执行，尚未标准化为可导航内部事件'],
+['paper_lab.html','论文图变换','specialized','专用数值算子；部分 LoRA 重写已进入主编辑器，但完整 DoRA/OnlineAttn 对应独立实验'],
+['semantic_state.html','语义轴与持久状态','specialized','独立 1–5 维 TensorIR/状态操作，尚未映射全部核心 event/coordinate 接口'],
+['tradeoffs.html','架构成本权衡','specialized','解析算术/交互页面，不是执行 Tensor Trace；不能强行提升证据级别'],
+['capabilities.html','积木能力矩阵','specialized','全局注册/后端白名单审计，职责是状态与覆盖统计，不是计算实验'],
+['engineering_journey.html','12 关训练到推理','specialized','使用真实微型 Bigram 数学，但教学关卡未复用通用 Trace UI'],
+['engineering_pipeline.html','累积、Shuffle、续训','specialized','真实微型训练状态机，尚未复用通用 State Frame'],
+['teaching.html','教学中心','navigation','课程路由和问题索引，无数值执行职责'],
+['android_teaching.html','Android 教学导航','navigation','离线教育入口，无模型执行职责'],
+['real_model_lab.html','真实 CPU 小模型证据','desktop_only','结构化只读观测，不能被误认为完整算子输入或已验证复跑'],
+['index.html','源码结构图与 Runtime','desktop_only','AST 源码图＋独立 Runtime Trace，不应与合成数值混合'],
+['telemetry.html','Profiler 和 Tensor 观测','desktop_only','GPU Profiler 是独立证据源，未加入通用数值算子接口']
+].map(([page,title,status,note])=>Object.freeze({page,title,status,note}))));
+const coreFiles=Object.freeze({tensor:['compute_microscope.js','compute_microscope_ui.js'],state:['state_microscope.js','state_microscope_ui.js']});
+function classify(html){
+ const scripts=new Set([...String(html).matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)].map(x=>x[1].split(/[?#]/)[0]));
+ if(coreFiles.tensor.every(x=>scripts.has(x)))return'tensor';
+ if(coreFiles.state.every(x=>scripts.has(x)))return'state';
+ return'none';
+}
+function analyze(sources){
+ if(!sources||typeof sources!=='object')throw Error('audit requires actual page HTML texts');
+ const rows=screens.map(item=>{
+  const html=sources[item.page];if(typeof html!=='string'||!html.includes('<html'))throw Error('missing actual page '+item.page);
+  const actual=classify(html);
+  if(['tensor','state'].includes(item.status)&&actual!==item.status)throw Error('universal capability regression '+item.page);
+  if(!['tensor','state'].includes(item.status)&&actual!=='none')throw Error('audit status stale: '+item.page+' now '+actual);
+  return {...item,actual};
+ });
+ const counts={total:rows.length,tensor:rows.filter(x=>x.actual==='tensor').length,state:rows.filter(x=>x.actual==='state').length,
+  specialized:rows.filter(x=>x.status==='specialized').length,navigation:rows.filter(x=>x.status==='navigation').length,
+  desktopOnly:rows.filter(x=>x.status==='desktop_only').length};
+ return Object.freeze({schema:'seethetruth-universal-surface-audit-v1',counts,rows:Object.freeze(rows)});
+}
+return Object.freeze({screens,coreFiles,classify,analyze});
+});
