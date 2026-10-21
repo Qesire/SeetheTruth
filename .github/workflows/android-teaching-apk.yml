@@ -38,31 +38,22 @@ jobs:
           node tests/block_capability_contracts.js
       - name: Assemble signed debug APK (not a Play Store release)
         run: gradle -p android --no-daemon :app:assembleDebug --stacktrace
-      - name: Verify real APK contains offline lessons but no Python/backend
+      - name: Verify packaged teaching content and reviewed assets
         run: |
           set -euo pipefail
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -t "$APK" > /dev/null
-          for f in teaching.html teaching_curriculum.js teaching_hub.js deepinfer_prefill_policy.js mobile_teaching.css teaching_edition.js android_teaching.html android_teaching_mode.js learn.html block_catalog.js deepinfer_scheduler_lab.html; do
+          for f in teaching.html teaching_curriculum.js teaching_hub.js capabilities.html block_capabilities.js android_teaching_mode.js learn.html block_catalog.js deepinfer_scheduler_lab.html; do
             unzip -Z1 "$APK" | grep -Fx "assets/$f" >/dev/null || { echo "Missing bundled $f"; exit 1; }
           done
-          if unzip -Z1 "$APK" | grep -E '^assets/.*\.(py|pt|pth|ckpt|safetensors)$'; then
+          if unzip -Z1 "$APK" | grep -E 'assets/.*\.(py|pt|pth|ckpt|safetensors)'; then
             echo "Forbidden backend or model weight file in teaching APK"
             exit 1
           fi
-          unzip -Z1 "$APK" | sed -n 's@^assets/\\([^/]*\\)$@\\1@p' | grep -v '^
-          ls -lh "$APK"
-      - name: Upload installable Android teaching APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: seethetruth-android-teaching-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 30
- | sort > /tmp/seethetruth-apk-assets.txt
-          sort android/teaching-assets.txt > /tmp/seethetruth-approved-assets.txt
-          diff -u /tmp/seethetruth-approved-assets.txt /tmp/seethetruth-apk-assets.txt
+          unzip -Z1 "$APK" | grep '^assets/' | cut -d/ -f2 | grep '[[:alnum:]]' | sort -u > /tmp/apk-assets.txt
+          sort android/teaching-assets.txt > /tmp/approved-assets.txt
+          diff -u /tmp/approved-assets.txt /tmp/apk-assets.txt
           sha256sum "$APK"
           ls -lh "$APK"
       - name: Upload installable Android teaching APK
