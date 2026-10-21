@@ -74,6 +74,26 @@ function create(opts={}){
   }
   return {step:t,batchLoss:g.loss,gradNorm:g.gradNorm,updateNorm:Math.hypot(...W.map((x,i)=>x-previous[i])),firstSample:g.sample,train:evaluate('train'),validation:evaluate('validation')};
  }
+
+ function gradientForPairs(items){
+  ensure(Array.isArray(items)&&items.length>=1&&items.length<=512,'microbatch must contain 1–512 examples');
+  for(const p of items)ensure(p&&Number.isInteger(p.x)&&p.x>=0&&p.x<V&&Number.isInteger(p.y)&&p.y>=0&&p.y<V,'invalid training token pair');
+  return grad(W,items);
+ }
+ // Exactly one optimizer update; uses externally accumulated gradient, not microbatch mean loss.
+ function applyGradient(gradient,learningRate=config.lr){
+  ensure(Array.isArray(gradient)&&gradient.length===V*V&&gradient.every(Number.isFinite),'invalid accumulated gradient');
+  ensure(Number.isFinite(learningRate)&&learningRate>0&&learningRate<=1,'invalid scheduled learning rate');
+  const before=W.slice(),beta1=0.9,beta2=0.999,eps=1e-8;
+  t++;
+  for(let i=0;i<W.length;i++){
+   m[i]=beta1*m[i]+(1-beta1)*gradient[i];
+   v[i]=beta2*v[i]+(1-beta2)*gradient[i]**2;
+   const mh=m[i]/(1-beta1**t),vh=v[i]/(1-beta2**t);
+   W[i]-=learningRate*(mh/(Math.sqrt(vh)+eps)+config.weightDecay*W[i]);
+  }
+  return {step:t,learningRate,gradientNorm:Math.hypot(...gradient),updateNorm:Math.hypot(...W.map((x,i)=>x-before[i]))};
+ }
  function train(steps){ensure(Number.isSafeInteger(steps)&&steps>=1&&steps<=1000,'训练步数必须为 1–1000');let last;for(let i=0;i<steps;i++)last=trainStep();return last;}
  function checkpoint(){return {schema:SCHEMA,model:'bigram-transition-logits',config:{...config},vocab:VOCAB.slice(),step:t,weights:W.slice(),firstMoment:m.slice(),secondMoment:v.slice()};}
  function restore(snapshot){
@@ -102,7 +122,7 @@ function create(opts={}){
   }
   return {tokens:trace.filter(x=>x.token!=='<eos>').map(x=>x.token),endedWithEOS:current===EOS,trace,step:t};
  }
- return {config:{...config},vocab:VOCAB.slice(),forward,inspectGradient,gradientCheck,trainStep,train,evaluate,checkpoint,restore,generate,get step(){return t;}};
+ return {config:{...config},vocab:VOCAB.slice(),forward,inspectGradient,gradientForPairs,applyGradient,gradientCheck,trainStep,train,evaluate,checkpoint,restore,generate,get step(){return t;}};
 }
 return Object.freeze({VERSION:'2026.10.21',SCHEMA,VOCAB,TRAIN,VALID,encode,pairs,auditDataset,create});
 });
