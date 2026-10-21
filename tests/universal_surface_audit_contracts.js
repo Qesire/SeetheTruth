@@ -4,7 +4,7 @@ const Audit=require('../universal_surface_audit.js'),root=path.resolve(__dirname
 const src=Object.fromEntries(Audit.screens.map(row=>[row.page,fs.readFileSync(path.join(root,row.page),'utf8')]));
 const evidence=Audit.analyze(src);
 assert.equal(evidence.rows.length,20);
-assert.equal(evidence.counts.tensor,2);assert.equal(evidence.counts.state,3);
+assert.equal(evidence.counts.tensor,2);assert.equal(evidence.counts.state,4);
 assert.ok(evidence.counts.specialized>=10,'must not claim incomplete isolated labs are unified');
 assert.equal(new Set(Audit.screens.map(x=>x.page)).size,evidence.rows.length);
 for(const row of evidence.rows){
