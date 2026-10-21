@@ -13,6 +13,10 @@ const scenarioForPolicy=name=>{
  return base;
 };
 let spec=S.EXAMPLES.pressure,run=S.simulate(spec),index=0;
+const State=window.SeetheTruthStateMicroscope;
+const stateView=window.SeetheTruthStateMicroscopeUI.mount(document.getElementById('stateMicroscope'));
+const KV=window.SeetheTruthKVLifecycle;
+let priorRun=null,commonFrame=null;
 const htmlSafe=t=>String(t); // UI only uses textContent; no HTML interpolation
 function el(t,attrs={},txt){const e=document.createElement(t);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(txt!==undefined)e.textContent=htmlSafe(txt);return e}
 function svg(t,attrs={},txt){const e=document.createElementNS(SVG,t);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(txt!==undefined)e.textContent=htmlSafe(txt);return e}
@@ -72,6 +76,8 @@ function paint(){
  $("previous").disabled=index===0;$("next").disabled=index===run.cycles.length;
  window.SeetheTruthLastSchedulerState=state;
  window.SeetheTruthLastSchedulerRun=run;
+ if(priorRun!==run){commonFrame=State.scheduler(run,KV);priorRun=run;}
+ stateView.show(commonFrame,index);
 }
 const applyNew=(candidate)=>{
  const next=S.simulate(candidate,{stopPreempted:$("stopPreempted").checked});
