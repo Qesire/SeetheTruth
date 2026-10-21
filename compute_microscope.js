@@ -4,12 +4,12 @@
  * No HTML generation, IO, evaluation, network or dynamic code.
  */
 (function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthComputeMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
-const SCHEMA='seethetruth-computation-microscope-v1',MAX_STEPS=160,MAX_CELLS=4096;
+const SCHEMA='seethetruth-computation-microscope-v1',MAX_STEPS=160,MAX_CELLS=16384;
 const TIERS=Object.freeze({STATIC:'STATIC_SHAPES_NO_EXECUTION',MICRO:'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS',WAN:'PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64'});
 function must(x,msg){if(!x)throw Error('microscope: '+msg);}
 function product(shape){return shape.reduce((x,y)=>x*y,1);}
 function numericTensor(shape,values){
- must(Array.isArray(shape)&&shape.length===2&&shape.every(x=>Number.isSafeInteger(x)&&x>0)&&product(shape)<=MAX_CELLS,'only bounded two-dimensional tensors');
+ must(Array.isArray(shape)&&shape.length>=1&&shape.length<=5&&shape.every(x=>Number.isSafeInteger(x)&&x>0)&&product(shape)<=MAX_CELLS,'only bounded rank 1–5 tensors');
  must(Array.isArray(values)&&values.length===product(shape)&&values.every(x=>typeof x==='number'&&Number.isFinite(x)),'tensor values/shape invalid');
  return {shape:shape.slice(),values:values.slice()};
 }
@@ -18,10 +18,19 @@ function staticTensor(shape){
  return {shape:shape.slice(),values:null};
 }
 function fromNested(values){
- must(Array.isArray(values)&&values.length>0&&Array.isArray(values[0])&&values[0].length>0,'only 2D numeric tensors can be drilled into');
- const rows=values.length,cols=values[0].length;
- must(values.every(r=>Array.isArray(r)&&r.length===cols),'ragged matrix');
- return numericTensor([rows,cols],values.flat());
+ must(Array.isArray(values)&&values.length>0,'empty tensor');
+ const shape=[];let cursor=values;
+ while(Array.isArray(cursor)){
+  must(cursor.length>0,'empty tensor axis');shape.push(cursor.length);
+  must(shape.length<=5,'unsupported rank >5');cursor=cursor[0];
+ }
+ const flat=[];
+ function visit(node,axis){
+  if(axis===shape.length){must(typeof node==='number'&&Number.isFinite(node),'nonfinite scalar');flat.push(node);return;}
+  must(Array.isArray(node)&&node.length===shape[axis],'ragged tensor');
+  for(const child of node)visit(child,axis+1);
+ }
+ visit(values,0);return numericTensor(shape,flat);
 }
 function hashWeight(id,r,c){let h=2166136261;for(const ch of id+':'+r+':'+c)h=Math.imul(h^ch.charCodeAt(0),16777619);return ((h>>>0)%2001-1000)/2600;}
 function dotSpec(input,weights,bias,orientation='out_in'){return {type:'dot',input,weights,bias,orientation};}
@@ -46,7 +55,7 @@ function validate(frame){
    const {input,weights,bias}=s.dot;
    numericTensor(input.shape,input.values);numericTensor(weights.shape,weights.values);numericTensor(bias.shape,bias.values);
    const [T,D]=input.shape,[H,C]=weights.shape;
-   must(D===C&&s.out.shape[0]===T&&s.out.shape[1]===H&&bias.shape[0]===1&&bias.shape[1]===H,'GEMM input/weight/output misalignment');
+   must(input.shape.length===2&&weights.shape.length===2&&s.out.shape.length===2&&bias.shape.length===2&&D===C&&s.out.shape[0]===T&&s.out.shape[1]===H&&bias.shape[0]===1&&bias.shape[1]===H,'GEMM input/weight/output misalignment');
    for(let t=0;t<T;t++)for(let h=0;h<H;h++){
     let sum=bias.values[h];for(let k=0;k<D;k++)sum+=input.values[t*D+k]*weights.values[h*D+k];
     must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
@@ -58,12 +67,19 @@ function validate(frame){
  if(frame.source)must(typeof frame.source.url==='string'&&/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/blob\/[a-f0-9]{40}\//.test(frame.source.url)&&frame.source.tier==='PINNED_CODE_STRUCTURE_ONLY','unverified pinned-source metadata');
  return frame;
 }
-function dot(frame,stepId,row,col){
+function dot(frame,stepId,row,col,prefix=[]){
  validate(frame);const s=frame.steps.find(x=>x.id===stepId);must(s,'unknown node');
  must(s.out.values!==null,'numeric execution unavailable');
- const [T,H]=s.out.shape;must(Number.isInteger(row)&&row>=0&&row<T&&Number.isInteger(col)&&col>=0&&col<H,'invalid coordinate');
- const observed=s.out.values[row*H+col];
- if(!s.dot)return {nodeId:s.id,row,col,value:observed,formula:s.formula,reconstructable:false};
+ const shape=s.out.shape,dimensions=shape.length;
+ const T=dimensions===1?1:shape[dimensions-2],H=shape[dimensions-1];
+ must(Array.isArray(prefix)&&prefix.length<=Math.max(0,dimensions-2),'invalid tensor axis slice');
+ const leading=dimensions<=2?[]:Array.from({length:dimensions-2},(_,i)=>prefix[i]??0);
+ must(leading.every((v,i)=>Number.isInteger(v)&&v>=0&&v<shape[i]),'invalid tensor axis slice');
+ must(Number.isInteger(row)&&row>=0&&row<T&&Number.isInteger(col)&&col>=0&&col<H,'invalid coordinate');
+ let index=0;const coord=[...leading,...(dimensions===1?[]:[row]),col];
+ for(let i=0;i<dimensions;i++)index=index*shape[i]+coord[i];
+ const observed=s.out.values[index];
+ if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,formula:s.formula,reconstructable:false};
  const {input,weights,bias}=s.dot,D=input.shape[1];
  const terms=Array.from({length:D},(_,k)=>({k,input:input.values[row*D+k],weight:weights.values[col*D+k],product:input.values[row*D+k]*weights.values[col*D+k]}));
  const recomputed=bias.values[col]+terms.reduce((a,b)=>a+b.product,0);
