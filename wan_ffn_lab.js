@@ -3,6 +3,12 @@ const A=window.SeetheTruthWanFFNTrace;if(!A)throw Error('Wan FFN trace unavailab
 const $=id=>document.getElementById(id);
 const names={shift:'e3 / FFN shift',scale:'e4 / FFN scale',gate:'e5 / output gate',afterSelf:'x after self-attn',crossDelta:'externally supplied cross-attn delta',crossInput:'cross-attn residual x',normalized:'norm2(x)',input:'GEMM input',weights:'nn.Linear weights, [out,in]',bias:'nn.Linear bias',preActivation:'Linear1 logits',ffn:'Linear2 output',delta:'FFN branch change'};
 const state={step:0,row:0,col:0,data:null,error:null};
+const commonMicroscope=window.SeetheTruthComputeMicroscope;
+const sharedMicroscope=window.SeetheTruthMicroscopeUI.mount($('wanSharedMicroscope'),id=>{
+ const at=state.data?.steps.findIndex(s=>s.id===id)??-1;
+ if(at>=0){state.step=at;state.row=0;state.col=0;render();}
+});
+let commonFrame=null,commonData=null;
 function options(){return Object.fromEntries(['tokens','dim','hidden','seed','gate','scale','shift'].map(id=>[id,Number($(id).value)]));}
 const fmt=v=>Number(v).toFixed(5);
 const signColor=(value,max)=>{const strength=.13+.64*Math.min(1,Math.abs(value)/(max||1));return value>=0?'rgba(45,160,139,'+strength+')':'rgba(172,99,85,'+strength+')';};
@@ -123,6 +129,8 @@ function render(){
  $('steps').replaceChildren(...d.steps.map((s,i)=>{const b=element('button',undefined,'step');b.type='button';
   b.setAttribute('aria-current',i===state.step?'step':'false');b.append(element('span',String(i).padStart(2,'0'),'idx'),
   element('span',s.name));b.addEventListener('click',()=>{state.step=i;state.row=0;state.col=0;render();});return b;}));
+ if(commonData!==d){commonFrame=commonMicroscope.wan(d);commonData=d;}
+ sharedMicroscope.show(commonFrame,step.id);
  flow();branches();breakdown();renderAblation();integrity();
 }
 function recompute(){
