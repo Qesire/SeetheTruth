@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -77,6 +77,42 @@ function worker(run){
  return validate({schema:SCHEMA,title:'DeepInfer Worker · 跨 Step 假设时序',evidenceTier:TIERS.WORKER,steps,
    disclaimer:'Durations are assumed logical units, NOT profiler data, GPU utilization or production throughput'});
 }
+function scheduler(run,K){
+ need(run&&Array.isArray(run.decisions)&&run.decisions.length>0&&
+  Array.isArray(run.snapshots)&&run.snapshots.length===run.decisions.length+1&&
+  Array.isArray(run.executionProof)&&run.executionProof.length===run.decisions.length&&
+  run.worker&&Array.isArray(run.worker.events)&&K&&typeof K.verify==='function','scheduler requires full verified decision/worker lineage');
+ const steps=[],project=x=>({revision:x.revision,freeQueue:x.free.slice(),refs:x.refs.slice(),
+  owners:Object.fromEntries(Object.entries(x.requests).map(([id,v])=>[id,{status:v.status,blocks:v.blocks.slice(),cachedTokens:v.cachedTokens,recomputes:v.recomputes}]))});
+ const allEvents=new Map(run.worker.events.map(e=>[e.id,e]));
+ for(let i=0;i<run.snapshots.length;i++){
+  const s=run.snapshots[i];K.verify(s);
+  if(i===0){
+   const state=project(s);steps.push({id:'scheduler:0',index:0,title:'初始化 Scheduler / BlockManager',
+    why:'先复原输入的 KV 资源所有权和等待队列；与实际 GPU BlockManager 无关。',
+    dependencies:[],before:state,after:state,changes:delta(state,state),timing:null});continue;
+  }
+  const before=project(run.snapshots[i-1]),after=project(s),d=run.decisions[i-1],proof=run.executionProof[i-1];
+  need(d.cycle===i-1&&d.kvRevision===s.revision,'decision/source KV revision mismatch');
+  need(Array.isArray(d.actions)&&Array.isArray(d.scheduled)&&Array.isArray(d.preempted)&&Array.isArray(d.waiting)&&
+   Array.isArray(d.blocked)&&plain(d.dispatchBlocks)&&Array.isArray(d.freeAfter),'incomplete source scheduler decision');
+  need(JSON.stringify(d.freeAfter)===JSON.stringify(s.free),'scheduler free-list mismatch');
+  need(proof.cycle===i-1&&JSON.stringify(proof.batch)===JSON.stringify(d.scheduled)&&
+   JSON.stringify(proof.physicalBlockTables)===JSON.stringify(d.dispatchBlocks),'worker dispatch differs from proven scheduler decision');
+  const evt=allEvents.get(proof.forwardEvent);
+  need(evt&&evt.stage==='forward'&&evt.step===i-1,'Worker Forward event does not match scheduling decision');
+  need(run.worker.steps[i-1]?.sequenceIds.join(',')===d.scheduled.join(','),'Worker sequence mismatch');
+  const next={...after,scheduled:d.scheduled.slice(),preempted:d.preempted.map(x=>({id:x.id,outcome:x.outcome})),
+   waiting:d.waiting.slice(),blocked:d.blocked.map(x=>({id:x.id,status:x.status})),
+   forwardEvent:proof.forwardEvent,dispatchBlocks:d.dispatchBlocks};
+  const prev={...before,scheduled:[],preempted:[],waiting:[],blocked:[],forwardEvent:null,dispatchBlocks:{}};
+  steps.push({id:'scheduler:'+i,index:i,title:'Decode Cycle '+(i-1)+' · Queue → KV → Worker',
+   why:'由 Scheduler CPU 判定、BlockManager refs/FIFO 和 Worker Forward 同步导出；blocked 的 Prefill Admission 仍是明确未实现的独立路径。',
+   dependencies:['scheduler:'+(i-1)],before:prev,after:next,changes:delta(prev,next),timing:null});
+ }
+ return validate({schema:SCHEMA,title:'Decode Scheduler · 资源及 Worker 派发因果透视',evidenceTier:TIERS.SCHEDULER,steps,
+  disclaimer:'Verified bounded scheduler decisions + CPU KV ownership + logical Worker Forward link; no real C++ execution, GPU allocation, prompt scheduling or throughput measurement'});
+}
 function training(snapshots){
  need(Array.isArray(snapshots)&&snapshots.length>=1&&snapshots.length<=32,'invalid training transcript');
  let source=null,params=null,previous=null;
@@ -116,5 +152,5 @@ function scalar(run){
  return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,training,scalar,delta});
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,training,scalar,delta});
 });
