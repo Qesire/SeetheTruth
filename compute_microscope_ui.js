@@ -42,30 +42,44 @@ function mini(t,label,click,selected){
 }
 function mount(rootElement,onSelect){
  if(!rootElement||typeof rootElement.replaceChildren!=='function')throw Error('microscope UI mount required');
- let frame=null,active=null,row=0,col=0,prefix=[];
+ let frame=null,active=null,subSelected=null,row=0,col=0,prefix=[];
  function clear(msg='运行数值图或进行静态形状分析后，选择积木即可展开；当前没有执行证据。'){
   frame=null;active=null;rootElement.replaceChildren(el('p',msg,'cmp-hint'));
  }
  function present(){
   if(!frame)return clear();
-  const s=frame.steps.find(x=>x.id===active)||frame.steps[0];
+  const parent=frame.steps.find(x=>x.id===active)||frame.steps[0];
+  const s=parent.substeps?.find(x=>x.id===subSelected)||parent;
   rootElement.replaceChildren();
   const summary=el('div',undefined,'cmp-top');summary.append(el('div',frame.evidenceTier,'cmp-tier'),el('div',frame.title,'cmp-title'));
   rootElement.append(summary);
   const nav=el('div',undefined,'cmp-steps');nav.setAttribute('role','group');nav.setAttribute('aria-label','已验证执行顺序');
   for(let i=0;i<frame.steps.length;i++){
    const item=frame.steps[i],b=el('button',(i+1)+'. '+item.title,'cmp-step');
-   b.type='button';if(item.id===s.id)b.setAttribute('aria-current','step');
+   b.type='button';if(item.id===parent.id)b.setAttribute('aria-current','step');
    b.title=item.kind+' · '+item.out.shape.join('×');
-   b.addEventListener('click',()=>{active=item.id;row=0;col=0;prefix=[];present();onSelect?.(item.id);});nav.append(b);
+   b.addEventListener('click',()=>{active=item.id;subSelected=null;row=0;col=0;prefix=[];present();onSelect?.(item.id);});nav.append(b);
   }
   rootElement.append(nav);
+  if(parent.substeps?.length){
+   const stages=el('div',undefined,'cmp-substeps');stages.append(el('div','COMPOSITE OPERATOR · 点击查看内部真实计算顺序','cmp-label'));
+   const steps=el('div',undefined,'cmp-sublist');
+   const back=el('button','聚合模块输出','cmp-substep');if(!subSelected)back.setAttribute('aria-current','step');
+   back.addEventListener('click',()=>{subSelected=null;row=0;col=0;prefix=[];present();});steps.append(back);
+   for(const item of parent.substeps){
+    const button=el('button',item.title,'cmp-substep');button.type='button';
+    if(subSelected===item.id)button.setAttribute('aria-current','step');
+    button.addEventListener('click',()=>{subSelected=item.id;row=0;col=0;prefix=[];present();});steps.append(button);
+   }
+   stages.append(steps);rootElement.append(stages);
+  }
   const meta=el('div',undefined,'cmp-meta');
   meta.append(el('strong',s.title+' · '+s.kind),el('span','Output '+s.out.shape.join(' × ')));
   rootElement.append(meta);
   const operands=el('div',undefined,'cmp-deps');
   operands.append(el('div','实际依赖 / DATAFLOW EDGES','cmp-label'));
-  if(s.dependencies.length)for(const dep of s.dependencies)operands.append(el('span',dep.from+' → '+dep.port,'cmp-chip'));
+  const activeDependencies=s.dependencies||[{from:parent.id,port:'inside'}];
+  if(activeDependencies.length)for(const dep of activeDependencies)operands.append(el('span',dep.from+' → '+dep.port,'cmp-chip'));
   else operands.append(el('span','起始阶段 / 无上游积木','cmp-chip'));
   rootElement.append(operands);
   const math=el('pre',s.formula,'cmp-formula');rootElement.append(math);
@@ -107,7 +121,7 @@ function mount(rootElement,onSelect){
   const target=nextFrame.steps.some(s=>s.id===nodeId)?nodeId:nextFrame.steps[0].id;
   if(nextFrame===frame&&target===active)return;
   const changed=frame!==nextFrame||target!==active;
-  frame=nextFrame;active=target;if(changed){row=0;col=0;prefix=[];}present();
+  frame=nextFrame;active=target;if(changed){row=0;col=0;prefix=[];subSelected=null;}present();
  }
  clear();
  return Object.freeze({show,clear,get selected(){return active;},get frame(){return frame;}});
