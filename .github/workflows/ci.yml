@@ -44,6 +44,8 @@ jobs:
           node tests/engineering_pipeline_contracts.js
           node tests/wan_ffn_microscope_contracts.js
           node tests/compute_microscope_contracts.js
+          node tests/state_microscope_contracts.js
+          node tests/universal_surface_audit_contracts.js
           node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js
           node --check source_evidence_levels.js
