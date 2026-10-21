@@ -17,6 +17,9 @@ const scenarios={
   {op:"preempt",id:"A"},{op:"finish",id:"B"},{op:"allocate",id:"A"}]}
 };
 let config=scenarios.fork.config,ops=scenarios.fork.ops.slice(),result=M.replay(config,ops),index=0;
+const State=window.SeetheTruthStateMicroscope;
+const stateView=window.SeetheTruthStateMicroscopeUI.mount(document.getElementById('stateMicroscope'));
+let lastTimeline=null,lastFrame=null;
 const status=(message,warning=false)=>{$("status").textContent=message;$("status").style.color=warning?"#f4bd82":"";};
 function draw(){
  const state=result.timeline[index],last=state.events.at(-1);
@@ -57,6 +60,8 @@ function draw(){
   "初始状态：物理块 0 永不分配；空闲块 FIFO=[1,...,N-1]；所有引用计数初始为 0。";
  $("prev").disabled=index===0;$("next").disabled=index===ops.length;
  window.SeetheTruthLastKVState=state;
+ if(lastTimeline!==result){lastFrame=State.kv(result,M);lastTimeline=result;}
+ stateView.show(lastFrame,index);
 }
 function setScenario(name){
  const s=scenarios[name];config={...s.config};ops=s.ops.map(x=>({...x}));
