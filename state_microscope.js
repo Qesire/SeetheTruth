@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -101,5 +101,20 @@ function training(snapshots){
  return validate({schema:SCHEMA,title:'Bigram · 训练/续训状态转换',evidenceTier:TIERS.TRAIN,steps,
   disclaimer:'Deterministic small Bigram checkpoints with optimizer/sampler pending state; NOT a large-model training trace'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,training,delta});
+function scalar(run){
+ need(run&&run.mode==='scalar'&&run.evidence==='deterministic_scalar_analytic_oracle_not_autograd'&&
+  Array.isArray(run.events)&&run.events.length>=1&&run.events.length<=250,'scalar training requires executed analytic reference events');
+ const steps=run.events.map((event,i)=>{
+  need(event&&event.id==='e'+i&&plain(event.state)&&typeof event.label==='string'&&
+   typeof event.formula==='string'&&typeof event.detail==='string','scalar event evidence missing');
+  const copy=x=>({theta:x.theta,grad:x.grad,m:x.m,v:x.v,optimizerStep:x.step});
+  const after=copy(event.state),before=i?copy(run.events[i-1].state):after;
+  return {id:'scalar:'+i,index:i,title:(i+1)+'. '+event.label,
+   why:event.detail+' · '+event.formula,
+   dependencies:i?['scalar:'+(i-1)]:[],before,after,changes:delta(before,after),timing:null};
+ });
+ return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
+  disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
+}
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,training,scalar,delta});
 });
