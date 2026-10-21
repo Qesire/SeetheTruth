@@ -18,6 +18,12 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **注意：** NumPy / PyTorch CPU 支持集合只是积木级编译候选。图级合法性、实际执行、梯度路径、检查点和真实模型/内核一致性必须分别证明。Android 仅展示审计结论，不提供代码产物。
 
+## 具名张量轴与显式流状态（实验室）
+
+新增 [具名张量轴与不可变状态实验室](semantic_state.html)：实际执行 rank 1–5 小规模张量的轴重排、显式广播、时间分块、拼接、流状态创建/追加/读取/分叉，精确检查绝对时间位置与状态版本。新增 [数学合同与验证记录](docs/semantic-state-contracts.md)。
+
+执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**此层尚未注册为通用自由画布算子，也未承诺 PyTorch 导出/VJP 或真实 GPU KV Cache**；保持当前 134 类积木、59 门课程的已发布统计。
+
 ## PC / Android 同一份教学内容
 
 新的 [跨平台教学中心](teaching.html) 将 8 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。

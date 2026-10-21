@@ -49,6 +49,16 @@ jobs:
           retention-days: 14
       - name: Validate DeepInfer source Prefill and image-safe chunk UI in Chromium
         run: python tests/browser_deepinfer_prefill.py
+      - name: Verify named-axis and immutable-state examples in PC/mobile Chromium
+        run: python tests/browser_semantic_state.py
+      - name: Archive named-axis temporal-state proof screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-semantic-tensor-state
+          path: semantic_state_screenshots/*.png
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify source-driven block capability matrix in desktop and phone Chromium
         run: python tests/browser_capabilities.py
       - name: Archive PC/Android capability matrix screenshots
