@@ -31,7 +31,12 @@ function flow(){
   button.addEventListener('click',()=>{state.step=i;state.row=0;state.col=0;render();});d.append(button);
   if(i<ids.length-1)d.append(element('span','→','arrow'));
  }
- const selected=d.querySelector('.flow-node.active');if(selected)selected.scrollIntoView({block:'nearest',inline:'nearest'});
+ const selected=d.querySelector('.flow-node.active');if(selected)d.scrollLeft=Math.max(0,selected.offsetLeft-d.offsetLeft-d.clientWidth/2);
+}
+function branches(){
+ const holder=$('dependencies');holder.replaceChildren();
+ const branches=[['条件 e3 / e4','FFN 输入侧 shift 和 scale → 第 3 步',[0,3]],['条件 e5','输出侧 Gate → 第 7 步',[0,7]],['残差旁路','Cross-Attention 写回的 x → 直接流向最终加法（第 1→8 步）',[1,8]]];
+ for(const [label,description,indices] of branches){const row=element('div',undefined,'dep'+(indices.includes(state.step)?' current':''));row.append(element('b',label),element('span',description));holder.append(row);}
 }
 function breakdown(){
  const info=A.explainDot(state.data,state.step,state.row,state.col);
@@ -118,7 +123,7 @@ function render(){
  $('steps').replaceChildren(...d.steps.map((s,i)=>{const b=element('button',undefined,'step');b.type='button';
   b.setAttribute('aria-current',i===state.step?'step':'false');b.append(element('span',String(i).padStart(2,'0'),'idx'),
   element('span',s.name));b.addEventListener('click',()=>{state.step=i;state.row=0;state.col=0;render();});return b;}));
- flow();breakdown();renderAblation();integrity();
+ flow();branches();breakdown();renderAblation();integrity();
 }
 function recompute(){
  try{state.data=A.trace(options());state.error=null;state.row=0;state.col=0;render();}
