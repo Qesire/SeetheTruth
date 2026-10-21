@@ -40,7 +40,8 @@ jobs:
           node --check concept_flow.js
           node tests/concept_flow_contracts.js
           node --check learning_lab.js
-          node tests/engineering_journey_contracts.js\n          node tests/learning_lab_contracts.js
+          node tests/engineering_journey_contracts.js
+          node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js
           node --check source_evidence_levels.js
           node tests/source_evidence_contracts.js
