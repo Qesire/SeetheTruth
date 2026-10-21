@@ -85,6 +85,10 @@ wan_ffn_lab.html
 compute_microscope.js
 compute_microscope_ui.js
 compute_microscope.css
+state_microscope.js
+state_microscope_ui.js
+state_microscope.css
+universal_surface_audit.js
 engineering_journey_engine.js
 engineering_journey_ui.js
 engineering_journey.html
