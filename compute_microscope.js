@@ -34,6 +34,18 @@ function fromNested(values){
 }
 function hashWeight(id,r,c){let h=2166136261;for(const ch of id+':'+r+':'+c)h=Math.imul(h^ch.charCodeAt(0),16777619);return ((h>>>0)%2001-1000)/2600;}
 function dotSpec(input,weights,bias,orientation='out_in'){return {type:'dot',input,weights,bias,orientation};}
+function verifyDot(s){
+ if(!s.dot)return;
+ must(s.out.values!==null&&s.dot.type==='dot'&&s.dot.orientation==='out_in','unsupported dot contract');
+ const {input,weights,bias}=s.dot;
+ numericTensor(input.shape,input.values);numericTensor(weights.shape,weights.values);numericTensor(bias.shape,bias.values);
+ const [T,D]=input.shape,[H,C]=weights.shape;
+ must(input.shape.length===2&&weights.shape.length===2&&s.out.shape.length===2&&bias.shape.length===2&&D===C&&s.out.shape[0]===T&&s.out.shape[1]===H&&bias.shape[0]===1&&bias.shape[1]===H,'GEMM input/weight/output misalignment');
+ for(let t=0;t<T;t++)for(let h=0;h<H;h++){
+  let sum=bias.values[h];for(let k=0;k<D;k++)sum+=input.values[t*D+k]*weights.values[h*D+k];
+  must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
+ }
+}
 function validate(frame){
  must(frame&&frame.schema===SCHEMA,'wrong schema');
  must(Object.values(TIERS).includes(frame.evidenceTier),'unknown evidence tier');
@@ -50,15 +62,19 @@ function validate(frame){
   else staticTensor(s.out.shape);
   must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
   for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);}
-  if(s.dot){
-   must(s.out.values!==null&&s.dot.type==='dot'&&s.dot.orientation==='out_in','unsupported dot contract');
-   const {input,weights,bias}=s.dot;
-   numericTensor(input.shape,input.values);numericTensor(weights.shape,weights.values);numericTensor(bias.shape,bias.values);
-   const [T,D]=input.shape,[H,C]=weights.shape;
-   must(input.shape.length===2&&weights.shape.length===2&&s.out.shape.length===2&&bias.shape.length===2&&D===C&&s.out.shape[0]===T&&s.out.shape[1]===H&&bias.shape[0]===1&&bias.shape[1]===H,'GEMM input/weight/output misalignment');
-   for(let t=0;t<T;t++)for(let h=0;h<H;h++){
-    let sum=bias.values[h];for(let k=0;k<D;k++)sum+=input.values[t*D+k]*weights.values[h*D+k];
-    must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
+  verifyDot(s);
+  if(s.substeps!==undefined){
+   must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
+   const nestedIds=new Set();
+   for(const child of s.substeps){
+    must(child&&typeof child.id==='string'&&child.id.startsWith(s.id+':')&&/^[A-Za-z0-9_:\-]{1,80}$/.test(child.id)&&!ids.has(child.id)&&!nestedIds.has(child.id),'invalid or duplicate substep');
+    must(typeof child.title==='string'&&child.title&&typeof child.kind==='string'&&typeof child.formula==='string'&&typeof child.why==='string','substep missing explanation');
+    must(child.out&&child.out.values!==null,'nested substep needs measured teaching numerical data');
+    numericTensor(child.out.shape,child.out.values);
+    must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
+    for(const tensor of Object.values(child.operands))numericTensor(tensor.shape,tensor.values);
+    verifyDot(child);
+    nestedIds.add(child.id);
    }
   }
   ids.add(s.id);
@@ -68,7 +84,7 @@ function validate(frame){
  return frame;
 }
 function dot(frame,stepId,row,col,prefix=[]){
- validate(frame);const s=frame.steps.find(x=>x.id===stepId);must(s,'unknown node');
+ validate(frame);const s=frame.steps.find(x=>x.id===stepId)||frame.steps.flatMap(x=>x.substeps||[]).find(x=>x.id===stepId);must(s,'unknown node');
  must(s.out.values!==null,'numeric execution unavailable');
  const shape=s.out.shape,dimensions=shape.length;
  const T=dimensions===1?1:shape[dimensions-2],H=shape[dimensions-1];
@@ -123,8 +139,23 @@ function learning(graph,run,catalog){
     specification=dotSpec(A,transposed,bias);operands.weight=transposed;
    }
   }
+  let substeps;
+  if(!isConcept&&kind==='attention'){
+   const q=operands.q,k=operands.k,v=operands.v;
+   must(q&&k&&v&&q.shape.length===2&&k.shape.length===2&&v.shape.length===2,'Attention operands missing');
+   const scores=fromNested(r.internals?.scores?.values),probabilities=fromNested(r.internals?.probabilities?.values);
+   const dimension=q.shape[1],qScaled=numericTensor(q.shape,q.values.map(z=>z/Math.sqrt(dimension)));
+   const zeroQ=numericTensor([1,k.shape[0]],Array(k.shape[0]).fill(0));
+   const valueWeights=numericTensor([v.shape[1],v.shape[0]],Array.from({length:v.shape[0]*v.shape[1]},(_,p)=>v.values[(p%v.shape[0])*v.shape[1]+Math.floor(p/v.shape[0])]));
+   const zeroV=numericTensor([1,v.shape[1]],Array(v.shape[1]).fill(0));
+   substeps=[
+    {id:r.id+':qk_scores',kind:'scaled_matmul',title:'QKᵀ / √d · Scores',formula:'scores[t,j] = Σ_k Q[t,k] K[j,k] / √d',why:'Attention 先对每个 query/token 和 key/token 完整计算相似度；不是逐元素乘同位置 Token。',out:scores,operands:{q,k},dot:dotSpec(qScaled,k,zeroQ)},
+    {id:r.id+':softmax',kind:'softmax',title:'Softmax · Attention probabilities',formula:'P[t,j] = exp(scores[t,j]−max)/Σ_j exp(scores[t,j]−max)',why:'沿每个 Query 的所有 Key 做归一化，避免大 logits 导致的数值溢出。',out:probabilities,operands:{scores}},
+    {id:r.id+':weighted_value',kind:'matmul',title:'Probabilities × V · Context',formula:'out[t,c] = Σ_j P[t,j] V[j,c]',why:'所有 key/value token 的值按概率汇聚到对应 Query，形成 Attention 的最终输出。',out,operands:{probabilities,v},dot:dotSpec(probabilities,valueWeights,zeroV)}
+   ];
+  }
   const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
-   sourceLines:null,dependencies,out,operands,dot:specification,
+   sourceLines:null,dependencies,out,operands,dot:specification,substeps,
    note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};
   byId.set(s.id,s);return s;
  });
