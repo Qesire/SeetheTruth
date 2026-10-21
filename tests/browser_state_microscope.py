@@ -63,6 +63,35 @@ class StateMicroscopeBrowser(unittest.TestCase):
   self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),0)
   self.assertEqual(errors,[]);p.close()
 
+ def test_scheduler_shared_decision_resource_and_forward(self):
+  p=self.browser.new_page(viewport={'width':1420,'height':910})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  self.assertEqual(p.goto(self.url+'/deepinfer_scheduler_lab.html').status,200)
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length >= 3")
+  self.assertIn('SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',p.locator('#stateMicroscope').inner_text())
+  p.locator('#next').click()
+  self.assertIn('forwardEvent',p.locator('#stateMicroscope').inner_text())
+  self.assertIn('dispatchBlocks',p.locator('#stateMicroscope').inner_text())
+  self.assertIn('scheduled',p.locator('#stateMicroscope').inner_text())
+  p.screenshot(path=str(OUT/'scheduler-kv-worker-shared-causality.png'),full_page=True,animations='disabled')
+  self.assertEqual(errors,[]);p.close()
+
+ def test_prefill_vote_chunk_independent_validated_decisions(self):
+  p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  self.assertEqual(p.goto(self.url+'/deepinfer_prefill_lab.html?edition=teaching').status,200)
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length === 2")
+  self.assertIn('SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',p.locator('#stateMicroscope').inner_text())
+  self.assertIn('decision',p.locator('#stateMicroscope .sm-changes').inner_text())
+  p.locator('#rank0').select_option('later')
+  self.assertIn('secondVoteFallback',p.locator('#stateMicroscope details').inner_text() if p.locator('#stateMicroscope details').count() else p.locator('#stateMicroscope').inner_text())
+  p.locator('#stateMicroscope .sm-step').nth(1).click()
+  self.assertIn('Chunk',p.locator('#stateMicroscope h3').inner_text())
+  p.locator('#scenario').select_option('grow')
+  self.assertIn('charged',p.locator('#stateMicroscope').inner_text())
+  p.screenshot(path=str(OUT/'prefill-policy-shared-phone.png'),full_page=True,animations='disabled')
+  self.assertEqual(errors,[]);p.close()
+
  def test_capability_gap_inventory_on_phone(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
