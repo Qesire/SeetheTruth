@@ -25,6 +25,10 @@ const graph={schema:L.SCHEMA,title:'typed state fork for speculative hypotheses'
  e('read_a','last','x')
 ]};
 assert.equal(S.kinds.length,4);
+const demo=L.preset('stream_state_branches');
+assert.equal(demo.nodes.length,10);
+assert.equal(R.check(demo,{numeric:true}).executable,true);
+assert.deepEqual(L.evaluate(demo).steps.map(x=>x.shape),C.evaluate(demo).steps.map(x=>x.shape));
 assert.equal(L.KINDS.length,138);
 for(const k of S.kinds)assert.ok(L.KINDS.includes(k));
 const validated=L.validateGraph(graph),saved=JSON.stringify(graph);

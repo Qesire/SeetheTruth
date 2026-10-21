@@ -274,6 +274,28 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="stream_state_branches"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[
+        N("prefix","input",20,40,{rows:2,width:3,seed:1}),
+        N("chunk_a","input",20,310,{rows:1,width:3,seed:2}),
+        N("chunk_b","input",20,590,{rows:1,width:3,seed:3}),
+        N("init","stream_state_init",300,40,{origin:10,capacity:5}),
+        N("fork_a","stream_state_fork",530,50),
+        N("fork_b","stream_state_fork",530,340),
+        N("append_a","stream_state_append",770,65,{position:12}),
+        N("append_b","stream_state_append",770,380,{position:12}),
+        N("read_a","stream_state_read",1040,65,{start:11,length:2}),
+        N("read_b","stream_state_read",1040,380,{start:11,length:2})
+      ];
+      const edges=[
+        ["prefix","init","x"],["init","fork_a","state"],["init","fork_b","state"],
+        ["fork_a","append_a","state"],["chunk_a","append_a","chunk"],
+        ["fork_b","append_b","state"],["chunk_b","append_b","chunk"],
+        ["append_a","read_a","state"],["append_b","read_b","state"]
+      ].map(([from,to,port])=>({from,to,port}));
+      return validateGraph({schema:SCHEMA,title:"状态积木示例 · 共享前缀的不可变双分叉",nodes,edges});
+    }
     if(["deepinfer_mtp_budget","deepinfer_yoco_replay"].includes(name)){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       let title,nodes,edges;

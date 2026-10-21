@@ -38,6 +38,9 @@ class StreamGraphBrowser(unittest.TestCase):
   kinds=["stream_state_init","stream_state_append","stream_state_read","stream_state_fork"]
   for kind in kinds:self.assertEqual(p.locator('[data-add="'+kind+'"]').count(),1)
   graph=json.loads((Path(__file__).resolve().parents[1]/"tests/stream_graph_demo.json").read_text(encoding="utf-8"))
+  p.locator("#stateGraphExample").click()
+  self.assertEqual(p.locator("#blocks .block").count(),10)
+  self.assertIn("状态积木示例",p.locator("#workspaceTitle").inner_text())
   self.load(graph)
   self.assertEqual(p.locator("#blocks .block").count(),10)
   for kind in kinds:self.assertTrue(p.locator('[data-node][data-readiness="ready"]').count()>=1)

@@ -151,6 +151,7 @@ input[type="file"]{display:none}
   <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
   <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
   <div class="palette" id="palette"></div>
+  <button class="btn small" type="button" id="stateGraphExample" style="width:100%;margin-top:12px">▤ 一键打开流状态双分叉示例</button>
   <div class="rule"></div>
   <div class="kicker">02 / HIERARCHICAL LEARNING</div><h2>逐层拆解模型</h2>
   <button id="compositeLaunch" class="composite-launch" type="button"><strong>⌘ 从 Decoder Layer 进入</strong>
@@ -1061,6 +1062,7 @@ $("#load").addEventListener("change",async e=>{
 window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
+$("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
 renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script></body></html>
