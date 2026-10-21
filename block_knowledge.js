@@ -6,6 +6,7 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ stream_torch_autograd:["PyTorch autograd: automatic differentiation and graph semantics","https://docs.pytorch.org/docs/stable/autograd.html"],
  stream_init_ref:["Hugging Face Transformers: logical KV Cache position and update","https://huggingface.co/docs/transformers/cache_explanation"],
  deepinfer_schedule_ref:["DeepInfer official reference: stable-rank cumprod MTP remap and total_q budget","https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/model_executor/layers/tilelang_ops/schedule_mtp_varlen.py"],
  deepinfer_yoco_ref:["DeepInfer official YoCo mask-vs-compact metadata and equivalence harness","https://github.com/deepseek-ai/DeepInfer/blob/main/examples/yoco/yoco_equiv.py"],
@@ -81,10 +82,10 @@ const sources=Object.freeze({
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
- stream_state_init:["把二维 [T,D] 数值转换成带类型的不可变逻辑状态，并声明绝对 Token 起点 origin、容量、version=0 与下一位置 nextPosition=origin+T。","真实推理的缓存一致性不能只依赖 shape；逻辑位置和版本能够检测请求重放或错误前缀的依赖问题。","本积木仅执行有界 CPU 数值与逻辑状态初始化，不含物理 KV 分页、GPU 速度或真实模型权重。","让输入为 2×3、origin=10，验证 next=12；把 capacity 改为 1，初始化应当拒绝。","stream_init_ref"],
- stream_state_append:["同时需要已经产生的状态和当前 chunk 的上游依赖，按明确的绝对写入位置校验并在 T 轴追加，使新状态 version 增加 1。","Prefill 与 Decode 接续或推测执行分叉需要维护连续的绝对位置，不能把缺失帧或重复帧仅当成合法形状处理。","这里的追加是在 CPU 中创建新的数值状态，不代表 GPU KV 写入、零拷贝共享或自动可微计算。","将 next=12 的状态追加 position=12 应成功，改成 11 或 13 都应在静态与数值阶段失败。","stream_init_ref"],
- stream_state_read:["沿 T 轴读取某个绝对逻辑窗口 [start,start+length)，只允许窗口完全位于 [origin,nextPosition) 之内，输出普通二维数值张量。","缓存的时间位置必须和实际上下文相符，光有相同的张量维度不能区分两个请求是否属于同一上下文。","本操作只产生物化的数值副本，而非 GPU Cache 物理分页、引用计数或真正训练梯度。","向长度为二的前缀追加一行后读取 [11,13) 两行，确认是旧末行和新的 chunk。","stream_init_ref"],
- stream_state_fork:["复制逻辑状态的 origin、容量、version、nextPosition 与数值前缀，并允许两条后续分支接受不同 chunk，父状态保持不变。","Beam Search、共享 Prompt 前缀与推测解码都需要相同历史加上独立未来，数学意义上的 Fork 与物理 Copy-on-Write 是两个层次。","这只是可验证的 CPU 逻辑拷贝，不推出真实内存节约、GPU 共享页或缓存回收行为。","让同一个状态分别接入两个 Fork 和两个追加，检查两路前缀相同、后缀不同、初始版本不变。","stream_init_ref"],
+ stream_state_init:["把二维 [T,D] 数值转换成带类型的不可变逻辑状态，并声明绝对 Token 起点 origin、容量、version=0 与下一位置 nextPosition=origin+T。","真实推理的缓存一致性不能只依赖 shape；逻辑位置和版本能够检测请求重放或错误前缀的依赖问题。","本积木仅执行有界 CPU 数值与逻辑状态初始化，不含物理 KV 分页、GPU 速度或真实模型权重。","让输入为 2×3、origin=10，验证 next=12；把 capacity 改为 1，初始化应当拒绝。","stream_init_ref,stream_torch_autograd"],
+ stream_state_append:["同时需要已经产生的状态和当前 chunk 的上游依赖，按明确的绝对写入位置校验并在 T 轴追加，使新状态 version 增加 1。","Prefill 与 Decode 接续或推测执行分叉需要维护连续的绝对位置，不能把缺失帧或重复帧仅当成合法形状处理。","JS 画布仅前向；导出的 PyTorch CPU 代码通过 cat/clone 保留梯度，并不代表 GPU KV 写入或跨轮 BPTT。","将 next=12 的状态追加 position=12 应成功，改成 11 或 13 都应在静态与数值阶段失败。","stream_init_ref,stream_torch_autograd"],
+ stream_state_read:["沿 T 轴读取某个绝对逻辑窗口 [start,start+length)，只允许窗口完全位于 [origin,nextPosition) 之内，输出普通二维数值张量。","缓存的时间位置必须和实际上下文相符，光有相同的张量维度不能区分两个请求是否属于同一上下文。","JS 画布仅前向；导出的 PyTorch CPU 图通过可微切片传递真实梯度，但不是 GPU Cache 物理分页或跨轮 BPTT。","向长度为二的前缀追加一行后读取 [11,13) 两行，确认是旧末行和新的 chunk。","stream_init_ref,stream_torch_autograd"],
+ stream_state_fork:["复制逻辑状态的 origin、容量、version、nextPosition 与数值前缀，并允许两条后续分支接受不同 chunk，父状态保持不变。","Beam Search、共享 Prompt 前缀与推测解码都需要相同历史加上独立未来，数学意义上的 Fork 与物理 Copy-on-Write 是两个层次。","JS 画布只验证逻辑分叉；PyTorch CPU 导出图使用可微 clone 汇聚共享前缀梯度，不代表显存节省或 GPU 页共享。","让同一个状态分别接入两个 Fork 和两个追加，检查两路前缀相同、后缀不同、初始版本不变。","stream_init_ref,stream_torch_autograd"],
 
  deepinfer_mtp_confidence_schedule:["精确复现 DeepInfer 官方 Python Reference 的预算分配顺序：新序列 remap=-1 的置信度视为 0；已有序列按 remap 读取前一轮各 Draft 位置置信度并逐位置相乘。将全部 (seq,draft_pos) 展平成一列，按累积概率降序、原始扁平索引升序稳定排序，赢得 totalQ-N 个额外 Token 名额。每序列基础长度固定为 1。","相比逐序列独立阈值，这是一项全局共享预算的调度问题。较高的连续 Draft 接收概率会把额外 Query 计算分配给更有可能有效的序列；因此可调度多个序列且允许每个序列生成不等长 Draft。","本积木是 CPU 上对官方 reference 的精确数学重建，不等价于实际 TileLang GPU Kernel 性能、ZOS 的时间数据依赖、置信度头训练或真实 Target 并行验证。","设 remap=[0,1,-1]、前轮置信度=[[.9,.8],[.5,.5]]、totalQ=5，输出必须是 [[3],[1],[1]]；设为 3 则都只有 1，检查同概率的稳定 tie-break。","deepinfer_schedule_ref"],
  deepinfer_yoco_swa_mask:["输入 Q/K/V 的真实 [T,D] 二维微张量，针对 consumer 层以 SWA 窗口计算注意力。Mask 路径仍输出 T 行，保留末尾 K 行；更早的 Q 行在本数学示例置零，后缀按绝对时间位置索引 K/V。","DeepInfer 官方 YoCo 截断有 off/mask/compact 三种模式。mask 在消费者的计算元数据中保留完整 Query 布局、收窄 SWA 可见域，compact 则丢弃截断前的 Query，从而降低 Query 计算。真实代码使用分 Chunk Pivot 与后退约束。","不能把这个零行演示误认作 DeepInfer 的全部 mask metadata 或真实数值输出；本块仅演示保留后缀的受限注意力。参数 keepTokens 必须覆盖 window+backtracking。","比较同一 Q/K/V、相同 window/keep 下 Mask 输出的最后 K 行与 Compact 输出全部行；改变 K 从 3 到 2 应触发 window+backtracking 下界错误。","deepinfer_yoco_ref,deepinfer_yoco_runner"],

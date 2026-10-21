@@ -88,6 +88,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 
 ```bash
 node tests/release_surface_contracts.js
+node tests/torch_stream_autograd_contracts.js  # 有界状态双分叉、真实 PyTorch 梯度、AdamW 与 checkpoint
 node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
 node tests/torch_codegen_extensions_contracts.js  # torch + numpy
 node tests/moe_executable_codegen_contracts.js    # torch + numpy
