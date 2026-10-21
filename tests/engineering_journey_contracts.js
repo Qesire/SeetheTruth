@@ -29,7 +29,7 @@ for(const settings of [{seed:7,batchSize:1},{seed:42,batchSize:8},{seed:91,batch
  assert.equal(after.step,a.checkpoint().step);
  assert.ok(after.gradNorm>0&&after.updateNorm>0);
  assert.ok(Number.isFinite(after.validation.perplexity));
- const snap=a.checkpoint(),original=a.generate({seed:21,temperature:0.7,topK:3});
+ const snap=JSON.parse(JSON.stringify(a.checkpoint())),original=a.generate({seed:21,temperature:0.7,topK:3});
  assert.deepEqual(original,a.generate({seed:21,temperature:0.7,topK:3}),'seeded stochastic decode must be reproducible');
  assert.deepEqual(a.generate({seed:1,temperature:0}).tokens,a.generate({seed:999,temperature:0}).tokens,'greedy ignores RNG');
  assert.ok(original.trace.length>=1&&original.trace.length<=10);
