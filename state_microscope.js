@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',PREFILL:'SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -113,6 +113,23 @@ function scheduler(run,K){
  return validate({schema:SCHEMA,title:'Decode Scheduler · 资源及 Worker 派发因果透视',evidenceTier:TIERS.SCHEDULER,steps,
   disclaimer:'Verified bounded scheduler decisions + CPU KV ownership + logical Worker Forward link; no real C++ execution, GPU allocation, prompt scheduling or throughput measurement'});
 }
+function prefill(execution,P){
+ need(execution&&plain(execution.voteInput)&&plain(execution.chunkInput)&&plain(execution.voteResult)&&
+  plain(execution.chunkResult)&&P&&typeof P.vote==='function'&&typeof P.chunk==='function','prefill needs complete policy input/result evidence');
+ const vote=P.vote(execution.voteInput),chunk=P.chunk(execution.chunkInput);
+ need(JSON.stringify(vote)===JSON.stringify(execution.voteResult),'Prefill vote result contradicts source reference');
+ need(JSON.stringify(chunk)===JSON.stringify(execution.chunkResult),'Prefill chunk result contradicts source reference');
+ const inputs=[
+  {id:'prefill:vote',title:'NORMAL ALL / ANY · DP Rank 投票',why:'检查当前 Decode Step、间隔、各 Rank 是否想执行及是否真能排上；第二轮投票避免空 Prompt。',
+   before:{input:execution.voteInput},after:{input:execution.voteInput,decision:vote}},
+  {id:'prefill:chunk',title:'IMG / PAD Token · Chunk 预算与边界',why:'逐 Token 判断图片 PAD 的完整性，受剩余 Batch 和 CP Align 约束；这是单独的 Chunk 决策，和投票不强行伪造时序连接。',
+   before:{input:execution.chunkInput},after:{input:execution.chunkInput,decision:chunk}}
+ ];
+ const steps=inputs.map((p,i)=>({id:p.id,index:i,title:p.title,why:p.why,dependencies:[],
+  before:p.before,after:p.after,changes:delta(p.before,p.after),timing:null}));
+ return validate({schema:SCHEMA,title:'DeepInfer Prefill · 投票和安全 Chunk 独立决策',evidenceTier:TIERS.PREFILL,steps,
+  disclaimer:'Exact bounded source-derived policy outputs re-executed and checked; not GPU KV allocation, distributed collectives, image embeddings or real serving latency'});
+}
 function training(snapshots){
  need(Array.isArray(snapshots)&&snapshots.length>=1&&snapshots.length<=32,'invalid training transcript');
  let source=null,params=null,previous=null;
@@ -152,5 +169,5 @@ function scalar(run){
  return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,training,scalar,delta});
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,training,scalar,delta});
 });
