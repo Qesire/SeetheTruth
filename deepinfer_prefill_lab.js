@@ -2,6 +2,12 @@
 const P=window.SeetheTruthPrefillPolicy;
 if(!P)throw Error("Prefill teaching source module unavailable");
 const $=id=>document.getElementById(id);
+const State=window.SeetheTruthStateMicroscope;
+const stateView=window.SeetheTruthStateMicroscopeUI.mount($('stateMicroscope'));
+const evidence={};
+function sync(source){if(evidence.voteInput&&evidence.chunkInput){
+ const frame=State.prefill(evidence,P);stateView.show(frame,source==='chunk'?1:0);
+}}
 const inputs={
  shrink:{tokens:["TEXT","IMG","PAD","PAD","PAD","TEXT","TEXT"],maxBatchedTokens:4,cpAlign:1},
  grow:{tokens:["TEXT","IMG","PAD","PAD","PAD","TEXT","TEXT"],maxBatchedTokens:5,cpAlign:1},
@@ -12,9 +18,10 @@ const inputs={
 const asRank=value=>({waitingSchedulable:value!=="no",canActuallySchedule:value==="yes",cacheUsage:.2});
 function vote(){
  try{
-  const result=P.vote({engine:"NORMAL",decodeStep:Number($("decodeStep").value),
+  const voteInput={engine:"NORMAL",decodeStep:Number($("decodeStep").value),
    allInterval:Number($("allInterval").value),anyInterval:Number($("anyInterval").value),
-   ranks:[asRank($("rank0").value),asRank($("rank1").value)]});
+   ranks:[asRank($("rank0").value),asRank($("rank1").value)]};
+  const result=P.vote(voteInput);
   $("votePoint").textContent=result.point;
   $("voteStep").textContent=result.step==="prompt"?"Prompt":"Decode";
   $("voteCount").textContent=result.scheduledCount;
@@ -25,6 +32,7 @@ function vote(){
    "第二轮回退: "+(result.secondVoteFallback?"是":"否"),
    "下一次 decodeStep: "+result.nextDecodeStep].join("\n");
   window.SeetheTruthPrefillLast={...(window.SeetheTruthPrefillLast||{}),vote:result};
+  evidence.voteInput=voteInput;evidence.voteResult=result;sync('vote');
  }catch(err){$("voteDetail").textContent="投票输入错误："+err.message}
 }
 function renderTokens(tokens,cached,q){
@@ -51,6 +59,7 @@ function chunk(){
    "不将逻辑 Token 数推断为 GPU 运行耗时"].join("\n");
   renderTokens(sample.tokens,sample.cached||0,result.q);
   window.SeetheTruthPrefillLast={...(window.SeetheTruthPrefillLast||{}),chunk:result};
+  evidence.chunkInput={...sample};evidence.chunkResult=result;sync('chunk');
  }catch(err){$("chunkDetail").textContent="Chunk 输入被拒绝："+err.message}
 }
 $("evalVote").addEventListener("click",vote);
