@@ -82,7 +82,7 @@ const real=A.trace().real;
 assert.equal(real.params,141576704);assert.equal(real.flopsPerToken,283115520);
 const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'wan_ffn_lab.html'),'utf8');
 const js=fs.readFileSync(path.join(root,'wan_ffn_lab.js'),'utf8');new vm.Script(js);
-for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotBreakdown','ablationPanel','ablateChannel','ablateToken','sourceCode','openSource','recompute','zeroGate','numerics'])assert.ok(html.includes('id="'+id+'"'),id);
+for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotBreakdown','dependencies','ablationPanel','ablateChannel','ablateToken','sourceCode','openSource','recompute','zeroGate','numerics'])assert.ok(html.includes('id="'+id+'"'),id);
 for(const file of ['wan_ffn_trace.js','wan_ffn_lab.js'])assert.ok(html.includes('src="'+file+'"'),file);
 assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('wan_ffn_lab.html'));
 const allow=fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/);
