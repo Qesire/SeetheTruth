@@ -11,7 +11,7 @@ function matrixView(m,label,onCell,compact=false){
  const container=element('div',undefined,compact?'micro-matrix':'');
  container.append(element('div',label+' · ['+m.shape.join(' × ')+']','mat-label'));
  const grid=element('div',undefined,'mat');const [rows,cols]=m.shape,max=Math.max(...m.values.map(Math.abs),1e-12);
- grid.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+ grid.style.gridTemplateColumns='repeat('+cols+',minmax(48px,1fr))';
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
   const val=m.values[r*cols+c],b=element('button',fmt(val));b.type='button';
   b.style.backgroundColor=signColor(val,max);
