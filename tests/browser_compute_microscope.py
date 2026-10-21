@@ -29,7 +29,7 @@ class UniversalMicroscopeBrowser(unittest.TestCase):
   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench.stageCount >= 4')
   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.evidence'),'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS')
   p.locator('#computeMicroscope .cmp-step').nth(1).click()
-  self.assertIn('Linear',p.locator('#computeMicroscope .cmp-meta').inner_text())
+  self.assertIn('linear',p.locator('#computeMicroscope .cmp-meta').inner_text())
   self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
   self.assertIn('误差',p.locator('#computeMicroscope .cmp-breakdown').inner_text())
   p.locator('#computeMicroscope .cmp-cell').nth(5).click()
