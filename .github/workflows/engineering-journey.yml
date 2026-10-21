@@ -6,6 +6,11 @@ on:
       - 'atlas_server.py'
       - 'wan_ffn*'
       - 'compute_microscope*'
+      - 'state_microscope*'
+      - 'universal_surface_audit.js'
+      - 'tests/state_microscope_contracts.js'
+      - 'tests/universal_surface_audit_contracts.js'
+      - 'tests/browser_state_microscope.py'
       - 'tests/compute_microscope_contracts.js'
       - 'tests/browser_compute_microscope.py'
       - 'tests/browser_wan_ffn.py'
@@ -19,6 +24,11 @@ on:
       - 'engineering_*'
       - 'wan_ffn*'
       - 'compute_microscope*'
+      - 'state_microscope*'
+      - 'universal_surface_audit.js'
+      - 'tests/state_microscope_contracts.js'
+      - 'tests/universal_surface_audit_contracts.js'
+      - 'tests/browser_state_microscope.py'
       - 'learn.html'
       - 'tests/compute_microscope_contracts.js'
       - 'tests/browser_compute_microscope.py'
@@ -48,6 +58,8 @@ jobs:
           node tests/engineering_pipeline_contracts.js
           node tests/wan_ffn_microscope_contracts.js
           node tests/compute_microscope_contracts.js
+          node tests/state_microscope_contracts.js
+          node tests/universal_surface_audit_contracts.js
           node tests/android_asset_manifest_contracts.js
       - name: Install headless Chromium
         run: |
@@ -57,6 +69,16 @@ jobs:
         run: python tests/browser_engineering_journey.py
       - name: Execute advanced shuffle, accumulation and resume UI
         run: python tests/browser_engineering_pipeline.py
+      - name: Verify common event/state microscope for KV and Worker
+        run: python tests/browser_state_microscope.py
+      - name: Archive common event/state microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-microscope-browser-proof
+          path: state_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Universal graph microscope across editor and Wan source
         run: python tests/browser_compute_microscope.py
       - name: Archive universal microscope screenshots
