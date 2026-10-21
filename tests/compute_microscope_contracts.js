@@ -28,6 +28,19 @@ for(const name of ['ffn','swiglu','attention','residual']){
  assert.throws(()=>C.dot(symbolic,symbolic.steps[0].id,0,0),/numeric execution unavailable/);
  assert.throws(()=>C.learning(g,{...r,evidence:'real_model_execution'},L),/unrecognized execution evidence/);
 }
+// Rank-4/5 tensor slicing must be a first-class capability, not a Wan-specific view.
+const ndGraph={nodes:[{id:'nd',kind:'input',params:{}}],edges:[],title:'4D tensor trace'};
+const ndValues=[[[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]]];
+const ndTrace={steps:[{id:'nd',kind:'input',shape:[1,2,2,3],values:ndValues}],evidence:'deterministic_browser_teaching_simulation_not_model_execution'};
+const ndFrame=C.learning(ndGraph,ndTrace,L);
+assert.deepEqual(ndFrame.steps[0].out.shape,[1,2,2,3]);
+assert.equal(C.dot(ndFrame,'nd',1,2,[0,1]).value,12);
+assert.equal(C.dot(ndFrame,'nd',0,0,[0,0]).value,1);
+assert.throws(()=>C.dot(ndFrame,'nd',0,0,[0,2]),/invalid tensor axis slice/);
+assert.throws(()=>C.learning(ndGraph,{...ndTrace,steps:[{...ndTrace.steps[0],values:[[[[1,2],[3,4]],[[5,6],[7,8]]]]}]},L),/tensor shape contradicts/);
+const five=C.numericTensor([1,2,1,2,3],Array.from({length:12},(_,i)=>i+.5));
+const fiveFrame=JSON.parse(JSON.stringify(ndFrame));fiveFrame.steps[0].out=five;C.validate(fiveFrame);
+assert.equal(C.dot(fiveFrame,'nd',1,2,[0,1,0]).value,11.5);
 const g=L.preset('ffn'),r=L.evaluate(g);
 const original=C.learning(g,r,L);
 const first=original.steps.find(s=>s.kind==='linear');
