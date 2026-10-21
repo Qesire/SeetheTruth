@@ -7,7 +7,7 @@
  if(root)root.SeetheTruthStreamNumpy=api;
 })(typeof window!=="undefined"?window:null,function(){"use strict";
  const kinds=Object.freeze(["stream_state_init","stream_state_append","stream_state_read","stream_state_fork"]);
- const PY=String.raw\`# NumPy immutable logical stream state; CPU-only, not a GPU KV cache.
+ const PY=String.raw`# NumPy immutable logical stream state; CPU-only, not a GPU KV cache.
 def _state_tensor(x):
     a = np.asarray(x, dtype=np.float64)
     if a.ndim != 2 or any(d < 1 or d > 32 for d in a.shape) or a.size > 4096 or not np.isfinite(a).all():
@@ -65,7 +65,7 @@ class _StreamOutputs(dict):
         # Intentionally omit private numerical storage from public state metadata.
         self.state_metadata = {key:{name:value for name,value in state.items() if name!="tensor"}
                                for key,state in states.items()}
-\`;
+`;
  // The lowering is a list of complete Python lines; never interpolates a
  // user-supplied Python expression. Caller supplies escaped ID and bounded params.
  function lower(n,edges){
