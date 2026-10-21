@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -77,5 +77,29 @@ function worker(run){
  return validate({schema:SCHEMA,title:'DeepInfer Worker · 跨 Step 假设时序',evidenceTier:TIERS.WORKER,steps,
    disclaimer:'Durations are assumed logical units, NOT profiler data, GPU utilization or production throughput'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,delta});
+function training(snapshots){
+ need(Array.isArray(snapshots)&&snapshots.length>=1&&snapshots.length<=32,'invalid training transcript');
+ let source=null,params=null,previous=null;
+ const steps=snapshots.map((snap,i)=>{
+  need(snap?.schema==='seethetruth-training-pipeline-v1'&&snap.dataFingerprint&&snap.model&&snap.sampler&&snap.pending,'invalid checkpoint schema');
+  need(Array.isArray(snap.model.weights)&&snap.model.weights.length===64&&snap.model.weights.every(finite),'invalid Bigram checkpoint weights');
+  need(Number.isSafeInteger(snap.model.step)&&snap.model.step>=0&&snap.model.step<=1e6,'invalid optimizer step');
+  need(Number.isSafeInteger(snap.sampler.epoch)&&snap.sampler.epoch>=0&&Number.isSafeInteger(snap.sampler.cursor)&&snap.sampler.cursor>=0,'invalid sampler position');
+  need(Number.isSafeInteger(snap.pending.microSteps)&&snap.pending.microSteps>=0&&Number.isSafeInteger(snap.pending.samples)&&snap.pending.samples>=0&&finite(snap.pending.lossSum),'invalid pending gradients');
+  const contract=JSON.stringify({dataFingerprint:snap.dataFingerprint,config:snap.config});
+  if(source===null)source=contract;else need(contract===source,'training data/config identity changed');
+  if(previous)need(snap.model.step>=previous.model.step,'optimizer step went backwards');
+  const x={optimizerStep:snap.model.step,epoch:snap.sampler.epoch,cursor:snap.sampler.cursor,
+   pendingMicroSteps:snap.pending.microSteps,pendingSamples:snap.pending.samples,
+   pendingLossSum:snap.pending.lossSum,weightsChecksum:snap.model.weights.reduce((acc,v,j)=>acc+(j+1)*v,0)};
+  const before=params||x,after=x;
+  const evt={id:'train:'+i,index:i,title:'检查点阶段 '+(i+1)+' · optimizer.step='+x.optimizerStep,
+   why:'比较真实 Bigram 教学训练引擎生成的 W/Step、Sampler 和梯度缓冲状态；不是 PyTorch/GPU 模型权重或训练时间。',
+   dependencies:i?['train:'+(i-1)]:[],before,after,changes:delta(before,after),timing:null};
+  params=x;previous=snap;return evt;
+ });
+ return validate({schema:SCHEMA,title:'Bigram · 训练/续训状态转换',evidenceTier:TIERS.TRAIN,steps,
+  disclaimer:'Deterministic small Bigram checkpoints with optimizer/sampler pending state; NOT a large-model training trace'});
+}
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,training,delta});
 });
