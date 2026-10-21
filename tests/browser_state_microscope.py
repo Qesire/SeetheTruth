@@ -92,6 +92,25 @@ class StateMicroscopeBrowser(unittest.TestCase):
   p.screenshot(path=str(OUT/'prefill-policy-shared-phone.png'),full_page=True,animations='disabled')
   self.assertEqual(errors,[]);p.close()
 
+ def test_gqa_cache_real_key_value_replay(self):
+  p=self.browser.new_page(viewport={'width':1440,'height':960})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  self.assertEqual(p.goto(self.url+'/cache.html').status,200)
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length === 1")
+  self.assertIn('EXECUTED_KV_GQA_MICRO_NUMERIC_CACHE',p.locator('#stateMicroscope').inner_text())
+  p.locator('#advance').click()
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length === 2")
+  self.assertIn('prefill',p.locator('#stateMicroscope').inner_text().lower())
+  p.locator('#advance').click()
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length === 3")
+  self.assertIn('decode',p.locator('#stateMicroscope h3').inner_text().lower())
+  self.assertIn('cacheTokens',p.locator('#stateMicroscope .sm-changes').inner_text())
+  self.assertIn('cursor',p.locator('#stateMicroscope .sm-changes').inner_text())
+  p.screenshot(path=str(OUT/'gqa-live-kv-cache-shared-state.png'),full_page=True,animations='disabled')
+  p.locator('#reset').click()
+  self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),1)
+  self.assertEqual(errors,[]);p.close()
+
  def test_capability_gap_inventory_on_phone(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
