@@ -28,13 +28,25 @@ steps = [
    dependencies: [{from,port}],  // 必须指向更早已执行步骤
    out: {shape,values},          // values=null 意味着只推断形状
    operands: {name: {shape,values}},
-   dot?: {type:dot,orientation:out_in,input,weights,bias}}
+   dot?: {type:dot,orientation:out_in,input,weights,bias},
+   substeps?: [{id:parent_id:suboperator,kind,title,formula,why,out,operands,dot?}] // 有实算证据的内部阶段
+   }
 ]
 ```
 
 对所有数字输出：形状 rank 为 1–5，元素数有界、数值为 finite Float64、严格拒绝 ragged tensor。支持浏览最后二维的行/通道，允许显式选择前置轴的切片；列宽超出渲染上限时只显示前 24 列和前 20 行，并告知只截断 *可视化*（算术使用完整界内张量）。
 
 对 Dot：输入 `X[T,D]`，权重 `W[H,D]`，Bias `b[1,H]`，输出 `Y[T,H]`。校验 `Y[t,h] ≈ b[h] + Σ_k X[t,k]W[h,k]`，容差是相对于输出大小的 1e-9，验证所有坐标；点选后显示所有维度参与的完整重建误差，表格最多展开前 64 项。MatMul 通过显式转置 B 适配同一公式。Linear 教学权重来自现有 `Learning.evaluate` 的固定、确定性哈希函数；此适配器只说明在**当前小模型解释器**里的权重，不能冒充原模型 checkpoint。
+
+## Attention 作为复合算子的可展开示范
+
+通用核心不把每个 Attention 整体当成一个无法透视的黑盒。使用主编辑器内实际 `Learning.evaluate()` 返回的 Attention `internals.scores` 和 `internals.probabilities`，Adapter 有独立数学核对的三个子步骤：
+
+1. `QKᵀ / √d`：`Scores[Tq,Tk]`，将 Q 的输入除以 √d 再用 K 的 `[Tk,D]` 进行逐通道点积重建，对每个 query/key 坐标闭合；
+2. 对 Scores 最后一维执行稳定 Softmax，展示真实概率矩阵及每 Query 的归一化情况；
+3. `Probabilities × V`：逐输出坐标验证对所有 Value token 的加权求和。重建后的矩阵应严格对应当前 Attention 积木的输出。
+
+对应浏览器内部按钮、局部矩阵、乘加表格必须直接来自执行器记录；没有内部运行证据的模型或算子不会自动被改写为 QK/PV。不同类型的 MLA、SWA、Chunk/FlashAttention、Diffusion Video Attention 需按真实计算流另行适配，不准仅依名字套用标准 Attention 结构。
 
 ## 不能跨越的证据边界
 
