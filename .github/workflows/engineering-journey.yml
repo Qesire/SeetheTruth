@@ -2,7 +2,7 @@ name: Guided Engineering Journey
 on:
   push:
     paths:
-      - 'engineering_journey*'
+      - 'engineering_*'
       - 'atlas_server.py'
       - 'tests/browser_engineering_journey.py'
       - 'tests/engineering_journey_contracts.js'
@@ -33,6 +33,7 @@ jobs:
       - name: Run executable training and checkpoint contracts
         run: |
           node tests/engineering_journey_contracts.js
+          node tests/engineering_pipeline_contracts.js
           node tests/android_asset_manifest_contracts.js
       - name: Install headless Chromium
         run: |
@@ -40,6 +41,16 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Execute full desktop/mobile 12-checkpoint learning journey
         run: python tests/browser_engineering_journey.py
+      - name: Execute advanced shuffle, accumulation and resume UI
+        run: python tests/browser_engineering_pipeline.py
+      - name: Archive advanced training pipeline screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: advanced-engineering-training-screenshots
+          path: engineering_pipeline_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Archive training and inference screenshot evidence
         if: always()
         uses: actions/upload-artifact@v4
