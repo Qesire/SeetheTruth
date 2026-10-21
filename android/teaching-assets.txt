@@ -82,6 +82,9 @@ video_causal_conv3d.js
 wan_ffn_trace.js
 wan_ffn_lab.js
 wan_ffn_lab.html
+compute_microscope.js
+compute_microscope_ui.js
+compute_microscope.css
 engineering_journey_engine.js
 engineering_journey_ui.js
 engineering_journey.html
