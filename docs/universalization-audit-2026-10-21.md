@@ -24,8 +24,8 @@
 | 状态 | 页面 | 判断与下一工作 |
 |---|---|---|
 | **通用张量/算子**（2） | `learn.html`, `wan_ffn_lab.html` | 共享真正的 `compute_microscope` 数据合同与可视化；Wan 保留其特化反事实 |
-| **通用状态/事件**（4） | `deepinfer_kv_lifecycle_lab.html`, `deepinfer_worker_lab.html`, `engineering_pipeline.html`, `training.html` | 共享 `state_microscope`；四者分别从 KV Engine、Worker Event DAG、Bigram Checkpoint、标量分析训练 生成状态差分 |
-| **专用实现，尚未完成接口统一**（9） | `micro_training.html`, `cache.html`, `deepinfer_scheduler_lab.html`, `deepinfer_prefill_lab.html`, `paper_lab.html`, `semantic_state.html`, `tradeoffs.html`, `capabilities.html`, `engineering_journey.html` | 数值引擎、前沿结构或原理解释可能已成熟，但尚未统一通用透视接口；不能统计为完成 |
+| **通用状态/事件**（7） | `deepinfer_kv_lifecycle_lab.html`, `deepinfer_worker_lab.html`, `engineering_pipeline.html`, `training.html`, `deepinfer_scheduler_lab.html`, `deepinfer_prefill_lab.html`, `cache.html` | 共享 `state_microscope`；七者分别从 KV Engine、Worker Event DAG、Bigram Checkpoint、标量分析训练、Decode 调度资源/Worker 所有权、Prefill 源码策略、GQA 数学缓存的完全重放生成证据；后两项并不具有真实 GPU/多机语义 |
+| **专用实现，尚未完成接口统一**（6） | `micro_training.html`, `paper_lab.html`, `semantic_state.html`, `tradeoffs.html`, `capabilities.html`, `engineering_journey.html` | 数值引擎、前沿结构或原理解释可能已成熟，但尚未统一通用透视接口；不能统计为完成 |
 | **入口/导航**（2） | `teaching.html`, `android_teaching.html` | 非计算运行页面；应复用导航/课程状态而非误接计算透视 |
 | **PC 独有证据工作流**（3） | `real_model_lab.html`, `index.html`, `telemetry.html` | 模型实测与静态源码证据必须保持独立，不从文件格式或采样数据自动提升为真实计算证据 |
 
@@ -33,7 +33,7 @@
 
 ## 当前最关键的通用化缺口（排序）
 
-1. **独立训练、解码、Scheduler/Prefill 的异构数值与状态合同**：把已有已验证事件和实际输出适配到共用 `state_microscope`，保留独立数学后端，不重复实现权重或推理规则。为训练 VJP/Optimizer 的每一阶段补 `before→grad→update`，不能只靠演示页面。
+1. **剩余独立训练/论文与多模态复合算子的异构数值与状态合同**：把已有已验证事件和实际输出适配到共用 `state_microscope`，保留独立数学后端，不重复实现权重或推理规则。为训练 VJP/Optimizer 的每一阶段补 `before→grad→update`，不能只靠演示页面。
 2. **将已有全部可执行积木按类别逐一审计 Micro Trace 的分辨率**：对于 ND Attention、Conv3D、ViT/Patch、STFT/Mel、DDIM、MoE、Loop、Paged KV，构建各自来源明确的子算子序列，配套独立标量/NumPy/PyTorch oracle 与形状/数值负例。
 3. **真正的模型小样本运行证据接入**：重放时显式绑定代码 revision、配置、权重 hash、Token/Time、block index、dtype 和原始张量坐标。仅具汇总统计的现有真实小模型观测不具有整个矩阵操作数，必须明确标示只能“只读参考”。
 4. **训练到服务的全链条状态机**：将 Codegen、Checkpoint、模型加载、Tokenizer、缓存、prefill/decode、调度、异常和资源释放串成可逐级进入的课程，支持故障注入和跨层校验。生产 HTTP/gRPC、吞吐和实时 GPU tracing 只作独立扩展。
