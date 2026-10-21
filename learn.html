@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeetheTruth · Model Learning Studio</title>
+<link rel="stylesheet" href="compute_microscope.css">
 <style>
 :root{color-scheme:dark;--bg:#08111e;--line:#24465e;--muted:#8daec4;--text:#e7f7ff;--cyan:#63e2f1;--mint:#6feac2;--amber:#f4ba7b;--violet:#b8a2ff;--surface:#0e2132}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#14364b 0%,#08111e 46%,#060c16 100%);color:var(--text);font:13px/1.55 "Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
@@ -280,7 +281,8 @@ input[type="file"]{display:none}
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
   </section>
-  <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
+  <section class="section" aria-label="通用计算透视：支持任意已执行积木与静态依赖"><div class="kicker">UNIVERSAL COMPUTE MICROSCOPE · 源码 / 依赖 / 数值 / 单次乘加</div><p class="hint">基础能力：全部积木均可查看执行顺序、上游依赖和张量形状；支持的 2D 数值算子可点击坐标，Linear / MatMul 可逐乘加验证。静态推演与真实模型观测严格分级。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
+   <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
     <div class="kicker">REAL MODEL REFERENCE / 真实观测 · 与教学运算分离</div>
     <p class="hint">将真实 CPU 模型的采样关联到所选 Linear、MatMul 或 Parameter。只读展示，不替换当前计算。</p>
     <div class="real-sample-toolbar"><input id="traceReferenceFile" type="file" accept="application/json,.json" aria-label="关联真实模型采集 JSON"><button class="btn small" id="bindRealTrace" type="button" disabled>关联选中积木</button><button class="btn small" id="clearRealTrace" type="button" disabled>清除</button></div>
@@ -326,6 +328,8 @@ input[type="file"]{display:none}
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
 <script src="model_trace_bridge.js"></script>
+<script src="compute_microscope.js"></script>
+<script src="compute_microscope_ui.js"></script>
 <script src="industrial_source_inspector.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
@@ -351,6 +355,21 @@ let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
+const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
+const microscopeView=MicroscopeUI.mount($("#computeMicroscope"),id=>{if(!run)return;const at=run.steps.findIndex(x=>x.id===id);if(at>=0){selected=id;step=at;render();}});
+let microscopeCachedRun=null,microscopeCachedGraph=null,microscopeCachedFrame=null,microscopeCacheError=null;
+function syncMicroscope(){
+ if(!run){microscopeCachedFrame=null;microscopeCachedRun=null;microscopeCachedGraph=null;microscopeView.clear();return;}
+ const used=runGraph||graph;
+ if(microscopeCachedRun!==run||microscopeCachedGraph!==used){
+  try{microscopeCachedFrame=Microscope.learning(used,run,L);microscopeCacheError=null;}
+  catch(error){microscopeCachedFrame=null;microscopeCacheError=error.message;}
+  microscopeCachedRun=run;microscopeCachedGraph=used;
+ }
+ if(microscopeCachedFrame)microscopeView.show(microscopeCachedFrame,selected);
+ else microscopeView.clear('此算子当前没有通用 2D 逐坐标证据：'+microscopeCacheError+'。可继续查看原有 ND 轴切片或专用内核分析；不会伪造数值。');
+}
+window.SeetheTruthMicroscopeWorkbench={get evidence(){return microscopeCachedFrame?.evidenceTier||null;},get visibleNode(){return microscopeView.selected;},get stageCount(){return microscopeCachedFrame?.steps.length||0;}};
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -740,7 +759,8 @@ function inspect(){
      }catch(err){$("#adamwResult").textContent="优化器预览失败："+err.message;}};
    }
  }
- document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
+ syncMicroscope();
+  document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
    const entry=active.internals[el.dataset.stage];if(!entry?.tensor)return;
    const head=Number(el.value),tensor=entry.tensor;
    const matrix=window.SeetheTruthTensorIR.plane(tensor,{[tensor.axes[1]]:head}).view;
