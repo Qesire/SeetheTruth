@@ -22,7 +22,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 新增 [具名张量轴与不可变状态实验室](semantic_state.html)：实际执行 rank 1–5 小规模张量的轴重排、显式广播、时间分块、拼接、流状态创建/追加/读取/分叉，精确检查绝对时间位置与状态版本。新增 [数学合同与验证记录](docs/semantic-state-contracts.md)。
 
-执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；但尚未支持其 Python 导出/VJP，亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前共 138 类。
+执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；已经支持独立 NumPy/PyTorch CPU 代码生成，并通过双分叉状态参数梯度与 AdamW 验证（不包含通用跨时间步 BPTT），亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前共 138 类。
 
 ## PC / Android 同一份教学内容
 
@@ -88,6 +88,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 
 ```bash
 node tests/release_surface_contracts.js
+node tests/torch_stream_autograd_contracts.js  # 有界状态双分叉、真实 PyTorch 梯度、AdamW 与 checkpoint
 node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
 node tests/torch_codegen_extensions_contracts.js  # torch + numpy
 node tests/moe_executable_codegen_contracts.js    # torch + numpy
@@ -122,3 +123,7 @@ node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python Nu
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
 
 **逻辑状态导出（2026-10-21）：** `stream_state_init/append/read/fork` 已支持独立 **NumPy Python** 前向生成，返回的数值字典附带 `state_metadata`，在运行时检查绝对时间位置、容量和版本；移动端仍仅执行教学图，不开放脚本下载。该编译支持有界 [T,D] 数值状态，暂不包括状态算子的 PyTorch 自动微分、真实 GPU KV Page Manager 或高维递归图编译。
+
+**PyTorch 状态编译（2026-10-21）：** 4 类 `stream_state_*` 算子能在 PC 版导出真实可运行的 PyTorch CPU Float64 前向代码。通过 PyTorch `clone`/`cat`/有界时间切片保持计算图，显式区分状态元数据与可微张量，在共享前缀双分叉、两路标量损失合并和 AdamW 训练中验证梯度汇合、checkpoint 与来源覆盖重算；`torch_stream_lowering.js` 对位置、容量和类型错误严格拒绝。Android 只提供教学画布、没有代码产物。该功能仅限单次 DAG 的有界 [T,D] 状态，不提供递归时间调度、跨步 BPTT、生产级 KV/显存加速。
+
+推导和反例：[流状态积木的 PyTorch 梯度合同](docs/torch-stream-autograd.md)。

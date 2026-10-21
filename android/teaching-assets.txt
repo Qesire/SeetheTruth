@@ -72,6 +72,7 @@ teaching_edition.js
 teaching_hub.js
 tensor_ir.js
 torch_codegen.js
+torch_stream_lowering.js
 tradeoffs.html
 train_state.js
 training.html

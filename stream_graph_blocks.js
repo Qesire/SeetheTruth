@@ -1,6 +1,7 @@
 /* Executable, tagged logical stream blocks for the free-form Learning Studio DAG.
  * Transport values are Float64 [T,D] matrices; tagged state lives in graph provenance.
- * This does not perform physical KV paging, backpropagation, or GPU inference.
+ * JS micro-execution is forward-only; exported Torch CPU preserves autograd.
+ * No physical GPU KV paging or cross-invocation BPTT.
  */
 (function(root,factory){"use strict";
  const api=factory(typeof module==="object"&&module.exports?require("./semantic_state.js"):root.SeetheTruthSemanticState,
@@ -90,7 +91,7 @@
     kind==="stream_state_append"?"状态 S 与 chunk 依赖、校验绝对位置后创建新版本":
     kind==="stream_state_fork"?"不可变状态复制：上游版本不变":
     "读取有界绝对时间窗口，返回普通 Tensor",
-   conditions:["真实 CPU 数值与显式状态依赖；非物理 KV 分页 / 真实 GPU 性能 / 梯度"]};
+   conditions:["JS 画布仅前向；导出 Torch CPU 可验证分叉梯度，未实现跨轮 BPTT 或物理 GPU KV"]};
  }
  function run(n,records){
   if(!isKind(n.kind))throw Error("run supports only state operators");

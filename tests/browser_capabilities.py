@@ -42,7 +42,7 @@ class CapabilityPageAcceptance(unittest.TestCase):
             self.assertEqual(counts["registered"],138)
             self.assertEqual(counts["knowledgeCards"],138)
             self.assertEqual(counts["numpyEligible"],121)
-            self.assertEqual(counts["torchEligible"],111)
+            self.assertEqual(counts["torchEligible"],115)
             self.assertEqual(page.locator("#registered").inner_text(),str(counts["registered"]))
             self.assertEqual(page.locator("#rows tr").count(),138)
             page.locator("#filter").select_option("no-numpy")
