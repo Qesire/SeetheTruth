@@ -42,7 +42,8 @@ assert.deepEqual(last.data,[17,18,19,20,21,22,23,24]);
 const split=[S.slice(video,'T',0,1),S.slice(video,'T',1,1),last];
 assert.deepEqual(S.concat(split,'T').data,video.data);
 assert.deepEqual(S.reorder(S.reorder(video,['B','C','T','H','W']),video.axes).data,video.data);
-fails(()=>S.concat([video,video,video,video,video,video,video,video],'T'),/bounded shape\/capacity/);
+const larger=F([1,5,2,2,2],['B','T','H','W','C'],Array.from({length:40},(_,i)=>i));
+fails(()=>S.concat(Array(8).fill(larger),'T'),/bounded shape\/capacity/);
 // Streaming: absolute position and capacity are semantics, not inferred from matching shapes.
 const initial=F([1,2,2],['B','T','D'],[1,2,3,4]);
 const one=F([1,1,2],['B','T','D'],[5,6]),alt=F([1,1,2],['B','T','D'],[50,60]);

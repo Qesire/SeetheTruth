@@ -73,3 +73,7 @@ The executable `block_capabilities.js` inventory and `capabilities.html` compute
 Android teaching asset scope is explicitly reviewed in `android/teaching-assets.txt`; its build must not silently package every repository-root HTML/JS file. Offline demo code has no model backend or runtime file export. Some JS compiler helpers remain direct dependencies of the shared Learning Studio until the teaching editor is fully split from the desktop export UI.
 
 Remaining prerelease blockers: license choice by the owner, final main/release SHA acceptance, clean first-run browser inspection, release notes and an explicitly published prerelease. A debug-signed Android workflow artifact is not a store release.
+
+## 2026-10-21 named-axis/state proof increment
+
+`semantic_state.js` adds separate typed Float64 rank 1–5 numerical contracts and immutable logical stream state, not a general graph-level persistent operator or actual GPU KV Cache implementation. The same `semantic_state.html` mathematics works in PC Chromium and Android offline assets. Run `node tests/semantic_state_contracts.js` and `python tests/browser_semantic_state.py`; only legacy 134 blocks/59 presets are counted. This is P1 issue #42 foundation; compiler/VJP and versioned graph state operators remain pending.

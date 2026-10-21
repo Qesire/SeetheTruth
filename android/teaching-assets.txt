@@ -61,6 +61,9 @@ paper_hover.js
 paper_lab.html
 paper_patches.js
 python_codegen.js
+semantic_state.html
+semantic_state.js
+semantic_state_lab.js
 teaching.html
 teaching_curriculum.js
 teaching_edition.js
