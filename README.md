@@ -34,6 +34,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
 
+## 进阶工程训练流水线：Shuffle / Accumulation / Resume / Decode
+
+新增 [进阶训练状态机实验室](engineering_pipeline.html)，与原有 [12 关基础工程课程](engineering_journey.html) 相互衔接。6 个可执行关卡逐步检查 Sampler Epoch/Cursor、Microbatch 梯度累积、等效 Batch 逐参数数学一致性、按 Optimizer Step 的 Warmup/Cosine、梯度裁剪、在一个更新中途暂停后恢复 DataLoader 与 Pending Gradients，并把相同 checkpoint 用于带 provenance 的推理。PC 与离线 Android 使用一份真实 Float64 Bigram 数值代码；不执行真实大型模型/GPU/HTTP Serving，也不提供 APK 文件导出。数值合同：`node tests/engineering_pipeline_contracts.js`，UI 验收：`python tests/browser_engineering_pipeline.py`。进一步合同见 [工程训练流水线说明](docs/engineering-training-pipeline.md)。
+
 ## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
