@@ -1,0 +1,50 @@
+name: Guided Engineering Journey
+on:
+  push:
+    paths:
+      - 'engineering_journey*'
+      - 'atlas_server.py'
+      - 'tests/browser_engineering_journey.py'
+      - 'tests/engineering_journey_contracts.js'
+      - 'android/teaching-assets.txt'
+      - '.github/workflows/engineering-journey.yml'
+  pull_request:
+    paths:
+      - 'engineering_journey*'
+      - 'atlas_server.py'
+      - 'tests/browser_engineering_journey.py'
+      - 'tests/engineering_journey_contracts.js'
+      - 'android/teaching-assets.txt'
+      - '.github/workflows/engineering-journey.yml'
+permissions:
+  contents: read
+jobs:
+  numeric-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run executable training and checkpoint contracts
+        run: |
+          node tests/engineering_journey_contracts.js
+          node tests/android_asset_manifest_contracts.js
+      - name: Install headless Chromium
+        run: |
+          python -m pip install 'playwright==1.55.0'
+          python -m playwright install --with-deps chromium
+      - name: Execute full desktop/mobile 12-checkpoint learning journey
+        run: python tests/browser_engineering_journey.py
+      - name: Archive training and inference screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guided-engineering-journey-screenshots
+          path: engineering_journey_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
