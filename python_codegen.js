@@ -10,9 +10,10 @@
 const node=typeof module==="object"&&module.exports;
 const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
+const StreamNumpy=node?require("./numpy_stream_lowering.js"):root.SeetheTruthStreamNumpy;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
- ...SOURCES,"deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
+ ...SOURCES,...StreamNumpy.kinds,"deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
@@ -280,10 +281,16 @@ function compile(raw,options={}){
  const graph=options.targetId?Branch.slice(raw,options.targetId):L.validateGraph(raw);
  const sorted=L.order(graph);
  const unsupported=sorted.filter(n=>!SUPPORTED.has(n.kind));
+ const hasStream=sorted.some(n=>StreamNumpy.kinds.includes(n.kind));
  if(unsupported.length)throw Error("无法导出可执行 Python：不支持 "+unsupported.map(n=>n.id+"("+n.kind+")").join(", ")+"；不会将其伪装为可执行代码");
  // The normal micro-interpreter rejects missing sockets, invalid parameter-dependent values etc.
  const forward=L.evaluate(graph),steps=new Map(forward.steps.map(x=>[x.id,x]));
  const lines=[PRELUDE.replace("def run_graph(overrides=None):","\ndef _deepinfer_mtp(remap, rates, budget):\n    mapping = remap[:,0].astype(np.int64)\n    if np.any((mapping < -1) | (mapping >= rates.shape[0])):\n        raise ValueError(\"invalid DeepInfer remap\")\n    if np.any((rates < 0) | (rates > 1)):\n        raise ValueError(\"confidence must be in [0,1]\")\n    selected = np.where(mapping[:,None] >= 0, rates[np.maximum(mapping,0)], 0.0)\n    cum = np.cumprod(selected, axis=1).reshape(-1)\n    top = np.argsort(-cum,kind=\"stable\")[:budget-remap.shape[0]]\n    return (1 + np.bincount(top//rates.shape[1],minlength=remap.shape[0])).astype(np.float64).reshape(-1,1)\n\ndef _deepinfer_yoco(q,k,v,window,keep,backtracking,mode):\n    if keep < window+backtracking: raise ValueError(\"invalid YoCo keepTokens bound\")\n    n = q.shape[0]; cut=max(0,n-keep); out=[]\n    for t in range(cut if mode==\"compact\" else 0,n):\n        if t<cut:\n            out.append(np.zeros(v.shape[1],dtype=np.float64)); continue\n        idx=np.arange(max(0,t-window+1),t+1)\n        scores=k[idx]@q[t]/np.sqrt(q.shape[1])\n        logits=np.exp(scores-np.max(scores)); probs=logits/np.sum(logits)\n        out.append(probs@v[idx])\n    return np.stack(out,axis=0)\n\n"+"\ndef run_graph(overrides=None):")],provenance=[];
+ if(hasStream){
+   lines[0]=lines[0].replace("def run_graph(overrides=None):",
+     StreamNumpy.prelude+"\ndef run_graph(overrides=None):");
+   lines[0]=lines[0].replace("    v = {}\n","    v = {}\n    s = {}\n");
+ }
  const edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
  for(const n of sorted){
    const kind=n.kind,p=n.params,id=n.id,variable='v['+py(id)+']';
@@ -296,6 +303,10 @@ function compile(raw,options={}){
    if(SOURCES.has(kind)){
      expression='_source('+py(id)+','+encoded(steps.get(id).values)+','+
        JSON.stringify(steps.get(id).shape)+',overrides)';
+   }else if(StreamNumpy.kinds.includes(kind)){
+     const lowered=StreamNumpy.lower(n,edges);
+     lines.push(...lowered.before);
+     expression=lowered.expression;
    }else if(kind==="linear"){
      const sh=steps.get(edges.get(id+":x")).shape, dim=sh[1],cols=p.out;
      const W=Array.from({length:dim},(_,k)=>Array.from({length:cols},(_,j)=>weight(id,j,k)));
@@ -426,7 +437,7 @@ function compile(raw,options={}){
    lines.push("        raise ValueError("+py(id+": non-finite operation output")+")");
    provenance.push({id,kind,shape:steps.get(id).shape});
  }
- lines.push("    return v");
+ lines.push(hasStream?"    return _StreamOutputs(v,s)":"    return v");
  lines.push("");
  lines.push("if __name__ == '__main__':");
  lines.push("    outputs = run_graph()");
@@ -434,7 +445,7 @@ function compile(raw,options={}){
  const source=lines.join("\n")+"\n";
  return {source,filename:"seethetruth-"+(options.targetId||"full-graph")+".py",nodes:provenance,
     dependency:"numpy",outputId:options.targetId||sorted.at(-1).id,
-    statement:"NumPy program computes every supported node; unsupported kinds fail without export"};
+    statement:hasStream?"Independent NumPy logical-state forward with runtime time checks; no VJP or physical KV cache":"NumPy program computes every supported node; unsupported kinds fail without export"};
 }
 return Object.freeze({compile,supportedKinds:Array.from(SUPPORTED).sort()});
 });
