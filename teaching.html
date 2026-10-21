@@ -15,10 +15,10 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
 @media(max-width:880px){.layout{grid-template-columns:1fr}#deepDive{position:static}.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:580px){main{padding:20px 14px 48px}.cards{grid-template-columns:1fr}.card{padding:15px}.controls{gap:8px}.controls input{width:100%}header{padding:14px}.panel{padding:16px}}
 </style></head><body>
-<header><div><strong>SEETHE<em>TRUTH</em></strong><div class="muted">共享教学内容 · PC / Android</div></div><nav><a href="learn.html?edition=teaching">积木工作台</a><a href="deepinfer_prefill_lab.html">DeepInfer Prefill</a><a href="capabilities.html">积木能力审计</a><a href="semantic_state.html">张量与状态实验室</a></nav></header>
+<header><div><strong>SEETHE<em>TRUTH</em></strong><div class="muted">共享教学内容 · PC / Android</div></div><nav><a href="engineering_journey.html">训练→推理实战</a><a href="learn.html?edition=teaching">积木工作台</a><a href="deepinfer_prefill_lab.html">DeepInfer Prefill</a><a href="capabilities.html">积木能力审计</a><a href="semantic_state.html">张量与状态实验室</a></nav></header>
 <main><div class="eyebrow">ONE CURRICULUM · BOTH PLATFORMS</div><h1>从基础算子到真实推理系统</h1>
 <p class="intro">每门课程回答三个问题：<strong>实际发生什么计算？为什么设计成这样？最小的反证或对照实验是什么？</strong> 这里的解释、源码链接和练习与 PC 使用同一组版本化内容，Android 离线打包同一份教学源文件。</p>
-<div class="meta"><span id="editionLabel">教学中心</span><span id="version">—</span><span id="lessonCount">—</span><span>不要求 GPU / 后端</span></div>
+<section class="panel" style="margin:18px 0;border-color:#3f8b80"><div class="eyebrow">RECOMMENDED FIRST TRACK · 全生命周期</div><h2 style="margin-top:7px">亲自完成：数据 → Tokenizer → 前向 → 梯度 → 优化器 → 评估 → 检查点 → 推理</h2><p>12 个连续关卡，先预测机制，再执行真实的微型 CPU 数值训练；从训练后的同一组参数完成逐 Token 生成。包括真实错误拒绝、检查点恢复与工程边界说明；PC 和 Android 使用同一离线课程。</p><a class="action" href="engineering_journey.html">开始完整工程实战 →</a></section><div class="meta"><span id="editionLabel">教学中心</span><span id="version">—</span><span id="lessonCount">—</span><span>不要求 GPU / 后端</span></div>
 <div class="controls"><input id="search" type="search" placeholder="搜索：多模态、Lo​​op、Prefill、KV…" aria-label="搜索课程">
 <button id="all" aria-pressed="true">全部</button><button id="fundamentals" aria-pressed="false">基础 / 多模态</button><button id="inference" aria-pressed="false">前沿 / 推理</button></div>
 <div class="layout"><section><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除筛选后查看全部。</p></section>
