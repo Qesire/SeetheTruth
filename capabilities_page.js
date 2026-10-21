@@ -19,4 +19,19 @@ function render(){
 }
 for(const id of ["search","category","filter"])$(id).addEventListener(id==="search"?"input":"change",render);
 render();
+const Surface=window.SeetheTruthSurfaceAudit;
+if(!Surface)throw Error('universal surface audit missing');
+const statuses={tensor:'已接入 · 通用张量/算子',state:'已接入 · 通用事件/状态',specialized:'专用实现 · 尚待复用',navigation:'导航，无计算职责',desktop_only:'PC 只读 / 实测来源'};
+const rows=document.createDocumentFragment();
+for(const item of Surface.screens){
+ const tr=document.createElement('tr'),td=document.createElement('td'),a=document.createElement('a');
+ a.href=item.page;a.textContent=item.title;td.append(a);tr.append(td);
+ for(const v of [statuses[item.status],item.note]){const cell=document.createElement('td');cell.textContent=v;tr.append(cell);}rows.append(tr);
+}
+$('surfaceAuditRows').replaceChildren(rows);
+const total=Surface.screens;
+$('coreTensorCount').textContent=total.filter(x=>x.status==='tensor').length;
+$('coreStateCount').textContent=total.filter(x=>x.status==='state').length;
+$('specializedCount').textContent=total.filter(x=>x.status==='specialized').length;
+$('otherCount').textContent=total.filter(x=>['navigation','desktop_only'].includes(x.status)).length;
 })();
