@@ -34,6 +34,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
 
+## 通用计算透视：所有积木共享的基本能力
+
+**核心能力已内置主 [自由积木学习工作台](learn.html) 的右侧 Inspector，而非限定在某个模型实验页。** 不论普通 GELU FFN、SwiGLU、Attention、Residual 还是有界 1D–5D 图像/音频/视频张量，学习者都可以循着实际依赖 → 算子 → 输出 Tensor → 坐标数值钻取。对 Linear/MatMul 自动重建权重存储布局、输入维逐项乘法及 Bias，并逐坐标校验与真实教学执行器结果相符。新增 `compute_microscope.js`、`compute_microscope_ui.js`、`compute_microscope.css` 作为所有模型适配器的基础；Wan 官方源码 FFN 页面已真正复用这些组件，同时保留 Wan 条件 Gate 与 Hidden Channel 特化分析。静态概念形状不冒充数值，合成 Float64/固定源码结构不冒充真实 checkpoint，未知格式会显式拒绝。详见 [通用计算透视系统合同](docs/computation-microscope.md)，测试：`node tests/compute_microscope_contracts.js` 与 `python tests/browser_compute_microscope.py`，含 PC/Android 共享离线组件。
+
 ## Wan2.2 FFN 源码级可视化与乘加透视
 
 新增 [Wan FFN 源码计算透视](wan_ffn_lab.html)：使用 [固定 commit 官方 `wan/modules/model.py`](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L183-L259) 和 [官方 I2V A14B 配置](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_i2v_A14B.py)，重建 Cross-Attention 残差→norm2→时间条件 e4/e3→Linear(5120,13824)→GELU(tanh)→Linear(13824,5120)→e5→残差完整顺序，展示每步 Tensor shape、计算值、热力图、矩阵权重布局与任意 Token/Channel 的点积项及来源行号。运算是确定性 Float64 微型教学模拟，**不是加载 Wan 权重**、执行原始 FlashAttention 或测量 GPU。Node 数值合同 `node tests/wan_ffn_microscope_contracts.js`，Chromium 视觉验收 `python tests/browser_wan_ffn.py`，数学/源码边界见 [深度 FFN 证据合同](docs/wan-ffn-source-microscope.md)。
