@@ -22,6 +22,20 @@ for(const name of ['ffn','swiglu','attention','residual']){
        assert.ok(C.dot(frame,s.id,row,col).error<1e-9);
    }else assert.equal(info.reconstructable,false);
  }
+ if(name==='attention'){
+   const attn=frame.steps.find(x=>x.kind==='attention');
+   assert.equal(attn.substeps.length,3);
+   assert.deepEqual(attn.substeps.map(x=>x.kind),['scaled_matmul','softmax','matmul']);
+   for(const sub of [attn.substeps[0],attn.substeps[2]])
+    for(let t=0;t<sub.out.shape[0];t++)for(let c=0;c<sub.out.shape[1];c++)
+     assert.ok(C.dot(frame,sub.id,t,c).error<1e-9,'Attention inner GEMM reconstruction');
+   const probs=attn.substeps[1].out;
+   for(let t=0;t<probs.shape[0];t++)
+     assert.ok(Math.abs(probs.values.slice(t*probs.shape[1],(t+1)*probs.shape[1]).reduce((x,y)=>x+y,0)-1)<1e-10);
+   const tamper=JSON.parse(JSON.stringify(frame));
+   tamper.steps.find(x=>x.kind==='attention').substeps[0].out.values[0]+=0.1;
+   assert.throws(()=>C.validate(tamper),/GEMM reconstruction contradicts/);
+ }
  const symbolic=C.learning(g,Concept.evaluate(g),L);
  assert.equal(symbolic.evidenceTier,C.TIERS.STATIC);
  assert.ok(symbolic.steps.every(s=>s.out.values===null));
