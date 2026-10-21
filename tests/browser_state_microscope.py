@@ -84,7 +84,7 @@ class StateMicroscopeBrowser(unittest.TestCase):
   self.assertIn('SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',p.locator('#stateMicroscope').inner_text())
   self.assertIn('decision',p.locator('#stateMicroscope .sm-changes').inner_text())
   p.locator('#rank0').select_option('later')
-  self.assertIn('secondVoteFallback',p.locator('#stateMicroscope details').inner_text() if p.locator('#stateMicroscope details').count() else p.locator('#stateMicroscope').inner_text())
+  self.assertIn('secondVoteFallback',p.locator('#stateMicroscope details').text_content())
   p.locator('#stateMicroscope .sm-step').nth(1).click()
   self.assertIn('Chunk',p.locator('#stateMicroscope h3').inner_text())
   p.locator('#scenario').select_option('grow')
