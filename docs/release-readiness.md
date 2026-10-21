@@ -77,3 +77,7 @@ Remaining prerelease blockers: license choice by the owner, final main/release S
 ## 2026-10-21 named-axis/state proof increment
 
 `semantic_state.js` adds separate typed Float64 rank 1–5 numerical contracts and immutable logical stream state, not a general graph-level persistent operator or actual GPU KV Cache implementation. The same `semantic_state.html` mathematics works in PC Chromium and Android offline assets. Run `node tests/semantic_state_contracts.js` and `python tests/browser_semantic_state.py`; only legacy 134 blocks/59 presets are counted. This is P1 issue #42 foundation; compiler/VJP and versioned graph state operators remain pending.
+
+## 2026-10-21 typed logical stream graph blocks
+
+Four `stream_state_*` operators were registered and integrated into the free editor. `stream_graph_blocks.js` provides tagged state-vs-tensor port checks, static temporal inference, immutable numerical state transitions, and forked branch execution. The same contract is used by `learning_lab.js`, `concept_flow.js`, and `graph_readiness.js`. Inventory is now **138 blocks** / 59 guided presets. **NumPy and PyTorch compiler allowlists remain unchanged** (no state export, no VJP); real GPU BlockTable, COW sharing or throughput remain out of scope. Node and Chromium/Android regression tests gate this increment.

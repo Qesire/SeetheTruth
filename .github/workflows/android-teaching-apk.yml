@@ -37,6 +37,7 @@ jobs:
           node tests/android_asset_manifest_contracts.js
           node tests/block_capability_contracts.js
           node tests/semantic_state_contracts.js
+          node tests/stream_graph_blocks_contracts.js
       - name: Assemble signed debug APK (not a Play Store release)
         run: gradle -p android --no-daemon :app:assembleDebug --stacktrace
       - name: Verify packaged teaching content and reviewed assets

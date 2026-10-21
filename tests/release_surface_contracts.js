@@ -3,10 +3,10 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const L=require('../learning_lab.js'),B=require('../block_catalog.js');
+const L=require('../learning_lab.js'),B=require('../block_catalog.js'),S=require('../stream_graph_blocks.js');
 const readme=read('README.md'),html=read('learn.html'),server=read('atlas_server.py');
 const release=read('docs/release-readiness.md');
-assert.equal(L.KINDS.length,11+B.KINDS.length,'all 11 original and extension definitions registered');
+assert.equal(L.KINDS.length,11+B.KINDS.length+S.kinds.length,'all 11 original and extension definitions registered');
 assert.equal(new Set(L.KINDS).size,L.KINDS.length,'all block kinds are unique');
 const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');

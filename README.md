@@ -22,7 +22,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 新增 [具名张量轴与不可变状态实验室](semantic_state.html)：实际执行 rank 1–5 小规模张量的轴重排、显式广播、时间分块、拼接、流状态创建/追加/读取/分叉，精确检查绝对时间位置与状态版本。新增 [数学合同与验证记录](docs/semantic-state-contracts.md)。
 
-执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**此层尚未注册为通用自由画布算子，也未承诺 PyTorch 导出/VJP 或真实 GPU KV Cache**；保持当前 134 类积木、59 门课程的已发布统计。
+执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；但尚未支持其 Python 导出/VJP，亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前共 138 类。
 
 ## PC / Android 同一份教学内容
 
@@ -55,7 +55,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
-| 积木库 | **134 种积木**：11 种基本计算积木 + 123 种扩展计算、状态和优化器积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
+| 积木库 | **138 种积木**：11 种基本积木 + 123 种扩展计算和优化器积木 + 4 种显式流状态积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
 | 学习内容 | **59 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
 | DeepInfer 推理调度 | 按官方 Reference 数学实现 MTP remap+累积置信度+稳定排名+固定预算；YoCo SWA mask/compact 保留后缀可执行数学示例及 Query 行数对照 | YoCo 尚未实现 DeepInfer 的真实多 Chunk metadata、Yoco Pivots、ZOS Worker/GPU Kernel；不能据此推断线上部署吞吐 |\n| 推理系统基础 | 真实 CPU Top-K、Top-K 稀疏 QK/PV、Paged KV 逻辑到物理地址映射、贪心推测解码验收；四门新的可自由编辑课程可组合 FlashMLA/DeepSelect/DeepSpec 相关机制 | 属于源码机制教学抽象，不提供 DeepSeek 旧 vLLM Fork、FP8/FP4 GPU kernels、实际分布式 EP 通信、目标/草稿模型权重或 GPU 性能 |\n| 原生视频计算 | 真 5D [B,T,H,W,C] 与 [O,Kt,Kh,Kw,I] 因果 Conv3D、左侧时间补零和历史帧流式状态；逐节点 JS/NumPy/PyTorch 比较及可训练卷积核权重梯度 | 不是完整 Wan VAE；空间 valid、时间 stride=1、无完整归一化、上下采样或实际视频文件解码 |\n| 进阶多模态 | 可执行 HWC Conv2D（独立可训练 Parameter 权重）、HTK Mel 三角滤波与两步确定性 ε-DDIM；NumPy/PyTorch CPU 支持，卷积参数的真实 autograd 可单独验证 | 无完整视频 VAE、卷积填充/膨胀、真实 Whisper Slaney 滤波权重、去噪神经网络或生成质量指标 |\n| 多模态 | 图像 Patchify、音频真实 Hann-STFT 功率谱与对数压缩、视频 Tubelet，另有图像/音频/视频三路交叉注意力的可执行积木图；NumPy、PyTorch CPU 代码导出 | 采用受限二维载体、合成数据和明确轴映射；尚无真实图片/音频/视频解码、ViT/ViViT 权重、Whisper Mel 滤波及 Wan VAE 3D 因果缓存 |\n| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |

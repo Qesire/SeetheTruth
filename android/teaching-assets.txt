@@ -64,6 +64,7 @@ python_codegen.js
 semantic_state.html
 semantic_state.js
 semantic_state_lab.js
+stream_graph_blocks.js
 teaching.html
 teaching_curriculum.js
 teaching_edition.js
