@@ -56,6 +56,8 @@ on:
       - 'tests/multimodal_codegen_parity.js'
       - 'python_codegen.js'
       - 'torch_codegen.js'
+      - 'torch_stream_lowering.js'
+      - 'tests/torch_stream_autograd_contracts.js'
       - 'tests/torch_codegen_contracts.js'
       - 'tests/python_codegen_contracts.js'
       - 'tests/python_codegen_extensions_contracts.js'

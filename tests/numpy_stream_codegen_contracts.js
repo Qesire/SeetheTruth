@@ -88,7 +88,7 @@ invalidState.edges.find(e=>e.to==='read_a'&&e.port==='state').from='prefix';
 assert.throws(()=>NP.compile(invalidState),/expected stream-state/);
 for(const kind of kinds){
  assert.ok(NP.supportedKinds.includes(kind),kind+' exposed in NumPy whitelist');
- assert.ok(!PT.supportedKinds.includes(kind),kind+' Torch must remain unsupported');
+ assert.ok(PT.supportedKinds.includes(kind),kind+' Torch autograd is covered by torch_stream_autograd_contracts.js');
 }
 const legacy=NP.compile(L.preset('ffn'));
 assert.ok(!legacy.source.includes('class _StreamOutputs'),'legacy non-state exports are untouched');

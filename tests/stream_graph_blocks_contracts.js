@@ -88,6 +88,6 @@ assert.equal(R.check(badCycle).executable,false);
 assert.match(R.check(badCycle).structuralError,/循环|端口/);
 for(const k of S.kinds){
  assert.equal(NP.supportedKinds.includes(k),true,'independent NumPy stream export is verified in numpy_stream_codegen_contracts.js');
- assert.equal(PT.supportedKinds.includes(k),false,'PyTorch export eligibility is not verified');
+ assert.equal(PT.supportedKinds.includes(k),true,'PyTorch state autograd validated by independent Torch runtime tests');
 }
 console.log('GRAPH_STREAM_BLOCKS_PASS four typed free-graph operators, forked exact CPU streams, graph invariants, fail-closed ports, v1 JSON compatibility');
