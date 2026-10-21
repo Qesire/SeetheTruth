@@ -62,7 +62,19 @@ y_{t,c}=b_{2,c}+\sum_{h=0}^{H-1} \operatorname{GELU}(u_{t,h}) W_{2,c,h}.
 3. 反事实操作：设置 `Gate 系数=0` 时，最终输出严格等于 Cross-Attention 后 x；变更 Scale/Shift，检查作用点。反事实改变的是教学控制，不是 Wan 官方修改后的 checkpoint；
 4. 数据类型与来源边界：Cross-Attention 的增量是 **明示外部输入**，由确定性种子生成，不是伪装成真实 FlashAttention QKV 输出；调制与 FFN 的演示权重也不是官方权重。
 
-## 4. 可证伪测试
+## 4. 单 Hidden Channel → 全部 Output Channel 的精确影响
+
+与只有颜色热力图不同，透视页面可选一个演示 Token `t`、一个中间通道 `h`，在 `GELU` 之后、`W2` 之前将该通道值设为零，保持其他 hidden 通道及权重不变。对每个输出通道 `c`，原始模型与该反事实之间的差异为：
+
+\[
+\Delta x_{t,c}=\mathrm{GELU}(u_{t,h})\,W_{2,c,h}\,e_{5,t,c}.
+\]
+
+原因是下投影对 hidden 输入线性叠加，而末端 Gate 为逐坐标乘法。页面报告逐输出通道的 `W2[c,h]`、删除前后输出、差分热力图，以及扰动的 L2 范数与相对 L2 比例。其数值直接来自相同的上、下投影微型张量，因此能够验证**同一个 hidden channel 可同时影响多个 output channel**。
+
+这个等式只针对“选择单个 post-GELU hidden channel 置零、其余值和 Gate 固定”的局部干预严格成立；不代表原始 FFN 默认执行稀疏计算，也不证明实际 GPU 加速或视频质量影响。不能把相对 L2 直接标成视频质量损失。
+
+## 5. 可证伪测试
 
 ```bash
 node tests/wan_ffn_microscope_contracts.js
@@ -72,7 +84,7 @@ node tests/android_asset_manifest_contracts.js
 
 Node 独立 reference 要从逐 Token 标量算式重新计算九步中的最终输出：多组 T/C/H 与 seed 数值一致，Linear1/Linear2 每个可选坐标点积完全闭合，LayerNorm 均值近似 0，GELU(tanh) 非线性不被错写成 ReLU 或 SwiGLU。无输出门控时 residual 恒等，对任意门控符号做线性对照。负样例拒绝非法 shape/seed。Chromium 桌面和 390px 手机尺寸分别截图验证源码映射、矩阵点击、Dot 解剖、参数改变与反事实效果。Android 仍无 Internet 权限、无导出和 Python 执行。
 
-## 5. 进一步深化的方向（不是已经实现）
+## 6. 进一步深化的方向（不是已经实现）
 
 - 完整 Block 的自注意力/交叉注意力入口，包括真实 QKV、RoPE、Mask 与数据来源；沿着 `norm3` 和 Cross-Attention return 的代码路径继续可视化。
 - 使用用户指定的真实模型权重与运行时 Trace，而不是合成数值：要核对官方/用户加载配置、dtype、timestep、block index、高低噪声分支及真实 activation/weight tensor，之后才允许标成实际 Wan 运行。
