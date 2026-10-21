@@ -71,5 +71,23 @@ function explainDot(data,step,token,channel){
  if(step===8){const C=info.main.shape[1],base=info.aux.crossInput.values[token*C+channel],delta=info.aux.delta.values[token*C+channel];return{step,token,channel,value:val,base,delta,reconstructed:base+delta,formula:'x_after_cross[t,c]+delta[t,c]'};}
  return{step,token,channel,value:val,formula:info.code};
 }
-return Object.freeze({SOURCE,STEPS,makeConfig,linear,geluTanh,norm2,trace,explainDot});
+function hiddenChannelEffect(data,token,channel){
+ check(data&&data.steps&&data.steps.length===9,'invalid FFN trace');
+ const {tokens:T,dim:C,hidden:H,gate}=data.config;
+ check(Number.isInteger(token)&&token>=0&&token<T,'invalid token');
+ check(Number.isInteger(channel)&&channel>=0&&channel<H,'invalid hidden channel');
+ const activation=data.steps[5].main.values[token*H+channel],weight=data.config.w2;
+ const e5=data.e[5],dense=data.steps[8].main.values.slice(token*C,(token+1)*C);
+ const effects=Array.from({length:C},(_,c)=>{
+  const raw=activation*weight[c*H+channel],gated=raw*gate*e5[token*C+c];
+  return {outputChannel:c,activation,weight:weight[c*H+channel],rawDelta:raw,gatedDelta:gated,
+    dense:dense[c],ablated:dense[c]-gated};
+ });
+ return {token,hiddenChannel:channel,activation,effects,
+  deltaL2:Math.hypot(...effects.map(e=>e.gatedDelta)),
+  denseL2:Math.hypot(...dense),
+  relativeDeltaL2:Math.hypot(...effects.map(e=>e.gatedDelta))/Math.max(Math.hypot(...dense),1e-12),
+  exactScope:'zero_one_post_GELU_hidden_activation_before_W2_no_retraining'};
+}
+return Object.freeze({SOURCE,STEPS,makeConfig,linear,geluTanh,norm2,trace,explainDot,hiddenChannelEffect});
 });
