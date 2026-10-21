@@ -6,14 +6,33 @@ function el(tag,text,cls){const a=document.createElement(tag);if(text!==undefine
 function mini(t,label,click,selected){
  const wrapper=el('div',undefined,'cmp-mini'),heading=el('div',label+' · ['+t.shape.join('×')+']','cmp-label');wrapper.append(heading);
  if(t.values===null){wrapper.append(el('p','静态形状推断：无数值矩阵。','cmp-hint'));return wrapper;}
- const [R,C]=t.shape,g=el('div',undefined,'cmp-matrix'),peak=Math.max(1e-12,...t.values.map(Math.abs));
+ const shape=t.shape,rank=shape.length,R=rank===1?1:shape[rank-2],C=shape[rank-1];
+ const prefix=Array.from({length:Math.max(0,rank-2)},(_,i)=>selected?.prefix?.[i]??0);
+ function updatePrefix(axis,index){
+  const next=prefix.slice();next[axis]=index;
+  if(click){click(0,0,next);return;}
+  const copy=mini(t,label,null,{prefix:next});wrapper.replaceWith(copy);
+ }
+ if(prefix.length){
+  const controls=el('div',undefined,'cmp-axes');
+  for(let axis=0;axis<prefix.length;axis++){
+   const label=el('label','Axis '+axis+' · ','cmp-axis'),sel=el('select');sel.setAttribute('aria-label',label.textContent+' index');
+   for(let index=0;index<shape[axis];index++){const option=el('option',index);option.value=index;sel.append(option);}
+   sel.value=String(prefix[axis]);sel.addEventListener('change',()=>updatePrefix(axis,Number(sel.value)));label.append(sel);controls.append(label);
+  }
+  wrapper.append(controls);
+ }
+ let offset=0;for(let i=0;i<prefix.length;i++)offset=offset*shape[i]+prefix[i];
+ offset*=R*C;
+ const g=el('div',undefined,'cmp-matrix'),peak=Math.max(1e-12,...t.values.map(Math.abs));
  g.style.gridTemplateColumns='repeat('+Math.min(C,24)+',minmax(37px,1fr))';
  for(let i=0;i<Math.min(R,20);i++)for(let j=0;j<Math.min(C,24);j++){
-  const v=t.values[i*C+j],b=el('button',Number(v).toPrecision(3),'cmp-cell');
+  const v=t.values[offset+i*C+j],b=el('button',Number(v).toPrecision(3),'cmp-cell');
   b.type='button';b.style.background='rgba('+(v>=0?'41,145,134,':'178,108,92,')+(.17+.69*Math.abs(v)/peak)+')';
-  b.title='['+i+','+j+'] '+v.toPrecision(15);b.setAttribute('aria-label',label+' row '+i+' channel '+j+' = '+v.toPrecision(9));
+  b.title='['+[...prefix,...(rank===1?[]:[i]),j].join(',')+'] '+v.toPrecision(15);
+  b.setAttribute('aria-label',label+' index '+[...prefix,...(rank===1?[]:[i]),j].join(',')+' = '+v.toPrecision(9));
   if(selected&&selected.row===i&&selected.col===j)b.classList.add('cmp-selected');
-  if(click)b.addEventListener('click',()=>click(i,j));
+  if(click)b.addEventListener('click',()=>click(i,j,prefix));
   else b.disabled=true;
   g.append(b);
  }
@@ -23,7 +42,7 @@ function mini(t,label,click,selected){
 }
 function mount(rootElement,onSelect){
  if(!rootElement||typeof rootElement.replaceChildren!=='function')throw Error('microscope UI mount required');
- let frame=null,active=null,row=0,col=0;
+ let frame=null,active=null,row=0,col=0,prefix=[];
  function clear(msg='运行数值图或进行静态形状分析后，选择积木即可展开；当前没有执行证据。'){
   frame=null;active=null;rootElement.replaceChildren(el('p',msg,'cmp-hint'));
  }
@@ -38,7 +57,7 @@ function mount(rootElement,onSelect){
    const item=frame.steps[i],b=el('button',(i+1)+'. '+item.title,'cmp-step');
    b.type='button';if(item.id===s.id)b.setAttribute('aria-current','step');
    b.title=item.kind+' · '+item.out.shape.join('×');
-   b.addEventListener('click',()=>{active=item.id;row=0;col=0;present();onSelect?.(item.id);});nav.append(b);
+   b.addEventListener('click',()=>{active=item.id;row=0;col=0;prefix=[];present();onSelect?.(item.id);});nav.append(b);
   }
   rootElement.append(nav);
   const meta=el('div',undefined,'cmp-meta');
@@ -56,10 +75,10 @@ function mount(rootElement,onSelect){
    link.href=frame.source.url+'#L'+s.sourceLines.start+'-L'+s.sourceLines.end;link.target='_blank';link.rel='noopener noreferrer';rootElement.append(link);
   }
   const output=el('div',undefined,'cmp-out');
-  output.append(mini(s.out,'输出张量 / '+s.id,(r,c)=>{row=r;col=c;present();}, {row,col}));
+  output.append(mini(s.out,'输出张量 / '+s.id,(r,c,p)=>{row=r;col=c;prefix=p||[];present();}, {row,col,prefix}));
   rootElement.append(output);
   if(s.out.values!==null){
-   const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape[0]-1),Math.min(col,s.out.shape[1]-1));
+   const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape[0]-1),Math.min(col,s.out.shape[s.out.shape.length-1]-1),prefix);
    const box=el('div',undefined,'cmp-breakdown');
    box.append(el('div','坐标 ['+detail.row+','+detail.col+'] = '+detail.value.toPrecision(12),'cmp-label'));
    box.append(el('pre',detail.formula,'cmp-formula'));
@@ -88,7 +107,7 @@ function mount(rootElement,onSelect){
   const target=nextFrame.steps.some(s=>s.id===nodeId)?nodeId:nextFrame.steps[0].id;
   if(nextFrame===frame&&target===active)return;
   const changed=frame!==nextFrame||target!==active;
-  frame=nextFrame;active=target;if(changed){row=0;col=0;}present();
+  frame=nextFrame;active=target;if(changed){row=0;col=0;prefix=[];}present();
  }
  clear();
  return Object.freeze({show,clear,get selected(){return active;},get frame(){return frame;}});
