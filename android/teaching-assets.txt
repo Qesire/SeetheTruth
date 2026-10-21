@@ -82,3 +82,6 @@ video_causal_conv3d.js
 engineering_journey_engine.js
 engineering_journey_ui.js
 engineering_journey.html
+engineering_training_pipeline.js
+engineering_pipeline_ui.js
+engineering_pipeline.html
