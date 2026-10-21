@@ -94,7 +94,7 @@ public final class TeachingActivity extends Activity {
                 }
             }
         });
-        String launch = BASE + "android_teaching.html";
+        String launch = BASE + "teaching.html?edition=teaching";
         if (state != null) {
             webView.restoreState(state);
         } else {

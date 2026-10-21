@@ -2,6 +2,8 @@
 
 这是 SeetheTruth 的纯教学 Android 版本，不是桌面模型开发平台移植。
 
+**统一课程入口（2026-10-21）**：Android 默认打开 [共享教学中心](../teaching.html)，它与 PC 读取相同的 [teaching_curriculum.js](../teaching_curriculum.js) 和数学计算模块。旧 `android_teaching.html` 保留兼容入口。无需维护两份知识卡，新增/修改课程随下次 APK 构建同步。详见 [双端同步设计](../docs/teaching-crossplatform.md)。
+
 **收录**：Learning Studio 课程与积木解释（包括图像、音频、视频、语言模型）、论文知识卡、模型架构成本取舍，以及 DeepInfer Worker/KV/Scheduler 等浏览器交互教学页。
 
 **不收录**：PyTorch/NumPy 程序导出、文件上传或保存、源代码分析服务器、模型权重、GPU 推理、实验产物、训练结果。JavaScript 的小规模数学演示是课程内容，不代表实际运行 DeepInfer。
