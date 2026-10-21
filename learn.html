@@ -141,7 +141,7 @@ input[type="file"]{display:none}
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">◎ 工程实战：训练 → 推理</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">◎ 工程实战：训练 → 推理</a><a class="btn ghost" href="wan_ffn_lab.html">◈ Wan FFN 源码级计算透视</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
@@ -158,7 +158,7 @@ input[type="file"]{display:none}
    <small>完整层 → Attention / FFN → 每次矩阵计算</small></button>
   <div class="hint">宏模块只组织已有的基础算子，不计入新的可执行积木。</div>
   <div class="rule"></div>  <div class="kicker">03 / GUIDED MISSIONS</div><h2>课程任务</h2>
-  <button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
+  <a class="btn ghost" href="wan_ffn_lab.html" style="display:block;margin:8px 0;font-size:11px;line-height:1.6">◈ Wan2.2 真实 FFN：9 层计算步骤 · 逐乘加钻取 ↗</a><button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
   <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
   <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
   <button class="mission" data-preset="loss"><span class="num">04</span><span>训练从哪里开始？<span class="desc">预测、目标、Loss（仅前向）</span></span></button>
