@@ -53,6 +53,10 @@ node tests/android_asset_manifest_contracts.js
 
 其中浏览器测试要求 Playwright Chromium；离线 APK 使用 `android/teaching-assets.txt` 作为精确资产白名单。
 
+## 已接入的进阶工程训练状态机
+
+[工程训练进阶课程](../engineering_pipeline.html) 共 6 个递进实验，真正执行 Shuffle/Epoch/Sampler Cursor、Microbatch 梯度累积、AdamW 单次更新、按 Optimizer Step 的 Warmup/Cosine 和梯度裁剪；同时使用 JSON 往返快照验证 **Microbatch 中断时的梯度缓冲、样本游标及优化器状态** 一并恢复。通过对照相同样本与相同有效 Batch 的训练验证数值等价，通过不中断/中断重启的两条支路验证整个状态一致，最终使用恢复的同一权重进行 Decode。参见 [数学及失败合同](engineering-training-pipeline.md)。
+
 ## 下一阶段
 
 在同一任务合同下，增加“真实小模型工程轨”：受控下载/校验、数据许可证确认、可复现环境、PyTorch CPU/GPU 训练、断点续训、导出、API 形式的 Serving 与端到端 Trace。任何声称运行真实预训练模型或取得 GPU 性能的数据都必须有独立实测证据，而非从微模型外推。
