@@ -34,6 +34,8 @@ jobs:
         run: |
           node tests/android_teaching_contracts.js
           node tests/teaching_curriculum_contracts.js
+          node tests/android_asset_manifest_contracts.js
+          node tests/block_capability_contracts.js
       - name: Assemble signed debug APK (not a Play Store release)
         run: gradle -p android --no-daemon :app:assembleDebug --stacktrace
       - name: Verify real APK contains offline lessons but no Python/backend
@@ -49,6 +51,18 @@ jobs:
             echo "Forbidden backend or model weight file in teaching APK"
             exit 1
           fi
+          unzip -Z1 "$APK" | sed -n 's@^assets/\\([^/]*\\)$@\\1@p' | grep -v '^
+          ls -lh "$APK"
+      - name: Upload installable Android teaching APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-android-teaching-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+ | sort > /tmp/seethetruth-apk-assets.txt
+          sort android/teaching-assets.txt > /tmp/seethetruth-approved-assets.txt
+          diff -u /tmp/seethetruth-approved-assets.txt /tmp/seethetruth-apk-assets.txt
           sha256sum "$APK"
           ls -lh "$APK"
       - name: Upload installable Android teaching APK
