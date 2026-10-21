@@ -51,7 +51,7 @@ class UniversalMicroscopeBrowser(unittest.TestCase):
   p.locator('#computeMicroscope .cmp-substep').nth(2).click()
   self.assertIn('Softmax',p.locator('#computeMicroscope .cmp-meta').inner_text())
   p.locator('#computeMicroscope .cmp-substep').nth(3).click()
-  self.assertIn('Value',p.locator('#computeMicroscope .cmp-meta').inner_text()+' Value')
+  self.assertIn('Context',p.locator('#computeMicroscope .cmp-meta').inner_text())
   self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
   p.screenshot(path=str(OUT/'editor-attention-three-inner-operators.png'),full_page=False,animations='disabled')
   p.locator('#studyMode').select_option('concept');p.locator('#run').click()
