@@ -27,6 +27,8 @@ gradle -p android :app:assembleDebug
 
 **离线设计**：WebViewAssetLoader 从 APK 加载 HTTPS 同源离线静态资源；应用 Manifest 不声明 INTERNET 权限，不运行服务器。外部论文链接仅在用户点击后交给系统浏览器。WebView 禁止文件访问、上传与下载，不暴露 JavaScriptInterface。课程页通过 `android_teaching_mode.js` 隐藏桌面的导出/导入控件并优化移动端布局。
 
-**资产策略**：仅将仓库根目录的 HTML、JS、CSS 与图片文件复制为 Android assets。不会打包 Python 服务、文档编辑器、实验日志或模型权重。
+**资产策略**：由 [显式审核清单](teaching-assets.txt) 精确选择离线 HTML/JS/CSS 资源；`node tests/android_asset_manifest_contracts.js` 检查直接网页依赖，APK CI 校验真实 APK assets 与清单完全一致，不允许根目录通配收集。Python 服务、模型权重等不进入 APK。
+
+**当前代码隔离边界**：共享的积木课堂 HTML 仍静态引用桌面 NumPy/PyTorch JavaScript 编译器，因此若干编译器脚本在清单中，仅用于维持同源页面依赖完整性；Android UI 与原生 WebView 禁止导入、导出和文件下载。后续应把课堂运行脚本与桌面编辑器导出脚本真正拆包。
 
 **已知限制**：主积木画布原本为桌面交互设计，小屏设备的连线精度/拖拽体验仍需 Android 设备手势验收。Android APK 是否真正构建成功，请以 CI 为准，而不是仅凭源码文件存在。

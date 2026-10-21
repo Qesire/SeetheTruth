@@ -22,8 +22,8 @@ assert.ok(studio.includes('src="teaching_edition.js"'),'teaching edition control
 assert.ok(studio.includes('mobile_teaching.css'),'same math workbench adapts to small screens');
 assert.ok(gate.includes('exportPython')&&gate.includes('save'),'APK teaching should not present artifact outputs');
 assert.ok(!hub.includes('id="exportPython"')&&!hub.includes('id="save"'));
-assert.ok(gradle.includes("include '*.html'")&&gradle.includes("include '*.js'")&&gradle.includes("include '*.css'"),
- 'Android assets must stage same existing web files, not duplicate course data');
+assert.ok(gradle.includes("teaching-assets.txt")&&!gradle.includes("include '*.js'"),
+ 'Android staging must use the audited same-source list, never root JS/HTML globs');
 assert.ok(activity.includes('WebViewAssetLoader')&&activity.includes('setAllowFileAccess(false)'));
 assert.ok(activity.includes('setAllowUniversalAccessFromFileURLs(false)'));
 assert.ok(activity.includes('appassets.androidplatform.net'));

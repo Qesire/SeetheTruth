@@ -26,16 +26,12 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.13.0'
 }
 
-// Include only browser teaching content, not Python servers, generated files,
-// Git metadata, training checkpoints, datasets, or the desktop export pipeline.
+// An explicit, reviewed list stops new desktop resources silently entering the APK.
+def teachingFiles = rootProject.file('teaching-assets.txt').readLines()
+    .collect { it.trim() }.findAll { it && !it.startsWith('#') }
 def stageTeachingAssets = tasks.register('stageTeachingAssets', Sync) {
     from(rootProject.projectDir.parentFile) {
-        include '*.html'
-        include '*.js'
-        include '*.css'
-        include '*.svg'
-        include '*.png'
-        include '*.webp'
+        teachingFiles.each { include it }
     }
     into(layout.buildDirectory.dir('generated/teaching-assets'))
 }

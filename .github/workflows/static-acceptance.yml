@@ -49,6 +49,16 @@ jobs:
           retention-days: 14
       - name: Validate DeepInfer source Prefill and image-safe chunk UI in Chromium
         run: python tests/browser_deepinfer_prefill.py
+      - name: Verify source-driven block capability matrix in desktop and phone Chromium
+        run: python tests/browser_capabilities.py
+      - name: Archive PC/Android capability matrix screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-capabilities-browser
+          path: capability_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify shared PC/Android course explanations in real Chromium
         run: python tests/browser_shared_teaching.py
       - name: Archive shared desktop/mobile teaching screenshots
