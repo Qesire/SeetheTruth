@@ -131,6 +131,23 @@ function create(input={}){
    });
    verify(expected.every((x,i)=>x===b.indices[i]),'pending sampler lineage mismatch');
   }
+  // Recompute the pending gradient and loss using the checkpoint's exact weights:
+  // it is a mathematical consistency check, not a cryptographic signature.
+  if(b.microSteps>0){
+   const oracle=E.create({seed:config.seed,lr:config.lr,
+    batchSize:config.microBatchSize*config.accumulationSteps,weightDecay:config.weightDecay});
+   oracle.restore(snap.model);
+   const expectedSum=Array(V*V).fill(0);let expectedLoss=0;
+   for(let k=0;k<b.microSteps;k++){
+    const positions=b.indices.slice(k*config.microBatchSize,(k+1)*config.microBatchSize);
+    const g=oracle.gradientForPairs(positions.map(index=>pairs[index]));
+    for(let j=0;j<expectedSum.length;j++)expectedSum[j]+=g.gradient[j]*config.microBatchSize;
+    expectedLoss+=g.loss*config.microBatchSize;
+   }
+   const near=(x,y)=>Math.abs(x-y)<=1e-10*Math.max(1,Math.abs(x),Math.abs(y));
+   verify(near(b.lossSum,expectedLoss)&&expectedSum.every((x,j)=>near(x,b.gradientSum[j])),
+    'pending accumulated tensor provenance mismatch');
+  }
   model.restore(snap.model);
   epoch=state.epoch;cursor=state.cursor;
   pending={microSteps:b.microSteps,samples:b.samples,lossSum:b.lossSum,gradientSum:b.gradientSum.slice(),indices:b.indices.slice()};
