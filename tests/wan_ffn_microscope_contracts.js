@@ -60,7 +60,16 @@ for(const [seed,T,C,H] of [[17,3,4,8],[29,1,2,3],[93,4,6,11],[120,2,9,5]]){
   const norm=t.steps[2].main.values.slice(token*C,(token+1)*C);
   close(norm.reduce((a,b)=>a+b,0),0,1e-11);
  }
+ const sensitivity=A.hiddenChannelEffect(t,0,0);
+ assert.equal(sensitivity.effects.length,C);
+ assert.equal(sensitivity.hiddenChannel,0);
+ for(const effect of sensitivity.effects){
+  const reference=t.steps[8].main.values[effect.outputChannel]-t.steps[5].main.values[0]*t.config.w2[effect.outputChannel*H]*t.config.gate*t.e[5][effect.outputChannel];
+  close(effect.ablated,reference);
+  close(effect.dense-effect.ablated,effect.gatedDelta);
+ }
  const noGate=A.trace({seed,tokens:T,dim:C,hidden:H,gate:0});
+ assert.equal(A.hiddenChannelEffect(noGate,0,0).deltaL2,0);
  assert.deepEqual(noGate.steps[8].main.values,noGate.steps[1].main.values);
  const zeroShift=A.trace({seed,tokens:T,dim:C,hidden:H,shift:0});
  assert.notDeepEqual(zeroShift.final.values,t.final.values);
@@ -73,7 +82,7 @@ const real=A.trace().real;
 assert.equal(real.params,141576704);assert.equal(real.flopsPerToken,283115520);
 const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'wan_ffn_lab.html'),'utf8');
 const js=fs.readFileSync(path.join(root,'wan_ffn_lab.js'),'utf8');new vm.Script(js);
-for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotBreakdown','sourceCode','openSource','recompute','zeroGate','numerics'])assert.ok(html.includes('id="'+id+'"'),id);
+for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotBreakdown','ablationPanel','ablateChannel','ablateToken','sourceCode','openSource','recompute','zeroGate','numerics'])assert.ok(html.includes('id="'+id+'"'),id);
 for(const file of ['wan_ffn_trace.js','wan_ffn_lab.js'])assert.ok(html.includes('src="'+file+'"'),file);
 assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('wan_ffn_lab.html'));
 const allow=fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/);
