@@ -28,7 +28,13 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 新的 [跨平台教学中心](teaching.html) 将 8 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
 
-## 全生命周期工程实战（PC / Android 共用）\n\n新增 [12 关工程引导](engineering_journey.html)：从数据划分、Tokenization、参数初始化、稳定 Softmax、CE 解析梯度与有限差分、AdamW 更新、验证集、Checkpoint 到训练权重驱动的逐 Token Decode。每关需要主动回答机制问题，再执行真实的 Float64 小规模 CPU 数值检查；拒绝错误输入，并能恢复优化器状态。教学数值为 8 Token 的 Bigram 模型，不是 Transformer、真实权重训练或 GPU Serving；Android 仅提供离线教学，不产生文件和脚本。\n\n验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。\n\n## 立即体验
+## 全生命周期工程实战（PC / Android 共用）
+
+新增 [12 关工程引导](engineering_journey.html)：从数据划分、Tokenization、参数初始化、稳定 Softmax、CE 解析梯度与有限差分、AdamW 更新、验证集、Checkpoint 到训练权重驱动的逐 Token Decode。每关需要主动回答机制问题，再执行真实的 Float64 小规模 CPU 数值检查；拒绝错误输入，并能恢复优化器状态。教学数值为 8 Token 的 Bigram 模型，不是 Transformer、真实权重训练或 GPU Serving；Android 仅提供离线教学，不产生文件和脚本。
+
+验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
+
+## 立即体验
 
 需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
 
