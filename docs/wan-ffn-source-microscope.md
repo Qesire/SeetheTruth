@@ -53,6 +53,10 @@ y_{t,c}=b_{2,c}+\sum_{h=0}^{H-1} \operatorname{GELU}(u_{t,h}) W_{2,c,h}.
 
 两个 Dense Linear 的解析乘加 FLOPs（每 multiply-add 为 2 FLOPs）约为 `4·B·L·C·H`。仅计算 projection；忽略 LayerNorm、GELU、modulation、bias、访存、launch、Tensor Core tiling 和 pipeline。官方 C/H 下，单 Token FFN GEMM 约 **283,115,520 FLOPs**，单 Block 两次投影权重与 bias 共 **141,576,704** 元素。不能直接把这个理论 FLOPs 当成实测延迟或者实际可节省比例。
 
+## 3. 通用计算透视框架复用
+
+Wan 页面不再只有专用九步绘图。现在还调用仓库级 `SeetheTruthComputeMicroscope.wan()` 将来源固定、Float64 模拟的逐算子结果转换为通用 Trace schema，并由共享 `compute_microscope_ui.js` 展示 Dataflow、2D 张量、完整 GEMM 点积、来源及证据等级。这个渲染器也直接装配在自由积木编辑器里：任何已支持的模型积木都可使用，带多个语义轴的 Tensor 支持有界切片，尚未实测的形状始终维持静态证据等级。详见 [核心能力合同](computation-microscope.md)。
+
 ## 3. 可视化教学协议
 
 **[计算透视入口](../wan_ffn_lab.html)** 有 9 个按源码顺序的阶段（条件、Cross residual、Norm、Scale/Shift、Linear1、GELU、Linear2、Gate、Residual），每阶段能观察：
