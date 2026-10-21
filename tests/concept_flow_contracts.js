@@ -169,7 +169,12 @@ function perKind(k){
  }
  assert.deepEqual(result.shape,actual,k);
 }
-for(const k of L.KINDS)perKind(k);
+// The legacy perKind oracle assumes every port is a plain [T,D] array.
+ // Tagged logical state is deliberately not a tensor; its real typed graph
+ // contract is tested end-to-end in stream_graph_blocks_contracts.js.
+ const StreamGraph=require('../stream_graph_blocks.js');
+ for(const k of L.KINDS)if(!StreamGraph.isKind(k))perKind(k);
+ for(const k of StreamGraph.kinds)assert.ok(L.defs[k]&&StreamGraph.defs[k]);
 assert.deepEqual(C.analyze({id:'test',kind:'linear',params:{out:7}},{x:[2048,4096]}).shape,[2048,7],
  'concept inference on abstract large dimensions must not allocate the actual matrix');
 assert.throws(()=>C.analyze({id:'bad',kind:'matmul',params:{}},{a:[8,7],b:[9,4]}),/收缩维/);
