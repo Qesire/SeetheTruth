@@ -108,6 +108,7 @@ node tests/graph_readiness_contracts.js
 node tests/graph_autodiff_contracts.js
 node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
 node tests/python_codegen_extensions_contracts.js
+node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python NumPy 导出与 JS 状态逐步对照
 ```
 
 浏览器验收使用 `python -m pip install playwright`、`python -m playwright install chromium`，再运行 `python tests/browser_catalog_screenshots.py`。CI 对候选分支进行数值合同、JavaScript↔NumPy 中间量一致性、真实 Chromium 操作/截图、源码审计和静态行为验证。
@@ -119,3 +120,5 @@ node tests/python_codegen_extensions_contracts.js
 设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[源码对齐的 Qwen3 风格 GQA / QK Norm / RoPE / 可选权重绑定](docs/industrial-gqa-rope-tied.md)、[设计决策：工业界为什么这么做？](docs/architecture-design-rationale.md)、[Loop Transformer / Ouro / Huginn / MoR 的可执行循环深度及数学边界](docs/loop-transformer-recurrent-depth.md)、[逐轮监督与自适应深度的真实计算边界](docs/looped-multidepth-supervision.md)、[循环残差为什么要缩放：2026 论文与三组真实对照](docs/loop-residual-scaling-design-why.md)、[MoR 逐 Token 递归预算：设计动机、真实计算图与没有节省的 FLOPs](docs/mor-token-depth-computation.md)、[Huginn 原输入注入：真实源码、工业设计动机与可证伪对照](docs/loop-input-injection-design-why.md)、[架构优先级](docs/learning-first-architecture.md)。
 
 项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
+
+**逻辑状态导出（2026-10-21）：** `stream_state_init/append/read/fork` 已支持独立 **NumPy Python** 前向生成，返回的数值字典附带 `state_metadata`，在运行时检查绝对时间位置、容量和版本；移动端仍仅执行教学图，不开放脚本下载。该编译支持有界 [T,D] 数值状态，暂不包括状态算子的 PyTorch 自动微分、真实 GPU KV Page Manager 或高维递归图编译。

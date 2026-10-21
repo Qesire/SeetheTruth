@@ -55,6 +55,7 @@ multimodal_ops.js
 nd_adamw_micro.js
 nd_autodiff.js
 nd_tensor.js
+numpy_stream_lowering.js
 optimizer_rules.js
 paper_graph_rewrites.js
 paper_hover.js

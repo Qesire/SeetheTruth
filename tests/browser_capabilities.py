@@ -41,7 +41,7 @@ class CapabilityPageAcceptance(unittest.TestCase):
             counts=page.evaluate("window.SeetheTruthCapabilities.audit().counts")
             self.assertEqual(counts["registered"],138)
             self.assertEqual(counts["knowledgeCards"],138)
-            self.assertEqual(counts["numpyEligible"],117)
+            self.assertEqual(counts["numpyEligible"],121)
             self.assertEqual(counts["torchEligible"],111)
             self.assertEqual(page.locator("#registered").inner_text(),str(counts["registered"]))
             self.assertEqual(page.locator("#rows tr").count(),138)

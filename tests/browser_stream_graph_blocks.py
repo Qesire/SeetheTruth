@@ -50,6 +50,14 @@ class StreamGraphBrowser(unittest.TestCase):
   p.locator("#studyMode").select_option("numeric")
   p.locator("#run").click()
   self.assertIn("已运行 10",p.locator("#status").inner_text())
+  p.locator("#pythonBackend").select_option("numpy")
+  with p.expect_download() as download:
+   p.locator("#exportPython").click()
+  code=Path(download.value.path()).read_text(encoding="utf-8")
+  self.assertIn("def _state_append(",code)
+  self.assertIn("def run_graph(overrides=None):",code)
+  self.assertIn("state_metadata",code)
+  self.assertIn("已生成独立执行的 NumPy",p.locator("#status").inner_text())
   p.locator('[data-node="read_a"] .block-head').click()
   self.assertEqual(p.locator("[data-node='read_a']").get_attribute("data-readiness"),"ready")
   r=p.evaluate("""(serialized) => {
