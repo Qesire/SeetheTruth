@@ -79,3 +79,4 @@ training.html
 training_flow.js
 training_objective.js
 video_causal_conv3d.js
+\nengineering_journey_engine.js\nengineering_journey_ui.js\nengineering_journey.html\n
