@@ -37,6 +37,7 @@ class PipelineBrowser(unittest.TestCase):
             message=p.locator('#log').inner_text()
             self.assertIn('PASS',message,f'phase {i} failed: {message}')
             if i==1:
+                self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),2)
                 self.assertEqual(p.evaluate('window.SeetheTruthEngineeringPipeline.optimizerStep'),0)
                 self.assertEqual(p.evaluate('window.SeetheTruthEngineeringPipeline.pendingMicroSteps'),1)
             if i==2:
@@ -50,6 +51,7 @@ class PipelineBrowser(unittest.TestCase):
                 self.assertEqual(p.evaluate('window.SeetheTruthEngineeringPipeline.provenance'),14)
                 p.screenshot(path=str(OUT/'04-resumed-training-desktop.png'),full_page=True,animations='disabled')
             if i==5:
+                self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),6)
                 self.assertIn('repeat same seed stable',message)
                 p.screenshot(path=str(OUT/'05-decode-handoff-desktop.png'),full_page=True,animations='disabled')
             if i<5:p.locator('#next').click()
