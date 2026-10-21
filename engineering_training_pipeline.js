@@ -18,7 +18,7 @@ function optionsOf(input={}){
  numberIn(c.seed,1,2147483647,'seed',true);numberIn(c.samplerSeed,1,2147483647,'samplerSeed',true);
  numberIn(c.lr,0.000001,1,'lr');numberIn(c.microBatchSize,1,24,'microBatchSize',true);
  numberIn(c.accumulationSteps,1,24,'accumulationSteps',true);
- numberIn(c.microBatchSize*c.accumulationSteps,1,128,'effectiveBatch',true);
+ numberIn(c.microBatchSize*c.accumulationSteps,1,64,'effectiveBatch',true);
  numberIn(c.weightDecay,0,0.2,'weightDecay');numberIn(c.totalSteps,2,1000,'totalSteps',true);
  numberIn(c.warmupSteps,0,c.totalSteps-1,'warmupSteps',true);
  numberIn(c.minLrScale,0,1,'minLrScale');numberIn(c.maxGradNorm,0.00001,1000,'maxGradNorm');
