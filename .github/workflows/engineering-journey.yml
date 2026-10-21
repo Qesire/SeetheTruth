@@ -7,6 +7,7 @@ on:
       - 'wan_ffn*'
       - 'compute_microscope*'
       - 'tests/compute_microscope_contracts.js'
+      - 'tests/browser_compute_microscope.py'
       - 'tests/browser_wan_ffn.py'
       - 'tests/wan_ffn_microscope_contracts.js'
       - 'tests/browser_engineering_journey.py'
@@ -15,7 +16,13 @@ on:
       - '.github/workflows/engineering-journey.yml'
   pull_request:
     paths:
-      - 'engineering_journey*'
+      - 'engineering_*'
+      - 'wan_ffn*'
+      - 'compute_microscope*'
+      - 'learn.html'
+      - 'tests/compute_microscope_contracts.js'
+      - 'tests/browser_compute_microscope.py'
+      - 'tests/browser_wan_ffn.py'
       - 'atlas_server.py'
       - 'tests/browser_engineering_journey.py'
       - 'tests/engineering_journey_contracts.js'
@@ -50,6 +57,16 @@ jobs:
         run: python tests/browser_engineering_journey.py
       - name: Execute advanced shuffle, accumulation and resume UI
         run: python tests/browser_engineering_pipeline.py
+      - name: Universal graph microscope across editor and Wan source
+        run: python tests/browser_compute_microscope.py
+      - name: Archive universal microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-compute-microscope-screenshots
+          path: compute_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Source-anchored Wan FFN numerical microscope in desktop and phone Chromium
         run: python tests/browser_wan_ffn.py
       - name: Archive source-anchored Wan FFN screenshots
