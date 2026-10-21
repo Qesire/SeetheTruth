@@ -59,6 +59,16 @@ jobs:
           path: semantic_state_screenshots/*.png
           if-no-files-found: error
           retention-days: 14
+      - name: Exercise typed stream bricks on real free-form canvas
+        run: python tests/browser_stream_graph_blocks.py
+      - name: Archive true graph fork/read/write and type-error screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-stream-graph-bricks
+          path: stream_graph_screenshots/*.png
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify source-driven block capability matrix in desktop and phone Chromium
         run: python tests/browser_capabilities.py
       - name: Archive PC/Android capability matrix screenshots

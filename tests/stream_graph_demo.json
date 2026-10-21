@@ -1,0 +1,148 @@
+{
+  "schema": "seethetruth-learning-lab-v1",
+  "title": "State forks from identical logical prefix",
+  "nodes": [
+    {
+      "id": "prefix",
+      "kind": "input",
+      "x": 20,
+      "y": 40,
+      "params": {
+        "rows": 2,
+        "width": 3,
+        "seed": 1
+      }
+    },
+    {
+      "id": "chunk_a",
+      "kind": "input",
+      "x": 20,
+      "y": 320,
+      "params": {
+        "rows": 1,
+        "width": 3,
+        "seed": 2
+      }
+    },
+    {
+      "id": "chunk_b",
+      "kind": "input",
+      "x": 20,
+      "y": 600,
+      "params": {
+        "rows": 1,
+        "width": 3,
+        "seed": 3
+      }
+    },
+    {
+      "id": "init",
+      "kind": "stream_state_init",
+      "x": 300,
+      "y": 40,
+      "params": {
+        "origin": 10,
+        "capacity": 5
+      }
+    },
+    {
+      "id": "fork_a",
+      "kind": "stream_state_fork",
+      "x": 540,
+      "y": 50,
+      "params": {}
+    },
+    {
+      "id": "fork_b",
+      "kind": "stream_state_fork",
+      "x": 540,
+      "y": 350,
+      "params": {}
+    },
+    {
+      "id": "append_a",
+      "kind": "stream_state_append",
+      "x": 790,
+      "y": 55,
+      "params": {
+        "position": 12
+      }
+    },
+    {
+      "id": "append_b",
+      "kind": "stream_state_append",
+      "x": 790,
+      "y": 390,
+      "params": {
+        "position": 12
+      }
+    },
+    {
+      "id": "read_a",
+      "kind": "stream_state_read",
+      "x": 1100,
+      "y": 55,
+      "params": {
+        "start": 11,
+        "length": 2
+      }
+    },
+    {
+      "id": "read_b",
+      "kind": "stream_state_read",
+      "x": 1100,
+      "y": 390,
+      "params": {
+        "start": 11,
+        "length": 2
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "prefix",
+      "to": "init",
+      "port": "x"
+    },
+    {
+      "from": "init",
+      "to": "fork_a",
+      "port": "state"
+    },
+    {
+      "from": "init",
+      "to": "fork_b",
+      "port": "state"
+    },
+    {
+      "from": "fork_a",
+      "to": "append_a",
+      "port": "state"
+    },
+    {
+      "from": "chunk_a",
+      "to": "append_a",
+      "port": "chunk"
+    },
+    {
+      "from": "fork_b",
+      "to": "append_b",
+      "port": "state"
+    },
+    {
+      "from": "chunk_b",
+      "to": "append_b",
+      "port": "chunk"
+    },
+    {
+      "from": "append_a",
+      "to": "read_a",
+      "port": "state"
+    },
+    {
+      "from": "append_b",
+      "to": "read_b",
+      "port": "state"
+    }
+  ]
+}

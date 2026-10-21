@@ -151,6 +151,7 @@ input[type="file"]{display:none}
   <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
   <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
   <div class="palette" id="palette"></div>
+  <button class="btn small" type="button" id="stateGraphExample" style="width:100%;margin-top:12px">▤ 一键打开流状态双分叉示例</button>
   <div class="rule"></div>
   <div class="kicker">02 / HIERARCHICAL LEARNING</div><h2>逐层拆解模型</h2>
   <button id="compositeLaunch" class="composite-launch" type="button"><strong>⌘ 从 Decoder Layer 进入</strong>
@@ -301,6 +302,8 @@ input[type="file"]{display:none}
 <script src="inference_ops.js"></script>
 <script src="deepinfer_runtime_ops.js"></script>
 <script src="block_catalog.js"></script>
+<script src="semantic_state.js"></script>
+<script src="stream_graph_blocks.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
 <script src="loop_input_injection.js"></script>
@@ -339,8 +342,8 @@ const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const categories={inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
-const categoryNames={inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const categories={memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
+const categoryNames={memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
@@ -1059,6 +1062,7 @@ $("#load").addEventListener("change",async e=>{
 window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
+$("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
 renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script></body></html>

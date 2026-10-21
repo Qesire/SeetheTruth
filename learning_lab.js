@@ -12,6 +12,7 @@
   const SCHEMA="seethetruth-learning-lab-v1";
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
+  const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
   const MAX_NODES=80,MAX_EDGES=176;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -64,7 +65,8 @@
       why:"将预测和目标张量的差异化为标量优化目标。",
       caution:"这里只计算前向 Loss；梯度、反向传播和优化器尚未实现。",
       lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"},
-    ...BlockCatalog.defs
+    ...BlockCatalog.defs,
+    ...StreamGraph.defs
   });
   const KINDS=Object.keys(defs);
   function fail(message,node){const e=new Error(message);e.nodeId=node||null;throw e;}
@@ -107,6 +109,7 @@
       }
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
       if(Object.hasOwn(BlockCatalog.defs,type)){try{BlockCatalog.validate(type,params)}catch(err){fail(err.message,n.id);}}
+        if(StreamGraph.isKind(type)){try{StreamGraph.validate(type,params)}catch(err){fail(err.message,n.id);}}
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
     const targetPorts=new Set(),edges=[];
@@ -237,16 +240,26 @@
     const graph=validateGraph(raw), sequence=order(graph);
     const out=new Map(),steps=[];
     for(const n of sequence){
-      const ins={};
+      const ins={},records={};
       for(const port of defs[n.kind].ports){
         const edge=graph.edges.find(e=>e.to===n.id&&e.port===port);
         if(!edge)fail(defs[n.kind].title+" 的 "+port+" 端口还没有连接",n.id);
-        ins[port]=out.get(edge.from)?.values;
-        if(!ins[port])fail("上游计算结果不存在",n.id);
+        const upstream=out.get(edge.from);
+        if(!upstream?.values)fail("上游计算结果不存在",n.id);
+        ins[port]=upstream.values;records[port]=upstream;
       }
-      const value=calculate(n,ins);out.set(n.id,value);
+      let inferred,value;
+      try{
+        inferred=StreamGraph.infer(n,
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.logicalState||null])));
+        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins);
+      }catch(err){fail(err.message,n.id);}
+      if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
+      out.set(n.id,value);
+      const {streamState,...publicValue}=value;
       steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,shape(v)])),
-        ...value,formula:defs[n.kind].formula,why:defs[n.kind].why,
+        ...publicValue,formula:defs[n.kind].formula,why:defs[n.kind].why,
         training:"仅前向微型数值解释；尚未执行反向传播与权重更新。"});
     }
     return {steps,totalKnownFlops:steps.reduce((s,x)=>s+(x.flops||0),0),
@@ -261,6 +274,28 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="stream_state_branches"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[
+        N("prefix","input",20,40,{rows:2,width:3,seed:1}),
+        N("chunk_a","input",20,310,{rows:1,width:3,seed:2}),
+        N("chunk_b","input",20,590,{rows:1,width:3,seed:3}),
+        N("init","stream_state_init",300,40,{origin:10,capacity:5}),
+        N("fork_a","stream_state_fork",530,50),
+        N("fork_b","stream_state_fork",530,340),
+        N("append_a","stream_state_append",770,65,{position:12}),
+        N("append_b","stream_state_append",770,380,{position:12}),
+        N("read_a","stream_state_read",1040,65,{start:11,length:2}),
+        N("read_b","stream_state_read",1040,380,{start:11,length:2})
+      ];
+      const edges=[
+        ["prefix","init","x"],["init","fork_a","state"],["init","fork_b","state"],
+        ["fork_a","append_a","state"],["chunk_a","append_a","chunk"],
+        ["fork_b","append_b","state"],["chunk_b","append_b","chunk"],
+        ["append_a","read_a","state"],["append_b","read_b","state"]
+      ].map(([from,to,port])=>({from,to,port}));
+      return validateGraph({schema:SCHEMA,title:"状态积木示例 · 共享前缀的不可变双分叉",nodes,edges});
+    }
     if(["deepinfer_mtp_budget","deepinfer_yoco_replay"].includes(name)){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       let title,nodes,edges;

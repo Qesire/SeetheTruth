@@ -4,7 +4,7 @@ const near=(x,y,e=1e-9)=>assert.ok(Math.abs(x-y)<=e,'numerical mismatch '+x+' / 
 const run=(kind,inputs={},params={})=>B.execute({kind,id:'oracle_'+kind,params},inputs);
 const V=(k,i,p)=>run(k,i,p).values;
 const A=[[1,2,3,4],[5,6,7,8]];
-assert.ok(B.KINDS.length>=34);assert.equal(L.KINDS.length,B.KINDS.length+11);
+assert.ok(B.KINDS.length>=34);assert.equal(L.KINDS.length,B.KINDS.length+11+require('../stream_graph_blocks.js').kinds.length);
 for(const kind of B.KINDS){const d=B.defs[kind];assert.ok(d.title&&d.why&&d.formula&&d.lesson&&d.caution);assert.ok(Array.isArray(d.ports));}
 assert.deepEqual(V('transpose2d',{x:[[1,2,3],[4,5,6]]}),[[1,4],[2,5],[3,6]]);
 assert.deepEqual(V('slice_cols',{x:A},{start:1,width:2}),[[2,3],[6,7]]);
