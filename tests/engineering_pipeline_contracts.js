@@ -57,6 +57,11 @@ const badDataset=JSON.parse(JSON.stringify(snap));badDataset.dataFingerprint='de
 assert.throws(()=>resumed.restore(badDataset),/dataset\/source mismatch/);
 const badGrad=JSON.parse(JSON.stringify(snap));badGrad.pending.gradientSum[0]=null;
 assert.throws(()=>resumed.restore(badGrad),/invalid accumulated gradient/);
+const forged=JSON.parse(JSON.stringify(snap));forged.pending.gradientSum[0]+=0.0001;
+assert.throws(()=>resumed.restore(forged),/pending accumulated tensor provenance mismatch/);
+assert.deepEqual(resumed.checkpoint(),snap,'forged pending gradient must be rejected atomically');
+const forgedLoss=JSON.parse(JSON.stringify(snap));forgedLoss.pending.lossSum+=0.1;
+assert.throws(()=>resumed.restore(forgedLoss),/pending accumulated tensor provenance mismatch/);
 const badCfg=JSON.parse(JSON.stringify(snap));badCfg.config.lr=0.03;
 assert.throws(()=>resumed.restore(badCfg),/configuration mismatch/);
 const completed=P.create(base);
