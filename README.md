@@ -34,6 +34,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
 
+## 全站通用化审计（138 种积木 / 21 类别 / 20 个主要功能页面）
+
+**[查看全站通用化审计](docs/universalization-audit-2026-10-21.md)**。本轮直接核对页面依赖与真实执行器：现有 20 个主要页面中，2 个已接入公共 Tensor/Operator 透视，3 个已接入公共 State/Event 透视（DeepInfer KV、DeepInfer Worker、工程训练续训），另外 10 个仍是专用计算或教学实现、2 个是导航、3 个是 PC 独有证据链。完整清单同时可在 [交互能力矩阵](capabilities.html) 看到。剩余 10 个尚不应标成“通用完成”，即使其数学引擎已单独通过。新增 `state_microscope.js` 以严格前后状态、因果依赖和来源等级统一审计不同执行器，不将 CPU 资源模拟或合成数据冒充 GPU 实测。自动核对：`node tests/state_microscope_contracts.js` 与 `node tests/universal_surface_audit_contracts.js`，浏览器：`python tests/browser_state_microscope.py`。
+
 ## 通用计算透视：所有积木共享的基本能力
 
 **核心能力已内置主 [自由积木学习工作台](learn.html) 的右侧 Inspector，而非限定在某个模型实验页。** 不论普通 GELU FFN、SwiGLU、Attention、Residual 还是有界 1D–5D 图像/音频/视频张量，学习者都可以循着实际依赖 → 算子 → 输出 Tensor → 坐标数值钻取。对 Linear/MatMul 自动重建权重存储布局、输入维逐项乘法及 Bias，并逐坐标校验与真实教学执行器结果相符。新增 `compute_microscope.js`、`compute_microscope_ui.js`、`compute_microscope.css` 作为所有模型适配器的基础；Wan 官方源码 FFN 页面已真正复用这些组件，同时保留 Wan 条件 Gate 与 Hidden Channel 特化分析。静态概念形状不冒充数值，合成 Float64/固定源码结构不冒充真实 checkpoint，未知格式会显式拒绝。详见 [通用计算透视系统合同](docs/computation-microscope.md)，测试：`node tests/compute_microscope_contracts.js` 与 `python tests/browser_compute_microscope.py`，含 PC/Android 共享离线组件。
