@@ -48,6 +48,21 @@ class StateMicroscopeBrowser(unittest.TestCase):
   p.screenshot(path=str(OUT/'worker-shared-causal-event.png'),full_page=True,animations='disabled')
   self.assertEqual(errors,[]);p.close()
 
+ def test_scalar_training_shared_state_and_concept_no_numbers(self):
+  p=self.browser.new_page(viewport={'width':1400,'height':910})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  self.assertEqual(p.goto(self.url+'/training.html').status,200)
+  self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),0)
+  p.locator('#mode').select_option('scalar')
+  p.wait_for_function("document.querySelectorAll('#stateMicroscope .sm-step').length >= 12")
+  self.assertIn('EXECUTABLE_SCALAR_ANALYTIC_TRAINING',p.locator('#stateMicroscope').inner_text())
+  p.locator('#next').click()
+  self.assertIn('grad',p.locator('#stateMicroscope').inner_text())
+  p.screenshot(path=str(OUT/'scalar-training-shared-state.png'),full_page=True,animations='disabled')
+  p.locator('#mode').select_option('concept')
+  self.assertEqual(p.locator('#stateMicroscope .sm-step').count(),0)
+  self.assertEqual(errors,[]);p.close()
+
  def test_capability_gap_inventory_on_phone(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
