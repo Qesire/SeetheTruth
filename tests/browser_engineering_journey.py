@@ -11,6 +11,7 @@ from playwright.sync_api import sync_playwright
 class EngineeringJourneyBrowser(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.out=Path('engineering_journey_screenshots');cls.out.mkdir(parents=True,exist_ok=True)
         cls.server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
         cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True);cls.thread.start()
         cls.pw=sync_playwright().start()
@@ -37,9 +38,13 @@ class EngineeringJourneyBrowser(unittest.TestCase):
             page.locator('#run').click()
             result=page.locator('#result').inner_text()
             self.assertIn('PASS',result, f'stage {i}: {result}')
-            if i==7:self.assertEqual(page.evaluate('window.SeetheTruthEngineeringJourney.modelStep'),120)
+            if i==7:
+                self.assertEqual(page.evaluate('window.SeetheTruthEngineeringJourney.modelStep'),120)
+                page.screenshot(path=str(self.out/'07-training-complete-desktop.png'),full_page=True,animations='disabled')
             if i==9:self.assertTrue(page.evaluate('window.SeetheTruthEngineeringJourney.snapshotReady'))
-            if i==10:self.assertIn('decode steps',result)
+            if i==10:
+                self.assertIn('decode steps',result)
+                page.screenshot(path=str(self.out/'10-inference-desktop.png'),full_page=True,animations='disabled')
             if i<11:page.locator('#next').click()
         self.assertEqual(page.evaluate('window.SeetheTruthEngineeringJourney.completed'),12)
         self.assertEqual(page.evaluate('window.SeetheTruthEngineeringJourney.modelStep'),120)
@@ -59,6 +64,7 @@ class EngineeringJourneyBrowser(unittest.TestCase):
         self.assertEqual(page.locator('a[download],input[type=file],#exportPython').count(),0)
         page.locator('#answerSelect').select_option('0');page.locator('#run').click()
         self.assertIn('PASS',page.locator('#result').inner_text())
+        page.screenshot(path=str(self.out/'00-setup-android-390.png'),full_page=True,animations='disabled')
         self.assertEqual(errors,[])
         page.close()
 
