@@ -18,7 +18,7 @@ const screens=Object.freeze([
 ['engineering_journey.html','12 关训练到推理','specialized','使用真实微型 Bigram 数学，但教学关卡未复用通用 Trace UI'],
 ['engineering_pipeline.html','累积、Shuffle、续训','state','已接入通用 State Frame：Microbatch、Sampler、Optimizer Step、检查点差分'],
 ['teaching.html','教学中心','navigation','课程路由和问题索引，无数值执行职责'],
-['android_teaching.html','Android 教学导航','navigation','离线教育入口，无模型执行职责'],
+['android_teaching.html','Android 教学导航','navigation','离线教育导航入口，不执行模型计算，也不提供训练产物或文件导出'],
 ['real_model_lab.html','真实 CPU 小模型证据','desktop_only','结构化只读观测，不能被误认为完整算子输入或已验证复跑'],
 ['index.html','源码结构图与 Runtime','desktop_only','AST 源码图＋独立 Runtime Trace，不应与合成数值混合'],
 ['telemetry.html','Profiler 和 Tensor 观测','desktop_only','GPU Profiler 是独立证据源，未加入通用数值算子接口']
