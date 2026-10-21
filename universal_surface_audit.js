@@ -22,7 +22,7 @@ const screens=Object.freeze([
 ['real_model_lab.html','真实 CPU 小模型证据','desktop_only','结构化只读观测，不能被误认为完整算子输入或已验证复跑'],
 ['index.html','源码结构图与 Runtime','desktop_only','AST 源码图＋独立 Runtime Trace，不应与合成数值混合'],
 ['telemetry.html','Profiler 和 Tensor 观测','desktop_only','GPU Profiler 是独立证据源，未加入通用数值算子接口']
-].map(([page,title,status,note])=>Object.freeze({page,title,status,note}))));
+].map(([page,title,status,note])=>Object.freeze({page,title,status,note})));
 const coreFiles=Object.freeze({tensor:['compute_microscope.js','compute_microscope_ui.js'],state:['state_microscope.js','state_microscope_ui.js']});
 function classify(html){
  const scripts=new Set([...String(html).matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)].map(x=>x[1].split(/[?#]/)[0]));
