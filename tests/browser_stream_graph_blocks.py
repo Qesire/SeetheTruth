@@ -77,4 +77,21 @@ class StreamGraphBrowser(unittest.TestCase):
   self.assertIn("无法运行",p.locator("#status").inner_text())
   p.screenshot(path=str(OUT/"graph-state-wrong-port.png"),full_page=True,animations="disabled")
 
+ def test_mobile_offline_teaching_can_open_state_graph_without_import(self):
+  p=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True,device_scale_factor=2)
+  errors=[]
+  p.on("pageerror",lambda e:errors.append(str(e)))
+  self.assertEqual(p.goto(self.url+"?edition=teaching").status,200)
+  p.wait_for_function("document.body.classList.contains('teaching-edition')")
+  self.assertFalse(p.locator("#load").is_visible())
+  self.assertFalse(p.locator("#exportPython").is_visible())
+  p.locator("#stateGraphExample").click()
+  self.assertEqual(p.locator("#blocks .block").count(),10)
+  p.locator("#studyMode").select_option("numeric")
+  p.locator("#run").click()
+  self.assertIn("已运行 10",p.locator("#status").inner_text())
+  p.screenshot(path=str(OUT/"graph-state-mobile-390.png"),full_page=True,animations="disabled")
+  self.assertEqual(errors,[])
+  p.close()
+
 if __name__=="__main__":unittest.main()
