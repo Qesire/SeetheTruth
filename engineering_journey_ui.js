@@ -69,7 +69,7 @@ const lessons=[
   question:'validation loss 比 train loss 高说明什么？',options:['必然存在代码错误','可能存在泛化差距，需继续验证','应该将验证集用于 optimizer'],correct:1,
   code:'with no_grad():\n  train_ce = eval(train_pairs)\n  validation_ce = eval(validation_pairs)',
   principle:'上线前还需固定评测集、任务指标、统计区间、数据污染检测和与基线比较。',
-  pitfall:'以训练 Loss 代替 held-out 评测；或为降低验证 Loss 而持续调参却不保留最终测试集。',links:[['指标与来源','real_model_lab.html']]},
+  pitfall:'以训练 Loss 代替 held-out 评测；或为降低验证 Loss 而持续调参却不保留最终测试集。',links:[['指标与能力边界','capabilities.html']]},
  {category:'09 / CHECKPOINT',title:'Checkpoint：序列化、扰动、恢复',
   goal:'保存 W/m/v/step/Tokenizer/配置的内存快照；临时继续训练，再恢复并逐元素验证完全一致。',
   operations:'本关做一次真正的状态 round-trip；检查 t、权重和同输入概率能否精确复原。',
