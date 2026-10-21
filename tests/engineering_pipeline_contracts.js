@@ -72,5 +72,5 @@ const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'eng
 for(const file of ['engineering_journey_engine.js','engineering_training_pipeline.js','engineering_pipeline_ui.js'])assert.ok(html.includes('src="'+file+'"'));
 const ui=fs.readFileSync(path.join(root,'engineering_pipeline_ui.js'),'utf8');new vm.Script(ui);
 for(const id of ['stages','answer','run','next','log','kpis','schedule','weights','reset'])assert.ok(html.includes('id="'+id+'"'));
-for(const file of ['engineering_pipeline.html','engineering_training_pipeline.js','engineering_pipeline_ui.js'])assert.ok(fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\\r?\\n/).includes(file));
+for(const file of ['engineering_pipeline.html','engineering_training_pipeline.js','engineering_pipeline_ui.js'])assert.ok(fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/).includes(file));
 console.log('ENGINEERING_PIPELINE_PASS 24 shuffled samples, optimizer vs microsteps, full/split gradient parity, scheduler, clipping, mid-accum checkpoint exact replay, fail-closed corruption and inference handoff');
