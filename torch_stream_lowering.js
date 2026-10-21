@@ -24,7 +24,7 @@ def _stream_validate(s):
     for key,low,high in (("origin",0,4096),("capacity",1,32),
                            ("version",0,4096),("nextPosition",0,4128)):
         v=s.get(key)
-        if type(v) is not int or not lo <= v <= hi:
+        if type(v) is not int or not low <= v <= high:
             raise ValueError("invalid stream "+key)
     if data.shape[0] > s["capacity"] or s["nextPosition"] != s["origin"] + data.shape[0]:
         raise ValueError("corrupt stream time or capacity")
