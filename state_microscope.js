@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',PREFILL:'SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',PREFILL:'SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',CACHE:'EXECUTED_KV_GQA_MICRO_NUMERIC_CACHE',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -130,6 +130,29 @@ function prefill(execution,P){
  return validate({schema:SCHEMA,title:'DeepInfer Prefill · 投票和安全 Chunk 独立决策',evidenceTier:TIERS.PREFILL,steps,
   disclaimer:'Exact bounded source-derived policy outputs re-executed and checked; not GPU KV allocation, distributed collectives, image embeddings or real serving latency'});
 }
+function cache(snapshots,Cache){
+ need(Array.isArray(snapshots)&&snapshots.length>0&&snapshots.length<=13&&
+  snapshots[0]?.config&&Cache&&typeof Cache.Session==='function','cache needs coherent complete session snapshots');
+ const session=Cache.Session(snapshots[0].config);
+ const selected=[];
+ for(let i=0;i<snapshots.length;i++){
+  const actual=i?session.advance():session.snapshot();
+  need(JSON.stringify(actual)===JSON.stringify(snapshots[i]),'KV micro cache state contradicts deterministic source replay at '+i);
+  const last=actual.last;
+  selected.push({phase:actual.phase,cursor:actual.cursor,cacheTokens:actual.cache.length,
+   keyShape:actual.cache.keyShape,valueShape:actual.cache.valueShape,
+   newPositions:last?.kAppendedPositions||[],queryPositions:last?.queryPositions||[],
+   appendCount:last?.appended||0,flops:last?.mathMatmulFlops||0});
+ }
+ const steps=selected.map((state,i)=>{
+  const prior=i?selected[i-1]:state;
+  return {id:'cache:'+i,index:i,title:i===0?'初始化数学 KV Cache':'Step '+i+' · '+state.phase+' / Query '+state.queryPositions.join(','),
+   why:i===0?'没有做 Token 投影；实际 K/V 缓存为空。':i===1?'Prefill 生成全部前缀 Q/K/V，一次性写入全部新 K/V。':'Decode 只投影新 token 的 K/V，再与全部缓存 Key/Value 计算真实 GQA/RoPE 小张量。',
+   dependencies:i?['cache:'+(i-1)]:[],before:prior,after:state,changes:delta(prior,state),timing:null};
+ });
+ return validate({schema:SCHEMA,title:'数学 GQA · 持久 K/V 缓存与 Token 读写',evidenceTier:TIERS.CACHE,steps,
+  disclaimer:'Byte-exact deterministic small projected K/V replay with RoPE/GQA reference; no production model weights, GPU KV page allocator or true device speed'});
+}
 function training(snapshots){
  need(Array.isArray(snapshots)&&snapshots.length>=1&&snapshots.length<=32,'invalid training transcript');
  let source=null,params=null,previous=null;
@@ -169,5 +192,5 @@ function scalar(run){
  return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,training,scalar,delta});
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,cache,training,scalar,delta});
 });
