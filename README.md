@@ -34,6 +34,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
 
+## Wan2.2 FFN 源码级可视化与乘加透视
+
+新增 [Wan FFN 源码计算透视](wan_ffn_lab.html)：使用 [固定 commit 官方 `wan/modules/model.py`](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L183-L259) 和 [官方 I2V A14B 配置](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_i2v_A14B.py)，重建 Cross-Attention 残差→norm2→时间条件 e4/e3→Linear(5120,13824)→GELU(tanh)→Linear(13824,5120)→e5→残差完整顺序，展示每步 Tensor shape、计算值、热力图、矩阵权重布局与任意 Token/Channel 的点积项及来源行号。运算是确定性 Float64 微型教学模拟，**不是加载 Wan 权重**、执行原始 FlashAttention 或测量 GPU。Node 数值合同 `node tests/wan_ffn_microscope_contracts.js`，Chromium 视觉验收 `python tests/browser_wan_ffn.py`，数学/源码边界见 [深度 FFN 证据合同](docs/wan-ffn-source-microscope.md)。
+
 ## 进阶工程训练流水线：Shuffle / Accumulation / Resume / Decode
 
 新增 [进阶训练状态机实验室](engineering_pipeline.html)，与原有 [12 关基础工程课程](engineering_journey.html) 相互衔接。6 个可执行关卡逐步检查 Sampler Epoch/Cursor、Microbatch 梯度累积、等效 Batch 逐参数数学一致性、按 Optimizer Step 的 Warmup/Cosine、梯度裁剪、在一个更新中途暂停后恢复 DataLoader 与 Pending Gradients，并把相同 checkpoint 用于带 provenance 的推理。PC 与离线 Android 使用一份真实 Float64 Bigram 数值代码；不执行真实大型模型/GPU/HTTP Serving，也不提供 APK 文件导出。数值合同：`node tests/engineering_pipeline_contracts.js`，UI 验收：`python tests/browser_engineering_pipeline.py`。进一步合同见 [工程训练流水线说明](docs/engineering-training-pipeline.md)。
