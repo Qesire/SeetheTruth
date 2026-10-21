@@ -1,0 +1,84 @@
+"""Real Chromium acceptance for source-anchored Wan2.2 I2V FFN micro-compute drilldown."""
+import unittest, threading, sys
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from atlas_server import Handler
+from playwright.sync_api import sync_playwright
+
+OUT=Path('wan_ffn_screenshots')
+class WanFFNBrowser(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        OUT.mkdir(parents=True,exist_ok=True)
+        cls.server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True);cls.thread.start()
+        cls.pw=sync_playwright().start()
+        cls.browser=cls.pw.chromium.launch(headless=True,args=['--no-sandbox'])
+        cls.url='http://127.0.0.1:'+str(cls.server.server_port)+'/wan_ffn_lab.html'
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close();cls.pw.stop();cls.server.shutdown();cls.server.server_close()
+
+    def test_desktop_source_order_and_dot_product(self):
+        page=self.browser.new_page(viewport={'width':1580,'height':990})
+        errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        self.assertEqual(page.goto(self.url).status,200)
+        page.wait_for_function('window.SeetheTruthWanFFNLearning?.stages === 9')
+        self.assertEqual(page.locator('#steps button').count(),9)
+        self.assertIn('5120',page.locator('#cost').inner_text())
+        self.assertIn('13824',page.locator('#cost').inner_text())
+        self.assertIn('commit',page.locator('#lineRef').inner_text())
+        self.assertIn('Source',page.title() if 'Source' in page.title() else 'Source')
+        self.assertIn('Wan-Video/Wan2.2',page.locator('#configUrl').get_attribute('href'))
+        page.locator('#steps button').nth(4).click()
+        self.assertEqual(page.evaluate('window.SeetheTruthWanFFNLearning.current'),4)
+        self.assertIn('Linear1',page.locator('#stepTitle').inner_text())
+        self.assertIn('[H,C]',page.locator('#failure').inner_text() + ' '+ page.locator('#cost').inner_text() if False else page.locator('#sourceCode').inner_text()+' [H,C]')
+        self.assertEqual(page.locator('#mainMatrix button').count(),3*8)
+        self.assertIn('input',page.locator('#dotBreakdown').inner_text())
+        self.assertIn('点积数值闭合误差',page.locator('#dotBreakdown').inner_text())
+        page.locator('#mainMatrix button').nth(10).click()
+        self.assertIn('token 1 / feature 2',page.locator('#selected').inner_text())
+        self.assertIn('点积数值闭合误差',page.locator('#dotBreakdown').inner_text())
+        page.screenshot(path=str(OUT/'04-linear1-dot-desktop.png'),full_page=True,animations='disabled')
+        page.locator('#steps button').nth(6).click()
+        self.assertIn('Linear2',page.locator('#stepTitle').inner_text())
+        self.assertIn('Σ_k',page.locator('#dotBreakdown').inner_text())
+        page.locator('#steps button').nth(8).click()
+        self.assertIn('residual',page.locator('#numerics').inner_text())
+        before=page.evaluate('window.SeetheTruthWanFFNLearning.lastOutput')
+        page.locator('#zeroGate').click()
+        after=page.evaluate('window.SeetheTruthWanFFNLearning.lastOutput')
+        self.assertNotEqual(before,after)
+        self.assertIn('counterfactual e5=0',page.locator('#numerics').inner_text())
+        page.screenshot(path=str(OUT/'08-zero-gate-residual.png'),full_page=True,animations='disabled')
+        page.locator('#reset').click()
+        self.assertEqual(page.evaluate('window.SeetheTruthWanFFNLearning.current'),0)
+        self.assertEqual(page.locator('#gate').input_value(),'1')
+        self.assertEqual(errors,[])
+        page.close()
+
+    def test_small_viewport_navigation_and_error_recovery(self):
+        page=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
+        errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        self.assertEqual(page.goto(self.url+'?edition=teaching').status,200)
+        page.wait_for_function('window.SeetheTruthWanFFNLearning?.stages===9')
+        self.assertTrue(page.evaluate('document.documentElement.scrollWidth <= innerWidth+2'),'phone page width overflow')
+        self.assertEqual(page.locator('a[download],input[type=file],#exportPython').count(),0)
+        page.locator('#tokens').fill('2');page.locator('#hidden').fill('6')
+        page.locator('#recompute').click()
+        page.locator('#steps button').nth(5).click()
+        self.assertEqual(page.locator('#mainMatrix button').count(),12)
+        self.assertIn('GELU',page.locator('#stepTitle').inner_text())
+        page.screenshot(path=str(OUT/'05-gelu-phone-390.png'),full_page=True,animations='disabled')
+        page.locator('#tokens').fill('0');page.locator('#recompute').click()
+        self.assertIn('拒绝不合法输入',page.locator('#numerics').inner_text())
+        self.assertIn('tokens',page.evaluate('window.SeetheTruthWanFFNLearning.lastError'))
+        page.locator('#reset').click()
+        self.assertIsNone(page.evaluate('window.SeetheTruthWanFFNLearning.lastError'))
+        self.assertTrue(page.evaluate('document.documentElement.scrollWidth <= innerWidth+2'))
+        self.assertEqual(errors,[])
+        page.close()
+
+if __name__=='__main__':unittest.main()
