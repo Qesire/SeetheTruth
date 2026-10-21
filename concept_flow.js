@@ -11,6 +11,7 @@
 })(typeof window!=="undefined"?window:{},function(L){
   "use strict";
   const CATALOG=Object.keys(L.defs);
+  const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
   const EVIDENCE="declared_semantic_and_shape_contract_not_numerical_execution";
   const fail=(message,id)=>{const e=new Error(message);e.nodeId=id;throw e;};
   const equal=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
@@ -19,7 +20,7 @@
   const groups=Object.freeze({
     data:"数据来源与表征",compute:"特征映射与算术",norm:"归一化：尺度或中心调整",
     vision:"图像空间与 Patch Token",audio:"音频时频表示",video:"视频时空 Tubelet",
-    generative:"扩散模型的噪声状态更新",
+    generative:"扩散模型的噪声状态更新",memory:"显式逻辑缓存与状态依赖",
     inference:"推理服务的采样、验收与调度",
     activate:"非线性与权重分布",combine:"信息融合与残差候选",
     attention:"跨 token 信息汇聚",loss:"训练目标（前向定义）",
@@ -34,7 +35,10 @@
   const reduced=new Set(["row_mean","row_sum","row_var","row_logsumexp"]);
   const losses=new Set(["mse","mae_loss","kl_prob"]);
   const ports=(n,inputs,...keys)=>keys.map(k=>{by(inputs[k],n.kind+" 缺少 "+k+" 输入",n.id);return inputs[k];});
-  function analyze(n,inputs){
+  function analyze(n,inputs,options={}){
+    const semantic=StreamGraph.infer(n,inputs,options.logicalStates||{});
+    if(semantic)return {shape:semantic.shape,rule:semantic.rule,conditions:semantic.conditions,
+      stages:null,meaning:"显式流式逻辑状态",logicalState:semantic.logicalState};
     const p={...L.defs[n.kind].params,...n.params},kind=n.kind;
     const get=k=>ports(n,inputs,k)[0];
     let output,rule,conditions=[],stages=null;
@@ -399,14 +403,14 @@
   function evaluate(raw){
     const g=L.validateGraph(raw),seq=L.order(g),saved=new Map(),steps=[];
     for(const n of seq){
-      const inputs={};
+      const inputs={},logicalStates={};
       for(const port of L.defs[n.kind].ports){
         const e=g.edges.find(e=>e.to===n.id&&e.port===port);
         by(e,L.defs[n.kind].title+" 的 "+port+" 端口未连接",n.id);
         const prev=saved.get(e.from);by(prev,"计算依赖失效："+e.from,n.id);
-        inputs[port]=prev.shape.slice();
+        inputs[port]=prev.shape.slice();logicalStates[port]=prev.logicalState||null;
       }
-      const summary=analyze(n,inputs);
+      const summary=analyze(n,inputs,{logicalStates});
       saved.set(n.id,summary);
       steps.push({id:n.id,kind:n.kind,inputs,shape:summary.shape,values:null,flops:null,
         mode:"concept",stages:summary.stages,conditions:summary.conditions,
