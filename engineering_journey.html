@@ -29,7 +29,7 @@ small.note{color:#aec9d8}#related{display:flex;gap:9px;flex-wrap:wrap;margin-top
 #progress{height:7px;border-radius:5px;background:#234656;overflow:hidden;margin:12px 0}#progress div{height:100%;width:0;background:linear-gradient(90deg,#56d3bd,#e0c084)}
 @media(max-width:1100px){.layout{grid-template-columns:240px 1fr}.right{grid-column:2;position:static!important}}@media(max-width:730px){main{padding:18px 12px 36px}.layout{display:flex;flex-direction:column}aside.panel,.right{position:static;width:100%}#stages{grid-template-columns:repeat(2,minmax(0,1fr))}.stage{font-size:12px}.panel{padding:14px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head><body>
-<header><div><strong>SEE THE TRUTH</strong><div><small>ENGINEERING JOURNEY · CPU 数学微实验</small></div></div><nav><a href="teaching.html">教学中心</a><a href="learn.html?edition=teaching">积木工作台</a><a href="training.html">训练回路</a><a href="cache.html">KV / Decode</a></nav></header>
+<header><div><strong>SEE THE TRUTH</strong><div><small>ENGINEERING JOURNEY · CPU 数学微实验</small></div></div><nav><a href="teaching.html">教学中心</a><a href="learn.html?edition=teaching">积木工作台</a><a href="training.html">训练回路</a><a href="engineering_pipeline.html">进阶训练流水线</a><a href="cache.html">KV / Decode</a></nav></header>
 <main><div class="eyebrow">BUILD → TRAIN → EVALUATE → RESTORE → INFER</div>
 <h1>亲手走通一次模型开发的完整生命周期</h1><p class="intro">逐关检查环境、数据来源与隔离、Tokenizer、参数形状、Forward、CE、Backward、AdamW、验证集、检查点和 Decode。不是播放预设动画：每次实验都在本机 JavaScript 中执行真实的 8 词表 <strong>Bigram next-token 模型</strong>的数值运算，并将训练权重用于后续生成。它用于理解工程操作，不是 Transformer、LLM 权重或实际部署性能测试。</p>
 <span class="badge" id="scope">SYNTHETIC · Float64 · CPU · 无 GPU / 无网络 / 不产生文件</span>
