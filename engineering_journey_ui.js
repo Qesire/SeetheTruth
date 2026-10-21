@@ -141,6 +141,8 @@ function render(){
 }
 function execution(i){
  if(i===0){
+  // Re-initialization invalidates every result obtained with prior weights/config.
+  state.done.clear();state.logs.clear();state.choices=new Map([[0,$('answerSelect').value]]);
   state.engine=E.create(params());state.snapshot=null;
   const same=E.create(params()).checkpoint().weights;
   assert(JSON.stringify(same)===JSON.stringify(state.engine.checkpoint().weights),'初始化不可复现');
