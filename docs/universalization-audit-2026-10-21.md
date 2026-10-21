@@ -24,8 +24,8 @@
 | 状态 | 页面 | 判断与下一工作 |
 |---|---|---|
 | **通用张量/算子**（2） | `learn.html`, `wan_ffn_lab.html` | 共享真正的 `compute_microscope` 数据合同与可视化；Wan 保留其特化反事实 |
-| **通用状态/事件**（3） | `deepinfer_kv_lifecycle_lab.html`, `deepinfer_worker_lab.html`, `engineering_pipeline.html` | 共享 `state_microscope`；三者分别从 KV Engine、Worker Event DAG、Bigram Checkpoint 生成状态差分 |
-| **专用实现，尚未完成接口统一**（10） | `training.html`, `micro_training.html`, `cache.html`, `deepinfer_scheduler_lab.html`, `deepinfer_prefill_lab.html`, `paper_lab.html`, `semantic_state.html`, `tradeoffs.html`, `capabilities.html`, `engineering_journey.html` | 数值引擎、前沿结构或原理解释可能已成熟，但尚未统一通用透视接口；不能统计为完成 |
+| **通用状态/事件**（4） | `deepinfer_kv_lifecycle_lab.html`, `deepinfer_worker_lab.html`, `engineering_pipeline.html`, `training.html` | 共享 `state_microscope`；四者分别从 KV Engine、Worker Event DAG、Bigram Checkpoint、标量分析训练 生成状态差分 |
+| **专用实现，尚未完成接口统一**（9） | `micro_training.html`, `cache.html`, `deepinfer_scheduler_lab.html`, `deepinfer_prefill_lab.html`, `paper_lab.html`, `semantic_state.html`, `tradeoffs.html`, `capabilities.html`, `engineering_journey.html` | 数值引擎、前沿结构或原理解释可能已成熟，但尚未统一通用透视接口；不能统计为完成 |
 | **入口/导航**（2） | `teaching.html`, `android_teaching.html` | 非计算运行页面；应复用导航/课程状态而非误接计算透视 |
 | **PC 独有证据工作流**（3） | `real_model_lab.html`, `index.html`, `telemetry.html` | 模型实测与静态源码证据必须保持独立，不从文件格式或采样数据自动提升为真实计算证据 |
 
