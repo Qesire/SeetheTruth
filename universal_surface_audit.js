@@ -6,7 +6,7 @@ const screens=Object.freeze([
 ['wan_ffn_lab.html','Wan FFN 官方源码','tensor','固定源码步骤、张量、逐乘加和通道删除反事实'],
 ['deepinfer_kv_lifecycle_lab.html','KV 物理块生命周期','state','FIFO、引用计数、逐操作状态差分'],
 ['deepinfer_worker_lab.html','Worker 执行时序','state','事件因果 DAG、CPU/GPU 假设排队状态'],
-['training.html','标量训练循环','specialized','标量梯度累积与优化器事件已有专用 UI，尚未转换为通用 State Frame'],
+['training.html','标量训练循环','state','标量 Forward/Backward/Gradient/AdamW 状态差分已接入通用事件显微镜；概念模式不生成数值'],
 ['micro_training.html','MoE / PPO / VJP 微实验','specialized','独立微训练算子已可执行，缺少通用内部阶段适配器'],
 ['cache.html','KV Cache 数学','specialized','自带 Cache Token/Head 视图，尚未装配共用状态显微镜'],
 ['deepinfer_scheduler_lab.html','Scheduler + KV + Worker','specialized','已组合计算，但尚未对接统一状态显微镜'],
