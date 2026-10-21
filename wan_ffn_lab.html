@@ -1,4 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091523"><title>SeetheTruth · Wan2.2 FFN 源码计算透视</title>
+<link rel="stylesheet" href="compute_microscope.css">
 <style>
 :root{color-scheme:dark;--bg:#071522;--panel:#102838;--line:#33576a;--text:#e7f5fb;--muted:#acc6d6;--mint:#73e2cd;--amber:#e5c492;--soft:#152f42}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 60% -8%,#214e61,#071522 58%);color:var(--text);font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}a{color:#a6eaf2;text-decoration:none}a:hover{text-decoration:underline}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
@@ -35,7 +36,7 @@ header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justif
 <p class="tiny muted" id="stateLabel">—</p><div class="line"></div>
 <div class="eyebrow">即时可解释张量 · 点击任意格子查看坐标</div><p class="tiny muted">热力图：青绿色表示正值、暖红色表示负值，颜色深浅反映该张量内部的绝对值相对大小；不表示注意力概率或时间开销。</p><div id="mainLabel" class="mat-label"></div><div class="mat" id="mainMatrix" role="group" aria-label="当前步骤二维数值张量"></div><div class="extra" id="extraMatrices"></div>
 <div class="line"></div><div class="eyebrow">选定坐标的数学拆解</div><p id="selected" class="muted"></p><div id="dotBreakdown"></div><div class="line"></div><div class="eyebrow">CHANNEL IMPACT / HIDDEN ABLATION</div><h3>一个 hidden channel 如何影响所有输出通道？</h3><p class="tiny muted">将所选 hidden 激活在 W2 之前单独设为 0，保持其余激活与权重不变。这是数学反事实，不代表已实现硬件稀疏加速或真实 Wan 质量变化。</p><div class="row"><label class="field" style="max-width:190px">被删除的 hidden 通道 H 索引<input id="ablateChannel" type="number" min="0" value="0"></label><label class="field" style="max-width:190px">Token 索引<input id="ablateToken" type="number" min="0" value="0"></label><button class="btn" id="ablate">检验该通道影响 →</button></div><div id="ablationPanel" aria-live="polite"></div>
-<div class="line"></div><div class="eyebrow">数值算术自检</div><div id="numerics" aria-live="polite"></div>
+<div class="line"></div><div class="eyebrow">通用计算透视组件 · 与全部积木工作台共用</div><p class="tiny muted">下方与自由搭建工作台使用相同的数据契约、逐算子浏览器和乘加检查；本页仍保留 Wan 特有的 Gate 干预实验。</p><div id="wanSharedMicroscope" class="cmp-surface"></div><div class="line"></div><div class="eyebrow">数值算术自检</div><div id="numerics" aria-live="polite"></div>
 </section>
 <aside class="panel right">
 <div class="eyebrow">REAL SOURCE / EVIDENCE</div><h3>官方文件与行范围</h3><p class="tiny" id="lineRef"></p>
@@ -47,4 +48,4 @@ header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justif
 <p class="tiny foot"><a id="configUrl" target="_blank" rel="noopener noreferrer">官方 I2V A14B 配置</a></p>
 <span class="pill">PINNED SOURCE + NUMERIC TEACHING DEMO</span>
 </aside></div></main>
-<script src="wan_ffn_trace.js"></script><script src="wan_ffn_lab.js"></script></body></html>
+<script src="wan_ffn_trace.js"></script><script src="compute_microscope.js"></script><script src="compute_microscope_ui.js"></script><script src="wan_ffn_lab.js"></script></body></html>
