@@ -1,0 +1,28 @@
+/* Core microscope component: embedded identically in the workbench and source labs. */
+.cmp-surface{font:12px/1.6 system-ui,"Microsoft YaHei",sans-serif;color:#deeff7;min-width:0}
+.cmp-top{display:grid;gap:3px;padding-bottom:8px;border-bottom:1px solid #355669}
+.cmp-tier{font:700 10px ui-monospace,monospace;letter-spacing:.06em;color:#8ae6d5;overflow-wrap:anywhere}
+.cmp-title{font-weight:750;color:#e1f4f7}
+.cmp-steps{display:flex;flex-wrap:nowrap;gap:5px;max-width:100%;overflow-x:auto;padding:9px 0;scrollbar-width:thin}
+.cmp-step{flex:0 0 auto;border:1px solid #34576c;background:#102c3b;border-radius:7px;color:#a8cbd6;font:11px system-ui,sans-serif;padding:8px;max-width:180px;white-space:normal}
+.cmp-step[aria-current="step"]{color:#f0ffff;background:#1b525a;border-color:#69ddce}
+.cmp-meta{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:8px 0}
+.cmp-meta span,.cmp-label{font:10px/1.5 ui-monospace,Consolas,monospace;color:#a4cbcf;overflow-wrap:anywhere}
+.cmp-deps{padding:8px 0;border-top:1px solid #345469;border-bottom:1px solid #345469}
+.cmp-chip{display:inline-block;padding:4px 7px;border:1px solid #376778;border-radius:6px;background:#0b3140;font:10px ui-monospace,monospace;color:#b3ebe0;margin:5px 5px 0 0}
+.cmp-formula{background:#09202c;border:1px solid #355d6c;border-radius:7px;padding:9px;white-space:pre-wrap;overflow-wrap:anywhere;color:#caede7;font:11px/1.6 ui-monospace,monospace}
+.cmp-hint,.cmp-footer{color:#b1cad5;font-size:11px;overflow-wrap:anywhere;line-height:1.6}
+.cmp-link{display:block;margin:6px 0 11px;color:#97e1ed;font:11px ui-monospace,monospace;overflow-wrap:anywhere}
+.cmp-mini{min-width:0;margin:8px 0}.cmp-mini .cmp-label{margin-bottom:5px}
+.cmp-matrix{display:grid;gap:3px;overflow-x:auto;max-width:100%;padding:3px 2px 9px}
+.cmp-cell{padding:3px;min-width:37px;min-height:29px;border:1px solid #45657b;border-radius:4px;color:#f0fafc;font:9px ui-monospace,monospace;white-space:nowrap}
+.cmp-cell.cmp-selected{outline:2px solid #ffce87;outline-offset:0}
+.cmp-cell:disabled{cursor:default;opacity:1}
+.cmp-breakdown{margin:11px 0;padding:10px;border:1px solid #36657a;background:#0d2634;border-radius:9px}
+.cmp-terms{border-collapse:collapse;width:100%;font:10px ui-monospace,monospace}
+.cmp-terms th,.cmp-terms td{text-align:right;padding:4px 6px;border-bottom:1px solid #305366}
+.cmp-terms th:first-child,.cmp-terms td:first-child{text-align:left}
+.cmp-surface details{margin:9px 0;border:1px solid #395969;border-radius:8px;padding:9px}
+.cmp-surface summary{cursor:pointer}
+.cmp-footer{border-top:1px solid #36536a;padding-top:8px}
+@media(max-width:720px){.cmp-steps{max-width:100%}.cmp-terms{font-size:9px}.cmp-breakdown{overflow-x:auto}}
