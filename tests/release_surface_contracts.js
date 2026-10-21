@@ -26,6 +26,9 @@ for(const route of ['learn.html','tradeoffs.html','training.html','cache.html','
  assert.ok(server.includes('"/'+route+'"'),route+' registered by server');
  assert.ok(readme.includes(']('+route+')'),route+' linked from README');
 }
+assert.ok(html.includes('src="stream_graph_blocks.js"'),'free graph state module must load before Learning Lab');
+assert.ok(html.includes('src="semantic_state.js"'),'source-level immutable stream semantics must be loaded');
+assert.ok(server.includes('"/stream_graph_blocks.js":"stream_graph_blocks.js"'),'web server must serve typed graph state module');
 assert.ok(html.includes('src="multimodal_ops.js"'),'multimodal numerical core must be loaded');
 assert.ok(server.includes('"/multimodal_ops.js"'),'multimodal numerical core must be served');
 assert.ok(html.includes('src="multimodal_advanced.js"'),'advanced multimodal module loads');
