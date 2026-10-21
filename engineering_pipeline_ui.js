@@ -55,7 +55,9 @@ const tasks=[
   why:'交接到 Serving 不只是函数调用，还涉及权重版本、Tokenizer、精度、导出校验、加载日志、回滚和流量控制。此处是数学交接，不是网络 API。',
   failure:'混用旧版词表或检查点，即使推理程序正常返回文本，语义也可能已经失真。',links:[['Decode / KV Cache','cache.html'],['Serving 调度','deepinfer_scheduler_lab.html']]}
 ];
-const s={index:0,done:new Set(),responses:new Map(),logs:new Map(),pipeline:null,config:null,provenance:null};
+const s={index:0,done:new Set(),responses:new Map(),logs:new Map(),pipeline:null,config:null,provenance:null,history:[]};
+const State=window.SeetheTruthStateMicroscope;
+const stateView=window.SeetheTruthStateMicroscopeUI.mount(document.getElementById('stateMicroscope'));
 const getOpts=()=>({seed:Number($('modelSeed').value),samplerSeed:Number($('samplerSeed').value),lr:Number($('lr').value),
  microBatchSize:Number($('microBatchSize').value),accumulationSteps:Number($('accumulationSteps').value),
  maxGradNorm:Number($('maxGradNorm').value)});
@@ -182,6 +184,7 @@ function run(){
  if(Number(value)!==tasks[i].correct){s.logs.set(i,{status:'fail',text:'机制判断未通过：'+tasks[i].failure});render();return;}
  try{if(i)assert(s.done.has(i-1),'先通过前一关');
   const evidence=perform(i);s.done.add(i);s.logs.set(i,{status:'pass',text:'PASS · 数值验证成功\n'+evidence});
+  if(s.pipeline){s.history.push(s.pipeline.checkpoint());stateView.show(State.training(s.history),s.history.length-1);}
  }catch(error){s.logs.set(i,{status:'fail',text:'BLOCKED · '+error.message+'\n请检查状态、配置及前一关。'});}
  render();
 }
@@ -200,7 +203,7 @@ function counterexample(){
 $('answer').addEventListener('change',v=>s.responses.set(s.index,$('answer').value));
 $('run').addEventListener('click',run);$('counterexample').addEventListener('click',counterexample);
 $('next').addEventListener('click',()=>{if(s.done.has(s.index)&&s.index<tasks.length-1){s.index++;render();window.scrollTo({top:0,behavior:'smooth'});}});
-$('reset').addEventListener('click',()=>{s.index=0;s.done.clear();s.responses.clear();s.logs.clear();s.pipeline=null;s.config=null;s.provenance=null;render();});
+$('reset').addEventListener('click',()=>{s.index=0;s.done.clear();s.responses.clear();s.logs.clear();s.pipeline=null;s.config=null;s.provenance=null;s.history=[];stateView.clear();render();});
 render();
 window.SeetheTruthEngineeringPipeline={get stage(){return s.index;},get completed(){return s.done.size;},get optimizerStep(){return s.pipeline?.modelStep||0;},get pendingMicroSteps(){return s.pipeline?.pendingMicroSteps||0;},get provenance(){return s.provenance?.model?.step??null;},lessons:tasks.length};
 })();
