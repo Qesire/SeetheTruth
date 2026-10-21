@@ -27,7 +27,7 @@ dependencies {
 }
 
 // An explicit, reviewed list stops new desktop resources silently entering the APK.
-def teachingFiles = file('teaching-assets.txt').readLines()
+def teachingFiles = rootProject.file('teaching-assets.txt').readLines()
     .collect { it.trim() }.findAll { it && !it.startsWith('#') }
 def stageTeachingAssets = tasks.register('stageTeachingAssets', Sync) {
     from(rootProject.projectDir.parentFile) {
