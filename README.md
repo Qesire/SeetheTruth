@@ -36,7 +36,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 ## 全站通用化审计（138 种积木 / 21 类别 / 20 个主要功能页面）
 
-**[查看全站通用化审计](docs/universalization-audit-2026-10-21.md)**。本轮直接核对页面依赖与真实执行器：现有 20 个主要页面中，2 个已接入公共 Tensor/Operator 透视，3 个已接入公共 State/Event 透视（DeepInfer KV、DeepInfer Worker、工程训练续训），另外 10 个仍是专用计算或教学实现、2 个是导航、3 个是 PC 独有证据链。完整清单同时可在 [交互能力矩阵](capabilities.html) 看到。剩余 10 个尚不应标成“通用完成”，即使其数学引擎已单独通过。新增 `state_microscope.js` 以严格前后状态、因果依赖和来源等级统一审计不同执行器，不将 CPU 资源模拟或合成数据冒充 GPU 实测。自动核对：`node tests/state_microscope_contracts.js` 与 `node tests/universal_surface_audit_contracts.js`，浏览器：`python tests/browser_state_microscope.py`。
+**[查看全站通用化审计](docs/universalization-audit-2026-10-21.md)**。本轮直接核对页面依赖与真实执行器：现有 20 个主要页面中，2 个已接入公共 Tensor/Operator 透视，4 个已接入公共 State/Event 透视（DeepInfer KV、DeepInfer Worker、工程训练续训、标量训练），另外 9 个仍是专用计算或教学实现、2 个是导航、3 个是 PC 独有证据链。完整清单同时可在 [交互能力矩阵](capabilities.html) 看到。剩余 9 个尚不应标成“通用完成”，即使其数学引擎已单独通过。新增 `state_microscope.js` 以严格前后状态、因果依赖和来源等级统一审计不同执行器，不将 CPU 资源模拟或合成数据冒充 GPU 实测。自动核对：`node tests/state_microscope_contracts.js` 与 `node tests/universal_surface_audit_contracts.js`，浏览器：`python tests/browser_state_microscope.py`。
 
 ## 通用计算透视：所有积木共享的基本能力
 
