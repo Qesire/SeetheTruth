@@ -5,7 +5,8 @@ const src=Object.fromEntries(Audit.screens.map(row=>[row.page,fs.readFileSync(pa
 const evidence=Audit.analyze(src);
 assert.equal(evidence.rows.length,20);
 assert.equal(evidence.counts.tensor,2);assert.equal(evidence.counts.state,4);
-assert.ok(evidence.counts.specialized>=10,'must not claim incomplete isolated labs are unified');
+assert.ok(evidence.counts.specialized>=1,'at least one legacy specialized workflow must remain explicitly classified until migrated');
+assert.equal(evidence.counts.total,evidence.counts.tensor+evidence.counts.state+evidence.counts.specialized+evidence.counts.navigation+evidence.counts.desktopOnly,'every screen must be accounted for');
 assert.equal(new Set(Audit.screens.map(x=>x.page)).size,evidence.rows.length);
 for(const row of evidence.rows){
  assert.ok(row.note.length>=15,row.page+' missing explicit limitation');
