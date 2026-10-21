@@ -22,6 +22,14 @@ assert.equal(gqa.numpyEligible,false);assert.equal(gqa.torchEligible,false);
 assert.equal(A.rows.find(r=>r.kind==='deepinfer_mtp_confidence_schedule').torchEligible,true);
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+for(const page of ['learn.html','capabilities.html']){
+ const html=read(page);
+ for(const dependency of ['semantic_state.js','stream_graph_blocks.js','learning_lab.js'])
+  assert.ok(html.includes('src="'+dependency+'"'),page+' missing executable dependency '+dependency);
+ assert.ok(html.indexOf('src="semantic_state.js"')<html.indexOf('src="stream_graph_blocks.js"') &&
+           html.indexOf('src="stream_graph_blocks.js"')<html.indexOf('src="learning_lab.js"'),
+           page+' must load stream types before the Learning registry');
+}
 assert.ok(read('atlas_server.py').includes('"/capabilities.html":"capabilities.html"'));
 assert.ok(read('teaching.html').includes('href="capabilities.html"'));
 assert.ok(read('README.md').includes('node scripts/report_capabilities.js'));
