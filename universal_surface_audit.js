@@ -16,7 +16,7 @@ const screens=Object.freeze([
 ['tradeoffs.html','架构成本权衡','specialized','解析算术/交互页面，不是执行 Tensor Trace；不能强行提升证据级别'],
 ['capabilities.html','积木能力矩阵','specialized','全局注册/后端白名单审计，职责是状态与覆盖统计，不是计算实验'],
 ['engineering_journey.html','12 关训练到推理','specialized','使用真实微型 Bigram 数学，但教学关卡未复用通用 Trace UI'],
-['engineering_pipeline.html','累积、Shuffle、续训','specialized','真实微型训练状态机，尚未复用通用 State Frame'],
+['engineering_pipeline.html','累积、Shuffle、续训','state','已接入通用 State Frame：Microbatch、Sampler、Optimizer Step、检查点差分'],
 ['teaching.html','教学中心','navigation','课程路由和问题索引，无数值执行职责'],
 ['android_teaching.html','Android 教学导航','navigation','离线教育入口，无模型执行职责'],
 ['real_model_lab.html','真实 CPU 小模型证据','desktop_only','结构化只读观测，不能被误认为完整算子输入或已验证复跑'],
