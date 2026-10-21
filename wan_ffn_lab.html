@@ -34,7 +34,7 @@ header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justif
 </div><div class="row"><button class="btn primary" id="recompute">重新计算整条计算流</button><button class="btn" id="zeroGate">反事实：e5=0</button><button class="btn" id="reset">重置参数</button></div>
 <p class="tiny muted" id="stateLabel">—</p><div class="line"></div>
 <div class="eyebrow">即时可解释张量 · 点击任意格子查看坐标</div><div id="mainLabel" class="mat-label"></div><div class="mat" id="mainMatrix" role="group" aria-label="当前步骤二维数值张量"></div><div class="extra" id="extraMatrices"></div>
-<div class="line"></div><div class="eyebrow">选定坐标的数学拆解</div><p id="selected" class="muted"></p><div id="dotBreakdown"></div>
+<div class="line"></div><div class="eyebrow">选定坐标的数学拆解</div><p id="selected" class="muted"></p><div id="dotBreakdown"></div><div class="line"></div><div class="eyebrow">CHANNEL IMPACT / HIDDEN ABLATION</div><h3>一个 hidden channel 如何影响所有输出通道？</h3><p class="tiny muted">将所选 hidden 激活在 W2 之前单独设为 0，保持其余激活与权重不变。这是数学反事实，不代表已实现硬件稀疏加速或真实 Wan 质量变化。</p><div class="row"><label class="field" style="max-width:190px">被删除的 hidden 通道 H 索引<input id="ablateChannel" type="number" min="0" value="0"></label><label class="field" style="max-width:190px">Token 索引<input id="ablateToken" type="number" min="0" value="0"></label><button class="btn" id="ablate">检验该通道影响 →</button></div><div id="ablationPanel" aria-live="polite"></div>
 <div class="line"></div><div class="eyebrow">数值算术自检</div><div id="numerics" aria-live="polite"></div>
 </section>
 <aside class="panel right">
