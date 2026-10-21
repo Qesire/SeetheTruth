@@ -125,3 +125,5 @@ node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python Nu
 **逻辑状态导出（2026-10-21）：** `stream_state_init/append/read/fork` 已支持独立 **NumPy Python** 前向生成，返回的数值字典附带 `state_metadata`，在运行时检查绝对时间位置、容量和版本；移动端仍仅执行教学图，不开放脚本下载。该编译支持有界 [T,D] 数值状态，暂不包括状态算子的 PyTorch 自动微分、真实 GPU KV Page Manager 或高维递归图编译。
 
 **PyTorch 状态编译（2026-10-21）：** 4 类 `stream_state_*` 算子能在 PC 版导出真实可运行的 PyTorch CPU Float64 前向代码。通过 PyTorch `clone`/`cat`/有界时间切片保持计算图，显式区分状态元数据与可微张量，在共享前缀双分叉、两路标量损失合并和 AdamW 训练中验证梯度汇合、checkpoint 与来源覆盖重算；`torch_stream_lowering.js` 对位置、容量和类型错误严格拒绝。Android 只提供教学画布、没有代码产物。该功能仅限单次 DAG 的有界 [T,D] 状态，不提供递归时间调度、跨步 BPTT、生产级 KV/显存加速。
+
+推导和反例：[流状态积木的 PyTorch 梯度合同](docs/torch-stream-autograd.md)。
