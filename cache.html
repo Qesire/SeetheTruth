@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SeetheTruth · KV Cache State Machine</title><style>
+<title>SeetheTruth · KV Cache State Machine</title><link rel="stylesheet" href="state_microscope.css"><style>
 :root{color-scheme:dark;--bg:#070d19;--panel:#0e1a2b;--panel2:#102139;--edge:#223c55;--text:#e7effb;--muted:#839db8;--cyan:#54dbf1;--purple:#b493ff;--amber:#ffc278;--green:#6be7af}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:13px/1.5 Inter,system-ui,-apple-system,"Microsoft YaHei",sans-serif}
 body{background:radial-gradient(ellipse 1150px 590px at 53% -18%,#183456aa,transparent 82%),#070d19}button,select,input{font:inherit}
@@ -130,18 +130,20 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
 <div class="formula">Q ∈ ℝ[B,Hq,Tq,Dk]<br>K,V ∈ ℝ[B,Hkv,Tk,D]<br>P = softmax( QKᵀ / √Dk + Mask )<br>O = P·V</div>
 <div class="label">OBSERVED STATE</div><div id="observed"><div class="empty">执行后显示当前步骤的已写缓存、维度和数学归因。</div></div>
 <div class="rule"></div><div class="label">COST COMPARISON</div><div id="costs"><p class="hint">执行后对比缓存计算与明确的全前缀重计算基线。</p></div>
-<div class="rule"></div><div class="label">EVIDENCE & LIMITS</div>
+<div class="rule"></div><div class="label">通用状态显微镜 · Prefill→Decode</div><p class="hint">同一通用数据契约、由独立 GQA 数值会话进行完整重放，核对前后缓存状态。</p><div id="stateMicroscope" class="sm-surface"></div><div class="rule"></div><div class="label">EVIDENCE & LIMITS</div>
 <div class="evidence"><span class="dot"></span><span>真实持久化在本次 JavaScript 会话内的数值 K/V 数组，非示意状态变量。</span></div>
 <div class="evidence"><span class="dot"></span><span>用完整前缀重新计算的独立数值结果校验 Decode 输出。</span></div>
 <div class="notice">教学数值模拟：无真实 tokenizer、LLM 权重、GPU、网络、Token 采样或 PyTorch 实测延迟。FLOPs 仅计 QK/PV 矩阵乘加。</div>
 </div></aside></section>
 <footer>SeetheTruth Learning Studio · actual browser-computed state, numerically cross-checked · learning evidence ≠ observed model run</footer>
-<script src="tensor_ir.js"></script><script src="kv_cache_lab.js"></script>
+<script src="tensor_ir.js"></script><script src="kv_cache_lab.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script>
 <script>
 (()=>{'use strict';
  const Lab=window.SeetheTruthCacheLab, IR=window.SeetheTruthTensorIR;
  const $=s=>document.querySelector(s);
- let session,selected=-1;
+ let session,selected=-1,runHistory=[],commonFrame=null,commonSnapshot=null;
+ const State=window.SeetheTruthStateMicroscope;
+ const stateView=window.SeetheTruthStateMicroscopeUI.mount($('#stateMicroscope'));
  const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const numeral=x=>Number(x).toLocaleString('en-US');
  function kvConfig(){return {prefix:Number($('#prefix').value),decode:Number($('#decode').value),
@@ -150,7 +152,7 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
  function alertStatus(text,isError=false){$('#status').textContent=text;$('#status').classList.toggle('error',isError);}
  function restart(){
    try{
-     session=Lab.Session(kvConfig());selected=-1;
+     session=Lab.Session(kvConfig());selected=-1;runHistory=[session.snapshot()];commonFrame=null;commonSnapshot=null;
      alertStatus('新的独立会话已经建立。Prefill 尚未运行，K/V 数组为空。');
      draw();
    }catch(e){alertStatus('配置不合法：'+e.message,true);}
@@ -254,9 +256,13 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
      row('全前缀重算基线',numeral(baseline))+
      row('只新增投影位置',steps.reduce((n,x)=>n+x.projectedNewTokens,0))+
      '<p class="hint" style="margin-top:11px">仅对比指定的数学算法量，不是 GPU 实测加速比；包含初始 Prefill。</p>';
+   if(runHistory.length){if(commonSnapshot!==runHistory.at(-1)){
+     commonFrame=State.cache(runHistory,Lab);commonSnapshot=runHistory.at(-1);
+   }
+   stateView.show(commonFrame,Math.max(0,selected+1));}
  }
  $('#advance').onclick=()=>{
-  try{const state=session.advance();selected=state.history.length-1;draw();
+  try{const state=session.advance();runHistory.push(state);selected=state.history.length-1;draw();
     alertStatus('已执行 '+state.last.phase+'：实际追加 '+state.last.appended+
       ' 条 K/V，长度 '+state.last.cacheBefore+' → '+state.last.cacheAfter+'。');
   }catch(e){alertStatus('执行失败：'+e.message,true);}
