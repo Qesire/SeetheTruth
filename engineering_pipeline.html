@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081725">
 <title>SeetheTruth · 工程训练进阶实验室</title>
-<style>
+<link rel="stylesheet" href="state_microscope.css"><style>
 :root{color-scheme:dark;--bg:#081725;--pane:#102b3c;--line:#34576c;--text:#e9f8fe;--muted:#aac6d5;--mint:#7be4cb;--gold:#f1cd90}
 *{box-sizing:border-box}html{font-family:system-ui,"Microsoft YaHei",sans-serif;font-size:15px}body{margin:0;color:var(--text);background:radial-gradient(ellipse at 60% -10%,#1d495a,#081725 60%);line-height:1.65}
 a{color:#9be4f3;text-decoration:none}a:hover{text-decoration:underline}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
@@ -41,7 +41,7 @@ main{max-width:1440px;margin:auto;padding:22px 16px 55px}h1{font-size:clamp(25px
 <aside class="panel side right"><div class="caption">LIVE MODEL STATE</div><h3>Optimizer 与 DataLoader</h3><dl class="kpis" id="kpis"></dl>
 <div class="block"><div class="caption">Learning-rate schedule（24 更新步）</div><div id="schedule" role="img" aria-label="实际 warmup 与余弦衰减曲线"></div><p class="muted" style="font-size:11px">纵轴为学习率，显示的是确定性公式值，不是实测优化速度。</p></div>
 <div class="block"><div class="caption">当前 W[8×8] 参数强度矩阵</div><div id="weights" role="img" aria-label="微型模型权重矩阵数值色块"></div><p class="muted" style="font-size:11px">色块根据当前实际权重绘制；并非真实预训练模型的参数。</p></div>
-<div class="block"><div class="caption">衔接更深入的真实计算积木</div><div id="globalLinks"><p><a href="learn.html">可训练 Transformer 组合图</a></p><p><a href="cache.html">Token Decode / KV Cache</a></p><p><a href="deepinfer_scheduler_lab.html">Scheduler / Worker</a></p><p><a href="capabilities.html">PyTorch 导出能力审计</a></p></div></div></aside>
+<div class="block"><div class="caption">通用状态显微镜 · 训练状态差分</div><p class="muted">与 KV 生命周期和 Worker 共享相同的事件审计内核。仅展示已通过的实验检查点，不将其冒充真实 GPU Trace。</p><div id="stateMicroscope" class="sm-surface"></div></div><div class="block"><div class="caption">衔接更深入的真实计算积木</div><div id="globalLinks"><p><a href="learn.html">可训练 Transformer 组合图</a></p><p><a href="cache.html">Token Decode / KV Cache</a></p><p><a href="deepinfer_scheduler_lab.html">Scheduler / Worker</a></p><p><a href="capabilities.html">PyTorch 导出能力审计</a></p></div></div></aside>
 </div></main>
-<script src="engineering_journey_engine.js"></script><script src="engineering_training_pipeline.js"></script><script src="engineering_pipeline_ui.js"></script>
+<script src="engineering_journey_engine.js"></script><script src="engineering_training_pipeline.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script><script src="engineering_pipeline_ui.js"></script>
 </body></html>
