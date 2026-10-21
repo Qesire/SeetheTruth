@@ -49,7 +49,7 @@ a.equal(policyFrame.steps.length,2);
 a.deepEqual(policyFrame.steps.map(x=>x.dependencies),[[],[]],'vote and chunk are independent source decisions');
 a.equal(policyFrame.steps[0].after.decision.point,'ANY');
 a.ok(policyFrame.steps[1].after.decision.q>=0);
-const wrongPolicy=JSON.parse(JSON.stringify(policyInputs));wrongPolicy.voteResult.step='prompt';
+const wrongPolicy=JSON.parse(JSON.stringify(policyInputs));wrongPolicy.voteResult.step=policyInputs.voteResult.step==='prompt'?'decode':'prompt';
 a.throws(()=>S.prefill(wrongPolicy,Policy),/vote result contradicts/);
 const wrongChunk=JSON.parse(JSON.stringify(policyInputs));wrongChunk.chunkResult.q+=1;
 a.throws(()=>S.prefill(wrongChunk,Policy),/chunk result contradicts/);
