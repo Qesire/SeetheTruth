@@ -56,6 +56,29 @@ function breakdown(){
   area.append(element('p','GELU 输入 '+fmt(info.input)+' → 输出 '+fmt(info.value),'tiny'));
  }
 }
+function renderAblation(){
+ const data=state.data,{tokens:T,hidden:H,dim:C}=data.config;
+ const token=Math.min(T-1,Math.max(0,Number($('ablateToken').value)||0));
+ const channel=Math.min(H-1,Math.max(0,Number($('ablateChannel').value)||0));
+ $('ablateToken').value=token;$('ablateChannel').value=channel;
+ $('ablateToken').max=T-1;$('ablateChannel').max=H-1;
+ const effect=A.hiddenChannelEffect(data,token,channel);
+ const panel=$('ablationPanel');panel.replaceChildren();
+ panel.append(element('pre','h=GELU(u['+token+','+channel+'])='+fmt(effect.activation)+
+ '；Δx_out[c]=h × W2[c,'+channel+'] × Gate['+token+',c]','code'));
+ const matObj={shape:[1,C],values:effect.effects.map(e=>e.gatedDelta)};
+ panel.append(matrixView(matObj,'单通道对每个输出的最终残差贡献 Δx_out[0,c]',false,true));
+ const table=element('table',undefined,'dot'),head=element('tr');
+ for(const label of ['输出 c','W2[c,h]','删除前 x','删除后 x','差 Δ'])head.append(element('th',label));
+ const thead=element('thead');thead.append(head);table.append(thead);
+ const tbody=element('tbody');
+ for(const e of effect.effects){
+  const row=element('tr');for(const v of [e.outputChannel,fmt(e.weight),fmt(e.dense),fmt(e.ablated),fmt(e.gatedDelta)])row.append(element('td',v));tbody.append(row);
+ }
+ table.append(tbody);panel.append(table);
+ panel.append(element('p','全输出扰动 L2 = '+fmt(effect.deltaL2)+
+ '；相对原输出 L2 = '+(effect.relativeDeltaL2*100).toFixed(3)+'%。这里测的是当前小模型的精确删除反事实，不是质量评分或速度提升。','tiny muted'));
+}
 function integrity(){
  const t=state.data,{tokens:T,dim:C,hidden:H}=t.config;
  const final=t.steps[8].main.values,cross=t.steps[1].main.values,gate=t.steps[7].main.values;
@@ -95,12 +118,13 @@ function render(){
  $('steps').replaceChildren(...d.steps.map((s,i)=>{const b=element('button',undefined,'step');b.type='button';
   b.setAttribute('aria-current',i===state.step?'step':'false');b.append(element('span',String(i).padStart(2,'0'),'idx'),
   element('span',s.name));b.addEventListener('click',()=>{state.step=i;state.row=0;state.col=0;render();});return b;}));
- flow();breakdown();integrity();
+ flow();breakdown();renderAblation();integrity();
 }
 function recompute(){
  try{state.data=A.trace(options());state.error=null;state.row=0;state.col=0;render();}
  catch(e){state.error=e.message;$('numerics').textContent='拒绝不合法输入：'+e.message;}
 }
+$('ablate').addEventListener('click',renderAblation);
 $('recompute').addEventListener('click',recompute);
 $('zeroGate').addEventListener('click',()=>{$('gate').value='0';state.step=8;recompute();});
 $('reset').addEventListener('click',()=>{for(const [key,value] of Object.entries({tokens:3,dim:4,hidden:8,seed:17,gate:1,scale:1,shift:1}))$(key).value=value;state.step=0;recompute();});
