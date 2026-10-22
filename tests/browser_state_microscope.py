@@ -118,7 +118,7 @@ class StateMicroscopeBrowser(unittest.TestCase):
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
   self.assertEqual(p.goto(self.url+'/capabilities.html?edition=teaching').status,200)
   p.wait_for_function("document.querySelectorAll('#surfaceAuditRows tr').length === 20")
-  self.assertEqual(p.locator('#coreTensorCount').inner_text(),'3')
+  self.assertEqual(p.locator('#coreTensorCount').inner_text(),'4')
   self.assertEqual(p.locator('#coreStateCount').inner_text(),'7')
   self.assertIn('尚待复用',p.locator('#surfaceAuditRows').inner_text())
   p.screenshot(path=str(OUT/'mobile-universal-audit-matrix.png'),full_page=True,animations='disabled')
