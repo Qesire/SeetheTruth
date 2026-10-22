@@ -280,6 +280,44 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    if(name==="extension_video_composition"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[N("video","semantic_video_source",25,225,{frames:3,seed:1}),
+       N("first","semantic_video_slice",325,65,{start:0,length:2}),
+       N("last","semantic_video_slice",325,425,{start:2,length:1}),
+       N("join","semantic_video_concat",680,235)];
+      const edges=[["video","first","x"],["video","last","x"],["first","join","a"],["last","join","b"]];
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 五维具名视频分块→重组",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
+    if(name==="extension_paper_composition"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const W=(id,x,y,values)=>{
+       const zeros=values.map(row=>row.map(()=>0));
+       return N(id,"parameter",x,y,{values,frozen:true,optimizer:{t:0,m:zeros,v:zeros}});
+      };
+      const nodes=[W("x",20,40,[[1,2],[2,1]]),W("base",20,250,[[1,0],[0,1]]),
+       W("a",20,460,[[1],[2]]),W("b",20,670,[[3,4]]),W("m",20,880,[[2,3]]),
+       N("lora","paper_lora_forward",450,150,{alpha:2}),
+       N("dora","paper_dora_forward",450,570,{alpha:1}),
+       N("blend","add",840,335)];
+      const edges=["lora","dora"].flatMap(target=>[["x",target,"x"],["base",target,"w"],
+       ["a",target,"a"],["b",target,"b"],...(target==="dora"?[["m",target,"m"]]:[])]);
+      edges.push(["lora","blend","a"],["dora","blend","b"]);
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 同源 LoRA/DoRA→任意后继 Add",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
+    if(name==="extension_online_attention"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[N("q","input",35,65,{rows:2,width:2,seed:1}),
+       N("k","input",35,285,{rows:3,width:2,seed:2}),
+       N("v","input",35,505,{rows:3,width:2,seed:3}),
+       N("online","paper_online_attention",405,240,{chunk:1}),
+       N("norm","softmax",755,245)];
+      const edges=[["q","online","q"],["k","online","k"],["v","online","v"],["online","norm","x"]];
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 精确 Online Attention→后继归一化",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     if(name==="stream_state_branches"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const nodes=[
