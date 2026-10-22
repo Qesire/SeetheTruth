@@ -26,8 +26,8 @@ class Tape{
  meanSquare(a,target){const A=this.value(a),B=tensor(target);if(A.length!==B.length||A[0].length!==B[0].length)throw Error("loss shape mismatch");const n=A.length*A[0].length;const diff=A.map((r,i)=>r.map((v,j)=>v-B[i][j]));const loss=diff.flat().reduce((s,x)=>s+x*x,0)/n;return this.op("mse",[[loss]],[{id:a,vjp:g=>scale(diff,2*g[0][0]/n)}]);}
  backward(loss,seed=[[1]]){const sink=this.nodes.get(loss);if(!sink||JSON.stringify(stats(seed).shape)!==JSON.stringify(stats(sink.value).shape))throw Error("seed shape mismatch");const reachable=new Set();const visit=id=>{if(reachable.has(id))return;reachable.add(id);for(const p of this.nodes.get(id).parents)visit(p.id);};visit(loss);
  const grads=new Map([[loss,tensor(seed)]]);const ordered=[...this.nodes.values()].reverse();
- for(const n of ordered){if(!reachable.has(n.id)||!grads.has(n.id))continue;const g=grads.get(n.id);n.grad=n.grad?add(n.grad,g):clone(g);this.events.push({phase:"backward",id:n.id,name:n.name,gradient:stats(g),accumulated:stats(n.grad)});
- for(const p of n.parents){const branch=p.vjp(g);grads.set(p.id,grads.has(p.id)?add(grads.get(p.id),branch):branch);this.events.push({phase:"vjp",from:n.id,to:p.id,gradient:stats(branch)});}}
+ for(const n of ordered){if(!reachable.has(n.id)||!grads.has(n.id))continue;const g=grads.get(n.id);n.grad=n.grad?add(n.grad,g):clone(g);this.events.push({phase:"backward",id:n.id,name:n.name,gradient:stats(g),accumulated:stats(n.grad),incomingValues:clone(g),accumulatedValues:clone(n.grad)});
+ for(const p of n.parents){const branch=p.vjp(g);grads.set(p.id,grads.has(p.id)?add(grads.get(p.id),branch):branch);this.events.push({phase:"vjp",from:n.id,to:p.id,gradient:stats(branch),incomingValues:clone(g),gradientValues:clone(branch)});}}
  return this.gradients();}
  gradients(){return Object.fromEntries([...this.parameters].map(([k,id])=>[k,this.nodes.get(id).grad?clone(this.nodes.get(id).grad):null]));}
  zeroGrad(){for(const n of this.nodes.values())n.grad=null;this.events.push({phase:"zero_grad"});}
