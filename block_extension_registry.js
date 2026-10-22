@@ -66,7 +66,7 @@
   }
   function substeps(node,inputs,run){
    const p=get(node.kind);if(typeof p.trace!=='function')return null;
-   const data=p.trace(node.kind,validate(node.kind,node.params||{}),inputs,run);
+   const data=p.trace(node.kind,validate(node.kind,node.params||{}),inputs,run,node);
    must(data==null||Array.isArray(data)&&data.length<=12,'invalid module microscope substeps');
    return data;
   }
