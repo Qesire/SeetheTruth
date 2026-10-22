@@ -37,21 +37,53 @@ function tape(t){
    n.identity?'Parameter ID '+n.identity+'：相同 ID 重复引用同一份 W，并在反向传播时归并梯度。':'该步骤读取上述真实前驱矩阵并交给微型 Tape 执行器。',dot));
   seen.add(n.id);
  }
- const backward=t.events.filter(e=>e.phase==='backward');
- // The event list is the actual VJP visitation order, including gradients
- // accumulated from shared upstream consumers, not presumed reverse order.
- const byNode=new Set();
- for(const e of backward){
-  need(seen.has(e.id)&&!byNode.has(e.id),'invalid backward visitation record');
-  const n=t.nodes.get(e.id);need(n.grad!==null,'backward event missing gradient tensor');
-  const dep=[edge(n.id,'forwardActivation')];
-  if(byNode.size)dep.push(edge('grad_'+backward[byNode.size-1].id,'priorBackwardEvent'));
-  const operand={forwardValue:values(n.value)};
-  const out=values(n.grad);
-  steps.push(node('grad_'+n.id,'vjp','Backward · dL/d'+n.id,out,dep,operand,
-   'g_parent += VJP(parent ← '+n.name+', g_output)',
-   '执行器确实调用局部 VJP 并把两条共享路径梯度相加。此处显示 Tape 的累计梯度，而非推导的假结果。'));
-  byNode.add(e.id);
+ const history=t.events.filter(e=>e.phase==='backward'||e.phase==='vjp');
+ // Every inner VJP edge has a real numerical contribution from the tape;
+ // each step follows the engine's own recorded reverse execution order.
+ need(history.some(e=>e.phase==='vjp'),'no executed derivative contributions');
+ let previous=null;
+ const currentGrad=new Map();
+ for(let i=0;i<history.length;i++){
+  const e=history[i],id='adjoint_'+i,dependencies=[];
+  if(previous)dependencies.push(edge(previous,'previousExecutionEvent'));
+  let out,operands,title,formula,why,kind;
+  if(e.phase==='backward'){
+   need(seen.has(e.id),'backward references nonexistent forward tensor');
+   const n=t.nodes.get(e.id);
+   need(Array.isArray(e.incomingValues)&&Array.isArray(e.accumulatedValues),'missing real gradients at backward event');
+   const contribution=values(e.incomingValues),accumulated=values(e.accumulatedValues);
+   if(currentGrad.has(e.id)){
+    const before=currentGrad.get(e.id);
+    need(before.length===accumulated.values.length,'gradient accumulation dimensionality changed');
+    for(let j=0;j<before.length;j++)need(Math.abs(before[j]+contribution.values[j]-accumulated.values[j])<1e-10,'cumulative gradient is inconsistent');
+   }else need(accumulated.values.every((z,j)=>Math.abs(z-contribution.values[j])<1e-10),'initial node gradient not equal to actual seed');
+   currentGrad.set(e.id,accumulated.values);
+   if(JSON.stringify(t.nodes.get(e.id).grad)!==JSON.stringify(e.accumulatedValues)){
+    // Multiple backward() calls can visit the same node again; the final
+    // stored gradient is only expected to match its last accumulated event.
+    const last=history.filter(z=>z.phase==='backward'&&z.id===e.id).at(-1);
+    if(last===e)need(false,'last accumulated gradient differs from Tape node');
+   }
+   dependencies.push(edge(e.id,'forwardActivation'));
+   out=accumulated;operands={incomingGradient:contribution,forwardActivation:values(n.value)};
+   title='Backward · accumulated dL/d'+e.id;kind='vjp_accumulation';
+   formula='accumulated_grad += incoming_grad';
+   why='显示本次真实反向事件收到的梯度与累计后矩阵。共享参数的梯度相加可以逐次观察。';
+  }else{
+   const n=t.nodes.get(e.from),parent=t.nodes.get(e.to);
+   need(n&&parent&&Array.isArray(e.incomingValues)&&Array.isArray(e.gradientValues),'VJP missing source or actual gradient matrix');
+   const link=n.parents.find(p=>p.id===e.to);
+   need(link&&typeof link.vjp==='function','VJP target is not a parent');
+   need(JSON.stringify(link.vjp(e.incomingValues))===JSON.stringify(e.gradientValues),'VJP branch contribution contradicts executed derivative');
+   const incoming=values(e.incomingValues);
+   out=values(e.gradientValues);operands={outputGradient:incoming,forwardInput:values(parent.value),forwardOutput:values(n.value)};
+   dependencies.push(edge(e.from,'downstreamNode'),edge(e.to,'parentNode'));
+   title='VJP · '+e.from+' → '+e.to;kind='vjp_edge';
+   formula='∂L/∂'+e.to+' += VJP('+n.name+',∂L/∂'+e.from+')';
+   why='这个数值是执行器对该条计算边独立计算的梯度贡献，能区分两条路径各自的贡献与最终累积值。';
+  }
+  steps.push(node(id,kind,title,out,dependencies,operands,formula,why));
+  previous=id;
  }
  return finalize('真实 Tape：前向矩阵乘法 → MSE → VJP 梯度归并',steps);
 }
