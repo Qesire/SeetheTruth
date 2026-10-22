@@ -38,6 +38,12 @@ for(const {capacity,r}of examples){
  const frame=Trace.moe(args,result);
  assert.equal(Core.validate(frame),frame);
  assert.equal(frame.steps.length,9);
+ const out=frame.steps.find(z=>z.id==='out');assert.equal(out.substeps.length,2);
+ for(let i=0;i<2;i++){
+  assert.equal(!!out.substeps[i].dot,result.routed[i].accepted);
+  assert.deepEqual(out.substeps[i].out.values,[result.output[i][0]]);
+  if(result.routed[i].accepted)near(Core.dot(frame,'out:token'+i,0,0).error,0);
+ }
  assert.deepEqual(frame.steps.find(s=>s.id==='dispatch').out.values,
   result.routed.flatMap(x=>[x.expert,x.accepted?1:0,x.probability]));
  if(capacity===1&&result.routed[0].expert===result.routed[1].expert){
