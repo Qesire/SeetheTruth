@@ -6,6 +6,9 @@ on:
       - 'atlas_server.py'
       - 'wan_ffn*'
       - 'compute_microscope*'
+      - 'paper_compute_trace.js'
+      - 'tests/paper_compute_trace_contracts.js'
+      - 'tests/browser_paper_compute_trace.py'
       - 'micro_training_trace.js'
       - 'tests/micro_training_trace_contracts.js'
       - 'tests/browser_micro_training_trace.py'
@@ -30,6 +33,9 @@ on:
       - 'engineering_*'
       - 'wan_ffn*'
       - 'compute_microscope*'
+      - 'paper_compute_trace.js'
+      - 'tests/paper_compute_trace_contracts.js'
+      - 'tests/browser_paper_compute_trace.py'
       - 'micro_training_trace.js'
       - 'tests/micro_training_trace_contracts.js'
       - 'tests/browser_micro_training_trace.py'
@@ -70,6 +76,7 @@ jobs:
           node tests/engineering_pipeline_contracts.js
           node tests/wan_ffn_microscope_contracts.js
           node tests/compute_microscope_contracts.js
+          node tests/paper_compute_trace_contracts.js
           node tests/micro_training_trace_contracts.js
           node tests/state_microscope_contracts.js
           node tests/universal_surface_audit_contracts.js
@@ -90,6 +97,16 @@ jobs:
         with:
           name: state-microscope-browser-proof
           path: state_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Paper patch numeric operator microscope: LoRA/DoRA/online softmax
+        run: python tests/browser_paper_compute_trace.py
+      - name: Archive paper patch microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-compute-microscope-proof
+          path: paper_compute_trace_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
       - name: Universal Tape, MoE and PPO operator microscope
