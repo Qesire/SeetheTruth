@@ -154,6 +154,7 @@ function learning(graph,run,catalog){
     {id:r.id+':weighted_value',kind:'matmul',title:'Probabilities × V · Context',formula:'out[t,c] = Σ_j P[t,j] V[j,c]',why:'所有 key/value token 的值按概率汇聚到对应 Query，形成 Attention 的最终输出。',out,operands:{probabilities,v},dot:dotSpec(probabilities,valueWeights,zeroV)}
    ];
   }
+  if(!isConcept&&r.extensionSubsteps){must(!substeps,'node has ambiguous trace providers');substeps=r.extensionSubsteps;}
   const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
    sourceLines:null,dependencies,out,operands,dot:specification,substeps,
    note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};
