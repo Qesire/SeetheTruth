@@ -70,9 +70,17 @@
   const value=run.values,sh=shape(value);
   const out={shape:sh,values:flatten(value)};
   const operands=Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,{shape:shape(v),values:flatten(v)}]));
+  let indexMap;
+  if(kind==='semantic_video_slice'){
+   const span=sh.slice(2).reduce((a,b)=>a*b,1);
+   indexMap=out.values.map((_,i)=>({port:'x',index:(Math.floor(i/span)+p.start)*span+i%span}));
+  }else if(kind==='semantic_video_concat'){
+   const first=flatten(inputs.a).length;
+   indexMap=out.values.map((_,i)=>i<first?{port:'a',index:i}:{port:'b',index:i-first});
+  }
   return [{id:node.id+':named_axes',kind:'named_axis_transform',title:kind==='semantic_video_source'?'实际生成 B,T,H,W,C':kind==='semantic_video_slice'?'沿 T 轴严格裁切':'按连线顺序拼接 T 轴',
     formula:defs[kind].formula,why:defs[kind].why+' 输出形状 '+sh.join('×')+'；真实内容来自 TensorIR / SemanticState。',
-    out,operands}];
+    out,operands,...(indexMap?{indexMap}:{})}];
  }
  return Object.freeze({name:'semantic_video',defs,validate:valid,infer,execute,trace});
 });
