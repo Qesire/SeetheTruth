@@ -66,6 +66,7 @@ paper_compute_trace.js
 paper_block_pack.js
 semantic_block_pack.js
 block_extension_registry.js
+axis_block_pack.js
 python_codegen.js
 semantic_state.html
 semantic_state.js
