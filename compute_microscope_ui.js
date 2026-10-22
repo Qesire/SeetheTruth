@@ -92,12 +92,14 @@ function mount(rootElement,onSelect){
   output.append(mini(s.out,'输出张量 / '+s.id,(r,c,p)=>{row=r;col=c;prefix=p||[];present();}, {row,col,prefix}));
   rootElement.append(output);
   if(s.out.values!==null){
-   const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape[0]-1),Math.min(col,s.out.shape[s.out.shape.length-1]-1),prefix);
+   const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape.length===1?0:s.out.shape[s.out.shape.length-2]-1),Math.min(col,s.out.shape[s.out.shape.length-1]-1),prefix);
    const box=el('div',undefined,'cmp-breakdown');
    box.append(el('div','坐标 ['+detail.row+','+detail.col+'] = '+detail.value.toPrecision(12),'cmp-label'));
    box.append(el('pre',detail.formula,'cmp-formula'));
    if(detail.reconstructable){
     box.append(el('p','逐项重建值 '+detail.recomputed.toPrecision(12)+' · 误差 '+detail.error.toExponential(2),'cmp-hint'));
+    if(detail.mapped)box.append(el('p','精确来源：'+detail.sourcePort+'[flat '+detail.sourceIndex+'] → 当前输出；这是数据索引/搬运，不是矩阵乘法。','cmp-hint'));
+    if(!detail.mapped){
     const table=el('table',undefined,'cmp-terms'),thead=el('tr');
     for(const head of ['输入通道 k','x[k]','W[out,k]','乘积'])thead.append(el('th',head));
     table.append(thead);
@@ -106,6 +108,7 @@ function mount(rootElement,onSelect){
     }
     if(detail.terms.length>64)box.append(el('p','仅展示前 64 项，但闭合误差对全部 '+detail.terms.length+' 项计算。','cmp-hint'));
     box.append(table);
+    }
    }else box.append(el('p','此运算不是单一 GEMM 点积；仍可查看输入/输出与数学公式，不伪造逐项分解。','cmp-hint'));
    rootElement.append(box);
   }
