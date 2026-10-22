@@ -83,3 +83,5 @@ operator_contracts.js
 execution_ir.js
 graph_session.js
 training_session.js
+gradient_inspection.js
+node_timeline.js
