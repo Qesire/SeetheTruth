@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),L=require('../learning_lab.js');
+const N=require('../node_timeline.js'),Train=require('../training_session.js');
+const g=L.preset('trainable_core'),before=JSON.stringify(g);
+const timeline=N.train(g,{lr:0.01}),reference=Train.step(g,{lr:0.01});
+assert.equal(timeline.schema,'seethetruth-node-timeline-v1');
+assert.equal(timeline.evidence,'SYNTHETIC');
+assert.equal(JSON.stringify(g),before);
+assert.deepEqual(timeline.graph,reference.graph);
+assert.deepEqual(timeline.nodes.map(n=>n.id),reference.beforeIR.nodes.map(n=>n.id));
+assert.equal(timeline.beforeLoss,reference.beforeLoss);
+assert.equal(timeline.afterLoss,reference.afterLoss);
+const weight=timeline.nodes.find(n=>n.id==='shared_weight');
+assert.ok(weight.gradient.l2>0);
+assert.equal(weight.optimizer.optimizerStep,1);
+assert.deepEqual(weight.forwardShape,weight.updatedShape);
+assert.ok(timeline.nodes.some(n=>n.optimizer===null));
+console.log('NODE_TIMELINE_PASS forward VJP optimizer updated forward alignment');
