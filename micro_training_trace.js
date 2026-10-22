@@ -101,8 +101,21 @@ function moe(args,result){
  steps.push(node('dispatch','top1','Expert ID / accepted / probability',choice,[edge('probs','probabilities')],{probabilities:values(ref.probabilities)},
   '[expert, accepted, p_selected]','容量是每专家的独立计数；超额 Token 输出置零而不是隐式迁移到次优专家。'));
  const output=values(ref.output);
- steps.push(node('out','moe','Experts produce token outputs',output,[edge('tokens','tokenFeatures'),edge('dispatch','chosenExpert')],{tokens,dispatch:choice},
-  'y[t] = accepted[t] ? X[t]W[expert[t]] : 0','仅已接收的 Token 执行选中专家线性层；严格核对路由后的输出矩阵。'));
+ const combined=node('out','moe','Experts produce token outputs',output,[edge('tokens','tokenFeatures'),edge('dispatch','chosenExpert')],{tokens,dispatch:choice},
+  'y[t] = accepted[t] ? X[t]W[expert[t]] : 0','查看任意被接收 Token 的真实专家 W 和局部乘加；超容量 Token 直接走零输出，不会暗中计算专家层。');
+ combined.substeps=ref.routed.slice(0,12).map((route,i)=>{
+  const feature=values([args.tokens[i]]),actual=values([ref.output[i]]);
+  const inputW=args.expertWeights[route.expert],D=inputW.length,H=inputW[0].length;
+  const W=Core.numericTensor([H,D],Array.from({length:H*D},(_,p)=>inputW[p%D][Math.floor(p/D)]));
+  const bias=Core.numericTensor([1,H],Array(H).fill(0));
+  return {id:'out:token'+i,kind:route.accepted?'linear':'capacity_overflow',
+   title:'Token '+i+' → Expert '+route.expert+(route.accepted?' · GEMM':' · capacity blocked'),
+   formula:route.accepted?'y[0,j] = Σₖ token[k] W_expert[k,j]':'overflow(token) → zero output',
+   why:route.accepted?'当前 Token 的实际路由专家权重参与点积；点击输出通道可展开全部加权乘积。':'该 Token 超出已选专家容量，实际执行器没有进行本次专家矩阵乘。',
+   out:actual,operands:{input:feature,selectedExpertWeight:W},
+   dot:route.accepted?{type:'dot',input:feature,weights:W,bias,orientation:'out_in'}:null};
+ });
+ steps.push(combined);
  const loss=point(ref.loss,0);
  steps.push(node('loss','mse','MSE loss',loss,[edge('out','prediction')],{prediction:output,target:values(args.target)},
   'L=mean((y−target)²)','将所有 Token 和输出通道的平方差平均。'));
