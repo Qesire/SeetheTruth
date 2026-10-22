@@ -2,9 +2,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const L=require('../learning_lab.js'),C=require('../compute_microscope.js'),R=require('../block_extension_registry.js');
 const Concept=require('../concept_flow.js'),Readiness=require('../graph_readiness.js'),P=require('../paper_patches.js');
-assert.deepEqual(R.packs,['semantic_video','paper_operators']);
-assert.equal(R.kinds.length,6);
-for(const kind of R.kinds){assert.ok(L.KINDS.includes(kind),kind+' must be in the real free-graph block palette');assert.equal(L.defs[kind].pack,kind.startsWith('paper_')?'paper_operators':'semantic_video');}
+assert.deepEqual(R.packs,['semantic_video','paper_operators','named_axis']);
+assert.equal(R.kinds.length,11);
+for(const kind of R.kinds){assert.ok(L.KINDS.includes(kind),kind+' must be in the real free-graph block palette');assert.equal(L.defs[kind].pack,kind.startsWith('paper_')?'paper_operators':kind.startsWith('axis_')?'named_axis':'semantic_video');}
 function outcome(name){const graph=L.preset(name);const run=L.evaluate(graph);const frame=C.learning(graph,run,L);assert.equal(C.validate(frame),frame);
  const symbolic=Concept.evaluate(graph),check=Readiness.check(graph,{numeric:true});
  assert.ok(check.executable,name+' should pass generic graph readiness');
@@ -43,8 +43,8 @@ assert.deepEqual(extension.execute({kind:'test_a',params:{}},{}).values,[[1]]);
 assert.throws(()=>R.createRegistry([fake,fake]),/duplicate pack id/);
 assert.throws(()=>R.createRegistry([fake,{...fake,name:'another_pack'}]),/invalid\/duplicate registered block kind/);
 const html=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
-for(const item of ['semantic_block_pack.js','paper_block_pack.js','block_extension_registry.js'])assert.ok(html.includes('src="'+item+'"'),item);
+for(const item of ['semantic_block_pack.js','paper_block_pack.js','axis_block_pack.js','block_extension_registry.js'])assert.ok(html.includes('src="'+item+'"'),item);
 for(const name of ['extension_video_composition','extension_paper_composition','extension_online_attention'])assert.ok(html.includes('data-preset="'+name+'"'));
 const listed=fs.readFileSync(path.join(__dirname,'../android/teaching-assets.txt'),'utf8').split(/\r?\n/);
-for(const item of ['semantic_block_pack.js','paper_block_pack.js','block_extension_registry.js'])assert.ok(listed.includes(item),item+' offline packaged');
-console.log('BLOCK_EXTENSION_REGISTRY_PASS six real blocks, three composable graph presets, original FFN parity, actual ND/video/LoRA/DoRA/online numerical evidence and mutated-contract rejection');
+for(const item of ['semantic_block_pack.js','paper_block_pack.js','axis_block_pack.js','block_extension_registry.js'])assert.ok(listed.includes(item),item+' offline packaged');
+console.log('BLOCK_EXTENSION_REGISTRY_PASS eleven real blocks, four composable graph presets, original FFN parity, actual ND/video/LoRA/DoRA/online numerical evidence and mutated-contract rejection');
