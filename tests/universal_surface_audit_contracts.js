@@ -22,7 +22,10 @@ const cap=src['capabilities.html'];assert.ok(cap.includes('id="surfaceAuditRows"
 assert.ok(cap.includes('universal_surface_audit.js'));
 const accidental={...src,'learn.html':src['learn.html'].replace('<script src="compute_microscope.js"></script>','')};
 assert.throws(()=>Audit.analyze(accidental),/universal capability regression/);
-const stale={...src,'paper_lab.html':src['paper_lab.html'].replace('<script src="paper_patches.js"></script>','<script src="compute_microscope.js"></script><script src="compute_microscope_ui.js"></script><script src="paper_patches.js"></script>')};
+const stillSpecialized=Audit.screens.find(x=>x.status==='specialized');
+assert.ok(stillSpecialized,'expected a remaining specialized screen for the mutation test');
+const specializedHTML=src[stillSpecialized.page];
+const stale={...src,[stillSpecialized.page]:specializedHTML.replace('</head>','<script src="compute_microscope.js"></script><script src="compute_microscope_ui.js"></script></head>')};
 assert.throws(()=>Audit.analyze(stale),/audit status stale/);
 const missing={...src};delete missing['paper_lab.html'];assert.throws(()=>Audit.analyze(missing),/missing actual page/);
 const bindingFiles=Object.fromEntries([...new Set(Audit.runtimeContracts.map(x=>x.module))].map(p=>[p,fs.readFileSync(path.join(root,p),'utf8')]));
