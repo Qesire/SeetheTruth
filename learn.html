@@ -772,13 +772,16 @@ function renderNodeTimeline(info){
  const grad=n?.gradient;
  let detail;
  if(!n)detail="请选择本次训练图内的积木，查看该节点的实际计算记录。";
- else if(timelinePhase==="forward")detail=metric("前向输出",n.forwardValue)+'<div>Shape: '+esc(n.forwardShape?.join(" × ")||"—")+'</div>';
+ else if(timelinePhase==="forward")detail=metric("前向输出",n.forwardValue)+'<div>Shape: '+esc(n.forwardShape?.join(" × ")||"—")+'</div>'+
+   '<div>输入来源：'+esc(Object.entries(n.inputSources||{}).map(([port,source])=>port+' ← '+source).join('；')||"源节点，无上游端口")+'</div>';
  else if(timelinePhase==="backward")detail='<strong>反向梯度</strong> · L2 '+format(grad.l2)+
    ' · maxAbs '+format(grad.maxAbs)+' · nonzero '+grad.nonzero+'/'+grad.elements+
    '<div>Loss path: '+(n.onLossPath?"yes":"no")+'</div>'+
    (n.localRule?'<div>Local VJP: '+esc(JSON.stringify(n.localRule))+'</div>':"");
  else if(timelinePhase==="optimizer")detail=n.optimizer?'<strong>'+esc(n.optimizer.optimizer)+'</strong> · step '+n.optimizer.optimizerStep+
-   '<div>Gradient L2: '+format(n.optimizer.gradientNorm)+' · Parameter update L2: '+format(n.optimizer.updateNorm)+'</div>':
+   '<div>Gradient L2: '+format(n.optimizer.gradientNorm)+' · Parameter update L2: '+format(n.optimizer.updateNorm)+'</div>'+
+   '<div>状态变化：'+n.optimizerState.stepBefore+' → '+n.optimizerState.stepAfter+'</div>'+
+   n.optimizerState.accumulators.map(a=>'<div>'+esc(a.slot)+'（'+esc(a.meaning)+'） L2: '+format(a.before.l2)+' → '+format(a.after.l2)+'</div>').join(""):
    '此节点本轮未执行参数更新。';
  else detail=metric("更新后输出",n.updatedValue)+'<div>Shape: '+esc(n.updatedShape?.join(" × ")||"—")+'</div>';
  const phases=[["forward","Forward"],["backward","Backward"],["optimizer","Update"],["updated","Updated Forward"]];
