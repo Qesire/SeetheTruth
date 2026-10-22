@@ -40,4 +40,17 @@ for(const row of audit.rows){
  assert.equal(row.numpyEligible,NP.supportedKinds.includes(row.kind));
  assert.equal(row.torchEligible,Torch.supportedKinds.includes(row.kind));
 }
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const assets=new Set(read('android/teaching-assets.txt').split(/\r?\n/).map(x=>x.trim()));
+assert.ok(assets.has('graph_lowering_plan.js'));
+assert.ok(read('atlas_server.py').includes('"/graph_lowering_plan.js":"graph_lowering_plan.js"'));
+for(const page of ['learn.html','capabilities.html']){
+ const html=read(page),scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);
+ const dependency=scripts.indexOf('graph_lowering_plan.js');
+ assert.ok(dependency>scripts.indexOf('branch_execution.js'),page+' must load graph branch utilities');
+ assert.ok(dependency<scripts.indexOf('python_codegen.js'),page+' must load planner before NumPy');
+ assert.ok(dependency<scripts.indexOf('torch_codegen.js'),page+' must load planner before Torch');
+}
 console.log('SHARED_LOWERING_PLAN_PASS deterministic DAG, ports, trace, backend fail-closed, target branch, registry');
