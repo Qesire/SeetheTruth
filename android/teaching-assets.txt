@@ -47,6 +47,7 @@ loop_input_injection.js
 loop_transformer.js
 micro_training.html
 micro_training_flows.js
+micro_training_trace.js
 mobile_teaching.css
 model_trace.js
 model_trace_bridge.js
