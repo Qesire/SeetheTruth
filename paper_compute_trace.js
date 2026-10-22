@@ -69,8 +69,20 @@ function dora(args,result){
    '用同一个逐乘加 Inspector 直接核算最终输出，区分方向更新与幅度更新。'),dot:dot(nx,tensor(result.effectiveWeight))});
  return materialize(steps,'bounded Float64 DoRA: AB, V, per-column norm, effective weight and XW','DoRA · 方向和幅度如何重参数化权重');
 }
+function denseAttentionReference(q,k,v){
+ const d=q[0].length;
+ return q.map(query=>{
+  const score=k.map(key=>query.reduce((a,x,i)=>a+x*key[i],0)/Math.sqrt(d));
+  const peak=Math.max(...score),p=score.map(x=>Math.exp(x-peak));
+  const denom=p.reduce((a,b)=>a+b,0);
+  return v[0].map((_,c)=>p.reduce((a,w,i)=>a+w*v[i][c],0)/denom);
+ });
+}
 function online(args,result){
  const {q,k,v,chunk=2}=args;verify(args,result,P.onlineAttention(q,k,v,chunk));
+ const dense=denseAttentionReference(q,k,v);
+ const error=Math.max(...dense.flatMap((r,i)=>r.map((x,j)=>Math.abs(x-result.output[i][j]))));
+ need(error<=1e-10,'tiled online-softmax output contradicts independent dense attention');
  const steps=[
   stage('q','input','Queries Q',q,[],{},'Q[Tq,d]','每一行 Query 依次处理属于它的 K/V tiles。'),
   stage('k','input','Keys K',k,[],{},'K[Tk,d]','Tile 遍历 Key 轴，计算局部注意力分数。'),
@@ -115,7 +127,7 @@ function online(args,result){
  steps.push(stage('output','gather','Online attention · final output',result.output,
   [dep(prior,'finalTile')],{Q:tensor(q),K:fullK,V:fullV},
   'O[t,:]=final_accumulator[t,:]/final_normalizer[t]',
-  '比较不同 Key Tile 大小的结果，验证精确 Online Softmax 的数学等价与存储重排收益。'));
+  '完整 Dense QK→Softmax→PV 独立计算的最大绝对差：'+error.toExponential(3)+'。调节 Chunk 观察实际逐块归一化如何仍重建相同输出。'));
  return materialize(steps,'bounded Float64 tiled online softmax reference; no causal mask/dropout/hardware kernel','Online Softmax · 逐 Tile 重标定与分块汇聚');
 }
 return Object.freeze({lora,dora,online});
