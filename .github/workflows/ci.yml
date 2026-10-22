@@ -41,6 +41,7 @@ jobs:
           node tests/concept_flow_contracts.js
           node --check learning_lab.js
           node tests/unified_graph_dependency_contracts.js
+          node tests/operator_contracts.js
           node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js
           node --check source_evidence_levels.js
