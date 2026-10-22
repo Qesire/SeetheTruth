@@ -13,6 +13,7 @@
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
+  const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
   const MAX_NODES=80,MAX_EDGES=176;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -66,7 +67,8 @@
       caution:"这里只计算前向 Loss；梯度、反向传播和优化器尚未实现。",
       lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"},
     ...BlockCatalog.defs,
-    ...StreamGraph.defs
+    ...StreamGraph.defs,
+    ...Extensions.defs
   });
   const KINDS=Object.keys(defs);
   function fail(message,node){const e=new Error(message);e.nodeId=node||null;throw e;}
@@ -110,6 +112,7 @@
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
       if(Object.hasOwn(BlockCatalog.defs,type)){try{BlockCatalog.validate(type,params)}catch(err){fail(err.message,n.id);}}
         if(StreamGraph.isKind(type)){try{StreamGraph.validate(type,params)}catch(err){fail(err.message,n.id);}}
+        if(Extensions.isKind(type)){try{Extensions.validate(type,params)}catch(err){fail(err.message,n.id);}}
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
     const targetPorts=new Set(),edges=[];
@@ -165,6 +168,7 @@
       const sum=exp.reduce((x,y)=>x+y,0);return exp.map(v=>v/sum);});
   }
   function calculate(n,inputs){
+    if(Extensions.isKind(n.kind))return Extensions.execute(n,inputs);
     if(n.kind.startsWith("nd_")){
       const out=BlockCatalog.execute(n,inputs);
       const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
@@ -250,7 +254,7 @@
       }
       let inferred,value;
       try{
-        inferred=StreamGraph.infer(n,
+        inferred=Extensions.isKind(n.kind)?Extensions.infer(n,Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape]))):StreamGraph.infer(n,
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.logicalState||null])));
         value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins);
@@ -258,7 +262,9 @@
       if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
       out.set(n.id,value);
       const {streamState,...publicValue}=value;
-      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,shape(v)])),
+      const extensionSubsteps=Extensions.isKind(n.kind)?Extensions.substeps(n,ins,value):null;
+      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,Extensions.tensorShape(v)])),
+        ...(extensionSubsteps?{extensionSubsteps}:{}),
         ...publicValue,formula:defs[n.kind].formula,why:defs[n.kind].why,
         training:"仅前向微型数值解释；尚未执行反向传播与权重更新。"});
     }
