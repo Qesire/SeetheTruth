@@ -20,4 +20,18 @@ for(const row of out.updates){
 const next=T.step(out.graph,{lr:0.01});
 assert.equal(next.updates[0].optimizerStep,2);
 assert.throws(()=>T.step(L.preset('autodiff_core')),/trainable Parameter/);
+const two=T.steps(g,{count:2,lr:0.01});
+const baseline=Base.steps(g,{count:2,lr:0.01});
+assert.deepEqual(two.graph,baseline.graph);
+assert.deepEqual(two.history,baseline.history);
+assert.equal(two.sessions.length,2);
+assert.equal(two.finalIR.nodes.length,two.next.steps.length);
+assert.equal(two.sessions[0].updates[0].optimizerStep,1);
+assert.equal(two.sessions[1].updates[0].optimizerStep,2);
+assert.throws(()=>T.steps(g,{count:9}),/step count/);
+const fs=require('node:fs'),path=require('node:path');
+const page=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
+assert.ok(page.includes('TrainingSession.steps(previous,options)'));
+assert.ok(page.includes('<script src="training_session.js"></script>'));
+assert.ok(page.indexOf('<script src="train_state.js"></script>')<page.indexOf('<script src="training_session.js"></script>'));
 console.log('TRAINING_SESSION_PASS immutable parameter and optimizer update IR');
