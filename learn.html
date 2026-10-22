@@ -767,18 +767,18 @@ function renderNodeTimeline(info){
  const idx=Math.max(0,Math.min(timelineStepIndex,timelines.length-1)),current=timelines[idx];
  const n=current.nodes.find(x=>x.id===selected);
  const format=value=>Number.isFinite(value)?value.toExponential(4):"—";
- const metric=(label,entry)=>entry?'<strong>'+label+'</strong> · n='+entry.elements+
-   ' · mean '+format(entry.mean)+' · min '+format(entry.min)+' · max '+format(entry.max)+' · L2 '+format(entry.l2):'<strong>'+label+'</strong> · 暂无数值';
+ const metric=(label,entry)=>entry?'<b>'+label+'</b> · n='+entry.elements+
+   ' · mean '+format(entry.mean)+' · min '+format(entry.min)+' · max '+format(entry.max)+' · L2 '+format(entry.l2):'<b>'+label+'</b> · 暂无数值';
  const grad=n?.gradient;
  let detail;
  if(!n)detail="请选择本次训练图内的积木，查看该节点的实际计算记录。";
  else if(timelinePhase==="forward")detail=metric("前向输出",n.forwardValue)+'<div>Shape: '+esc(n.forwardShape?.join(" × ")||"—")+'</div>'+
    '<div>输入来源：'+esc(Object.entries(n.inputSources||{}).map(([port,source])=>port+' ← '+source).join('；')||"源节点，无上游端口")+'</div>';
- else if(timelinePhase==="backward")detail='<strong>反向梯度</strong> · L2 '+format(grad.l2)+
+ else if(timelinePhase==="backward")detail='<b>反向梯度</b> · L2 '+format(grad.l2)+
    ' · maxAbs '+format(grad.maxAbs)+' · nonzero '+grad.nonzero+'/'+grad.elements+
    '<div>Loss path: '+(n.onLossPath?"yes":"no")+'</div>'+
    (n.localRule?'<div>Local VJP: '+esc(JSON.stringify(n.localRule))+'</div>':"");
- else if(timelinePhase==="optimizer")detail=n.optimizer?'<strong>'+esc(n.optimizer.optimizer)+'</strong> · step '+n.optimizer.optimizerStep+
+ else if(timelinePhase==="optimizer")detail=n.optimizer?'<b>'+esc(n.optimizer.optimizer)+'</b> · step '+n.optimizer.optimizerStep+
    '<div>Gradient L2: '+format(n.optimizer.gradientNorm)+' · Parameter update L2: '+format(n.optimizer.updateNorm)+'</div>'+
    '<div>状态变化：'+n.optimizerState.stepBefore+' → '+n.optimizerState.stepAfter+'</div>'+
    n.optimizerState.accumulators.map(a=>'<div>'+esc(a.slot)+'（'+esc(a.meaning)+'） L2: '+format(a.before.l2)+' → '+format(a.after.l2)+'</div>').join(""):
@@ -792,7 +792,7 @@ function renderNodeTimeline(info){
    '<div class="node-timeline-nav" role="group" aria-label="训练计算阶段">'+phases.map(([key,label])=>
      '<button type="button" data-timeline-phase="'+key+'" aria-pressed="'+(timelinePhase===key?'true':'false')+'">'+label+'</button>').join("")+'</div>'+
    '<div class="node-timeline-content" id="nodeTimelineDetail">'+
-   '<div><strong>'+esc(n?.id||"尚未选择节点")+'</strong> · '+esc(n?.kind||"")+'</div>'+detail+'</div>'+
+   '<div><b>'+esc(n?.id||"尚未选择节点")+'</b> · '+esc(n?.kind||"")+'</div>'+detail+'</div>'+
    '<p class="hint">来自有界小张量教学执行；不代表真实预训练模型的梯度或性能。</p></section>';
 }
 function renderTrainingMetrics(info){
