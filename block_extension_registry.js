@@ -3,8 +3,8 @@
  * operator substeps. Extension dispatch is kind-independent; no per-kind core switch. */
 (function(root,factory){'use strict';
  const deps=typeof module==='object'&&module.exports
-  ?[require('./semantic_block_pack.js'),require('./paper_block_pack.js')]
-  :[root.SeetheTruthSemanticBlockPack,root.SeetheTruthPaperBlockPack];
+  ?[require('./semantic_block_pack.js'),require('./paper_block_pack.js'),require('./axis_block_pack.js')]
+  :[root.SeetheTruthSemanticBlockPack,root.SeetheTruthPaperBlockPack,root.SeetheTruthAxisBlockPack];
  const api=factory(deps);
  if(typeof module==='object'&&module.exports)module.exports=api;
  root.SeetheTruthBlockExtensions=api;
@@ -29,7 +29,7 @@
  }
  function createRegistry(packs){
   must(Array.isArray(packs)&&packs.length>0,'at least one installed extension pack required');
-  const definitions={}, owners={},packNames=new Set();
+  const definitions={}, owners={},packNames=new Set(),recipes={},recipeNames=new Set();
   for(const pack of packs){
    must(pack&&typeof pack.name==='string'&&/^[a-z][a-z0-9_]{1,35}$/.test(pack.name)&&!packNames.has(pack.name),'invalid or duplicate pack id');
    packNames.add(pack.name);
@@ -43,6 +43,17 @@
     must(typeof def.source==='string'&&/^https:\/\//.test(def.source),'extension requires real academic or source reference '+kind);
     owners[kind]=pack;definitions[kind]=Object.freeze({...def,ports:Object.freeze([...def.ports]),params:Object.freeze({...def.params}),pack:pack.name});
    }
+    if(pack.recipes!==undefined){
+     must(Array.isArray(pack.recipes)&&pack.recipes.length<=24,'invalid pack recipes');
+     for(const recipe of pack.recipes){
+      must(recipe&&typeof recipe.id==='string'&&/^[a-z][a-z0-9_]{3,60}$/.test(recipe.id)&&!recipeNames.has(recipe.id),'duplicate or invalid recipe id');
+      must(typeof recipe.title==='string'&&recipe.title.length>3&&typeof recipe.summary==='string'&&recipe.summary.length>12&&recipe.graph&&
+       Array.isArray(recipe.graph.nodes)&&recipe.graph.nodes.length>0&&recipe.graph.nodes.length<=24&&Array.isArray(recipe.graph.edges)&&recipe.graph.edges.length<=48,
+       'invalid registry recipe graph');
+      recipeNames.add(recipe.id);
+      recipes[recipe.id]={id:recipe.id,title:recipe.title,summary:recipe.summary,pack:pack.name,graph:recipe.graph};
+     }
+    }
   }
   function get(kind){must(typeof kind==='string'&&Object.hasOwn(owners,kind),'unknown extension kind '+kind);return owners[kind];}
   function validate(kind,params){const p=get(kind),raw={...definitions[kind].params,...params};p.validate(kind,raw);return raw;}
@@ -71,7 +82,9 @@
    return data;
   }
   return Object.freeze({defs:Object.freeze(definitions),kinds:Object.freeze(Object.keys(definitions)),
-   packs:Object.freeze([...packNames]),isKind:kind=>Object.hasOwn(owners,kind),
+   packs:Object.freeze([...packNames]),recipes:Object.freeze(Object.values(recipes).map(r=>Object.freeze({id:r.id,title:r.title,summary:r.summary,pack:r.pack}))),
+   recipe:id=>Object.hasOwn(recipes,id)?JSON.parse(JSON.stringify(recipes[id].graph)):null,
+   isKind:kind=>Object.hasOwn(owners,kind),
    validate,infer,execute,substeps,tensorShape});
  }
  const built=createRegistry(installed);
