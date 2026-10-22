@@ -30,7 +30,7 @@ else if(active.id==="online_attention"){
 }
 else {microscope.clear('当前方法有明确的结构改写步骤，下一步将连接对应可运行算子后继续向内展开。');$("#metrics").replaceChildren();$("#numeric").textContent="此变换当前提供结构合同，数值操作正在通过现有微训练引擎接入。";return;}
 microscope.show(frame);
-$("#metrics").replaceChildren();for(const [key,val] of Object.entries(result.statistics||{})){const card=document.createElement("div");card.className="chip";const title=document.createElement("span");title.textContent=key+" RMS";const value=document.createElement("strong");value.textContent=Number(val.rms.toPrecision(5));card.append(title,value);$("#metrics").append(card);}$("#numeric").textContent=fmt(result);}
+$("#metrics").replaceChildren();const stats=result.statistics||{};const summaries=typeof stats.rms==="number"?[["output",stats]]:Object.entries(stats);for(const [key,val] of summaries){const card=document.createElement("div");card.className="chip";const title=document.createElement("span");title.textContent=key+" RMS";const value=document.createElement("strong");value.textContent=Number(val.rms.toPrecision(5));card.append(title,value);$("#metrics").append(card);}$("#numeric").textContent=fmt(result);}
 catch(e){microscope.clear('本次计算输入无效：'+e.message);$("#metrics").replaceChildren();$("#numeric").textContent="输入或计算错误："+e.message;}}
 P.variants.forEach(v=>{const b=document.createElement("button");b.dataset.patch=v.id;b.textContent=P.papers[v.source].title+" · "+v.scope;b.onclick=()=>{active=v;show();};$("#choices").append(b);});$("#calculate").onclick=calculate;show();
 })();
