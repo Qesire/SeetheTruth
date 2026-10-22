@@ -4,7 +4,7 @@ const Audit=require('../universal_surface_audit.js'),root=path.resolve(__dirname
 const src=Object.fromEntries(Audit.screens.map(row=>[row.page,fs.readFileSync(path.join(root,row.page),'utf8')]));
 const evidence=Audit.analyze(src);
 assert.equal(evidence.rows.length,20);
-assert.equal(evidence.counts.tensor,3);assert.equal(evidence.counts.state,7);
+assert.equal(evidence.counts.tensor,4);assert.equal(evidence.counts.state,7);
 assert.ok(evidence.counts.specialized>=1,'at least one legacy specialized workflow must remain explicitly classified until migrated');
 assert.equal(evidence.counts.total,evidence.counts.tensor+evidence.counts.state+evidence.counts.specialized+evidence.counts.navigation+evidence.counts.desktopOnly,'every screen must be accounted for');
 assert.equal(new Set(Audit.screens.map(x=>x.page)).size,evidence.rows.length);
