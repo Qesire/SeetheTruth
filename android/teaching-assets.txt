@@ -62,6 +62,7 @@ paper_graph_rewrites.js
 paper_hover.js
 paper_lab.html
 paper_patches.js
+paper_compute_trace.js
 python_codegen.js
 semantic_state.html
 semantic_state.js
