@@ -23,6 +23,33 @@ const screens=Object.freeze([
 ['index.html','源码结构图与 Runtime','desktop_only','AST 源码图＋独立 Runtime Trace，不应与合成数值混合'],
 ['telemetry.html','Profiler 和 Tensor 观测','desktop_only','GPU Profiler 是独立证据源，未加入通用数值算子接口']
 ].map(([page,title,status,note])=>Object.freeze({page,title,status,note})));
+// Functional bindings are checked separately from <script> presence.
+// The UI coverage count alone is not a mathematical or behavioral guarantee.
+const runtimeContracts=Object.freeze([
+ ['learn.html','learn.html',['Microscope.learning(used,run,L)','microscopeView.show(']],
+ ['wan_ffn_lab.html','wan_ffn_lab.js',['commonMicroscope.wan(d)','sharedMicroscope.show(']],
+ ['micro_training.html','micro_training.html',['Trace.tape(t)','Trace.moe(args,result)','Trace.ppo(args,result)','microscope.show(frame)']],
+ ['deepinfer_kv_lifecycle_lab.html','deepinfer_kv_lifecycle_lab.js',['State.kv(result,M)','stateView.show(']],
+ ['deepinfer_worker_lab.html','deepinfer_worker_lab.js',['State.worker(zos)','stateView.show(']],
+ ['engineering_pipeline.html','engineering_pipeline_ui.js',['State.training(s.history)','stateView.show(']],
+ ['training.html','training.html',['State.scalar(run)','view.show(']],
+ ['deepinfer_scheduler_lab.html','deepinfer_scheduler_lab.js',['State.scheduler(run,KV)','stateView.show(']],
+ ['deepinfer_prefill_lab.html','deepinfer_prefill_lab.js',['State.prefill(evidence,P)','stateView.show(']],
+ ['cache.html','cache.html',['State.cache(runHistory,Lab)','stateView.show(']]
+].map(([page,module,needles])=>Object.freeze({page,module,needles:Object.freeze(needles)})));
+function verifyBindings(files){
+ if(!files||typeof files!=='object')throw Error('audit runtime bindings require actual source files');
+ const found=new Set();
+ for(const item of runtimeContracts){
+  if(found.has(item.page))throw Error('duplicate runtime binding '+item.page);found.add(item.page);
+  const code=files[item.module];
+  if(typeof code!=='string')throw Error('runtime module missing '+item.module);
+  for(const needle of item.needles)if(!code.includes(needle))throw Error('runtime adapter invocation missing '+item.page+': '+needle);
+ }
+ const shared=screens.filter(x=>x.status==='tensor'||x.status==='state').map(x=>x.page).sort();
+ if(JSON.stringify([...found].sort())!==JSON.stringify(shared))throw Error('every shared view must have a runtime adapter binding');
+ return Object.freeze({verified:found.size,modules:runtimeContracts.map(x=>x.module)});
+}
 const coreFiles=Object.freeze({tensor:['compute_microscope.js','compute_microscope_ui.js'],state:['state_microscope.js','state_microscope_ui.js']});
 function classify(html){
  const scripts=new Set([...String(html).matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)].map(x=>x[1].split(/[?#]/)[0]));
@@ -44,5 +71,5 @@ function analyze(sources){
   desktopOnly:rows.filter(x=>x.status==='desktop_only').length};
  return Object.freeze({schema:'seethetruth-universal-surface-audit-v1',counts,rows:Object.freeze(rows)});
 }
-return Object.freeze({screens,coreFiles,classify,analyze});
+return Object.freeze({screens,coreFiles,runtimeContracts,classify,analyze,verifyBindings});
 });
