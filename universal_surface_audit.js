@@ -7,7 +7,7 @@ const screens=Object.freeze([
 ['deepinfer_kv_lifecycle_lab.html','KV 物理块生命周期','state','FIFO、引用计数、逐操作状态差分'],
 ['deepinfer_worker_lab.html','Worker 执行时序','state','事件因果 DAG、CPU/GPU 假设排队状态'],
 ['training.html','标量训练循环','state','标量 Forward/Backward/Gradient/AdamW 状态差分已接入通用事件显微镜；概念模式不生成数值'],
-['micro_training.html','MoE / PPO / VJP 微实验','specialized','独立微训练算子已可执行，缺少通用内部阶段适配器'],
+['micro_training.html','MoE / PPO / VJP 微实验','tensor','共享 Tape/MoE/PPO 执行轨迹：前向矩阵点积、参数梯度归并、Top-1 专家派发和 PPO Clip 反向梯度可逐坐标检查'],
 ['cache.html','KV Cache 数学','state','实际 GQA/RoPE 数值缓存与 Prefill/Decode 全会话可重放核查；共享前后状态显微镜'],
 ['deepinfer_scheduler_lab.html','Scheduler + KV + Worker','state','已通过真实决策与 KV 修订验证接入共用透视；Worker Forward 绑定物理块所有权'],
 ['deepinfer_prefill_lab.html','Prefill Vote 与多模态 Chunk','state','独立 ALL/ANY 投票与 IMG/PAD Chunk 源码参考决策进入通用审计，输出重新计算防篡改'],
