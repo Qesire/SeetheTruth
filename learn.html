@@ -944,7 +944,7 @@ $("#runBranch").onclick=()=>{try{
  say("✓ 仅运行 "+targetId+" 的 "+run.steps.length+" 个上游积木；画布保留 "+outcome.omittedCount+" 个未参与本次分支的积木。");
  }catch(err){say("当前分支尚不可运行："+err.message,true);if(err.nodeId){selected=err.nodeId;render();focusGraphNode(selected);}}
 };
-$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):(()=>{const session=Session.inspect(graph,{numeric:true});if(!session.executable)throw Error(session.error?.reason||session.readiness.firstError?.reason||"图尚不可执行");return session.trace;})();runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
+$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):(()=>{const session=Session.inspect(graph,{numeric:true});if(!session.executable)return L.evaluate(graph);return session.trace;})();runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
