@@ -24,6 +24,6 @@ const disconnected=L.validateGraph({...graph,edges:graph.edges.filter(e=>!(e.to=
 const partial=Ready.check(disconnected);
 assert.equal(partial.executable,false);
 assert.ok(partial.nodes.some(n=>n.id==='sum'&&n.status==='missing'));
-const cycle=L.validateGraph({...graph,edges:[...graph.edges,{from:'sum',to:'fc',port:'x'}].filter(e=>!(e.to==='fc'&&e.port==='x'))});
+const cycle=L.validateGraph({...graph,edges:[...graph.edges.filter(e=>!(e.to==='fc'&&e.port==='x')),{from:'sum',to:'fc',port:'x'}]});
 assert.throws(()=>L.indexGraph(cycle),/循环计算依赖/);
 console.log('UNIFIED_GRAPH_DEPENDENCY_PASS');
