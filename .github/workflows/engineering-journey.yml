@@ -8,6 +8,7 @@ on:
       - 'compute_microscope*'
       - 'micro_training_trace.js'
       - 'tests/micro_training_trace_contracts.js'
+      - 'tests/browser_micro_training_trace.py'
       - 'state_microscope*'
       - 'universal_surface_audit.js'
       - 'tests/state_microscope_contracts.js'
@@ -31,6 +32,7 @@ on:
       - 'compute_microscope*'
       - 'micro_training_trace.js'
       - 'tests/micro_training_trace_contracts.js'
+      - 'tests/browser_micro_training_trace.py'
       - 'state_microscope*'
       - 'universal_surface_audit.js'
       - 'tests/state_microscope_contracts.js'
@@ -88,6 +90,16 @@ jobs:
         with:
           name: state-microscope-browser-proof
           path: state_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Universal Tape, MoE and PPO operator microscope
+        run: python tests/browser_micro_training_trace.py
+      - name: Archive training micro-operation microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-micro-operator-proof
+          path: micro_training_trace_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
       - name: Universal graph microscope across editor and Wan source
