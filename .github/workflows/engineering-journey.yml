@@ -1,0 +1,185 @@
+name: Guided Engineering Journey
+on:
+  push:
+    paths:
+      - 'engineering_*'
+      - 'atlas_server.py'
+      - 'wan_ffn*'
+      - 'compute_microscope*'
+      - 'block_extension_registry.js'
+      - 'semantic_block_pack.js'
+      - 'axis_block_pack.js'
+      - 'tests/axis_block_pack_contracts.js'
+      - 'paper_block_pack.js'
+      - 'tests/block_extension_registry_contracts.js'
+      - 'tests/browser_block_extension_registry.py'
+      - 'paper_lab.html'
+      - 'paper_patches.js'
+      - 'paper_compute_trace.js'
+      - 'tests/paper_compute_trace_contracts.js'
+      - 'tests/browser_paper_compute_trace.py'
+      - 'micro_training_trace.js'
+      - 'tests/micro_training_trace_contracts.js'
+      - 'tests/browser_micro_training_trace.py'
+      - 'state_microscope*'
+      - 'universal_surface_audit.js'
+      - 'tests/state_microscope_contracts.js'
+      - 'tests/universal_surface_audit_contracts.js'
+      - 'tests/browser_state_microscope.py'
+      - 'deepinfer_worker_lab*'
+      - 'deepinfer_kv_lifecycle_lab*'
+      - 'capabilities*'
+      - 'tests/compute_microscope_contracts.js'
+      - 'tests/browser_compute_microscope.py'
+      - 'tests/browser_wan_ffn.py'
+      - 'tests/wan_ffn_microscope_contracts.js'
+      - 'tests/browser_engineering_journey.py'
+      - 'tests/engineering_journey_contracts.js'
+      - 'android/teaching-assets.txt'
+      - '.github/workflows/engineering-journey.yml'
+  pull_request:
+    paths:
+      - 'engineering_*'
+      - 'wan_ffn*'
+      - 'compute_microscope*'
+      - 'block_extension_registry.js'
+      - 'semantic_block_pack.js'
+      - 'axis_block_pack.js'
+      - 'tests/axis_block_pack_contracts.js'
+      - 'paper_block_pack.js'
+      - 'tests/block_extension_registry_contracts.js'
+      - 'tests/browser_block_extension_registry.py'
+      - 'paper_compute_trace.js'
+      - 'tests/paper_compute_trace_contracts.js'
+      - 'tests/browser_paper_compute_trace.py'
+      - 'micro_training_trace.js'
+      - 'tests/micro_training_trace_contracts.js'
+      - 'tests/browser_micro_training_trace.py'
+      - 'state_microscope*'
+      - 'universal_surface_audit.js'
+      - 'tests/state_microscope_contracts.js'
+      - 'tests/universal_surface_audit_contracts.js'
+      - 'tests/browser_state_microscope.py'
+      - 'deepinfer_worker_lab*'
+      - 'deepinfer_kv_lifecycle_lab*'
+      - 'capabilities*'
+      - 'learn.html'
+      - 'tests/compute_microscope_contracts.js'
+      - 'tests/browser_compute_microscope.py'
+      - 'tests/browser_wan_ffn.py'
+      - 'atlas_server.py'
+      - 'tests/browser_engineering_journey.py'
+      - 'tests/engineering_journey_contracts.js'
+      - 'android/teaching-assets.txt'
+      - '.github/workflows/engineering-journey.yml'
+permissions:
+  contents: read
+jobs:
+  numeric-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run executable training and checkpoint contracts
+        run: |
+          node tests/engineering_journey_contracts.js
+          node tests/engineering_pipeline_contracts.js
+          node tests/wan_ffn_microscope_contracts.js
+          node tests/compute_microscope_contracts.js
+          node tests/block_extension_registry_contracts.js
+          node tests/axis_block_pack_contracts.js
+          node tests/paper_compute_trace_contracts.js
+          node tests/micro_training_trace_contracts.js
+          node tests/state_microscope_contracts.js
+          node tests/universal_surface_audit_contracts.js
+          node tests/android_asset_manifest_contracts.js
+      - name: Install headless Chromium
+        run: |
+          python -m pip install 'playwright==1.55.0'
+          python -m playwright install --with-deps chromium
+      - name: Execute full desktop/mobile 12-checkpoint learning journey
+        run: python tests/browser_engineering_journey.py
+      - name: Execute advanced shuffle, accumulation and resume UI
+        run: python tests/browser_engineering_pipeline.py
+      - name: Verify common event/state microscope for KV and Worker
+        run: python tests/browser_state_microscope.py
+      - name: Archive common event/state microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-microscope-browser-proof
+          path: state_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: "Paper patch microscope: LoRA, DoRA and online softmax"
+        run: python tests/browser_paper_compute_trace.py
+      - name: Archive paper patch microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-compute-microscope-proof
+          path: paper_compute_trace_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Universal Tape, MoE and PPO operator microscope
+        run: python tests/browser_micro_training_trace.py
+      - name: Archive training micro-operation microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-micro-operator-proof
+          path: micro_training_trace_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Universal installed block packs in real editor
+        run: python tests/browser_block_extension_registry.py
+      - name: Archive installed block pack screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-block-extension-proof
+          path: block_extension_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Universal graph microscope across editor and Wan source
+        run: python tests/browser_compute_microscope.py
+      - name: Archive universal microscope screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-compute-microscope-screenshots
+          path: compute_microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Source-anchored Wan FFN numerical microscope in desktop and phone Chromium
+        run: python tests/browser_wan_ffn.py
+      - name: Archive source-anchored Wan FFN screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wan-ffn-microscope-browser-proof
+          path: wan_ffn_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Archive advanced training pipeline screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: advanced-engineering-training-screenshots
+          path: engineering_pipeline_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Archive training and inference screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guided-engineering-journey-screenshots
+          path: engineering_journey_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14

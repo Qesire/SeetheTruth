@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SeetheTruth · DeepInfer Prefill 课堂</title><style>
+<title>SeetheTruth · DeepInfer Prefill 课堂</title><link rel="stylesheet" href="state_microscope.css"><style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top right,#1a4660,#071322 65%);color:#eaf6ff;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}
 header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:15px 22px;gap:13px;border-bottom:1px solid #36536a}nav{display:flex;gap:14px;flex-wrap:wrap}a{color:#8fe2ec}
 main{max-width:1240px;margin:auto;padding:18px;display:grid;gap:16px}.kicker{color:#79cee0;font:700 11px monospace;letter-spacing:.1em}h1{font-size:29px;margin:5px 0}h2{font-size:18px;margin:6px 0 12px}p{color:#aac8d7;margin:8px 0}.two{display:grid;grid-template-columns:1fr 1fr;gap:15px}.panel{background:#11283c;border:1px solid #355771;border-radius:13px;padding:18px;min-width:0}
@@ -22,10 +22,10 @@ main{max-width:1240px;margin:auto;padding:18px;display:grid;gap:16px}.kicker{col
 <div class="tokenstrip" id="tokens" aria-label="Token 图片边界示意"></div>
 <div class="metric"><div><small>本次 Q 长度</small><strong id="chunkQ">—</strong></div><div><small>仍待 Prefill</small><strong id="chunkRemaining">—</strong></div><div><small>当前状态</small><strong id="chunkStatus">—</strong></div></div>
 <div class="details" id="chunkDetail" aria-live="polite"></div></section></div>
-<section class="panel"><h2>设计动机与证据边界</h2><table><thead><tr><th>机制</th><th>工程收益</th><th>代价或限制</th></tr></thead><tbody>
+<section class="panel"><h2>通用决策显微镜 · Vote / Token Chunk</h2><p><small>两条独立来源的实际 CPU 参考计算，运行结果重新执行对照；互相并不具备人为串联的执行依赖。</small></p><div id="stateMicroscope" class="sm-surface"></div></section><section class="panel"><h2>设计动机与证据边界</h2><table><thead><tr><th>机制</th><th>工程收益</th><th>代价或限制</th></tr></thead><tbody>
 <tr><td>ALL 投票</td><td>减少无事可做的 Rank 陪跑空 Prefill</td><td>孤立新请求可能等待</td></tr>
 <tr><td>ANY 投票</td><td>对孤立 Rank 提供等待上限的机会</td><td>其他 Rank 必须保持步型一致</td></tr>
 <tr><td>第二轮投票</td><td>防止资源不足导致连续空 Prompt</td><td>多一次同步决策</td></tr>
 <tr><td>图片 Chunk 边界</td><td>保护多模态图片单位完整性</td><td>可能缩短本轮工作量</td></tr></tbody></table>
 <p><small>直接依据 <a href="https://github.com/deepseek-ai/DeepInfer/blob/main/csrc/engine/scheduler.hpp" target="_blank" rel="noopener noreferrer">DeepInfer scheduler.hpp 中 NORMAL vote、_schedule_prefill 和 _adjust_chunk_size</a>。图片标志使用符号化 TEXT / IMG / PAD / AUDIO；未复现真实 Token ID、图片 Embedding、GPU Memory、分布式 AllReduce 或物理时间。</small></p></section>
-</main><script src="deepinfer_prefill_policy.js"></script><script src="deepinfer_prefill_lab.js"></script></body></html>
+</main><script src="deepinfer_prefill_policy.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script><script src="deepinfer_prefill_lab.js"></script></body></html>

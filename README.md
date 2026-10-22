@@ -22,11 +22,45 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 新增 [具名张量轴与不可变状态实验室](semantic_state.html)：实际执行 rank 1–5 小规模张量的轴重排、显式广播、时间分块、拼接、流状态创建/追加/读取/分叉，精确检查绝对时间位置与状态版本。新增 [数学合同与验证记录](docs/semantic-state-contracts.md)。
 
-执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；已经支持独立 NumPy/PyTorch CPU 代码生成，并通过双分叉状态参数梯度与 AdamW 验证（不包含通用跨时间步 BPTT），亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前共 138 类。
+执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；已经支持独立 NumPy/PyTorch CPU 代码生成，并通过双分叉状态参数梯度与 AdamW 验证（不包含通用跨时间步 BPTT），亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前保留原有 138 类并新增 6 类公共模块积木，共 144 类；课程总数为 62 门。
 
 ## PC / Android 同一份教学内容
 
 新的 [跨平台教学中心](teaching.html) 将 8 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
+
+## 全生命周期工程实战（PC / Android 共用）
+
+新增 [12 关工程引导](engineering_journey.html)：从数据划分、Tokenization、参数初始化、稳定 Softmax、CE 解析梯度与有限差分、AdamW 更新、验证集、Checkpoint 到训练权重驱动的逐 Token Decode。每关需要主动回答机制问题，再执行真实的 Float64 小规模 CPU 数值检查；拒绝错误输入，并能恢复优化器状态。教学数值为 8 Token 的 Bigram 模型，不是 Transformer、真实权重训练或 GPU Serving；Android 仅提供离线教学，不产生文件和脚本。
+
+验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
+
+## 论文方法的真实逐算子计算 · LoRA / DoRA / Online Softmax
+
+已将 [论文改造实验室](paper_lab.html) 接入统一 `Compute Microscope`。LoRA 可以从基座矩阵乘法沿 `XA→(XA)B→α/r` 逐通道观察；DoRA 能看权重方向、各输出列范数、有效权重和最终输出；Online Softmax 可以逐 Key Tile 追踪 running max、重缩放因子、denominator 和加权 V 的中间值。在线输出另经独立的 Dense `QKᵀ→Softmax→PV` 数值实现检查。所有步骤都来自实际 `paper_patches.js` 运行结果，而非仅用示意箭头替代。详见 [计算顺序与最小对照实验](docs/paper-compute-microscope.md)，测试 `node tests/paper_compute_trace_contracts.js`、`python tests/browser_paper_compute_trace.py`。这一步将页面级共用计算/状态透视覆盖提升至 **11/20**，还保留 4 个专用入口及 5 个非计算或证据入口。
+
+## 机制驱动复审 · 2026-10-22
+
+**[查看机制驱动通用化复审](docs/universalization-mechanism-review-2026-10-22.md)**：新版自由训练微实验将 Tape 共享参数真实逐边 VJP、MoE Token→Expert 每次 GEMM、PPO Ratio/Clip/Gradient 接入与 Wan 一致的公共 Compute Microscope，保留反事实参数操作与逐通道数值闭合。覆盖审计现在除检查公共脚本引入之外，还检验每页调用适配器的具体代码路径，并包含移除调用的负例。当前是 **4 个通用张量页面、7 个通用状态页面、4 个尚未统一的专用实验页面**。教学解析采用“机制→低成本区分实验→竞争解释→下一步设计”的顺序，优先发现规律与提出可证伪机制，而不是以长串限制说明代替探索。
+
+## 同一个运行时、可安装的积木包（模块优先）
+ 
+**[统一积木运行时与模块包发布规范](docs/unified-block-runtime.md)**。所有新增基础模型算子与论文数学算子优先进入 `block_extension_registry.js` 统一管理的独立包：`defs → validate → infer → execute → trace`，并可提供 `recipes` 供自由画布自动生成教学示例；无需继续在教学页或 `learning_lab.preset` 为每个新方法增加单独的执行分支。当前三个可重用模块包分别提供五维视频操作、LoRA/DoRA/Online Softmax、具名 T/D 轴算子，共 **11 个真正可执行可自由接线的模块积木**。新增具名轴示例由模块包自动安装，使用两种独立转置算子输出相减得到严格全零矩阵，并验证沿 T 求均值与沿 D 广播。PC 与 Android 教学版共用这些执行器和显微镜。
+
+## 全站通用化审计（149 种积木 / 22 类别 / 20 个主要功能页面）
+
+**[查看全站通用化审计](docs/universalization-audit-2026-10-21.md)**。本轮直接核对页面依赖与真实执行器：现有 20 个主要页面中，4 个已接入公共 Tensor/Operator 透视（自由积木、Wan FFN、MoE/PPO/VJP 微训练、LoRA/DoRA/Online Softmax 论文计算），7 个已接入公共 State/Event 透视（KV 生命周期、Worker、训练续训、标量训练、Decode Scheduler、Prefill 投票/Chunk、GQA 数学缓存），另外 4 个仍是专用计算或教学实现、2 个是导航、3 个是 PC 独有证据链。完整清单同时可在 [交互能力矩阵](capabilities.html) 看到。剩余 4 个尚不应标成“通用完成”，即使其数学引擎已单独通过。新增 `state_microscope.js` 以严格前后状态、因果依赖和来源等级统一审计不同执行器，不将 CPU 资源模拟或合成数据冒充 GPU 实测。自动核对：`node tests/state_microscope_contracts.js` 与 `node tests/universal_surface_audit_contracts.js`，浏览器：`python tests/browser_state_microscope.py`。
+
+## 通用计算透视：所有积木共享的基本能力
+
+**核心能力已内置主 [自由积木学习工作台](learn.html) 的右侧 Inspector，而非限定在某个模型实验页。** 不论普通 GELU FFN、SwiGLU、Attention、Residual 还是有界 1D–5D 图像/音频/视频张量，学习者都可以循着实际依赖 → 算子 → 输出 Tensor → 坐标数值钻取。对 Linear/MatMul 自动重建权重存储布局、输入维逐项乘法及 Bias，并逐坐标校验与真实教学执行器结果相符。新增 `compute_microscope.js`、`compute_microscope_ui.js`、`compute_microscope.css` 作为所有模型适配器的基础；Wan 官方源码 FFN 页面已真正复用这些组件，同时保留 Wan 条件 Gate 与 Hidden Channel 特化分析。静态概念形状不冒充数值，合成 Float64/固定源码结构不冒充真实 checkpoint，未知格式会显式拒绝。详见 [通用计算透视系统合同](docs/computation-microscope.md)，测试：`node tests/compute_microscope_contracts.js` 与 `python tests/browser_compute_microscope.py`，含 PC/Android 共享离线组件。
+
+## Wan2.2 FFN 源码级可视化与乘加透视
+
+新增 [Wan FFN 源码计算透视](wan_ffn_lab.html)：使用 [固定 commit 官方 `wan/modules/model.py`](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L183-L259) 和 [官方 I2V A14B 配置](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_i2v_A14B.py)，重建 Cross-Attention 残差→norm2→时间条件 e4/e3→Linear(5120,13824)→GELU(tanh)→Linear(13824,5120)→e5→残差完整顺序，展示每步 Tensor shape、计算值、热力图、矩阵权重布局与任意 Token/Channel 的点积项及来源行号。运算是确定性 Float64 微型教学模拟，**不是加载 Wan 权重**、执行原始 FlashAttention 或测量 GPU。Node 数值合同 `node tests/wan_ffn_microscope_contracts.js`，Chromium 视觉验收 `python tests/browser_wan_ffn.py`，数学/源码边界见 [深度 FFN 证据合同](docs/wan-ffn-source-microscope.md)。
+
+## 进阶工程训练流水线：Shuffle / Accumulation / Resume / Decode
+
+新增 [进阶训练状态机实验室](engineering_pipeline.html)，与原有 [12 关基础工程课程](engineering_journey.html) 相互衔接。6 个可执行关卡逐步检查 Sampler Epoch/Cursor、Microbatch 梯度累积、等效 Batch 逐参数数学一致性、按 Optimizer Step 的 Warmup/Cosine、梯度裁剪、在一个更新中途暂停后恢复 DataLoader 与 Pending Gradients，并把相同 checkpoint 用于带 provenance 的推理。PC 与离线 Android 使用一份真实 Float64 Bigram 数值代码；不执行真实大型模型/GPU/HTTP Serving，也不提供 APK 文件导出。数值合同：`node tests/engineering_pipeline_contracts.js`，UI 验收：`python tests/browser_engineering_pipeline.py`。进一步合同见 [工程训练流水线说明](docs/engineering-training-pipeline.md)。
 
 ## 立即体验
 
@@ -55,8 +89,8 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
-| 积木库 | **138 种积木**：11 种基本积木 + 123 种扩展计算和优化器积木 + 4 种显式流状态积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **59 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
+| 积木库 | **149 种积木**：11 种基本积木 + 123 种扩展计算和优化器积木 + 4 种显式流状态积木 + 11 种注册式模块包积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
+| 学习内容 | **62 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
 | DeepInfer 推理调度 | 按官方 Reference 数学实现 MTP remap+累积置信度+稳定排名+固定预算；YoCo SWA mask/compact 保留后缀可执行数学示例及 Query 行数对照 | YoCo 尚未实现 DeepInfer 的真实多 Chunk metadata、Yoco Pivots、ZOS Worker/GPU Kernel；不能据此推断线上部署吞吐 |\n| 推理系统基础 | 真实 CPU Top-K、Top-K 稀疏 QK/PV、Paged KV 逻辑到物理地址映射、贪心推测解码验收；四门新的可自由编辑课程可组合 FlashMLA/DeepSelect/DeepSpec 相关机制 | 属于源码机制教学抽象，不提供 DeepSeek 旧 vLLM Fork、FP8/FP4 GPU kernels、实际分布式 EP 通信、目标/草稿模型权重或 GPU 性能 |\n| 原生视频计算 | 真 5D [B,T,H,W,C] 与 [O,Kt,Kh,Kw,I] 因果 Conv3D、左侧时间补零和历史帧流式状态；逐节点 JS/NumPy/PyTorch 比较及可训练卷积核权重梯度 | 不是完整 Wan VAE；空间 valid、时间 stride=1、无完整归一化、上下采样或实际视频文件解码 |\n| 进阶多模态 | 可执行 HWC Conv2D（独立可训练 Parameter 权重）、HTK Mel 三角滤波与两步确定性 ε-DDIM；NumPy/PyTorch CPU 支持，卷积参数的真实 autograd 可单独验证 | 无完整视频 VAE、卷积填充/膨胀、真实 Whisper Slaney 滤波权重、去噪神经网络或生成质量指标 |\n| 多模态 | 图像 Patchify、音频真实 Hann-STFT 功率谱与对数压缩、视频 Tubelet，另有图像/音频/视频三路交叉注意力的可执行积木图；NumPy、PyTorch CPU 代码导出 | 采用受限二维载体、合成数据和明确轴映射；尚无真实图片/音频/视频解码、ViT/ViViT 权重、Whisper Mel 滤波及 Wan VAE 3D 因果缓存 |\n| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
 | 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |

@@ -12,6 +12,7 @@
   "use strict";
   const CATALOG=Object.keys(L.defs);
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
+  const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
   const EVIDENCE="declared_semantic_and_shape_contract_not_numerical_execution";
   const fail=(message,id)=>{const e=new Error(message);e.nodeId=id;throw e;};
   const equal=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
@@ -36,6 +37,7 @@
   const losses=new Set(["mse","mae_loss","kl_prob"]);
   const ports=(n,inputs,...keys)=>keys.map(k=>{by(inputs[k],n.kind+" 缺少 "+k+" 输入",n.id);return inputs[k];});
   function analyze(n,inputs,options={}){
+    if(Extensions.isKind(n.kind))return Extensions.infer(n,inputs,options.axes||null);
     const semantic=StreamGraph.infer(n,inputs,options.logicalStates||{});
     if(semantic)return {shape:semantic.shape,rule:semantic.rule,conditions:semantic.conditions,
       stages:null,meaning:"显式流式逻辑状态",logicalState:semantic.logicalState};
@@ -403,16 +405,16 @@
   function evaluate(raw){
     const g=L.validateGraph(raw),seq=L.order(g),saved=new Map(),steps=[];
     for(const n of seq){
-      const inputs={},logicalStates={};
+      const inputs={},logicalStates={},namedAxes={};
       for(const port of L.defs[n.kind].ports){
         const e=g.edges.find(e=>e.to===n.id&&e.port===port);
         by(e,L.defs[n.kind].title+" 的 "+port+" 端口未连接",n.id);
         const prev=saved.get(e.from);by(prev,"计算依赖失效："+e.from,n.id);
-        inputs[port]=prev.shape.slice();logicalStates[port]=prev.logicalState||null;
+        inputs[port]=prev.shape.slice();logicalStates[port]=prev.logicalState||null;namedAxes[port]=prev.axes||null;
       }
-      const summary=analyze(n,inputs,{logicalStates});
+      const summary=analyze(n,inputs,{logicalStates,axes:namedAxes});
       saved.set(n.id,summary);
-      steps.push({id:n.id,kind:n.kind,inputs,shape:summary.shape,values:null,flops:null,
+      steps.push({id:n.id,kind:n.kind,inputs,shape:summary.shape,axes:summary.axes||null,values:null,flops:null,
         mode:"concept",stages:summary.stages,conditions:summary.conditions,
         shapeEvidence:"declared_parameter_and_graph_shape_inference",
         meaning:summary.meaning,transformation:summary.rule,

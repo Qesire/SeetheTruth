@@ -13,6 +13,7 @@
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
+  const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
   const MAX_NODES=80,MAX_EDGES=176;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -66,7 +67,8 @@
       caution:"这里只计算前向 Loss；梯度、反向传播和优化器尚未实现。",
       lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"},
     ...BlockCatalog.defs,
-    ...StreamGraph.defs
+    ...StreamGraph.defs,
+    ...Extensions.defs
   });
   const KINDS=Object.keys(defs);
   function fail(message,node){const e=new Error(message);e.nodeId=node||null;throw e;}
@@ -110,6 +112,7 @@
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
       if(Object.hasOwn(BlockCatalog.defs,type)){try{BlockCatalog.validate(type,params)}catch(err){fail(err.message,n.id);}}
         if(StreamGraph.isKind(type)){try{StreamGraph.validate(type,params)}catch(err){fail(err.message,n.id);}}
+        if(Extensions.isKind(type)){try{Extensions.validate(type,params)}catch(err){fail(err.message,n.id);}}
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
     const targetPorts=new Set(),edges=[];
@@ -164,7 +167,8 @@
     return a.map(row=>{const max=Math.max(...row),exp=row.map(x=>Math.exp(x-max));
       const sum=exp.reduce((x,y)=>x+y,0);return exp.map(v=>v/sum);});
   }
-  function calculate(n,inputs){
+  function calculate(n,inputs,records){
+    if(Extensions.isKind(n.kind))return Extensions.execute(n,inputs,records);
     if(n.kind.startsWith("nd_")){
       const out=BlockCatalog.execute(n,inputs);
       const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
@@ -250,15 +254,18 @@
       }
       let inferred,value;
       try{
-        inferred=StreamGraph.infer(n,
+        inferred=Extensions.isKind(n.kind)?Extensions.infer(n,Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.axes||null]))):StreamGraph.infer(n,
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.logicalState||null])));
-        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins);
+        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins,records);
       }catch(err){fail(err.message,n.id);}
       if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
       out.set(n.id,value);
       const {streamState,...publicValue}=value;
-      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,shape(v)])),
+      const extensionSubsteps=Extensions.isKind(n.kind)?Extensions.substeps(n,ins,value):null;
+      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,Extensions.tensorShape(v)])),
+        ...(extensionSubsteps?{extensionSubsteps}:{}),
         ...publicValue,formula:defs[n.kind].formula,why:defs[n.kind].why,
         training:"仅前向微型数值解释；尚未执行反向传播与权重更新。"});
     }
@@ -274,6 +281,46 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    const installedRecipe=Extensions.recipe(name);
+    if(installedRecipe)return validateGraph({schema:SCHEMA,...installedRecipe});
+    if(name==="extension_video_composition"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[N("video","semantic_video_source",25,225,{frames:3,seed:1}),
+       N("first","semantic_video_slice",325,65,{start:0,length:2}),
+       N("last","semantic_video_slice",325,425,{start:2,length:1}),
+       N("join","semantic_video_concat",680,235)];
+      const edges=[["video","first","x"],["video","last","x"],["first","join","a"],["last","join","b"]];
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 五维具名视频分块→重组",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
+    if(name==="extension_paper_composition"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const W=(id,x,y,values)=>{
+       const zeros=values.map(row=>row.map(()=>0));
+       return N(id,"parameter",x,y,{values,frozen:true,optimizer:{t:0,m:zeros,v:zeros}});
+      };
+      const nodes=[W("x",20,40,[[1,2],[2,1]]),W("base",20,250,[[1,0],[0,1]]),
+       W("a",20,460,[[1],[2]]),W("b",20,670,[[3,4]]),W("m",20,880,[[2,3]]),
+       N("lora","paper_lora_forward",450,150,{alpha:2}),
+       N("dora","paper_dora_forward",450,570,{alpha:1}),
+       N("blend","add",840,335)];
+      const edges=["lora","dora"].flatMap(target=>[["x",target,"x"],["base",target,"w"],
+       ["a",target,"a"],["b",target,"b"],...(target==="dora"?[["m",target,"m"]]:[])]);
+      edges.push(["lora","blend","a"],["dora","blend","b"]);
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 同源 LoRA/DoRA→任意后继 Add",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
+    if(name==="extension_online_attention"){
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const nodes=[N("q","input",35,65,{rows:2,width:2,seed:1}),
+       N("k","input",35,285,{rows:3,width:2,seed:2}),
+       N("v","input",35,505,{rows:3,width:2,seed:3}),
+       N("online","paper_online_attention",405,240,{chunk:1}),
+       N("norm","softmax",755,245)];
+      const edges=[["q","online","q"],["k","online","k"],["v","online","v"],["online","norm","x"]];
+      return validateGraph({schema:SCHEMA,title:"通用模块包 · 精确 Online Attention→后继归一化",nodes,
+       edges:edges.map(([from,to,port])=>({from,to,port}))});
+    }
     if(name==="stream_state_branches"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const nodes=[

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeetheTruth · DeepInfer Worker 时序实验室</title>
-<style>
+<link rel="stylesheet" href="state_microscope.css"><style>
 :root{color-scheme:dark;--bg:#071120;--panel:#102438;--line:#2a4a60;--text:#e9f5ff;--muted:#95aec2;--green:#6ee1c3;--cyan:#6ccbe9;--orange:#f4ba7c}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% -15%,#1b4260,#071120 65%);color:var(--text);font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
 a{color:#91def4;text-decoration:none}a:hover{text-decoration:underline}button,select,input,textarea{font:inherit}button,select{background:#16324a;border:1px solid #426279;color:#ecf8ff;border-radius:8px;padding:8px 12px;cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--orange)}
@@ -66,6 +66,6 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 <article class="panel"><h2>严格的模型边界</h2><p class="note">CPU 和 GPU 各为单资源事件队列；只有合法依赖满足后才能执行。ZOS 允许将上轮 Sample 的 CPU 后处理放到下一轮 Forward 发起后，产生潜在重叠。</p><p class="note">元数据修正按上一轮采样事件建立依赖，但这里<strong>没有</strong>实现 C++ Scheduler、CUDA Graph、真实 Token 接收、H2D/D2H 时间、设备并行流、EP/CP 或 KV 内存生命周期。</p></article>
 <article class="panel"><h2>技术依据</h2><p class="note"><a href="https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/worker/worker.py" target="_blank" rel="noopener noreferrer">官方 Worker.execute_model_step</a> 定义四阶段以及 Prompt/非 ZOS 的当步处理与 ZOS Decode 的延迟处理。</p><p class="note"><a href="https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/engine/llm_engine.py" target="_blank" rel="noopener noreferrer">官方 LLMEngine.step</a> 调用 C++ Scheduler 并安排 Worker 步骤。</p></article>
 </div></section>
-<section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
+<section class="panel"><h2>通用事件显微镜 · 因果依赖与状态差分</h2><p class="muted">与 KV 生命周期共用审计接口；CPU/GPU 时间为场景假设值。点击任一事件查看已完成事件数、资源占用及前置依赖。</p><div id="stateMicroscope" class="sm-surface"></div></section><section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
 <div style="overflow:auto"><table><thead><tr><th>Step</th><th>模式</th><th>请求</th><th>ZOS 输出交付</th><th>非 ZOS 输出交付</th></tr></thead><tbody id="results"></tbody></table></div></section>
-</main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_decode_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>
+</main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_decode_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script><script src="deepinfer_worker_lab.js"></script></body></html>

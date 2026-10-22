@@ -78,7 +78,8 @@ const sources=Object.freeze({
  argmax:["PyTorch argmax","https://docs.pytorch.org/docs/stable/generated/torch.argmax.html"],
  norm:["PyTorch F.normalize","https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.normalize.html"],
  softplus:["PyTorch Softplus","https://docs.pytorch.org/docs/stable/generated/torch.nn.Softplus.html"],
- mse:["PyTorch MSELoss","https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html"]
+ mse:["PyTorch MSELoss","https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html"],
+ ...Object.fromEntries(Object.entries(L.defs).filter(([_,d])=>!!d.pack).map(([id,d])=>["extension_"+id,[d.en+" original source",d.source]]))
 });
 /* Each entry: expanded compute flow; industry-known nuance; bad inference; check; source ids. */
 const notes={
@@ -237,18 +238,21 @@ const notes={
  mae_loss:["逐元素取绝对误差，再对所有有效元素求平均。","MAE 相比 MSE 对离群值放大较弱，但何者更好取决于目标分布。","一次 MAE 前向不会更新参数，也不必然代表感知质量。","比较误差为 1 和 10 的贡献比例。","mse"],
  kl_prob:["KL(P||Q) 按 P 加权对数概率比，通常有明确方向且不对称。","PyTorch KLDivLoss 使用 logprob 输入，默认 mean 与严格 KL 的 batchmean 语义不同。","不能交换 P/Q 也不能把未归一化 logits 当概率直接代入。","对 P=[1,0] 和 Q=[.5,.5] 正反计算 KL。","kl,ce"]
 };
+const cards=Object.freeze(Object.fromEntries(Object.entries(L.defs).map(([id,d])=>[id,
+ notes[id]||(d.pack?[d.knowledge.flow,d.knowledge.practice,d.knowledge.trap,
+ d.knowledge.exercise,'extension_'+id]:null)])));
 function validate(){
- const keys=Object.keys(L.defs);if(Object.keys(notes).length!==keys.length)throw Error("knowledge coverage mismatch");
+ const keys=Object.keys(L.defs);if(Object.keys(cards).length!==keys.length)throw Error("knowledge coverage mismatch");
  for(const id of keys){
-  const card=notes[id];if(!card||card.length!==5)throw Error("missing fields: "+id);
+  const card=cards[id];if(!card||card.length!==5)throw Error("missing fields: "+id);
   for(let i=0;i<4;i++)if(typeof card[i]!=="string"||card[i].length<18)throw Error("shallow card "+id);
   for(const ref of card[4].split(","))if(!sources[ref])throw Error("unsupported source "+id+":"+ref);
  }
  return {cards:keys.length,references:Object.keys(sources).length};
 }
 validate();
-const get=id=>{if(!Object.hasOwn(notes,id))return null;
- const n=notes[id],d=L.defs[id];
+const get=id=>{if(!cards[id])return null;
+ const n=cards[id],d=L.defs[id];
  return Object.freeze({kind:id,title:d.title,formula:d.formula,why:d.why,
   intuition:d.why+(d.why.length<18?" 需要检查这个操作实际改变了哪一条张量语义轴。":""),flow:n[0],practice:n[1],trap:n[2],exercise:n[3],
   refs:n[4].split(","),epistemic:"公开论文/官方实现约定，不是指定模型已验证事实"});

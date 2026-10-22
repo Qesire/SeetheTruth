@@ -79,6 +79,8 @@ jobs:
           path: capability_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
+      - name: Verify 12-stage real CPU training-to-inference in desktop/phone Chromium
+        run: python tests/browser_engineering_journey.py
       - name: Verify shared PC/Android course explanations in real Chromium
         run: python tests/browser_shared_teaching.py
       - name: Archive shared desktop/mobile teaching screenshots

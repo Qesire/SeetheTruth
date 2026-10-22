@@ -1,0 +1,203 @@
+/* Core Source→Graph→Operator→Tensor→Coordinate contract.
+ * Every preview is explicitly tagged static, teaching-numeric or source-aligned
+ * with synthetic numbers. Source metadata NEVER upgrades arithmetic provenance.
+ * No HTML generation, IO, evaluation, network or dynamic code.
+ */
+(function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthComputeMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
+const SCHEMA='seethetruth-computation-microscope-v1',MAX_STEPS=160,MAX_CELLS=16384;
+const TIERS=Object.freeze({STATIC:'STATIC_SHAPES_NO_EXECUTION',MICRO:'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS',WAN:'PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64'});
+function must(x,msg){if(!x)throw Error('microscope: '+msg);}
+function product(shape){return shape.reduce((x,y)=>x*y,1);}
+function numericTensor(shape,values){
+ must(Array.isArray(shape)&&shape.length>=1&&shape.length<=5&&shape.every(x=>Number.isSafeInteger(x)&&x>0)&&product(shape)<=MAX_CELLS,'only bounded rank 1–5 tensors');
+ must(Array.isArray(values)&&values.length===product(shape)&&values.every(x=>typeof x==='number'&&Number.isFinite(x)),'tensor values/shape invalid');
+ return {shape:shape.slice(),values:values.slice()};
+}
+function staticTensor(shape){
+ must(Array.isArray(shape)&&shape.length>=1&&shape.length<=5&&shape.every(x=>Number.isSafeInteger(x)&&x>0),'invalid symbolic shape');
+ return {shape:shape.slice(),values:null};
+}
+function fromNested(values){
+ must(Array.isArray(values)&&values.length>0,'empty tensor');
+ const shape=[];let cursor=values;
+ while(Array.isArray(cursor)){
+  must(cursor.length>0,'empty tensor axis');shape.push(cursor.length);
+  must(shape.length<=5,'unsupported rank >5');cursor=cursor[0];
+ }
+ const flat=[];
+ function visit(node,axis){
+  if(axis===shape.length){must(typeof node==='number'&&Number.isFinite(node),'nonfinite scalar');flat.push(node);return;}
+  must(Array.isArray(node)&&node.length===shape[axis],'ragged tensor');
+  for(const child of node)visit(child,axis+1);
+ }
+ visit(values,0);return numericTensor(shape,flat);
+}
+function hashWeight(id,r,c){let h=2166136261;for(const ch of id+':'+r+':'+c)h=Math.imul(h^ch.charCodeAt(0),16777619);return ((h>>>0)%2001-1000)/2600;}
+function dotSpec(input,weights,bias,orientation='out_in'){return {type:'dot',input,weights,bias,orientation};}
+function verifyDot(s){
+ if(!s.dot)return;
+ must(s.out.values!==null&&s.dot.type==='dot'&&s.dot.orientation==='out_in','unsupported dot contract');
+ const {input,weights,bias}=s.dot;
+ numericTensor(input.shape,input.values);numericTensor(weights.shape,weights.values);numericTensor(bias.shape,bias.values);
+ const [T,D]=input.shape,[H,C]=weights.shape;
+ must(input.shape.length===2&&weights.shape.length===2&&s.out.shape.length===2&&bias.shape.length===2&&D===C&&s.out.shape[0]===T&&s.out.shape[1]===H&&bias.shape[0]===1&&bias.shape[1]===H,'GEMM input/weight/output misalignment');
+ for(let t=0;t<T;t++)for(let h=0;h<H;h++){
+  let sum=bias.values[h];for(let k=0;k<D;k++)sum+=input.values[t*D+k]*weights.values[h*D+k];
+  must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
+ }
+}
+function verifyIndexMap(s){
+ if(s.indexMap===undefined)return;
+ must(s.out.values!==null&&Array.isArray(s.indexMap)&&s.indexMap.length===s.out.values.length,'invalid tensor index source map');
+ for(let i=0;i<s.indexMap.length;i++){
+  const entry=s.indexMap[i];
+  must(entry&&typeof entry.port==='string'&&Object.hasOwn(s.operands,entry.port),'unresolved tensor source port');
+  const input=s.operands[entry.port];
+  must(input&&input.values!==null&&Number.isSafeInteger(entry.index)&&entry.index>=0&&entry.index<input.values.length,'source index out of bounds');
+  must(s.out.values[i]===input.values[entry.index],'mapped output contradicts input coordinate');
+ }
+}
+function validate(frame){
+ must(frame&&frame.schema===SCHEMA,'wrong schema');
+ must(Object.values(TIERS).includes(frame.evidenceTier),'unknown evidence tier');
+ must(Array.isArray(frame.steps)&&frame.steps.length>=1&&frame.steps.length<=MAX_STEPS,'invalid step count');
+ must(typeof frame.title==='string'&&frame.title.length>0,'missing title');
+ const ids=new Set();let hasNumeric=false;
+ for(const s of frame.steps){
+  must(s&&typeof s.id==='string'&&/^[A-Za-z0-9_:\-]{1,80}$/.test(s.id)&&!ids.has(s.id),'duplicate or invalid step id');
+  must(typeof s.kind==='string'&&s.kind.length>0&&typeof s.title==='string'&&s.title.length>0,'missing step metadata');
+  must(typeof s.formula==='string'&&typeof s.why==='string','missing math description');
+  must(Array.isArray(s.dependencies)&&s.dependencies.every(d=>d&&typeof d.from==='string'&&ids.has(d.from)&&typeof d.port==='string'&&d.port.length>0),'dependencies must point backward to computed nodes');
+  must(s.out&&Array.isArray(s.out.shape),'missing output tensor');
+  if(s.out.values!==null){numericTensor(s.out.shape,s.out.values);hasNumeric=true;}
+  else staticTensor(s.out.shape);
+  must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
+  for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);}
+  verifyDot(s);verifyIndexMap(s);
+  if(s.substeps!==undefined){
+   must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
+   const nestedIds=new Set();
+   for(const child of s.substeps){
+    must(child&&typeof child.id==='string'&&child.id.startsWith(s.id+':')&&/^[A-Za-z0-9_:\-]{1,80}$/.test(child.id)&&!ids.has(child.id)&&!nestedIds.has(child.id),'invalid or duplicate substep');
+    must(typeof child.title==='string'&&child.title&&typeof child.kind==='string'&&typeof child.formula==='string'&&typeof child.why==='string','substep missing explanation');
+    must(child.out&&child.out.values!==null,'nested substep needs measured teaching numerical data');
+    numericTensor(child.out.shape,child.out.values);
+    must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
+    for(const tensor of Object.values(child.operands))numericTensor(tensor.shape,tensor.values);
+    verifyDot(child);verifyIndexMap(child);
+    nestedIds.add(child.id);
+   }
+  }
+  ids.add(s.id);
+ }
+ must((frame.evidenceTier===TIERS.STATIC)===(hasNumeric===false),'symbolic vs numeric provenance mismatch');
+ if(frame.source)must(typeof frame.source.url==='string'&&/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/blob\/[a-f0-9]{40}\//.test(frame.source.url)&&frame.source.tier==='PINNED_CODE_STRUCTURE_ONLY','unverified pinned-source metadata');
+ return frame;
+}
+function dot(frame,stepId,row,col,prefix=[]){
+ validate(frame);const s=frame.steps.find(x=>x.id===stepId)||frame.steps.flatMap(x=>x.substeps||[]).find(x=>x.id===stepId);must(s,'unknown node');
+ must(s.out.values!==null,'numeric execution unavailable');
+ const shape=s.out.shape,dimensions=shape.length;
+ const T=dimensions===1?1:shape[dimensions-2],H=shape[dimensions-1];
+ must(Array.isArray(prefix)&&prefix.length<=Math.max(0,dimensions-2),'invalid tensor axis slice');
+ const leading=dimensions<=2?[]:Array.from({length:dimensions-2},(_,i)=>prefix[i]??0);
+ must(leading.every((v,i)=>Number.isInteger(v)&&v>=0&&v<shape[i]),'invalid tensor axis slice');
+ must(Number.isInteger(row)&&row>=0&&row<T&&Number.isInteger(col)&&col>=0&&col<H,'invalid coordinate');
+ let index=0;const coord=[...leading,...(dimensions===1?[]:[row]),col];
+ for(let i=0;i<dimensions;i++)index=index*shape[i]+coord[i];
+ const observed=s.out.values[index];
+ if(s.indexMap){
+  const entry=s.indexMap[index],source=s.operands[entry.port].values[entry.index];
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,
+   formula:'output['+coord.join(',')+'] = '+entry.port+'[flat '+entry.index+']',
+   reconstructable:true,mapped:true,sourcePort:entry.port,sourceIndex:entry.index,
+   recomputed:source,error:Math.abs(observed-source),terms:[]};
+ }
+ if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,formula:s.formula,reconstructable:false};
+ const {input,weights,bias}=s.dot,D=input.shape[1];
+ const terms=Array.from({length:D},(_,k)=>({k,input:input.values[row*D+k],weight:weights.values[col*D+k],product:input.values[row*D+k]*weights.values[col*D+k]}));
+ const recomputed=bias.values[col]+terms.reduce((a,b)=>a+b.product,0);
+ return {nodeId:s.id,row,col,value:observed,bias:bias.values[col],terms,recomputed,error:Math.abs(observed-recomputed),formula:'bias[out] + Σ input[token,k] × W[out,k]',reconstructable:true};
+}
+function learning(graph,run,catalog){
+ must(graph&&Array.isArray(graph.nodes)&&Array.isArray(graph.edges),'missing graph');
+ must(run&&Array.isArray(run.steps)&&run.steps.length>0,'missing execution');
+ must(catalog&&catalog.defs,'missing block dictionary');
+ const numeric=run.evidence==='deterministic_browser_teaching_simulation_not_model_execution';
+ // concept steps have "transformation" and no tensor values.
+ const isConcept=run.mode==='concept';
+ must(numeric||isConcept,'unrecognized execution evidence; decline to infer authenticity');
+ const nodes=new Map(graph.nodes.map(n=>[n.id,n]));const byId=new Map();
+ const steps=run.steps.map((r,i)=>{
+  const n=nodes.get(r.id),def=catalog.defs[n?.kind];must(n&&def,'trace node not found in graph');
+  must(r.kind===n.kind,'trace kind changed since run');
+  const dependencies=graph.edges.filter(e=>e.to===n.id).map(e=>({from:e.from,port:e.port}));
+  let out;
+  if(isConcept){out=staticTensor(r.shape);}else{
+   out=fromNested(r.values);
+   must(r.shape.join(',')===out.shape.join(','),'trace tensor shape contradicts row data');
+  }
+  const operands={},kind=n.kind;let specification=null;
+  if(!isConcept){
+   for(const dep of dependencies){
+    const upstream=byId.get(dep.from);must(upstream&&upstream.out.values,'missing computed upstream');
+    operands[dep.port]=upstream.out;
+   }
+   if(kind==='linear'){
+    const x=operands.x;must(x&&x.shape.length===2,'Linear input missing');
+    const [_,D]=x.shape,H=out.shape[1];
+    const weights=numericTensor([H,D],Array.from({length:H*D},(_,p)=>hashWeight(n.id,Math.floor(p/D),p%D)));
+    const bias=numericTensor([1,H],Array.from({length:H},(_,h)=>hashWeight(n.id,97,h)));
+    specification=dotSpec(x,weights,bias);operands.weight=weights;operands.bias=bias;
+   }
+   if(kind==='matmul'){
+    const A=operands.a,B=operands.b;must(A&&B&&A.shape[1]===B.shape[0],'matmul operands missing');
+    const [D,H]=B.shape,transposed=numericTensor([H,D],Array.from({length:H*D},(_,p)=>B.values[(p%D)*H+Math.floor(p/D)]));
+    const bias=numericTensor([1,H],Array(H).fill(0));
+    specification=dotSpec(A,transposed,bias);operands.weight=transposed;
+   }
+  }
+  let substeps;
+  if(!isConcept&&kind==='attention'){
+   const q=operands.q,k=operands.k,v=operands.v;
+   must(q&&k&&v&&q.shape.length===2&&k.shape.length===2&&v.shape.length===2,'Attention operands missing');
+   const scores=fromNested(r.internals?.scores?.values),probabilities=fromNested(r.internals?.probabilities?.values);
+   const dimension=q.shape[1],qScaled=numericTensor(q.shape,q.values.map(z=>z/Math.sqrt(dimension)));
+   const zeroQ=numericTensor([1,k.shape[0]],Array(k.shape[0]).fill(0));
+   const valueWeights=numericTensor([v.shape[1],v.shape[0]],Array.from({length:v.shape[0]*v.shape[1]},(_,p)=>v.values[(p%v.shape[0])*v.shape[1]+Math.floor(p/v.shape[0])]));
+   const zeroV=numericTensor([1,v.shape[1]],Array(v.shape[1]).fill(0));
+   substeps=[
+    {id:r.id+':qk_scores',kind:'scaled_matmul',title:'QKᵀ / √d · Scores',formula:'scores[t,j] = Σ_k Q[t,k] K[j,k] / √d',why:'Attention 先对每个 query/token 和 key/token 完整计算相似度；不是逐元素乘同位置 Token。',out:scores,operands:{q,k},dot:dotSpec(qScaled,k,zeroQ)},
+    {id:r.id+':softmax',kind:'softmax',title:'Softmax · Attention probabilities',formula:'P[t,j] = exp(scores[t,j]−max)/Σ_j exp(scores[t,j]−max)',why:'沿每个 Query 的所有 Key 做归一化，避免大 logits 导致的数值溢出。',out:probabilities,operands:{scores}},
+    {id:r.id+':weighted_value',kind:'matmul',title:'Probabilities × V · Context',formula:'out[t,c] = Σ_j P[t,j] V[j,c]',why:'所有 key/value token 的值按概率汇聚到对应 Query，形成 Attention 的最终输出。',out,operands:{probabilities,v},dot:dotSpec(probabilities,valueWeights,zeroV)}
+   ];
+  }
+  if(!isConcept&&r.extensionSubsteps){must(!substeps,'node has ambiguous trace providers');substeps=r.extensionSubsteps;}
+  const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
+   sourceLines:null,dependencies,out,operands,dot:specification,substeps,
+   note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};
+  byId.set(s.id,s);return s;
+ });
+ return validate({schema:SCHEMA,title:graph.title||'可执行积木计算图',evidenceTier:isConcept?TIERS.STATIC:TIERS.MICRO,
+  source:null,steps,origin:'learning_lab_executor',limits:'no_real_model_weights_or_hardware_profiling'});
+}
+function wan(data){
+ must(data&&data.source&&Array.isArray(data.steps)&&data.steps.length===9,'missing pinned Wan FFN trace');
+ const ref=data.source,srcUrl=ref.source;
+ must(ref.commit==='1ea34ff48f87168174e12956e200b1d908b1c5ff','unsupported Wan source revision');
+ const steps=data.steps.map((s,i)=>{
+  const previous=i===0?[]:[{from:data.steps[i-1].id,port:'previous'}];
+  const operands=Object.fromEntries(Object.entries(s.aux||{}).filter(([k,v])=>v&&Array.isArray(v.shape)&&Array.isArray(v.values)).map(([k,v])=>[k,numericTensor(v.shape,v.values)]));
+  const dot=(i===4||i===6)?dotSpec(operands.input,operands.weights,operands.bias):null;
+  const line=s.lines?.match(/\d+/)?.[0]||null;
+  return {id:s.id,kind:i===4||i===6?'linear':s.id,title:s.name,formula:s.code,why:s.why,
+    sourceLines:line?{start:Number(line),end:Number(s.lines?.match(/\d+/g)?.[1]||line)}:null,
+    dependencies:previous,out:numericTensor(s.main.shape,s.main.values),operands,dot,
+    note:s.error};
+ });
+ return validate({schema:SCHEMA,title:'Wan2.2 I2V A14B · FFN 逐步计算',evidenceTier:TIERS.WAN,
+   source:{url:srcUrl,tier:'PINNED_CODE_STRUCTURE_ONLY',revision:ref.commit,path:ref.path},
+   steps,origin:'source_aligned_micro_numeric_engine',limits:'synthetic_float64_no_actual_wan_weights_no_cuda_profile'});
+}
+return Object.freeze({SCHEMA,TIERS,validate,learning,wan,dot,numericTensor,staticTensor});
+});

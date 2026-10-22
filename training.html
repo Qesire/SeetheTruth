@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SeetheTruth · Training Loop Studio</title>
-<style>
+<link rel="stylesheet" href="state_microscope.css"><style>
 :root{color-scheme:dark;--bg:#081722;--surface:#102535;--surface2:#142f40;--line:#305064;
 --text:#e8f7fc;--muted:#a0bcca;--cyan:#65d9d4;--gold:#ebbf7a;--blue:#91b5fa;--warn:#f1b18e}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,"Microsoft YaHei",system-ui,sans-serif}
@@ -138,15 +138,17 @@ h1,h2,h3,p{margin:0}h2{font-size:17px}p{line-height:1.7}
  <div class="trap"><div class="kicker" style="color:#f5bc95">误区 / PUBLIC SECRET</div><p id="trap"></p></div>
  <details class="block-note"><summary>自己判断：最小可证伪问题</summary><p id="exercise"></p></details>
  <details class="block-note"><summary>依据：PyTorch 官方计算合同</summary><div id="sources" class="references"></div></details>
- <div class="alert" id="evidence">EVIDENCE: symbolic state machine only · no trained model</div>
+ <details class="block-note" open><summary>通用状态显微镜 · 数值模式的真实梯度/优化器状态</summary><div id="stateMicroscope" class="sm-surface"></div></details><div class="alert" id="evidence">EVIDENCE: symbolic state machine only · no trained model</div>
 </aside>
 </div>
-<script src="training_flow.js"></script>
+<script src="training_flow.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script>
 <script>
 (()=>{"use strict";
 const T=window.SeetheTruthTraining,by=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let run=null,current=0;
+const State=window.SeetheTruthStateMicroscope,view=window.SeetheTruthStateMicroscopeUI.mount(by('stateMicroscope'));
+let snapshotRun=null,snapshotFrame=null;
 const names={parameter:"参数",state:"状态",data:"数据",forward:"前向",loss:"损失",backward:"反向",optimizer:"优化器"};
 function cfg(){return {optimizer:by("optimizer").value,microbatches:Number(by("microbatches").value),
   steps:Number(by("steps").value),lr:Number(by("lr").value),theta:Number(by("theta").value),
@@ -205,6 +207,10 @@ function render(){
   "EVIDENCE: analytic scalar oracle · NOT actual PyTorch autograd/model training":
   "EVIDENCE: symbolic state contract · no numerical execution or GPU";
  renderCatalog();
+ if(run.mode==='scalar'){
+  if(snapshotRun!==run){snapshotFrame=State.scalar(run);snapshotRun=run;}
+  view.show(snapshotFrame,current);
+ }else view.clear();
 }
 function focus(){
  const el=document.querySelector('[data-evt="'+current+'"]'),workspace=document.querySelector(".workspace");

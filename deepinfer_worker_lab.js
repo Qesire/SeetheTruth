@@ -2,6 +2,8 @@
 const E=window.SeetheTruthDeepInferEvents;
 if(!E)throw Error("DeepInfer event simulator unavailable");
 const $=id=>document.getElementById(id),svgNS="http://www.w3.org/2000/svg";
+const State=window.SeetheTruthStateMicroscope;
+const stateView=window.SeetheTruthStateMicroscopeUI.mount($('stateMicroscope'));
 const scenarios={
  mixed:E.DEFAULT_STEPS.map(x=>({mode:x.mode,sequenceIds:[...x.sequenceIds]})),
  decode:[{mode:"decode",sequenceIds:["A"]},{mode:"decode",sequenceIds:["A"]},
@@ -156,6 +158,7 @@ function render(){
      metadataRows.length+" 个跨步元数据修正已执行（合成采样数据）":
      "此场景未启用数值 Fixture；事件顺序仍可独立运行";
    window.SeetheTruthLastWorkerComparison={zos,non};
+   stateView.show(State.worker(zos));
    $("editorStatus").textContent="已执行合法事件图；时间为假设值。";
  }catch(err){$("editorStatus").textContent="输入被拒绝："+err.message;}
 }

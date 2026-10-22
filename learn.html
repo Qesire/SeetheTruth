@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeetheTruth · Model Learning Studio</title>
+<link rel="stylesheet" href="compute_microscope.css">
 <style>
 :root{color-scheme:dark;--bg:#08111e;--line:#24465e;--muted:#8daec4;--text:#e7f7ff;--cyan:#63e2f1;--mint:#6feac2;--amber:#f4ba7b;--violet:#b8a2ff;--surface:#0e2132}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#14364b 0%,#08111e 46%,#060c16 100%);color:var(--text);font:13px/1.55 "Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
@@ -141,7 +142,7 @@ input[type="file"]{display:none}
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">◎ 工程实战：训练 → 推理</a><a class="btn ghost" href="wan_ffn_lab.html">◈ Wan FFN 源码级计算透视</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
@@ -158,7 +159,7 @@ input[type="file"]{display:none}
    <small>完整层 → Attention / FFN → 每次矩阵计算</small></button>
   <div class="hint">宏模块只组织已有的基础算子，不计入新的可执行积木。</div>
   <div class="rule"></div>  <div class="kicker">03 / GUIDED MISSIONS</div><h2>课程任务</h2>
-  <button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
+  <a class="btn ghost" href="wan_ffn_lab.html" style="display:block;margin:8px 0;font-size:11px;line-height:1.6">◈ Wan2.2 真实 FFN：9 层计算步骤 · 逐乘加钻取 ↗</a><button class="mission active" data-preset="ffn"><span class="num">01</span><span>从 FFN 开始<span class="desc">线性投影 → 激活 → 投影</span></span></button>
   <button class="mission" data-preset="residual"><span class="num">02</span><span>为什么需要残差？<span class="desc">分支与跳跃连接</span></span></button>
   <button class="mission" data-preset="attention"><span class="num">03</span><span>Attention 自己拼<span class="desc">Q/K/V、权重、加权求和</span></span></button>
   <button class="mission" data-preset="loss"><span class="num">04</span><span>训练从哪里开始？<span class="desc">预测、目标、Loss（仅前向）</span></span></button>
@@ -216,6 +217,9 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="inference_paged_sparse"><span class="num">57</span><span>Decode · 分页 KV + 稀疏 Attention<span class="desc">将 Paged KV Read、Top-K、Sparse Attention 拼成可执行解码微图</span></span></button>
   <button class="mission" data-preset="deepinfer_mtp_budget"><span class="num">58</span><span>DeepInfer · DSpark 全局置信度调度<span class="desc">Remap、置信度累乘、全批稳定排序、固定 Token 预算分配</span></span></button>
   <button class="mission" data-preset="deepinfer_yoco_replay"><span class="num">59</span><span>DeepInfer · YoCo Mask / Compact<span class="desc">同一 SWA 后缀输出；不同 Query 行数；窗口及后退安全约束</span></span></button>
+  <button class="mission" data-preset="extension_video_composition"><span class="num">60</span><span>模块包 · 具名视频时序积木<span class="desc">注册模块→5D 张量→T 切片→按连接顺序拼接；每一帧可核算</span></span></button>
+  <button class="mission" data-preset="extension_paper_composition"><span class="num">61</span><span>模块包 · 共享输入 LoRA＋DoRA<span class="desc">同一上游参数进入两种论文计算模块，后续仍可自由接普通 Add</span></span></button>
+  <button class="mission" data-preset="extension_online_attention"><span class="num">62</span><span>模块包 · Online Attention<span class="desc">任意 Q/K/V → 可调 Tile → 精确 Attention → 标准 Softmax 积木</span></span></button>
   <button class="mission" data-preset="blank"><span class="num">✦</span><span>自由实验<span class="desc">自己添加积木与数据线</span></span></button>
   <div id="courseProgress">选择积木，运行后逐步观察。</div>
   <div class="rule"></div>
@@ -276,11 +280,12 @@ input[type="file"]{display:none}
   <div class="badge" id="evidence">QUALITATIVE CONTRACT · 无矩阵执行</div>
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
+  <section class="section" aria-label="通用计算透视：支持任意已执行积木与静态依赖"><div class="kicker">UNIVERSAL COMPUTE MICROSCOPE · 源码 / 依赖 / 数值 / 单次乘加</div><p class="hint">基础能力：全部积木均可查看执行顺序、上游依赖和张量形状；有界 1D–5D 张量可切片点击坐标，Linear / MatMul 可逐乘加验证。静态推演与真实模型观测严格分级。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
   </section>
-  <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
+   <section class="section" aria-label="真实模型采样与当前积木的只读参考关系">
     <div class="kicker">REAL MODEL REFERENCE / 真实观测 · 与教学运算分离</div>
     <p class="hint">将真实 CPU 模型的采样关联到所选 Linear、MatMul 或 Parameter。只读展示，不替换当前计算。</p>
     <div class="real-sample-toolbar"><input id="traceReferenceFile" type="file" accept="application/json,.json" aria-label="关联真实模型采集 JSON"><button class="btn small" id="bindRealTrace" type="button" disabled>关联选中积木</button><button class="btn small" id="clearRealTrace" type="button" disabled>清除</button></div>
@@ -304,6 +309,13 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="semantic_state.js"></script>
 <script src="stream_graph_blocks.js"></script>
+<script src="compute_microscope.js"></script>
+<script src="paper_patches.js"></script>
+<script src="paper_compute_trace.js"></script>
+<script src="semantic_block_pack.js"></script>
+<script src="paper_block_pack.js"></script>
+<script src="axis_block_pack.js"></script>
+<script src="block_extension_registry.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
 <script src="loop_input_injection.js"></script>
@@ -326,6 +338,8 @@ input[type="file"]{display:none}
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
 <script src="model_trace_bridge.js"></script>
+
+<script src="compute_microscope_ui.js"></script>
 <script src="industrial_source_inspector.js"></script>
 <script src="paper_hover.js"></script>
 <script src="graph_layout.js"></script>
@@ -351,6 +365,21 @@ let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
+const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
+const microscopeView=MicroscopeUI.mount($("#computeMicroscope"),id=>{if(!run)return;const at=run.steps.findIndex(x=>x.id===id);if(at>=0){selected=id;step=at;render();}});
+let microscopeCachedRun=null,microscopeCachedGraph=null,microscopeCachedFrame=null,microscopeCacheError=null;
+function syncMicroscope(){
+ if(!run){microscopeCachedFrame=null;microscopeCachedRun=null;microscopeCachedGraph=null;microscopeView.clear();return;}
+ const used=runGraph||graph;
+ if(microscopeCachedRun!==run||microscopeCachedGraph!==used){
+  try{microscopeCachedFrame=Microscope.learning(used,run,L);microscopeCacheError=null;}
+  catch(error){microscopeCachedFrame=null;microscopeCacheError=error.message;}
+  microscopeCachedRun=run;microscopeCachedGraph=used;
+ }
+ if(microscopeCachedFrame)microscopeView.show(microscopeCachedFrame,selected);
+ else microscopeView.clear('此算子当前没有通用 2D 逐坐标证据：'+microscopeCacheError+'。可继续查看原有 ND 轴切片或专用内核分析；不会伪造数值。');
+}
+window.SeetheTruthMicroscopeWorkbench={get evidence(){return microscopeCachedFrame?.evidenceTier||null;},get visibleNode(){return microscopeView.selected;},get stageCount(){return microscopeCachedFrame?.steps.length||0;}};
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -740,7 +769,8 @@ function inspect(){
      }catch(err){$("#adamwResult").textContent="优化器预览失败："+err.message;}};
    }
  }
- document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
+ syncMicroscope();
+  document.querySelectorAll("[data-stage]").forEach(el=>el.onchange=()=>{
    const entry=active.internals[el.dataset.stage];if(!entry?.tensor)return;
    const head=Number(el.value),tensor=entry.tensor;
    const matrix=window.SeetheTruthTensorIR.plane(tensor,{[tensor.axes[1]]:head}).view;
@@ -877,6 +907,18 @@ $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
+// Installing a recipe requires only registering the pack, not editing UI missions.
+const installedRecipes=window.SeetheTruthBlockExtensions?.recipes||[];
+const blankRecipeButton=document.querySelector('[data-preset="blank"]');
+for(const recipe of installedRecipes){
+ if(document.querySelector('[data-preset="'+recipe.id+'"]'))continue;
+ const b=document.createElement('button');b.className='mission';b.dataset.preset=recipe.id;
+ const number=document.createElement('span');number.className='num';number.textContent=String(document.querySelectorAll('.mission[data-preset]').length).padStart(2,'0');
+ const body=document.createElement('span');body.textContent=recipe.title;
+ const description=document.createElement('span');description.className='desc';description.textContent=recipe.summary;
+ body.append(description);b.append(number,body);
+ blankRecipeButton.parentNode.insertBefore(b,blankRecipeButton);
+}
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
  try{

@@ -14,7 +14,7 @@ function check(raw,options={}){
  const results=new Map(),edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
  let missingCount=0,errorCount=0,blockedCount=0,readyCount=0;
  for(const n of seq){
-   const inputs={},logicalStates={},missing=[],unavailable=[];
+   const inputs={},logicalStates={},namedAxes={},missing=[],unavailable=[];
    for(const port of L.defs[n.kind].ports){
      const source=edges.get(n.id+":"+port);
      if(!source){missing.push(port);continue;}
@@ -22,6 +22,7 @@ function check(raw,options={}){
      if(prior?.status!=="ready"){unavailable.push({port,source});continue;}
      inputs[port]=prior.shape;
      logicalStates[port]=prior.logicalState||null;
+     namedAxes[port]=prior.axes||null;
    }
    let result;
    if(missing.length){
@@ -33,8 +34,8 @@ function check(raw,options={}){
      blockedCount++;
    }else{
      try{
-       const out=C.analyze(n,inputs,{logicalStates});
-       result={id:n.id,kind:n.kind,status:"ready",shape:out.shape.slice(),reason:null,ports:[],unavailable:[],rule:out.rule};
+       const out=C.analyze(n,inputs,{logicalStates,axes:namedAxes});
+       result={id:n.id,kind:n.kind,status:"ready",shape:out.shape.slice(),axes:out.axes||null,reason:null,ports:[],unavailable:[],rule:out.rule};
        if(out.logicalState)result.logicalState=out.logicalState;
        readyCount++;
      }catch(err){
