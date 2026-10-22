@@ -8,6 +8,7 @@
 })(typeof window!=='undefined'?window:{},function(IR,S){'use strict';
  const AXES=['B','T','H','W','C'],source='https://docs.pytorch.org/docs/stable/tensor_view.html';
  const def=(title,en,ports,params,formula,why,lesson)=>({title,en,category:'video',ports,params,formula,why,lesson,
+  portAxes:Object.fromEntries(ports.map(p=>[p,AXES])),outputAxes:AXES,
   caution:'本模块使用实际五维 TensorIR 数值和具名时间轴 T。通过改动计算次序与索引检查语义。',
   source,knowledge:{flow:'显示真实 [B,T,H,W,C] 张量及时间维的读写顺序，区分时间与空间维。',
    practice:'相同数据和形状下，改变 T 轴的范围或切分顺序，直接核对每一个索引。',
