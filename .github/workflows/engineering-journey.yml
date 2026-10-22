@@ -132,6 +132,16 @@ jobs:
           path: micro_training_trace_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
+      - name: Universal installed block packs in real editor
+        run: python tests/browser_block_extension_registry.py
+      - name: Archive installed block pack screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-block-extension-proof
+          path: block_extension_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Universal graph microscope across editor and Wan source
         run: python tests/browser_compute_microscope.py
       - name: Archive universal microscope screenshots
