@@ -167,8 +167,8 @@
     return a.map(row=>{const max=Math.max(...row),exp=row.map(x=>Math.exp(x-max));
       const sum=exp.reduce((x,y)=>x+y,0);return exp.map(v=>v/sum);});
   }
-  function calculate(n,inputs){
-    if(Extensions.isKind(n.kind))return Extensions.execute(n,inputs);
+  function calculate(n,inputs,records){
+    if(Extensions.isKind(n.kind))return Extensions.execute(n,inputs,records);
     if(n.kind.startsWith("nd_")){
       const out=BlockCatalog.execute(n,inputs);
       const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
@@ -254,10 +254,11 @@
       }
       let inferred,value;
       try{
-        inferred=Extensions.isKind(n.kind)?Extensions.infer(n,Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape]))):StreamGraph.infer(n,
+        inferred=Extensions.isKind(n.kind)?Extensions.infer(n,Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.axes||null]))):StreamGraph.infer(n,
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.logicalState||null])));
-        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins);
+        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins,records);
       }catch(err){fail(err.message,n.id);}
       if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
       out.set(n.id,value);
