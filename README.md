@@ -42,6 +42,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **[查看机制驱动通用化复审](docs/universalization-mechanism-review-2026-10-22.md)**：新版自由训练微实验将 Tape 共享参数真实逐边 VJP、MoE Token→Expert 每次 GEMM、PPO Ratio/Clip/Gradient 接入与 Wan 一致的公共 Compute Microscope，保留反事实参数操作与逐通道数值闭合。覆盖审计现在除检查公共脚本引入之外，还检验每页调用适配器的具体代码路径，并包含移除调用的负例。当前是 **4 个通用张量页面、7 个通用状态页面、4 个尚未统一的专用实验页面**。教学解析采用“机制→低成本区分实验→竞争解释→下一步设计”的顺序，优先发现规律与提出可证伪机制，而不是以长串限制说明代替探索。
 
+## 同一个运行时、可安装的积木包（模块优先）
+ 
+**[统一积木运行时与模块包发布规范](docs/unified-block-runtime.md)**。所有新增基础模型算子与论文数学算子优先进入 `block_extension_registry.js` 统一管理的独立包：`defs → validate → infer → execute → trace`，并可提供 `recipes` 供自由画布自动生成教学示例；无需继续在教学页或 `learning_lab.preset` 为每个新方法增加单独的执行分支。当前三个可重用模块包分别提供五维视频操作、LoRA/DoRA/Online Softmax、具名 T/D 轴算子，共 **11 个真正可执行可自由接线的模块积木**。新增具名轴示例由模块包自动安装，使用两种独立转置算子输出相减得到严格全零矩阵，并验证沿 T 求均值与沿 D 广播。PC 与 Android 教学版共用这些执行器和显微镜。
+
 ## 全站通用化审计（149 种积木 / 22 类别 / 20 个主要功能页面）
 
 **[查看全站通用化审计](docs/universalization-audit-2026-10-21.md)**。本轮直接核对页面依赖与真实执行器：现有 20 个主要页面中，4 个已接入公共 Tensor/Operator 透视（自由积木、Wan FFN、MoE/PPO/VJP 微训练、LoRA/DoRA/Online Softmax 论文计算），7 个已接入公共 State/Event 透视（KV 生命周期、Worker、训练续训、标量训练、Decode Scheduler、Prefill 投票/Chunk、GQA 数学缓存），另外 4 个仍是专用计算或教学实现、2 个是导航、3 个是 PC 独有证据链。完整清单同时可在 [交互能力矩阵](capabilities.html) 看到。剩余 4 个尚不应标成“通用完成”，即使其数学引擎已单独通过。新增 `state_microscope.js` 以严格前后状态、因果依赖和来源等级统一审计不同执行器，不将 CPU 资源模拟或合成数据冒充 GPU 实测。自动核对：`node tests/state_microscope_contracts.js` 与 `node tests/universal_surface_audit_contracts.js`，浏览器：`python tests/browser_state_microscope.py`。
