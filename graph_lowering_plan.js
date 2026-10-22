@@ -1,0 +1,38 @@
+/* Shared export preparation for NumPy and Torch: DAG, ports, support and numeric trace.
+ * Backend arithmetic and generated code remain intentionally independent.
+ * Eligibility is not an executable-graph guarantee.
+ */
+(function(root,factory){"use strict";
+ const isNode=typeof module==="object"&&module.exports;
+ const api=factory(isNode?{
+   learning:require("./learning_lab.js"),branch:require("./branch_execution.js")
+ }:{learning:root.SeetheTruthLearning,branch:root.SeetheTruthBranchExecution});
+ if(isNode)module.exports=api;
+ if(root)root.SeetheTruthLoweringPlan=api;
+})(typeof window!=="undefined"?window:null,function(deps){"use strict";
+function prepare(raw,options={}){
+ const {learning:L,branch:Branch}=deps;
+ if(!L||!Branch)throw Error("missing graph lowering dependencies");
+ const {targetId,supportedKinds,unsupportedMessage}=options;
+ if(!supportedKinds||typeof supportedKinds[Symbol.iterator]!=="function")
+   throw Error("graph lowering requires declared backend supported kinds");
+ const kinds=new Set(supportedKinds);
+ const graph=targetId?Branch.slice(raw,targetId):L.validateGraph(raw);
+ const index=L.indexGraph(graph);
+ const unsupported=index.ordered.filter(n=>!kinds.has(n.kind));
+ if(unsupported.length){
+   const description=typeof unsupportedMessage==="function"?
+     unsupportedMessage(unsupported):"unsupported graph operators: "+unsupported.map(n=>n.id+"("+n.kind+")").join(", ");
+   throw Error(description);
+ }
+ // Numerical validation happens only after unsupported-kind validation, matching
+ // the exporters' original fail-closed precedence.
+ const forward=L.evaluate(graph);
+ const steps=new Map(forward.steps.map(s=>[s.id,s]));
+ if(steps.size!==index.ordered.length||
+    index.ordered.some(n=>steps.get(n.id)?.kind!==n.kind))
+   throw Error("graph lowering trace/identity mismatch");
+ return Object.freeze({graph,sorted:index.ordered,edges:index.incomingByPort,forward,steps});
+}
+return Object.freeze({prepare});
+});
