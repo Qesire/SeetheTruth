@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
+const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);
+const required=['learning_lab.js','branch_execution.js','graph_readiness.js','block_capabilities.js','operator_contracts.js','execution_ir.js','graph_session.js'];
+for(const p of required)assert.ok(scripts.includes(p),'missing studio runtime '+p);
+for(let i=1;i<required.length;i++)assert.ok(scripts.indexOf(required[i])>scripts.indexOf(required[i-1]),'load order '+required[i]);
+assert.ok(html.includes('readinessSnapshot=Session.inspect(graph).readiness;'));
+assert.ok(html.includes('const session=Session.inspect(graph,{numeric:studyMode()==="numeric"});'));
+assert.ok(html.includes('Session.inspect(graph,{numeric:true})'));
+const L=require('../learning_lab.js'),Session=require('../graph_session.js');
+const g=L.preset('swiglu'),s=Session.inspect(g,{numeric:true});
+assert.equal(s.executable,true);assert.ok(s.trace&&s.ir);
+assert.deepEqual(s.ir.nodes.map(n=>n.id),s.trace.steps.map(n=>n.id));
+console.log('STUDIO_GRAPH_SESSION_PASS');
