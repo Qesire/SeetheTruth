@@ -50,7 +50,7 @@ class NodeTimelineBrowserAcceptance(unittest.TestCase):
             self.assertIn("前向输出",page.locator("#nodeTimelineDetail").inner_text())
             page.locator('[data-timeline-phase="updated"]').click()
             self.assertIn("更新后输出",page.locator("#nodeTimelineDetail").inner_text())
-            page.locator('#blocks [data-node="loss"]').click()
+            page.locator('#blocks [data-node="loss"] .block-formula').click()
             self.assertIn("loss",page.locator("#nodeTimelineDetail").inner_text())
             page.locator('[data-timeline-phase="optimizer"]').click()
             self.assertIn("未执行参数更新",page.locator("#nodeTimelineDetail").inner_text())
