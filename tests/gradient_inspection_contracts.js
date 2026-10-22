@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const L=require('../learning_lab.js'),G=require('../gradient_inspection.js'),VJP=require('../graph_autodiff.js');
+const g=L.preset('trainable_core'),original=JSON.stringify(g),f=L.evaluate(g);
+const report=G.inspect(g,{forward:f});
+const vjp=VJP.backward(g,f);
+assert.equal(report.schema,'seethetruth-gradient-inspection-v1');
+assert.equal(report.targetId,vjp.targetId);
+assert.deepEqual(report.nodes.map(n=>n.id),report.forwardIR.nodes.map(n=>n.id));
+const parameter=report.nodes.find(n=>n.id==='shared_weight');
+assert.equal(parameter.onLossPath,true);
+assert.ok(parameter.gradient.l2>0);
+assert.equal(parameter.gradient.elements,4);
+assert.equal(JSON.stringify(g),original);
+const bad=JSON.parse(JSON.stringify(g));bad.edges=bad.edges.filter(e=>e.from!=='shared_weight');
+assert.throws(()=>G.inspect(bad),/connected|端口|上游/);
+console.log('GRADIENT_INSPECTION_PASS node identity, shape and VJP norms');

@@ -136,6 +136,13 @@ input[type="file"]{display:none}
 #paperHoverInspector[hidden]{display:none}#paperHoverInspector h3{font-size:16px;margin:8px 0 9px}#paperHoverInspector h4{font-size:12px;color:#84e9dc;margin:13px 0 3px}#paperHoverInspector p{margin:0;color:#c7e1ed}#paperHoverInspector code{white-space:normal;overflow-wrap:anywhere;display:block;background:#08202d;border-radius:7px;padding:9px;color:#f1dbaa}
 #paperHoverInspector .phi-heading{display:flex;justify-content:space-between;align-items:center;color:#9bdacc;letter-spacing:.07em;font:10px monospace}#paperHoverInspector button{background:transparent;border:1px solid #437186;color:#c4e6f3;border-radius:6px;padding:2px 8px;cursor:pointer}#paperHoverInspector .phi-references{display:grid;gap:4px;margin:9px 0}#paperHoverInspector .phi-references a{color:#8ee7f3;text-decoration:underline}#paperHoverInspector small{display:block;border-top:1px solid #2a5a6b;padding-top:9px;margin-top:10px;color:#96bbcb}
 .real-sample-toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:10px 0}.real-sample-toolbar input{max-width:100%;font-size:11px}.real-sample-hint,.real-sample-source,.real-sample-warning{font-size:11px;overflow-wrap:anywhere}.real-sample-source{font-family:ui-monospace,monospace}.real-sample-warning{border-top:1px solid #476374;margin-top:10px;padding-top:8px;color:#f1c9a4}.real-sample-header{display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap}.real-sample-header span{font:10px ui-monospace,monospace;color:#97d6ce}.real-sample-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}.real-sample-metric{background:#0b2231;border:1px solid #376275;border-radius:6px;padding:7px;min-width:0}.real-sample-metric span,.real-sample-metric small{display:block;color:#b4d5df;font-size:10px}.real-sample-metric b{font-family:ui-monospace,monospace}.real-sample-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin:5px 0 10px}.real-sample-cell{border:1px solid #496478;border-radius:3px;text-align:center;min-width:0;font:10px/1.5 ui-monospace,monospace;padding:2px;overflow:hidden}.real-sample-title{font-size:11px;color:#bce8df;margin:10px 0 2px}
+.node-timeline{margin-top:12px;padding-top:11px;border-top:1px solid #315566}
+.node-timeline select{background:#0d2637;color:#e2f6ff;border:1px solid #426a79;border-radius:6px;padding:5px;font-size:11px;max-width:100%}
+.node-timeline-nav{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}
+.node-timeline-nav button{background:#0e3040;color:#c8e7f1;border:1px solid #3a6875;border-radius:6px;padding:5px 7px;font-size:11px}
+.node-timeline-nav button[aria-pressed="true"]{border-color:#89ead6;background:#194a52;color:white}
+.node-timeline-content{border:1px solid #35586a;background:#0a2130;border-radius:7px;padding:9px;font:11px/1.7 ui-monospace,monospace;overflow-wrap:anywhere}
+.node-timeline-content b{color:#b7f0df}
 </style><link rel="stylesheet" href="mobile_teaching.css"></head><body>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
@@ -342,18 +349,20 @@ input[type="file"]{display:none}
 <script src="optimizer_rules.js"></script>
 <script src="train_state.js"></script>
 <script src="training_session.js"></script>
+<script src="gradient_inspection.js"></script>
+<script src="node_timeline.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
-  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,NodeTimeline=window.SeetheTruthNodeTimeline,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
 const categoryNames={memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
-let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,readinessSnapshot=null,runGraph=null,runScope=null;
+let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -752,6 +761,40 @@ function inspect(){
    el.closest("details").querySelector(".tensor-stage-preview").innerHTML=matrixHTML(matrix,el.dataset.stage+" · head "+head);
  });
 }
+function renderNodeTimeline(info){
+ const timelines=info.timelines;
+ if(!timelines?.length)return "";
+ const idx=Math.max(0,Math.min(timelineStepIndex,timelines.length-1)),current=timelines[idx];
+ const n=current.nodes.find(x=>x.id===selected);
+ const format=value=>Number.isFinite(value)?value.toExponential(4):"—";
+ const metric=(label,entry)=>entry?'<b>'+label+'</b> · n='+entry.elements+
+   ' · mean '+format(entry.mean)+' · min '+format(entry.min)+' · max '+format(entry.max)+' · L2 '+format(entry.l2):'<b>'+label+'</b> · 暂无数值';
+ const grad=n?.gradient;
+ let detail;
+ if(!n)detail="请选择本次训练图内的积木，查看该节点的实际计算记录。";
+ else if(timelinePhase==="forward")detail=metric("前向输出",n.forwardValue)+'<div>Shape: '+esc(n.forwardShape?.join(" × ")||"—")+'</div>'+
+   '<div>输入来源：'+esc(Object.entries(n.inputSources||{}).map(([port,source])=>port+' ← '+source).join('；')||"源节点，无上游端口")+'</div>';
+ else if(timelinePhase==="backward")detail='<b>反向梯度</b> · L2 '+format(grad.l2)+
+   ' · maxAbs '+format(grad.maxAbs)+' · nonzero '+grad.nonzero+'/'+grad.elements+
+   '<div>Loss path: '+(n.onLossPath?"yes":"no")+'</div>'+
+   (n.localRule?'<div>Local VJP: '+esc(JSON.stringify(n.localRule))+'</div>':"");
+ else if(timelinePhase==="optimizer")detail=n.optimizer?'<b>'+esc(n.optimizer.optimizer)+'</b> · step '+n.optimizer.optimizerStep+
+   '<div>Gradient L2: '+format(n.optimizer.gradientNorm)+' · Parameter update L2: '+format(n.optimizer.updateNorm)+'</div>'+
+   '<div>状态变化：'+n.optimizerState.stepBefore+' → '+n.optimizerState.stepAfter+'</div>'+
+   n.optimizerState.accumulators.map(a=>'<div>'+esc(a.slot)+'（'+esc(a.meaning)+'） L2: '+format(a.before.l2)+' → '+format(a.after.l2)+'</div>').join(""):
+   '此节点本轮未执行参数更新。';
+ else detail=metric("更新后输出",n.updatedValue)+'<div>Shape: '+esc(n.updatedShape?.join(" × ")||"—")+'</div>';
+ const phases=[["forward","Forward"],["backward","Backward"],["optimizer","Update"],["updated","Updated Forward"]];
+ return '<section class="node-timeline" aria-label="逐节点训练计算时间线">'+
+   '<div class="kicker">NODE TIMELINE / 节点级计算过程</div>'+
+   '<label class="hint" for="timelineStep">选择训练步</label> <select id="timelineStep" aria-label="选择训练步">'+
+   timelines.map((_,i)=>'<option value="'+i+'"'+(i===idx?' selected':'')+'>Step '+(i+1)+'</option>').join("")+'</select>'+
+   '<div class="node-timeline-nav" role="group" aria-label="训练计算阶段">'+phases.map(([key,label])=>
+     '<button type="button" data-timeline-phase="'+key+'" aria-pressed="'+(timelinePhase===key?'true':'false')+'">'+label+'</button>').join("")+'</div>'+
+   '<div class="node-timeline-content" id="nodeTimelineDetail">'+
+   '<div><b>'+esc(n?.id||"尚未选择节点")+'</b> · '+esc(n?.kind||"")+'</div>'+detail+'</div>'+
+   '<p class="hint">来自有界小张量教学执行；不代表真实预训练模型的梯度或性能。</p></section>';
+}
 function renderTrainingMetrics(info){
  const losses=[info.history[0].beforeLoss,...info.history.map(h=>h.afterLoss)];
  const ymin=Math.min(...losses),ymax=Math.max(...losses),span=Math.max(1e-8,ymax-ymin);
@@ -872,7 +915,12 @@ function render(){
  if(loopState?.loops>0)$("#loopDepth").value=String(loopState.loops);
  $("#trainStep").disabled=studyMode()!=="numeric"||!graph.nodes.some(n=>n.kind==="parameter"||n.kind==="nd_parameter")||!graph.nodes.some(n=>n.kind==="mse"||n.kind==="nd_mse"||n.kind==="mae_loss"||n.kind==="cross_entropy");
  $("#trainSummary").hidden=!trainStatus;
- if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus);
+ if(trainStatus)$("#trainSummary").innerHTML='<div class="kicker">TRAINING TRANSACTION / 参数状态已提交</div><div class="equation">'+esc(trainStatus.id)+' · '+(trainStatus.options.optimizer==='adamw'?'AdamW':esc(trainStatus.options.optimizer||'AdamW'))+' step '+trainStatus.t+'</div><p class="hint">Loss '+trainStatus.before.toFixed(8)+' → '+trainStatus.after.toFixed(8)+'（Δ='+(trainStatus.after-trainStatus.before).toFixed(8)+'）。Learning rate '+trainStatus.options.lr+'；weight decay '+trainStatus.options.weightDecay+'。参数和动量已写入工程，可撤销或导出 JSON。</p><div class="hint">'+trainStatus.history.map(h=>'Step '+h.iteration+': '+h.beforeLoss.toFixed(7)+' → '+h.afterLoss.toFixed(7)).join(" · ")+'</div>'+renderTrainingMetrics(trainStatus)+renderNodeTimeline(trainStatus);
+ if(trainStatus?.timelines?.length){
+  const selector=$("#timelineStep");
+  if(selector)selector.onchange=()=>{timelineStepIndex=Number(selector.value);render();};
+  document.querySelectorAll("[data-timeline-phase]").forEach(btn=>btn.onclick=()=>{timelinePhase=btn.dataset.timelinePhase;render();});
+ }
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
@@ -972,9 +1020,12 @@ $("#trainStep").onclick=()=>{try{
    weightDecay:Number($("#trainWeightDecay").value),momentum:Number($("#trainMomentum").value),
    alpha:Number($("#trainAlpha").value),lrDecay:Number($("#trainLRDecay").value),targetId:selectedLoss.id
  },result=TrainingSession.steps(previous,options);
+ const timelines=result.sessions.map((session,i)=>NodeTimeline.fromSession(
+   i===0?previous:result.sessions[i-1].graph,session,{targetId:options.targetId}));
+ timelineStepIndex=timelines.length-1;timelinePhase="backward";
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
  graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
- trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};
+ trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options,timelines};
  render();say("已提交 "+result.history.length+" 步 "+options.optimizer+"：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
  }catch(err){say("训练未提交："+err.message,true);}};
 $("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");const target=runGraph||graph;backwardTrace=target.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(target,run):GeneralReverse.backward(target,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};

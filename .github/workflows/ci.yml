@@ -46,6 +46,9 @@ jobs:
           node tests/graph_session_contracts.js
           node tests/studio_graph_session_contracts.js
           node tests/training_session_contracts.js
+          node tests/gradient_inspection_contracts.js
+          node tests/studio_node_timeline_contracts.js
+          node tests/node_timeline_contracts.js
           node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js
           node --check source_evidence_levels.js
