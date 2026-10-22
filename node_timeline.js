@@ -24,14 +24,40 @@ function fromSession(raw,transaction,options={}){
     elements++;sum+=x;minimum=Math.min(minimum,x);maximum=Math.max(maximum,x);squares+=x*x;}};
   scan(values);return elements?Object.freeze({elements,mean:sum/elements,min:minimum,max:maximum,l2:Math.sqrt(squares)}):null;
  };
+ const beforeById=new Map(scope.nodes.map(n=>[n.id,n]));
+ const afterById=new Map(transaction.graph.nodes.map(n=>[n.id,n]));
+ const accumulatorMeaning=Object.freeze({
+  adamw:{m:"一阶动量",v:"二阶矩"},
+  adam:{m:"一阶动量",v:"二阶矩"},
+  sgd_momentum:{m:"动量缓冲"},
+  rmsprop:{v:"平方梯度移动平均"},
+  adagrad:{v:"累计平方梯度"},
+  lion:{m:"符号方向动量"}
+ });
+ const optimizerState=(nodeId,update)=>{
+  if(!update)return null;
+  const old=beforeById.get(nodeId)?.params?.optimizer,
+   current=afterById.get(nodeId)?.params?.optimizer;
+  if(!old||!current)throw Error("missing optimizer state "+nodeId);
+  const kind=update.optimizer,meaning=accumulatorMeaning[kind];
+  if(!meaning)throw Error("unknown optimizer state semantics "+kind);
+  if(current.t!==old.t+1||current.t!==update.optimizerStep)throw Error("optimizer step mismatch "+nodeId);
+  const accumulators=Object.entries(meaning).map(([slot,explanation])=>
+   Object.freeze({slot,meaning:explanation,before:valueStats(old[slot]),after:valueStats(current[slot])}));
+  if(accumulators.some(x=>!x.before||!x.after))throw Error("missing optimizer accumulators "+nodeId);
+  return Object.freeze({kind,stepBefore:old.t,stepAfter:current.t,
+   accumulators:Object.freeze(accumulators)});
+ };
  const nodes=transaction.beforeIR.nodes.map(n=>{
   const g=grades.get(n.id),next=after.get(n.id),update=updates.get(n.id);
   if(!g||!next)throw Error("node timeline identity mismatch "+n.id);
   return Object.freeze({id:n.id,kind:n.kind,sequence:n.sequence,
+   inputSources:n.inputSources,
    forwardShape:n.shape,updatedShape:next.shape,
    forwardValue:valueStats(beforeValues.get(n.id)),updatedValue:valueStats(afterValues.get(n.id)),
    gradient:g.gradient,onLossPath:g.onLossPath,
-   localRule:g.localRule,optimizer:update||null});
+   localRule:g.localRule,optimizer:update||null,
+   optimizerState:optimizerState(n.id,update)});
  });
  return Object.freeze({schema:"seethetruth-node-timeline-v1",evidence:"SYNTHETIC",
   targetId:transaction.targetId,beforeLoss:transaction.beforeLoss,
