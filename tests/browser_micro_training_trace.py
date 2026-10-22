@@ -59,7 +59,7 @@ class MicroTrainingTraceBrowser(unittest.TestCase):
   p.locator('#val_logit').fill('8')
   p.locator('#run').click()
   p.locator('#computeMicroscope .cmp-step').last.click()
-  self.assertIn('gradient',p.locator('#computeMicroscope .cmp-meta').inner_text().lower())
+  self.assertIn('dL/d policy logits',p.locator('#computeMicroscope .cmp-meta').inner_text())
   self.assertIn('0',p.locator('#computeMicroscope .cmp-breakdown').inner_text())
   p.screenshot(path=str(OUT/'ppo-clipped-vjp-mobile.png'),full_page=True,animations='disabled')
   p.locator('#val_logit').fill('0')
