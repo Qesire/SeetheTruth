@@ -13,6 +13,9 @@ for(const p of required){
 }
 
 for(let i=1;i<required.length;i++)assert.ok(scripts.indexOf(required[i])>scripts.indexOf(required[i-1]),'load order '+required[i]);
+for(const exporter of ['python_codegen.js','torch_codegen.js'])assert.ok(scripts.indexOf(exporter)<scripts.indexOf('block_capabilities.js'),'capability audit requires '+exporter);
+assert.ok(scripts.indexOf('block_knowledge.js')<scripts.indexOf('block_capabilities.js'));
+
 assert.ok(html.includes('readinessSnapshot=Session.inspect(graph).readiness;'));
 assert.ok(html.includes('const session=Session.inspect(graph,{numeric:studyMode()==="numeric"});'));
 assert.ok(html.includes('Session.inspect(graph,{numeric:true})'));
