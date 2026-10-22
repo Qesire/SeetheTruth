@@ -8,6 +8,8 @@ on:
       - 'compute_microscope*'
       - 'block_extension_registry.js'
       - 'semantic_block_pack.js'
+      - 'axis_block_pack.js'
+      - 'tests/axis_block_pack_contracts.js'
       - 'paper_block_pack.js'
       - 'tests/block_extension_registry_contracts.js'
       - 'tests/browser_block_extension_registry.py'
@@ -42,6 +44,8 @@ on:
       - 'compute_microscope*'
       - 'block_extension_registry.js'
       - 'semantic_block_pack.js'
+      - 'axis_block_pack.js'
+      - 'tests/axis_block_pack_contracts.js'
       - 'paper_block_pack.js'
       - 'tests/block_extension_registry_contracts.js'
       - 'tests/browser_block_extension_registry.py'
@@ -89,6 +93,7 @@ jobs:
           node tests/wan_ffn_microscope_contracts.js
           node tests/compute_microscope_contracts.js
           node tests/block_extension_registry_contracts.js
+          node tests/axis_block_pack_contracts.js
           node tests/paper_compute_trace_contracts.js
           node tests/micro_training_trace_contracts.js
           node tests/state_microscope_contracts.js
