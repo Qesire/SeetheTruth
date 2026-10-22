@@ -24,6 +24,22 @@
                           PC Web / Android Teaching
 ```
 
+### 语义化端口：不仅比较形状，也比较轴的身份
+
+需要严格轴语义的模块可以在 `def` 上额外声明可选的 `portAxes` 与 `outputAxes`：
+
+```js
+{
+  ports: ['x', 'bias'],
+  portAxes: {x: ['T','D'], bias: ['One','D']},
+  outputAxes: ['T','D']
+}
+```
+
+此合同由 **同一模块注册器**在 `infer` 与 `execute` 阶段实施。上游结果的 `axes` 被写入计算图的执行记录，随后透传给 `ConceptFlow`、`GraphReadiness` 和最终的数值执行器。输入没有对应轴标注时，不允许直接绕过正常图运行器执行有轴要求的模块。
+
+**验证案例**：一个 `3×3` 的 `axis_named_transpose` 结果实际拥有 `['D','T']`，把它接到要求 `['T','D']` 的 `axis_time_mean` 时，即使数值形状完全相等，概念推导、运行就绪检测和真实数值执行也都会拒绝。该案例独立于数据取值，直击“形状一样却误接轴”的机制性错误。
+
 ### 模块的最小完整合同
 
 模块包位于独立的 `*_block_pack.js`，且在 `block_extension_registry.js` **集中安装**。UI 及 `learning_lab.js` 通过公共接口调用，不新增每个 `kind` 的 `switch`：
