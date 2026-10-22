@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const R=require('../block_extension_registry.js'),L=require('../learning_lab.js'),IR=require('../tensor_ir.js'),S=require('../semantic_state.js'),C=require('../compute_microscope.js');
+const R=require('../block_extension_registry.js'),L=require('../learning_lab.js'),IR=require('../tensor_ir.js'),S=require('../semantic_state.js'),C=require('../compute_microscope.js'),Concept=require('../concept_flow.js'),Readiness=require('../graph_readiness.js');
 assert.ok(R.packs.includes('named_axis'));assert.ok(R.recipes.some(x=>x.id==='extension_named_axis_composition'));
 for(const kind of ['axis_tensor_source','axis_feature_bias','axis_named_add','axis_named_transpose','axis_time_mean'])
  assert.ok(R.kinds.includes(kind)&&L.KINDS.includes(kind));
@@ -21,6 +21,19 @@ const originalRecipe=R.recipe('extension_named_axis_composition');
 originalRecipe.nodes[0].params.seed=89;
 assert.equal(R.recipe('extension_named_axis_composition').nodes[0].params.seed,2,'recipes must be cloned and immutable to the caller');
 assert.equal(R.recipe('bogus'),null);
+// Named axes are part of the typed module contract, not inferred from
+// coincidentally equal dimensions (3×3 can represent both T×D and D×T).
+const mislabeled=L.preset('extension_named_axis_composition');
+mislabeled.edges.find(e=>e.to==='mean').from='swap';
+assert.deepEqual(mislabeled.nodes.find(n=>n.id==='mean').kind,'axis_time_mean');
+assert.throws(()=>L.evaluate(mislabeled),/named-axis port mismatch/);
+assert.throws(()=>Concept.evaluate(mislabeled),/named-axis port mismatch/);
+const gate=Readiness.check(mislabeled,{numeric:true});
+assert.equal(gate.executable,false);
+assert.match(gate.firstError.reason,/named-axis port mismatch/);
+assert.deepEqual(run.steps.find(s=>s.id==='swap').axes,['D','T']);
+assert.deepEqual(Concept.evaluate(preset).steps.find(s=>s.id==='add').axes,['T','D']);
+assert.throws(()=>R.execute({kind:'axis_named_add',params:{}},{x:[[1,2]],bias:[[3,4]]}),/typed upstream edge records/);
 const mismatch=L.preset('extension_named_axis_composition');
 mismatch.nodes.find(x=>x.id==='bias').params.width=4;
 assert.throws(()=>L.evaluate(mismatch),/named feature bias/);
