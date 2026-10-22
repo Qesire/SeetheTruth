@@ -15,16 +15,40 @@ function mm(a,b){valid(a);valid(b);if(a[0].length!==b.length)throw Error("contra
 function add(a,b){valid(a);valid(b);if(a.length!==b.length||a[0].length!==b[0].length)throw Error("shape mismatch");return a.map((r,i)=>r.map((v,j)=>v+b[i][j]));}
 function scale(a,s){return a.map(r=>r.map(v=>v*s));}
 function stats(a){const v=valid(a).flat(),n=v.length;return {shape:[a.length,a[0].length],mean:v.reduce((x,y)=>x+y,0)/n,rms:Math.hypot(...v)/Math.sqrt(n),min:Math.min(...v),max:Math.max(...v),zeroFraction:v.filter(x=>x===0).length/n};}
-function lora(x,w,a,b,alpha=1){valid(x);valid(w);valid(a);valid(b);if(a[0].length!==b.length||a.length!==w.length||b[0].length!==w[0].length||!finite(alpha))throw Error("invalid LoRA dimensions");
-const base=mm(x,w),low=mm(mm(x,a),b),factor=alpha/a[0].length,update=scale(low,factor);
-return {output:add(base,update),base,update,statistics:{output:stats(add(base,update)),update:stats(update)},contract:{frozenBase:true,rank:a[0].length,scaling:factor,trainable:["A","B"],paper:"lora"}};}
-function dora(x,w,a,b,m,alpha=1){valid(x);valid(w);valid(a);valid(b);valid(m);if(m.length!==1||m[0].length!==w[0].length)throw Error("magnitude shape must be [1,out]");
-const delta=scale(mm(a,b),alpha/a[0].length),v=add(w,delta),norms=v[0].map((_,j)=>Math.sqrt(v.reduce((s,r)=>s+r[j]*r[j],0)));if(norms.some(n=>n<=1e-12))throw Error("undefined zero direction");
-const effective=v.map(r=>r.map((z,j)=>z*m[0][j]/norms[j]));return {output:mm(x,effective),effectiveWeight:effective,directions:v,statistics:{output:stats(mm(x,effective)),weight:stats(effective)},contract:{magnitudeAxis:"output_columns",baseFrozen:true,trainable:["A","B","m"],paper:"dora",note:"full differentiable DoRA training requires normalization VJP"}};}
-function onlineAttention(q,k,v,chunk=2){valid(q);valid(k);valid(v);if(q[0].length!==k[0].length||k.length!==v.length||!Number.isSafeInteger(chunk)||chunk<1||chunk>16)throw Error("attention dimensions");
-const d=q[0].length,dim=v[0].length,output=[],rows=[];let tiles=0;
-for(const query of q){let max=-Infinity,denom=0,acc=Array(dim).fill(0);for(let s=0;s<k.length;s+=chunk){tiles++;const scores=k.slice(s,s+chunk).map(key=>query.reduce((z,x,t)=>z+x*key[t],0)/Math.sqrt(d));const newMax=Math.max(max,...scores),corr=max===-Infinity?0:Math.exp(max-newMax),exps=scores.map(z=>Math.exp(z-newMax));denom=denom*corr+exps.reduce((z,x)=>z+x,0);acc=acc.map((a,j)=>a*corr+exps.reduce((z,e,t)=>z+e*v[s+t][j],0));max=newMax;}output.push(acc.map(a=>a/denom));rows.push({runningMax:max,normalizer:denom});}
-return {output,rows,statistics:stats(output),schedule:{tiles,chunk,storesFullAttention:false},contract:{exactMath:true,causal:false,dropout:false,backward:false,paper:"flash2",note:"educational online softmax, not a GPU FlashAttention-2 kernel"}};}
+function lora(x,w,a,b,alpha=1){valid(x);valid(w);valid(a);valid(b);
+if(x[0].length!==w.length||a[0].length!==b.length||a.length!==w.length||b[0].length!==w[0].length||!finite(alpha))throw Error("invalid LoRA dimensions");
+const base=mm(x,w),down=mm(x,a),up=mm(down,b),factor=alpha/a[0].length,update=scale(up,factor),output=add(base,update);
+return {output,base,update,internals:{down,up,scaling:factor},statistics:{output:stats(output),update:stats(update)},
+ contract:{frozenBase:true,rank:a[0].length,scaling:factor,trainable:["A","B"],paper:"lora"}};}
+function dora(x,w,a,b,m,alpha=1){valid(x);valid(w);valid(a);valid(b);valid(m);
+if(x[0].length!==w.length||a.length!==w.length||a[0].length!==b.length||b[0].length!==w[0].length||!finite(alpha)||m.length!==1||m[0].length!==w[0].length)throw Error("invalid DoRA shapes or scale");
+const rawDelta=mm(a,b),factor=alpha/a[0].length,delta=scale(rawDelta,factor),v=add(w,delta),
+ norms=v[0].map((_,j)=>Math.sqrt(v.reduce((s,r)=>s+r[j]*r[j],0)));
+if(norms.some(n=>n<=1e-12||!finite(n)))throw Error("undefined zero direction");
+const effective=v.map(r=>r.map((z,j)=>z*m[0][j]/norms[j])),output=mm(x,effective);
+return {output,effectiveWeight:effective,directions:v,internals:{rawDelta,delta,norms:[norms],scale:factor},
+ statistics:{output:stats(output),weight:stats(effective)},
+ contract:{magnitudeAxis:"output_columns",baseFrozen:true,trainable:["A","B","m"],paper:"dora",note:"full differentiable DoRA training requires normalization VJP"}};}
+function onlineAttention(q,k,v,chunk=2){valid(q);valid(k);valid(v);
+if(q[0].length!==k[0].length||k.length!==v.length||!Number.isSafeInteger(chunk)||chunk<1||chunk>16)throw Error("attention dimensions");
+const d=q[0].length,dim=v[0].length,output=[],rows=[],tileTrace=[];let tiles=0;
+for(let qi=0;qi<q.length;qi++){
+ const query=q[qi];let max=-Infinity,denom=0,acc=Array(dim).fill(0);
+ for(let start=0;start<k.length;start+=chunk){
+  tiles++;const keyTile=k.slice(start,start+chunk);
+  const scores=keyTile.map(key=>query.reduce((z,x,t)=>z+x*key[t],0)/Math.sqrt(d));
+  const previousMax=max,previousDenom=denom,previousAccumulator=acc.slice();
+  const newMax=Math.max(max,...scores),corr=max===-Infinity?0:Math.exp(max-newMax),exps=scores.map(z=>Math.exp(z-newMax));
+  denom=denom*corr+exps.reduce((z,x)=>z+x,0);
+  acc=acc.map((a,j)=>a*corr+exps.reduce((z,e,t)=>z+e*v[start+t][j],0));max=newMax;
+  tileTrace.push({query:qi,start,end:start+scores.length,scores,weights:exps,
+   previousMax:Number.isFinite(previousMax)?previousMax:null,previousDenom,previousAccumulator,
+   runningMax:max,normalizer:denom,accumulator:acc.slice(),correction:corr,partialOutput:acc.map(a=>a/denom)});
+ }
+ output.push(acc.map(a=>a/denom));rows.push({runningMax:max,normalizer:denom});
+}
+return {output,rows,tileTrace,statistics:stats(output),schedule:{tiles,chunk,storesFullAttention:false},
+ contract:{exactMath:true,causal:false,dropout:false,backward:false,paper:"flash2",note:"educational online softmax, not a GPU FlashAttention-2 kernel"}};}
 const variants=[
 {id:"lora_linear",source:"lora",base:"linear",type:"rewrite",scope:"weight_parameterization",inputs:["X","W0","A","B"],state:["frozen_W0","trainable_A","trainable_B"],outputs:["Y"],formula:"Y=XW0+(α/r)XAB",changes:["parameter_storage","backward_parameter_paths"],preserves:["dense_equivalent_at_fixed_weights"],verify:["shape","numerical_equivalence","frozen_base"]},
 {id:"dora_linear",source:"dora",base:"linear",type:"rewrite",scope:"weight_parameterization",inputs:["X","W0","A","B","m"],state:["frozen_W0","trainable_A","trainable_B","trainable_m"],outputs:["Y"],formula:"V=W0+(α/r)AB; W=m⊙V/||V||column",changes:["normalization_gradient","parameterization"],preserves:["linear_forward_given_effective_W"],verify:["direction_norm","zero_direction_rejection"]},
