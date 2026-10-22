@@ -42,6 +42,7 @@ jobs:
           node --check learning_lab.js
           node tests/unified_graph_dependency_contracts.js
           node tests/operator_contracts.js
+          node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js
           node tests/studio_graph_session_contracts.js
