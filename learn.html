@@ -314,6 +314,7 @@ input[type="file"]{display:none}
 <script src="paper_compute_trace.js"></script>
 <script src="semantic_block_pack.js"></script>
 <script src="paper_block_pack.js"></script>
+<script src="axis_block_pack.js"></script>
 <script src="block_extension_registry.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
@@ -906,6 +907,18 @@ $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
+// Installing a recipe requires only registering the pack, not editing UI missions.
+const installedRecipes=window.SeetheTruthBlockExtensions?.recipes||[];
+const blankRecipeButton=document.querySelector('[data-preset="blank"]');
+for(const recipe of installedRecipes){
+ if(document.querySelector('[data-preset="'+recipe.id+'"]'))continue;
+ const b=document.createElement('button');b.className='mission';b.dataset.preset=recipe.id;
+ const number=document.createElement('span');number.className='num';number.textContent=String(document.querySelectorAll('.mission[data-preset]').length).padStart(2,'0');
+ const body=document.createElement('span');body.textContent=recipe.title;
+ const description=document.createElement('span');description.className='desc';description.textContent=recipe.summary;
+ body.append(description);b.append(number,body);
+ blankRecipeButton.parentNode.insertBefore(b,blankRecipeButton);
+}
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
  try{
