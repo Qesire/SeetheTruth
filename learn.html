@@ -317,6 +317,10 @@ input[type="file"]{display:none}
 <script src="concept_flow.js"></script>
 <script src="branch_execution.js"></script>
 <script src="graph_readiness.js"></script>
+<script src="block_capabilities.js"></script>
+<script src="operator_contracts.js"></script>
+<script src="execution_ir.js"></script>
+<script src="graph_session.js"></script>
 <script src="graph_cost_report.js"></script>
 <script src="numpy_stream_lowering.js"></script>
 <script src="python_codegen.js"></script>
@@ -340,7 +344,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -772,7 +776,7 @@ function renderReadiness(){
 function render(){
  const kinds=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind)).map(n=>n.params.optimizer.kind||"adamw");
  if(kinds.length&&kinds.every(k=>k===kinds[0]))$("#trainOptimizer").value=kinds[0];
- readinessSnapshot=Readiness.check(graph);
+ readinessSnapshot=Session.inspect(graph).readiness;
  const costRoot=$("#graphCostSummary");
  if(readinessSnapshot.executable){
    try{
@@ -920,7 +924,8 @@ $("#challenge").onclick=()=>{
  say("挑战：已拆除 "+last.from+" → "+last.to+"."+last.port+"。试着重新连接，修复形状依赖后运行。");
 };
 $("#checkGraph").onclick=()=>{
- const proof=Readiness.check(graph,{numeric:studyMode()==="numeric"});
+ const session=Session.inspect(graph,{numeric:studyMode()==="numeric"});
+ const proof={...session.readiness,executable:session.executable,numeric:session.ir?{ok:true,steps:session.ir.nodes.length}:session.error?{ok:false,reason:session.error.reason}:null,firstError:session.error?session.error:session.readiness.firstError};
  if(proof.executable){
    say("✓ 当前任意组合通过"+(proof.numeric?.ok?"实际 CPU 小张量执行":"张量形状及端口")+"检查；不要求模型模板。");
  }else{
@@ -939,7 +944,7 @@ $("#runBranch").onclick=()=>{try{
  say("✓ 仅运行 "+targetId+" 的 "+run.steps.length+" 个上游积木；画布保留 "+outcome.omittedCount+" 个未参与本次分支的积木。");
  }catch(err){say("当前分支尚不可运行："+err.message,true);if(err.nodeId){selected=err.nodeId;render();focusGraphNode(selected);}}
 };
-$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
+$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):(()=>{const session=Session.inspect(graph,{numeric:true});if(!session.executable)throw Error(session.error?.reason||session.readiness.firstError?.reason||"图尚不可执行");return session.trace;})();runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
