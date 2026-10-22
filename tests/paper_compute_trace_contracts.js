@@ -41,6 +41,7 @@ for(const chunk of [1,2,3]){
   const dotId=tile.substeps[0].id;
   for(let j=0;j<tile.substeps[0].out.shape[1];j++)near(C.dot(frame,dotId,0,j).error,0);
  }
+ a.equal(Object.hasOwn(frame.steps[3].substeps[1].operands,'previousMax'),false,'initial max is negative infinity, never a fabricated large finite value');
  for(let i=0;i<2;i++)for(let j=0;j<2;j++)near(res.output[i][j],truth[i][j],1e-12);
  const tampered=JSON.parse(JSON.stringify(res));tampered.tileTrace[0].normalizer+=.1;
  a.throws(()=>T.online(inp,tampered),/numerical result differs/);
