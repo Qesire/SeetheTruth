@@ -127,9 +127,9 @@ const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 function render(graph,node){
  const key=classify(graph,node),d=CASES[key];if(!d)return "";
  let s='<section class="knowledge-part" data-industry-why="'+esc(key)+'"><h3>INDUSTRY WHY / 设计权衡</h3>'+
- '<strong>'+esc(d.title)+'</strong>';
- for(const [title,k] of [["设计目标","goal"],["等价数学操作","math"],["业界替代方案","alternative"],
-  ["代价及系统权衡","cost"],["失效机制","failure"],["低成本鉴别实验","test"]])
+ '<strong>'+esc(d.title)+'</strong><p><b>研究路线：</b>先识别实际计算机制和敏感变量，执行下面的对照实验，再决定是否替换模块；不要直接跳到局部参数微调。</p>';
+ for(const [title,k] of [["设计目标","goal"],["等价数学操作","math"],["低成本鉴别实验","test"],
+  ["业界替代方案","alternative"],["失效机制","failure"],["代价及系统权衡","cost"]])
   s+='<p><b>'+esc(title)+'：</b>'+esc(d[k])+'</p>';
  return s+'<p><strong>证据边界：</strong>'+esc(d.status)+'</p>'+
  '<a href="'+esc(d.source)+'" target="_blank" rel="noopener noreferrer">↗ '+esc(d.sourceName)+'</a></section>';
