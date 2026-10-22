@@ -45,6 +45,7 @@ class MicroTrainingTraceBrowser(unittest.TestCase):
   self.assertEqual(p.locator('#computeMicroscope .cmp-substep').count(),3)
   p.locator('#computeMicroscope .cmp-substep').nth(1).click()
   self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
+  p.locator('#val_r').fill('-5')  # both tokens now select Expert 1
   p.locator('#val_capacity').fill('1')
   p.locator('#run').click()
   self.assertIn('overflow',p.locator('#metrics').inner_text())
