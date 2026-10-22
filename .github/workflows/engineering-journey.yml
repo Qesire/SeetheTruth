@@ -6,6 +6,8 @@ on:
       - 'atlas_server.py'
       - 'wan_ffn*'
       - 'compute_microscope*'
+      - 'paper_lab.html'
+      - 'paper_patches.js'
       - 'paper_compute_trace.js'
       - 'tests/paper_compute_trace_contracts.js'
       - 'tests/browser_paper_compute_trace.py'
@@ -99,7 +101,7 @@ jobs:
           path: state_microscope_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
-      - name: Paper patch numeric operator microscope: LoRA/DoRA/online softmax
+      - name: "Paper patch microscope: LoRA, DoRA and online softmax"
         run: python tests/browser_paper_compute_trace.py
       - name: Archive paper patch microscope screenshots
         if: always()
