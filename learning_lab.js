@@ -280,6 +280,8 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    const installedRecipe=Extensions.recipe(name);
+    if(installedRecipe)return validateGraph({schema:SCHEMA,...installedRecipe});
     if(name==="extension_video_composition"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const nodes=[N("video","semantic_video_source",25,225,{frames:3,seed:1}),
