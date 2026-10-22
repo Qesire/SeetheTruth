@@ -28,6 +28,18 @@
   axis_time_mean:def('沿 Token/时间 T 轴平均','Mean over T',['x'],{},
    'Y[0,d]=(1/T) Σ_t X[t,d]','对每个 D 通道逐 Token 求和，缩减成 [1,D]。','改变一枚 Token 只影响相应通道的平均值。')
  });
+ // Contract travels with the graph edge. Two arrays of the same length
+ // remain different if their named axes identify different semantics.
+ const namedAxes=Object.freeze({
+  axis_tensor_source:{output:['T','D'],inputs:{}},
+  axis_feature_bias:{output:['One','D'],inputs:{}},
+  axis_named_add:{output:['T','D'],inputs:{x:['T','D'],bias:['One','D']}},
+  axis_named_transpose:{output:['D','T'],inputs:{x:['T','D']}},
+  axis_time_mean:{output:['MeanT','D'],inputs:{x:['T','D']}}
+ });
+ const annotatedDefs=Object.freeze(Object.fromEntries(Object.entries(defs).map(([kind,d])=>[
+  kind,Object.freeze({...d,portAxes:namedAxes[kind].inputs,outputAxes:namedAxes[kind].output})
+ ])));
  const count=(n,lo,hi,label)=>{if(!Number.isSafeInteger(n)||n<lo||n>hi)throw Error(label+' must be integer '+lo+'..'+hi);};
  function validate(kind,p){
   if(kind==='axis_tensor_source'){count(p.tokens,1,8,'tokens');count(p.width,1,16,'width');count(p.seed,-100,100,'seed');}
@@ -116,5 +128,5 @@
     {from:'add',to:'mean',port:'x'}
    ]}
  }]);
- return Object.freeze({name:'named_axis',defs,validate,infer,execute,trace,recipes});
+ return Object.freeze({name:'named_axis',defs:annotatedDefs,validate,infer,execute,trace,recipes});
 });
