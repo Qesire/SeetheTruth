@@ -43,6 +43,7 @@ jobs:
           node tests/unified_graph_dependency_contracts.js
           node tests/operator_contracts.js
           node tests/execution_ir_contracts.js
+          node tests/graph_session_contracts.js
           node tests/learning_lab_contracts.js
           node tests/learning_lab_syntax_check.js
           node --check source_evidence_levels.js
