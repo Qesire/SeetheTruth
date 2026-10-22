@@ -46,6 +46,17 @@ function verifyDot(s){
   must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
  }
 }
+function verifyIndexMap(s){
+ if(s.indexMap===undefined)return;
+ must(s.out.values!==null&&Array.isArray(s.indexMap)&&s.indexMap.length===s.out.values.length,'invalid tensor index source map');
+ for(let i=0;i<s.indexMap.length;i++){
+  const entry=s.indexMap[i];
+  must(entry&&typeof entry.port==='string'&&Object.hasOwn(s.operands,entry.port),'unresolved tensor source port');
+  const input=s.operands[entry.port];
+  must(input&&input.values!==null&&Number.isSafeInteger(entry.index)&&entry.index>=0&&entry.index<input.values.length,'source index out of bounds');
+  must(s.out.values[i]===input.values[entry.index],'mapped output contradicts input coordinate');
+ }
+}
 function validate(frame){
  must(frame&&frame.schema===SCHEMA,'wrong schema');
  must(Object.values(TIERS).includes(frame.evidenceTier),'unknown evidence tier');
@@ -62,7 +73,7 @@ function validate(frame){
   else staticTensor(s.out.shape);
   must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
   for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);}
-  verifyDot(s);
+  verifyDot(s);verifyIndexMap(s);
   if(s.substeps!==undefined){
    must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
    const nestedIds=new Set();
@@ -73,7 +84,7 @@ function validate(frame){
     numericTensor(child.out.shape,child.out.values);
     must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
     for(const tensor of Object.values(child.operands))numericTensor(tensor.shape,tensor.values);
-    verifyDot(child);
+    verifyDot(child);verifyIndexMap(child);
     nestedIds.add(child.id);
    }
   }
@@ -95,6 +106,13 @@ function dot(frame,stepId,row,col,prefix=[]){
  let index=0;const coord=[...leading,...(dimensions===1?[]:[row]),col];
  for(let i=0;i<dimensions;i++)index=index*shape[i]+coord[i];
  const observed=s.out.values[index];
+ if(s.indexMap){
+  const entry=s.indexMap[index],source=s.operands[entry.port].values[entry.index];
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,
+   formula:'output['+coord.join(',')+'] = '+entry.port+'[flat '+entry.index+']',
+   reconstructable:true,mapped:true,sourcePort:entry.port,sourceIndex:entry.index,
+   recomputed:source,error:Math.abs(observed-source),terms:[]};
+ }
  if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,formula:s.formula,reconstructable:false};
  const {input,weights,bias}=s.dot,D=input.shape[1];
  const terms=Array.from({length:D},(_,k)=>({k,input:input.values[row*D+k],weight:weights.values[col*D+k],product:input.values[row*D+k]*weights.values[col*D+k]}));
