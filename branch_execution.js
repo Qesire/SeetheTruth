@@ -8,14 +8,13 @@ const L=common?require("./learning_lab.js"):root.SeetheTruthLearning;
 const C=common?require("./concept_flow.js"):root.SeetheTruthConceptFlow;
 function slice(raw,targetId){
  const graph=L.validateGraph(raw);
- L.order(graph);
+ const index=L.indexGraph(graph);
  if(!graph.nodes.some(n=>n.id===targetId))throw Error("selected output block does not exist");
- const parents=new Map(graph.nodes.map(n=>[n.id,[]]));
- for(const edge of graph.edges)parents.get(edge.to).push(edge.from);
+
  const included=new Set(),stack=[targetId];
  while(stack.length){
    const id=stack.pop();if(included.has(id))continue;included.add(id);
-   stack.push(...parents.get(id));
+   stack.push(...index.parents.get(id));
  }
  return L.validateGraph({schema:graph.schema,title:graph.title+" · branch "+targetId,
    nodes:graph.nodes.filter(n=>included.has(n.id)),

@@ -79,3 +79,7 @@ training.html
 training_flow.js
 training_objective.js
 video_causal_conv3d.js
+operator_contracts.js
+execution_ir.js
+graph_session.js
+training_session.js

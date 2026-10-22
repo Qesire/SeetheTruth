@@ -322,6 +322,10 @@ input[type="file"]{display:none}
 <script src="python_codegen.js"></script>
 <script src="torch_stream_lowering.js"></script>
 <script src="torch_codegen.js"></script>
+<script src="block_capabilities.js"></script>
+<script src="operator_contracts.js"></script>
+<script src="execution_ir.js"></script>
+<script src="graph_session.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
@@ -337,11 +341,12 @@ input[type="file"]{display:none}
 <script src="nd_adamw_micro.js"></script>
 <script src="optimizer_rules.js"></script>
 <script src="train_state.js"></script>
+<script src="training_session.js"></script>
 <script>
 (()=>{"use strict";
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
-  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,
-  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
+  K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
+  A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
@@ -772,7 +777,7 @@ function renderReadiness(){
 function render(){
  const kinds=graph.nodes.filter(n=>["parameter","nd_parameter"].includes(n.kind)).map(n=>n.params.optimizer.kind||"adamw");
  if(kinds.length&&kinds.every(k=>k===kinds[0]))$("#trainOptimizer").value=kinds[0];
- readinessSnapshot=Readiness.check(graph);
+ readinessSnapshot=Session.inspect(graph).readiness;
  const costRoot=$("#graphCostSummary");
  if(readinessSnapshot.executable){
    try{
@@ -920,7 +925,8 @@ $("#challenge").onclick=()=>{
  say("挑战：已拆除 "+last.from+" → "+last.to+"."+last.port+"。试着重新连接，修复形状依赖后运行。");
 };
 $("#checkGraph").onclick=()=>{
- const proof=Readiness.check(graph,{numeric:studyMode()==="numeric"});
+ const session=Session.inspect(graph,{numeric:studyMode()==="numeric"});
+ const proof={...session.readiness,executable:session.executable,numeric:session.ir?{ok:true,steps:session.ir.nodes.length}:session.error?{ok:false,reason:session.error.reason}:null,firstError:session.error?session.error:session.readiness.firstError};
  if(proof.executable){
    say("✓ 当前任意组合通过"+(proof.numeric?.ok?"实际 CPU 小张量执行":"张量形状及端口")+"检查；不要求模型模板。");
  }else{
@@ -939,7 +945,7 @@ $("#runBranch").onclick=()=>{try{
  say("✓ 仅运行 "+targetId+" 的 "+run.steps.length+" 个上游积木；画布保留 "+outcome.omittedCount+" 个未参与本次分支的积木。");
  }catch(err){say("当前分支尚不可运行："+err.message,true);if(err.nodeId){selected=err.nodeId;render();focusGraphNode(selected);}}
 };
-$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):L.evaluate(graph);runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
+$("#run").onclick=()=>{try{backwardTrace=null;run=studyMode()==="concept"?C.evaluate(graph):(()=>{const session=Session.inspect(graph,{numeric:true});if(!session.executable)return L.evaluate(graph);return session.trace;})();runGraph=graph;runScope=null;step=0;selected=run.steps[0].id;
  say(run.mode==="concept"?"✓ 已推演 "+run.steps.length+" 个积木的依赖、张量形状与数学作用；没有执行数值运算。":
      "✓ 已运行 "+run.steps.length+" 个微型算子计算。单步检查数值。");render();}
  catch(e){run=null;runGraph=null;runScope=null;step=-1;if(e.nodeId)selected=e.nodeId;say("无法运行："+e.message,true);render();}};
@@ -965,7 +971,7 @@ $("#trainStep").onclick=()=>{try{
    count:Number($("#trainCount").value),optimizer:$("#trainOptimizer").value,lr:Number($("#trainLearningRate").value),
    weightDecay:Number($("#trainWeightDecay").value),momentum:Number($("#trainMomentum").value),
    alpha:Number($("#trainAlpha").value),lrDecay:Number($("#trainLRDecay").value),targetId:selectedLoss.id
- },result=Train.steps(previous,options);
+ },result=TrainingSession.steps(previous,options);
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
  graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
  trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options};

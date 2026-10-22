@@ -135,19 +135,35 @@
     }
     return normalized;
   }
-  function order(graph){
+  // One dependency/port index for ordering, branch slicing and readiness.
+  // Callers validateGraph first; this index does not impose model templates.
+  function indexGraph(graph){
     const byId=new Map(graph.nodes.map(n=>[n.id,n]));
-    const incoming=new Map(graph.nodes.map(n=>[n.id,0]));
-    const adj=new Map(graph.nodes.map(n=>[n.id,[]]));
-    for(const e of graph.edges){incoming.set(e.to,incoming.get(e.to)+1);adj.get(e.from).push(e.to);}
-    const q=graph.nodes.filter(n=>!incoming.get(n.id)).map(n=>n.id),sorted=[];
-    for(let i=0;i<q.length;i++){
-      const id=q[i];sorted.push(byId.get(id));
-      for(const to of adj.get(id)){incoming.set(to,incoming.get(to)-1);if(incoming.get(to)===0)q.push(to);}
+    const indegree=new Map(graph.nodes.map(n=>[n.id,0]));
+    const children=new Map(graph.nodes.map(n=>[n.id,[]]));
+    const parents=new Map(graph.nodes.map(n=>[n.id,[]]));
+    const incomingByPort=new Map();
+    for(const e of graph.edges){
+      if(!byId.has(e.from)||!byId.has(e.to))fail("连线端点无效",e.to);
+      const portKey=e.to+":"+e.port;
+      if(incomingByPort.has(portKey))fail("同一输入端口不可连接两次",e.to);
+      incomingByPort.set(portKey,e.from);
+      indegree.set(e.to,indegree.get(e.to)+1);
+      children.get(e.from).push(e.to);
+      parents.get(e.to).push(e.from);
     }
-    if(sorted.length!==graph.nodes.length)fail("检测到循环计算依赖：必须是有向无环图");
-    return sorted;
+    const queue=graph.nodes.filter(n=>indegree.get(n.id)===0).map(n=>n.id),ordered=[];
+    for(let i=0;i<queue.length;i++){
+      const id=queue[i];ordered.push(byId.get(id));
+      for(const to of children.get(id)){
+        indegree.set(to,indegree.get(to)-1);
+        if(indegree.get(to)===0)queue.push(to);
+      }
+    }
+    if(ordered.length!==graph.nodes.length)fail("检测到循环计算依赖：必须是有向无环图");
+    return {ordered,parents,children,incomingByPort};
   }
+  function order(graph){return indexGraph(graph).ordered;}
   function hashWeight(id,r,c){let h=2166136261;for(const ch of id+":"+r+":"+c){h=Math.imul(h^ch.charCodeAt(0),16777619);}return ((h>>>0)%2001-1000)/2600;}
   function map1(a,fn){return a.map(row=>row.map(fn));}
   function map2(a,b,fn,id){
@@ -237,14 +253,14 @@
     return {shape:shape(value),values:value,flops,internals};
   }
   function evaluate(raw){
-    const graph=validateGraph(raw), sequence=order(graph);
+    const graph=validateGraph(raw), index=indexGraph(graph), sequence=index.ordered;
     const out=new Map(),steps=[];
     for(const n of sequence){
       const ins={},records={};
       for(const port of defs[n.kind].ports){
-        const edge=graph.edges.find(e=>e.to===n.id&&e.port===port);
-        if(!edge)fail(defs[n.kind].title+" 的 "+port+" 端口还没有连接",n.id);
-        const upstream=out.get(edge.from);
+        const source=index.incomingByPort.get(n.id+":"+port);
+        if(!source)fail(defs[n.kind].title+" 的 "+port+" 端口还没有连接",n.id);
+        const upstream=out.get(source);
         if(!upstream?.values)fail("上游计算结果不存在",n.id);
         ins[port]=upstream.values;records[port]=upstream;
       }
@@ -1294,5 +1310,5 @@
     }
     return validateGraph({schema:SCHEMA,title,nodes,edges:edges.map(([from,to,port])=>({from,to,port}))});
   }
-  return Object.freeze({SCHEMA,defs,KINDS,MAX_NODES,MAX_EDGES,validateGraph,order,evaluate,connect,preset});
+  return Object.freeze({SCHEMA,defs,KINDS,MAX_NODES,MAX_EDGES,validateGraph,indexGraph,order,evaluate,connect,preset});
 });

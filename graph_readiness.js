@@ -8,10 +8,10 @@ const L=typeof module==="object"&&module.exports?require("./learning_lab.js"):ro
 const C=typeof module==="object"&&module.exports?require("./concept_flow.js"):root.SeetheTruthConceptFlow;
 const Branch=typeof module==="object"&&module.exports?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 function check(raw,options={}){
- let graph,seq;
- try{graph=options.targetId?Branch.slice(raw,options.targetId):L.validateGraph(raw);seq=L.order(graph);}
+ let graph,seq,index;
+ try{graph=options.targetId?Branch.slice(raw,options.targetId):L.validateGraph(raw);index=L.indexGraph(graph);seq=index.ordered;}
  catch(err){return {executable:false,structuralError:err.message,firstError:{nodeId:err.nodeId||null,reason:err.message},nodes:[],readyCount:0,missingCount:0,errorCount:1,blockedCount:0};}
- const results=new Map(),edges=new Map(graph.edges.map(e=>[e.to+":"+e.port,e.from]));
+ const results=new Map(),edges=index.incomingByPort;
  let missingCount=0,errorCount=0,blockedCount=0,readyCount=0;
  for(const n of seq){
    const inputs={},logicalStates={},missing=[],unavailable=[];
