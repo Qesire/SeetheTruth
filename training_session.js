@@ -26,5 +26,24 @@ function step(raw,options={}){
   beforeIR:before,afterIR:after,updates:Object.freeze(records),
   graph:result.graph,transaction:result});
 }
-return Object.freeze({step});
+function steps(raw,options={}){
+ const count=options.count??1;
+ if(!Number.isSafeInteger(count)||count<1||count>8)throw Error("training step count must be an integer from 1 to 8");
+ const params={...options};delete params.count;
+ let graph=d.L.validateGraph(raw);const history=[],sessions=[];
+ for(let i=0;i<count;i++){
+  const result=step(graph,params);
+  history.push(Object.freeze({iteration:i+1,beforeLoss:result.beforeLoss,afterLoss:result.afterLoss,
+   delta:result.delta,records:result.transaction.records}));
+  sessions.push(result);
+  graph=result.graph;
+ }
+ const targetId=options.targetId||null;
+ const finalGraph=targetId?d.Branch.slice(graph,targetId):graph;
+ return Object.freeze({graph,history,firstLoss:history[0].beforeLoss,finalLoss:history.at(-1).afterLoss,
+  next:d.L.evaluate(finalGraph),sessions:Object.freeze(sessions),
+  finalIR:sessions.at(-1).afterIR,
+  evidence:"atomic bounded multi-step training, each iteration replays actual forward and VJP"});
+}
+return Object.freeze({step,steps});
 });
