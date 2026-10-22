@@ -253,14 +253,14 @@
     return {shape:shape(value),values:value,flops,internals};
   }
   function evaluate(raw){
-    const graph=validateGraph(raw), sequence=order(graph);
+    const graph=validateGraph(raw), index=indexGraph(graph), sequence=index.ordered;
     const out=new Map(),steps=[];
     for(const n of sequence){
       const ins={},records={};
       for(const port of defs[n.kind].ports){
-        const edge=graph.edges.find(e=>e.to===n.id&&e.port===port);
-        if(!edge)fail(defs[n.kind].title+" 的 "+port+" 端口还没有连接",n.id);
-        const upstream=out.get(edge.from);
+        const source=index.incomingByPort.get(n.id+":"+port);
+        if(!source)fail(defs[n.kind].title+" 的 "+port+" 端口还没有连接",n.id);
+        const upstream=out.get(source);
         if(!upstream?.values)fail("上游计算结果不存在",n.id);
         ins[port]=upstream.values;records[port]=upstream;
       }
