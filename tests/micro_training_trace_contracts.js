@@ -11,15 +11,19 @@ function shared(xValues,wValues){
 for(const [x,w]of [[[1,2],[2,3]],[[-1,2],[3,-2]],[[.1,-.4],[.5,1]]]){
  const {t,a,b,w:wid}=shared(x,w);const frame=Trace.tape(t);
  assert.equal(Core.validate(frame),frame);
- assert.equal(frame.steps.length,12);
- assert.equal(frame.steps.filter(z=>z.kind==='vjp').length,6);
+ assert.equal(frame.steps.length,19);
+ assert.equal(frame.steps.filter(z=>z.kind==='vjp_accumulation').length,6);
+ assert.equal(frame.steps.filter(z=>z.kind==='vjp_edge').length,7);
  assert.equal(t.parameters.size,1);
  near(Core.dot(frame,a,0,0).error,0);near(Core.dot(frame,b,0,0).error,0);
  const g=t.gradients().shared;
  const predicted=t.value(a)[0][0]*2*(x[0])*4;
  near(g[0][0],predicted);near(g[1][0],t.value(a)[0][0]*2*x[1]*4);
- const grad=frame.steps.find(s=>s.id==='grad_'+wid);
+ const grad=frame.steps.find(s=>s.kind==='vjp_accumulation'&&s.title.includes('dL/d'+wid));
  assert.deepEqual(grad.out.values,g.flat());
+ const contributions=frame.steps.filter(s=>s.kind==='vjp_edge'&&s.title.endsWith('→ '+wid));
+ assert.equal(contributions.length,2);
+ for(let k=0;k<g.length;k++)near(contributions[0].out.values[k]+contributions[1].out.values[k],g[k][0]);
  assert.equal(grad.dependencies.length,2);
  const corrupt=JSON.parse(JSON.stringify(frame));corrupt.steps.find(s=>s.id===a).out.values[0]+=1;
  assert.throws(()=>Core.validate(corrupt),/GEMM reconstruction contradicts displayed output/);
