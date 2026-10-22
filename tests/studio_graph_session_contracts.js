@@ -5,6 +5,13 @@ const html=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
 const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);
 const required=['learning_lab.js','branch_execution.js','graph_readiness.js','block_capabilities.js','operator_contracts.js','execution_ir.js','graph_session.js'];
 for(const p of required)assert.ok(scripts.includes(p),'missing studio runtime '+p);
+const server=fs.readFileSync(path.join(__dirname,'../atlas_server.py'),'utf8');
+const assets=new Set(fs.readFileSync(path.join(__dirname,'../android/teaching-assets.txt'),'utf8').split(/\r?\n/).map(x=>x.trim()));
+for(const p of required){
+ assert.ok(server.includes('"/'+p+'":"'+p+'"'),'server does not serve '+p);
+ assert.ok(assets.has(p),'Android offline manifest misses '+p);
+}
+
 for(let i=1;i<required.length;i++)assert.ok(scripts.indexOf(required[i])>scripts.indexOf(required[i-1]),'load order '+required[i]);
 assert.ok(html.includes('readinessSnapshot=Session.inspect(graph).readiness;'));
 assert.ok(html.includes('const session=Session.inspect(graph,{numeric:studyMode()==="numeric"});'));
