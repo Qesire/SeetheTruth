@@ -85,6 +85,9 @@
   }
   function execute(node,inputs,records=null){
    const p=get(node.kind),params=validate(node.kind,node.params||{}),operandShapes=Object.fromEntries(Object.entries(inputs||{}).map(([k,v])=>[k,tensorShape(v)]));
+   const required=definitions[node.kind].portAxes||{};
+   if(Object.keys(required).length)must(records&&typeof records==='object',
+    'named-axis execution requires typed upstream edge records: '+node.kind);
    const actualAxes=records?Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.axes||null])):null;
    const symbolic=infer(node,operandShapes,actualAxes).shape;
    const run=p.execute(node.kind,params,inputs||{});
