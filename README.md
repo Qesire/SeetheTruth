@@ -34,6 +34,10 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 验证：`node tests/engineering_journey_contracts.js` 与 `python tests/browser_engineering_journey.py`，详见 [工程教学合同](docs/engineering-journey.md)。
 
+## 论文方法的真实逐算子计算 · LoRA / DoRA / Online Softmax
+
+已将 [论文改造实验室](paper_lab.html) 接入统一 `Compute Microscope`。LoRA 可以从基座矩阵乘法沿 `XA→(XA)B→α/r` 逐通道观察；DoRA 能看权重方向、各输出列范数、有效权重和最终输出；Online Softmax 可以逐 Key Tile 追踪 running max、重缩放因子、denominator 和加权 V 的中间值。在线输出另经独立的 Dense `QKᵀ→Softmax→PV` 数值实现检查。所有步骤都来自实际 `paper_patches.js` 运行结果，而非仅用示意箭头替代。详见 [计算顺序与最小对照实验](docs/paper-compute-microscope.md)，测试 `node tests/paper_compute_trace_contracts.js`、`python tests/browser_paper_compute_trace.py`。这一步将页面级共用计算/状态透视覆盖提升至 **11/20**，还保留 4 个专用入口及 5 个非计算或证据入口。
+
 ## 机制驱动复审 · 2026-10-22
 
 **[查看机制驱动通用化复审](docs/universalization-mechanism-review-2026-10-22.md)**：新版自由训练微实验将 Tape 共享参数真实逐边 VJP、MoE Token→Expert 每次 GEMM、PPO Ratio/Clip/Gradient 接入与 Wan 一致的公共 Compute Microscope，保留反事实参数操作与逐通道数值闭合。覆盖审计现在除检查公共脚本引入之外，还检验每页调用适配器的具体代码路径，并包含移除调用的负例。当前是 **4 个通用张量页面、7 个通用状态页面、4 个尚未统一的专用实验页面**。教学解析采用“机制→低成本区分实验→竞争解释→下一步设计”的顺序，优先发现规律与提出可证伪机制，而不是以长串限制说明代替探索。
