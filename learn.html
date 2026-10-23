@@ -384,7 +384,7 @@ input[type="file"]{display:none}
 const ShapeRules=window.SeetheTruthShapeIndexRules;
 const LearningPath=window.SeetheTruthGraphLearningPath;
 const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
-const microscopeView=MicroscopeUI.mount($("#computeMicroscope"),id=>{
+const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicroscope"),id=>{
  if(!run)return;
  const idx=run.steps.findIndex(x=>x.id===id);
  if(idx>=0){selected=id;step=idx;render();}
