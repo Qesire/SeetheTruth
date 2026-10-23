@@ -118,6 +118,27 @@ for(const kind of ['silu','gelu_erf','gelu_tanh','mish','relu_squared','leaky_re
  assert.equal(symbolic.vertices.find(v=>v.key==='x@0,1').sensitivity,null,
   kind+' must not invent a numerical derivative in structural mode');
 }
+// A genuine rank-four activation exercises ND tensor indexing, not a 2D alias.
+for(const kind of ['nd_silu','nd_gelu_erf','nd_mish']){
+ const tensor=[[[[.13,-.7]],[[.4,1.1]]]];
+ const initial={values:tensor,optimizer:{kind:'adamw',t:0,
+  m:ND.build([1,2,1,2],()=>0),v:ND.build([1,2,1,2],()=>0)}};
+ const g=L.validateGraph({schema:L.SCHEMA,title:'4D '+kind,nodes:[
+  node('x','nd_parameter',initial),node('act',kind)
+ ],edges:[wire('x','act','x')]});
+ const outputIndex=[0,1,0,1],trace4=L.evaluate(g);
+ const audited=E.inspect(g,{targetId:'act',outputIndex,trace:trace4});
+ assert.equal(audited.complete,true,kind+' rank-four lineage');
+ const source=audited.vertices.find(v=>v.key==='x@0,1,0,1');
+ assert.ok(source&&Number.isFinite(source.sensitivity));
+ const forward=delta=>{
+  const copy=JSON.parse(JSON.stringify(g));
+  copy.nodes.find(n=>n.id==='x').params.values[0][1][0][1]+=delta;
+  return ND.at(L.evaluate(copy).steps.find(step=>step.id==='act').values,outputIndex);
+ };
+ assert.ok(Math.abs(source.sensitivity-(forward(h)-forward(-h))/(2*h))<3e-5,
+  kind+' four-axis finite difference');
+}
 for(const kind of ['rmsnorm','qk_norm','layernorm']){
  const g=oneOp(kind,{epsilon:.08});
  const audited=E.inspect(g,{targetId:'act',outputIndex:[0,1],trace:L.evaluate(g)});
