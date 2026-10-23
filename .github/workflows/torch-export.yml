@@ -4,6 +4,8 @@ on:
     paths:
       - 'torch_codegen.js'
       - 'portable_operator_rules.js'
+      - 'normalization_rules.js'
+      - 'tests/normalization_runtime_parity.js'
       - 'tests/portable_operator_runtime_parity.js'
       - 'torch_stream_lowering.js'
       - 'tests/torch_stream_autograd_contracts.js'
