@@ -1132,7 +1132,7 @@ $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataT
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
 const installedRecipes=window.SeetheTruthBlockExtensions.recipes;
-const blankRecipeButton=document.querySelector('[data-preset="blank"]');
+const blankRecipeButton=document.querySelector('[data-preset=blank]');
 for(const recipe of installedRecipes){
  const b=document.createElement("button");b.type="button";b.className="mission";b.dataset.preset=recipe.id;
  const index=document.createElement("span");index.className="num";index.textContent="+";b.append(index);
