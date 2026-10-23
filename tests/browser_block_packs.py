@@ -33,6 +33,7 @@ class PackBrowser(unittest.TestCase):
    page.locator('[data-preset="extension_video_time_composition"]').click()
    self.assertEqual(page.locator('#blocks [data-node]').count(),4)
    page.locator('#run').click()
+   for _ in range(3):page.locator('#next').click()
    page.locator('#blocks [data-node="join"] .block-formula').click()
    self.assertIn('1×3×2×2×2',page.locator('#matrix').inner_text())
    self.assertEqual(page.locator('#matrix [data-nd-slice]').count(),3)
