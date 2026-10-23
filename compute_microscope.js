@@ -309,6 +309,32 @@ function verifyWanArithmetic(data){
    near(val[8][i],val[1][i]+val[7][i],'final residual');
   }
  }
+ const matchAux=(stage,port,shape,expected)=>{
+  const tensor=steps[stage].aux?.[port];
+  must(tensor&&tensor.shape.join(',')===shape.join(',')&&Array.isArray(tensor.values)&&
+   tensor.values.length===expected.length,'invalid Wan auxiliary operand '+stage+'.'+port);
+  tensor.values.forEach((v,i)=>near(v,expected[i],'Wan auxiliary '+stage+'.'+port));
+ };
+ matchAux(0,'shift',[T,C],data.e[3]);
+ matchAux(0,'scale',[T,C],data.e[4]);
+ matchAux(0,'gate',[T,C],data.e[5]);
+ matchAux(1,'afterSelf',[T,C],after);
+ matchAux(1,'crossDelta',[T,C],cross);
+ matchAux(2,'crossInput',[T,C],val[1]);
+ matchAux(3,'normalized',[T,C],val[2]);
+ matchAux(3,'scale',[T,C],data.e[4]);
+ matchAux(3,'shift',[T,C],data.e[3]);
+ matchAux(4,'input',[T,C],val[3]);
+ matchAux(4,'weights',[H,C],w1);
+ matchAux(4,'bias',[1,H],b1);
+ matchAux(5,'preActivation',[T,H],val[4]);
+ matchAux(6,'input',[T,H],val[5]);
+ matchAux(6,'weights',[C,H],w2);
+ matchAux(6,'bias',[1,C],b2);
+ matchAux(7,'ffn',[T,C],val[6]);
+ matchAux(7,'gate',[T,C],data.e[5]);
+ matchAux(8,'crossInput',[T,C],val[1]);
+ matchAux(8,'delta',[T,C],val[7]);
  must(data.final&&data.final.shape.join(',')===dims[8].join(',')&&Array.isArray(data.final.values)&&
   data.final.values.length===val[8].length,'missing final output contract');
  data.final.values.forEach((v,i)=>near(v,val[8][i],'final observation'));
