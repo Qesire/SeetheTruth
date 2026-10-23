@@ -119,6 +119,15 @@ function validate(frame){
     for(const tensor of Object.values(child.operands)){numericTensor(tensor.shape,tensor.values);checkAxes(tensor);}
     verifyDot(child);verifyIndexMap(child);verifyElementwise(child);
     if(child.outputIsParent===true){
+     for(const [port,tensor] of Object.entries(child.operands)){
+      const parentOperand=s.operands[port];
+      if(!parentOperand)continue;
+      must(parentOperand.shape.join(',')===tensor.shape.join(',')&&
+       JSON.stringify(parentOperand.axes||null)===JSON.stringify(tensor.axes||null)&&
+       parentOperand.values&&tensor.values&&parentOperand.values.length===tensor.values.length&&
+       tensor.values.every((v,i)=>v===parentOperand.values[i]),
+       'named-axis operand substep contradicts incoming graph port');
+     }
      must(s.out.values!==null&&child.out.shape.join(',')===s.out.shape.join(',')&&
       JSON.stringify(child.out.axes||null)===JSON.stringify(s.out.axes||null)&&
       child.out.values.length===s.out.values.length&&
