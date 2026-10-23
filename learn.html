@@ -286,6 +286,7 @@ input[type="file"]{display:none}
   </details>
   <button class="btn" id="trainStep" type="button" disabled title="提交 1–8 次 CPU 优化器更新，逐步重新计算 Forward/Backward，并保存独立的状态">↻ 训练</button><button class="btn" id="challenge" title="拆除一条依赖边并尝试修复">⚑ 断线挑战</button><button class="btn" id="prev" disabled>← 上一步</button><button class="btn" id="next" disabled>下一步 →</button><span id="stepInfo">尚未运行</span></div>
    <div class="graph-readiness" id="graphReadiness" aria-label="自由计算图的张量形状与连线就绪状态"></div>
+   <details class="section" id="learningPathPanel" aria-label="从当前计算图推导学习路径"><summary>LEARNING PATH · 沿当前计算图逐节点学习</summary><p class="hint">根据真实连线与数学合同自动生成。默认不执行矩阵计算。</p><button class="btn small" id="learningPathNumeric" type="button">验证本图的微型数值</button><div id="learningPathSteps" aria-live="polite"></div></details>
    <details id="graphCostPanel" class="section" aria-label="当前计算图解析成本统计"><summary>GRAPH COST · 按当前连接图计算</summary><div class="row"><button id="freezeGraphBaseline" class="btn small" type="button">固定当前图为基线</button><button id="clearGraphBaseline" class="btn small" type="button">清除基线</button></div><div class="hint" id="graphCostSummary" aria-live="polite"></div><div class="hint" id="graphCostComparison" aria-live="polite"></div><details id="graphCostNodes"><summary>展开逐积木算术证据</summary><div id="graphCostNodeList" aria-live="polite"></div></details></details>
    <details id="pythonExportPanel" hidden aria-label="生成的可执行 Python 代码"><summary><span id="pythonExportCaption">已生成可执行 Python（NumPy） · 查看源代码</span></summary><p class="hint" id="pythonExportHelp">可通过 <code>pip install numpy</code> 安装依赖，然后运行下载的 .py 文件。输入可由 run_graph(overrides=...) 修改。</p><button id="copyPython" class="btn small" type="button">复制源码</button><pre id="pythonExportSource" style="max-height:300px;overflow:auto;white-space:pre;font-size:11px;tab-size:2;"></pre></details>
    <div class="status" id="status" role="status" aria-live="polite">默认只推演计算依赖、形状与设计意图；不执行矩阵乘法或 GPU 运算。</div>
@@ -353,6 +354,7 @@ input[type="file"]{display:none}
 <script src="operator_contracts.js"></script>
 <script src="execution_ir.js"></script>
 <script src="graph_session.js"></script>
+<script src="graph_learning_path.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
@@ -374,6 +376,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
+const LearningPath=window.SeetheTruthGraphLearningPath;
 const ElementLineage=window.SeetheTruthElementLineage;
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
@@ -387,6 +390,7 @@ let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
+let learningPathSession=null,learningPathGraph=null;
 const shapeCoordsByNode=new Map();
 let elementLineageState=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -972,6 +976,30 @@ function renderTrainingMetrics(info){
    '<strong>'+esc(rec.id)+'</strong><span>‖∇θ‖₂ '+rec.gradientNorm.toExponential(3)+' · ‖Δθ‖₂ '+rec.updateNorm.toExponential(3)+'</span></div>').join("");
  return chart+'<div class="kicker" style="margin-top:8px">参数组 / 最后一步梯度与更新范数</div>'+rows;
 }
+function renderLearningPath(){
+ if(!$("#learningPathPanel").open)return;
+ const session=learningPathSession&&learningPathGraph===graph?learningPathSession:Session.inspect(graph);
+ const report=LearningPath.build(graph,{session:session}),el=$("#learningPathSteps");
+ el.innerHTML='<p class="hint">'+report.steps.length+' 个节点 · '+(report.executable?'当前图可运行':'当前图未完成')+
+  ' · '+(report.numericOk?'微型数值已验证（SYNTHETIC）':'静态形状（未执行）')+
+  (report.firstError?' · 问题：'+esc(report.firstError):'')+'</p>'+
+  report.steps.map(n=>{
+   const inputs=n.ports.map(p=>esc(p.port)+' ← '+(p.sourceId?esc(p.sourceId)+(p.sourceShape?' ['+esc(p.sourceShape.join('×'))+']':''):'未连接')).join('；')||'输入源节点';
+   const values=n.sample?' · 实际数值抽样 ['+n.sample.map(v=>esc(Number(v.toPrecision(6)))).join(', ')+']':'';
+   return '<div style="border-bottom:1px solid #29475d;padding:8px 0">'+
+    '<button type="button" class="btn small" data-route-node="'+esc(n.id)+'">'+n.ordinal+' · '+esc(n.id)+' · '+esc(n.title)+'</button> '+
+    '<span class="hint">'+esc(n.shape?.join('×')||n.status)+' · '+(n.evidence==='SYNTHETIC_NUMERIC'?'微型数值已验证':'静态形状/未运行')+'</span>'+
+    '<div class="hint">输入：'+inputs+values+'</div>'+
+    (n.reason?'<div class="hint">未完成：'+esc(n.reason)+'</div>':'')+
+    '<details><summary class="hint">数学机制、工程实践与检验问题</summary>'+
+    '<div class="equation">'+esc(n.formula||'参考算子合同')+'</div>'+
+    '<p class="hint">'+esc(n.why)+'</p><p class="hint">计算流：'+esc(n.flow)+'</p>'+
+    '<p class="hint">业界实践：'+esc(n.practice)+'</p><p class="hint">警惕：'+esc(n.trap)+'</p>'+
+    '<p class="hint">动手验证：'+esc(n.exercise)+'</p>'+
+    '<p class="hint">代码导出候选：NumPy '+(n.numpyCandidate?'是':'否')+' / PyTorch '+(n.torchCandidate?'是':'否')+'，全图仍需实际编译。</p></details></div>';
+  }).join('');
+ el.querySelectorAll('[data-route-node]').forEach(b=>b.onclick=()=>{selected=b.dataset.routeNode;render();focusGraphNode(selected);});
+}
 function renderReadiness(){
  const info=readinessSnapshot,root=$("#graphReadiness");
  if(info.structuralError){root.textContent="结构检查失败："+info.structuralError;return;}
@@ -1088,8 +1116,12 @@ function render(){
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
- renderBlocks();renderReadiness();inspect();
+ renderBlocks();renderReadiness();renderLearningPath();inspect();
 }
+$("#learningPathPanel").addEventListener("toggle",()=>renderLearningPath());
+$("#learningPathNumeric").onclick=()=>{
+ learningPathSession=Session.inspect(graph,{numeric:true});learningPathGraph=graph;renderLearningPath();
+};
 $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";});
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
