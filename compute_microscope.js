@@ -85,6 +85,12 @@ function validate(frame){
     must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
     for(const tensor of Object.values(child.operands))numericTensor(tensor.shape,tensor.values);
     verifyDot(child);verifyIndexMap(child);
+    if(child.outputIsParent===true){
+     must(s.out.values!==null&&child.out.shape.join(',')===s.out.shape.join(',')&&
+      child.out.values.length===s.out.values.length&&
+      child.out.values.every((value,i)=>value===s.out.values[i]),
+      'declared final substep contradicts parent output');
+    }
     nestedIds.add(child.id);
    }
   }
