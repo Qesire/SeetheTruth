@@ -727,7 +727,7 @@ function inspect(){
      '<div class="shape-index-controls" role="group" aria-label="选择输出张量元素">'+axes+'</div>'+
      numericHint+
      '<div class="kicker" style="margin-top:10px">该输出坐标 ['+mapping.outputIndex.join(", ")+'] 实际读取</div>'+
-     '<div class="hint">'+(n.kind==="nd_reduce_sum"?'本输出汇聚 '+sources.length+' 个输入元素':'每个输入端口对应一个实际元素')+'</div>'+
+     '<div class="hint">'+(n.kind==="nd_reduce_sum"?'本输出汇聚 '+mapping.sourceIndices.length+' 个输入元素':'每个输入端口对应一个实际元素')+'</div>'+
      sources+
      '<div class="kicker" style="margin-top:10px">反向梯度</div>'+
      '<div class="hint">'+esc(mapping.gradientRule)+'</div>'+
