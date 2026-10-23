@@ -38,6 +38,44 @@ for(const item of examples){
  if(n.kind!=='nd_broadcast_add')assert.ok(a&&b,item.name+' backend emitter');
  console.log('SHAPE_INDEX_PASS '+item.name+' '+mapping.outputShape.join('x'));
 }
+// Exhaustively test user-selected coordinates, actual output values and reverse fanout.
+for(const item of examples){
+ const g=item.graph,trace=L.evaluate(g),steps=new Map(trace.steps.map(s=>[s.id,s]));
+ const indexed=L.indexGraph(g),n=g.nodes.find(node=>node.id===item.target);
+ const shapes=Object.fromEntries(L.defs[n.kind].ports.map(port=>
+  [port,steps.get(indexed.incomingByPort.get(n.id+":"+port)).shape]));
+ const forward=steps.get(n.id);
+ ND.indices(forward.shape,index=>{
+  const selected=Shapes.analyze(n,shapes,{outputIndex:index});
+  assert.deepEqual(selected.outputIndex,index,item.name+" selected index");
+  const actual=ND.at(forward.values,index);
+  const upstream=selected.sourceIndices.map(c=>
+   ND.at(steps.get(indexed.incomingByPort.get(n.id+":"+c.port)).values,c.index));
+  const derived=n.kind==="nd_broadcast_add"?upstream[0]+upstream[1]:
+   n.kind==="nd_reduce_sum"?upstream.reduce((a,b)=>a+b,0):upstream[0];
+  assert.ok(Math.abs(actual-derived)<1e-11,item.name+" element "+index+" "+actual+" != "+derived);
+  for(let i=0;i<selected.sourceIndices.length;i++){
+   const source=selected.sourceIndices[i],reverse=selected.reverseContributions[i];
+   const within=reverse.outputRanges.every(([lo,hi],ax)=>index[ax]>=lo&&index[ax]<=hi);
+   assert.equal(within,true,item.name+" chosen output inside inverse range");
+   let visited=0;
+   ND.indices(forward.shape,candidate=>{
+    const other=Shapes.analyze(n,shapes,{outputIndex:candidate});
+    if(other.sourceIndices.some(s=>s.port===source.port&&
+      JSON.stringify(s.index)===JSON.stringify(source.index)))visited++;
+   });
+   assert.equal(reverse.outputCount,visited,item.name+" gradient fanout "+source.port+" "+source.index);
+  }
+ });
+}
+const gIndex=L.preset("nd_attention_lesson"),traceIndex=L.evaluate(gIndex);
+const permutations=gIndex.nodes.find(n=>n.id==="perm");
+const incoming=L.indexGraph(gIndex).incomingByPort;
+const lookup={x:traceIndex.steps.find(s=>s.id===incoming.get("perm:x")).shape};
+assert.throws(()=>Shapes.analyze(permutations,lookup,{outputIndex:[0,0]}),/out of bounds/);
+assert.throws(()=>Shapes.analyze(permutations,lookup,{outputIndex:[0,0,0,999]}),/out of bounds/);
+assert.throws(()=>Shapes.analyze(permutations,lookup,{outputIndex:[0,0,0,-1]}),/out of bounds/);
+assert.throws(()=>Shapes.analyze(permutations,lookup,{outputIndex:[0,0,0,1.5]}),/out of bounds/);
 assert.deepEqual([...kinds].sort(),Shapes.kinds);
 assert.equal(Shapes.analyze(N('x','input'),{}),null);
 assert.throws(()=>Shapes.analyze(N('y','nd_reshape',{b:1,h:1,t:2,d:2}),{x:[2,3]}),/element count/);
@@ -54,6 +92,6 @@ for(const page of ['learn.html','capabilities.html']){
  if(page==='learn.html')assert.ok(scripts.indexOf('shape_index_rules.js')<scripts.indexOf('execution_ir.js'));
 }
 const html=read('learn.html');
-assert.ok(html.includes('id="shapeIndexInspector"')&&html.includes('ShapeRules.analyze(n,portShapes)'));
+assert.ok(html.includes('id="shapeIndexInspector"')&&html.includes('ShapeRules.analyze(n,portShapes,{outputIndex:coordinate})'));
 assert.ok(html.includes('反向梯度'));
 console.log('SHAPE_INDEX_CONTRACTS_PASS exact index lineage and forward/IR/static parity');
