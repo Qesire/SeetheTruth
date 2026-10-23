@@ -14,6 +14,7 @@ const Plan=isNode?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPl
 const StreamTorch=isNode?require("./torch_stream_lowering.js"):root.SeetheTruthStreamTorch;
 const Portable=isNode?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
 const Norm=isNode?require("./normalization_rules.js"):root.SeetheTruthNormalizationRules;
+const Shape=isNode?require("./shape_index_rules.js"):root.SeetheTruthShapeIndexRules;
 const SUPPORTED=new Set([
  ...StreamTorch.kinds,"input","parameter","nd_input","nd_parameter","deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
@@ -60,9 +61,11 @@ function compile(raw,options={}){
    if(!t||!t.values||!t.shape)throw Error("no numeric trace for "+id);
    const portable=Portable.emit(n,name=>src(id,name));
    const normalized=Norm.emit(n,"torch",name=>src(id,name));
+   const shapeExpr=Shape.emit(n,"torch",name=>src(id,name));
    let expr="";
    if(portable!==null)expr=portable;
    else if(normalized!==null)expr=normalized;
+   else if(shapeExpr!==null)expr=shapeExpr;
    else if(SOURCES.has(k)){
      const initializer='_tensor('+py(id)+','+py(JSON.stringify(t.values))+','+JSON.stringify(t.shape)+',overrides)';
      const trainable=TRAINABLE.has(k)&&!p.frozen;
@@ -121,13 +124,6 @@ function compile(raw,options={}){
    } else if(k==="audio_log_power"){
      expr='torch.log10(torch.clamp('+src(id,"x")+',min='+p.floor+'))';
    }
-   else if(k==="transpose2d")expr=src(id,"x")+'.T';
-   else if(k==="nd_permute")expr=src(id,"x")+'.permute('+[p.axis0,p.axis1,p.axis2,p.axis3].join(",")+')';
-   else if(k==="nd_reshape")expr=src(id,"x")+'.reshape('+[p.b,p.h,p.t,p.d].join(",")+')';
-   else if(k==="nd_expand4d")expr=src(id,"x")+'[None,None,:,:]';
-   else if(k==="nd_flatten")expr=src(id,"x")+'.reshape(-1,'+src(id,"x")+'.shape[-1])';
-   else if(k==="nd_reduce_sum")expr=src(id,"x")+'.sum(dim='+p.axis+',keepdim=True)';
-   else if(k==="nd_repeat_kv")expr=src(id,"x")+'.repeat_interleave('+p.queryHeads+'//'+src(id,"x")+'.shape[1],dim=1)';
    else if(k==="nd_cache_append")expr='torch.cat(('+src(id,"cache")+','+src(id,"segment")+'),dim=2)';
    else if(k==="nd_rope")expr='_rope('+src(id,"x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(k==="nd_causal_mask")expr='_causal('+src(id,"x")+','+p.queryStart+','+p.keyStart+')';
