@@ -21,3 +21,11 @@ This patch extracts the **core** from draft PR #49 into the current production f
 `python tests/browser_universal_microscope.py`: Chromium pointer navigation, real arithmetic breakdown, attention substeps, 5D axis selection, static fallback and mobile named-axis lessons. Desktop server and offline Android load the same JS/CSS.
 
 All existing graph, source, training, codegen and Android CI remain required. The wider issue #61 remains open for complete per-kind numerical microscope and independent Wan source-adapter promotion.
+
+## 2026-10-23 · Typed coordinates and native arithmetic upgrade
+
+Independent follow-up: registered pack `outputAxes` and `portAxes` now propagate as authenticated mathematical metadata into rank-2 to rank-5 tensor previews, output-coordinate readouts and source-index trace labels. For example, a time-concatenated video coordinate is displayed as `[B=0,T=2,H=1,W=0,C=1]`, with the corresponding **source** `T=0` inside the second slice rather than assuming the same index. Unregistered generic outputs remain explicitly positional.
+
+Original native `add` and `mul` now have validated per-coordinate arithmetic `y[i]=a[i]±b[i]` / `y[i]=a[i]×b[i]` for the actual executor's two-port same-shape semantics (the add contract uses addition, not subtraction). These are standalone pointwise proofs, never incorrectly presented as GEMM or source index copies. Altered outputs or claimed math operations fail the proof validation. Pack-provided final substep inputs must match the parent graph's shape, numeric values and named axes, and their output must match the parent output.
+
+The additional native proof and axis annotation do not imply unsupported operator gradients, backend export or real-checkpoint data. The execution is bounded Float64 teaching numerics. See `tests/microscope_named_axes_pointwise_contracts.js` and the real Chromium acceptance suite.
