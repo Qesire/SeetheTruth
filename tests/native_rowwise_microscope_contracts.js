@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const M=require('../compute_microscope.js'),L=require('../learning_lab.js'),C=require('../concept_flow.js');
 const graph={
+ schema:L.preset('ffn').schema,
  title:'Rowwise native arithmetic microscope',
  nodes:[
   {id:'x',kind:'input',x:10,y:50,params:{rows:3,width:4,seed:3}},
