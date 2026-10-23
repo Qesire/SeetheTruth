@@ -78,12 +78,42 @@ for(const [seed,T,C,H] of [[17,3,4,8],[29,1,2,3],[93,4,6,11],[120,2,9,5]]){
  assert.throws(()=>A.explainDot(t,4,-1,0),/token/);
  assert.throws(()=>A.explainDot(t,4,0,H),/channel/);
 }
+const Common=require('../compute_microscope.js');
+for(const [seed,T,C,H]of [[17,3,4,8],[29,1,2,3],[93,4,6,11],[120,2,9,5]]){
+ const source=A.trace({seed,tokens:T,dim:C,hidden:H});
+ const shared=Common.wan(source);
+ assert.equal(shared.evidenceTier,Common.TIERS.WAN);
+ assert.equal(shared.origin,'source_aligned_micro_numeric_engine');
+ assert.equal(Common.validate(shared),shared);
+ assert.equal(shared.steps.length,9);
+ assert.deepEqual(shared.steps.map(x=>x.id),A.STEPS.map(x=>x.id));
+ for(const idx of [4,6])for(let t=0;t<T;t++)for(let channel=0;channel<shared.steps[idx].out.shape[1];channel++){
+  const d=Common.dot(shared,shared.steps[idx].id,t,channel);
+  assert.equal(d.reconstructable,true);assert.ok(d.error<1e-9);
+ }
+ for(const [which,mutate,expected]of [
+  ['cross',d=>{d.steps[1].main.values[0]+=.33;},/cross contradicts/],
+  ['norm',d=>{d.steps[2].main.values[0]+=.33;},/LayerNorm contradicts/],
+  ['affine',d=>{d.steps[3].main.values[0]+=.33;},/FFN affine contradicts/],
+  ['gelu',d=>{d.steps[5].main.values[0]+=.33;},/GELU tanh contradicts/],
+  ['gate',d=>{d.steps[7].main.values[0]+=.33;},/e5 output gate contradicts/],
+  ['residual',d=>{d.steps[8].main.values[0]+=.33;},/final residual contradicts/],
+  ['condition',d=>{d.e[4][0]+=.33;},/e\[4\] contradicts/],
+  ['source',d=>{d.source.source='https://github.com/Wan-Video/Wan2.2/blob/fake/wan/modules/model.py';},/pinned Wan source\/config identity mismatch/],
+  ['claim',d=>{d.evidence='model_checkpoint_measured';},/Wan evidence label mismatch/]
+ ]){
+  const corrupt=structuredClone(source);mutate(corrupt);
+  assert.throws(()=>Common.wan(corrupt),expected,which+' must be refused');
+ }
+}
 const real=A.trace().real;
 assert.equal(real.params,141576704);assert.equal(real.flopsPerToken,283115520);
 const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'wan_ffn_lab.html'),'utf8');
 const js=fs.readFileSync(path.join(root,'wan_ffn_lab.js'),'utf8');new vm.Script(js);
 for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotBreakdown','dependencies','ablationPanel','ablateChannel','ablateToken','sourceCode','openSource','recompute','zeroGate','numerics'])assert.ok(html.includes('id="'+id+'"'),id);
-for(const file of ['wan_ffn_trace.js','wan_ffn_lab.js'])assert.ok(html.includes('src="'+file+'"'),file);
+for(const file of ['wan_ffn_trace.js','wan_ffn_lab.js','compute_microscope.js','compute_microscope_ui.js'])assert.ok(html.includes('src="'+file+'"'),file);
+assert.ok(html.includes('id="wanSharedMicroscope"'));
+assert.ok(js.includes('commonMicroscope.wan(d)')&&js.includes('sharedMicroscope.show(commonFrame,step.id)'));
 assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('wan_ffn_lab.html'));
 const allow=fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/);
 for(const f of ['wan_ffn_lab.html','wan_ffn_lab.js','wan_ffn_trace.js'])assert.ok(allow.includes(f),f+' not staged');
