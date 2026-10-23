@@ -103,7 +103,7 @@
   const op={
    id:node.id+':td',kind:'named_axis_transform',title:defs[kind].title,
    formula:defs[kind].formula,why:defs[kind].why+'。这里执行的正是积木注册引擎里的真实 T/D 张量操作。',
-   out,operands,...(indexMap?{indexMap}:{})
+   out,operands,outputIsParent:true,...(indexMap?{indexMap}:{})
   };
   return [op];
  }

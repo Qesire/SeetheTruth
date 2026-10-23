@@ -81,7 +81,7 @@
   }
   return [{id:node.id+':named_axes',kind:'named_axis_transform',title:kind==='semantic_video_source'?'实际生成 B,T,H,W,C':kind==='semantic_video_slice'?'沿 T 轴严格裁切':'按连线顺序拼接 T 轴',
     formula:defs[kind].formula,why:defs[kind].why+' 输出形状 '+sh.join('×')+'；真实内容来自 TensorIR / SemanticState。',
-    out,operands,...(indexMap?{indexMap}:{})}];
+    out,operands,outputIsParent:true,...(indexMap?{indexMap}:{})}];
  }
  const recipes=Object.freeze([{
   id:'extension_video_time_composition',

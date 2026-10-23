@@ -156,7 +156,7 @@ input[type="file"]{display:none}
 .lineage-node,.lineage-details{border:1px solid #335467;border-radius:7px;margin-top:6px;padding:7px;background:#0d2839}
 .lineage-node summary,.lineage-details summary{cursor:pointer;font-size:12px}
 .lineage-element{padding:5px;margin-top:5px;border-left:2px solid #4c958d;background:#122d3a;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace}
-</style><link rel="stylesheet" href="mobile_teaching.css"></head><body>
+</style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"></head><body>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
@@ -298,6 +298,7 @@ input[type="file"]{display:none}
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
   <section class="section" id="shapeIndexSection" aria-label="张量形状和索引的映射" hidden><div class="kicker">SHAPE & INDEX / 形状、坐标与梯度</div><div id="shapeIndexInspector" class="shape-index-detail"></div></section>
+  <section class="section" aria-label="可复用逐坐标计算显微镜"><div class="kicker">COMPUTE MICROSCOPE / 逐坐标计算核验</div><p class="hint">同一张自由计算图的原生/扩展算子共享证据合同；数值必须来自本次执行。逐坐标重建只适用于受支持的 GEMM 与精确索引变换。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
   <section class="section" id="graphLineageSection" aria-label="跨积木的逐元素计算溯源" hidden><div class="kicker">ELEMENT LINEAGE / 跨积木来源与梯度</div><div id="graphLineageInspector" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
@@ -358,6 +359,8 @@ input[type="file"]{display:none}
 <script src="execution_ir.js"></script>
 <script src="graph_session.js"></script>
 <script src="graph_learning_path.js"></script>
+<script src="compute_microscope.js"></script>
+<script src="compute_microscope_ui.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="paper_graph_rewrites.js"></script>
 <script src="model_trace.js"></script>
@@ -380,6 +383,25 @@ input[type="file"]{display:none}
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
 const LearningPath=window.SeetheTruthGraphLearningPath;
+const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
+const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicroscope"),id=>{
+ if(!run)return;
+ const idx=run.steps.findIndex(x=>x.id===id);
+ if(idx>=0){selected=id;step=idx;render();}
+});
+let microscopeCachedRun=null,microscopeCachedGraph=null,microscopeCachedFrame=null,microscopeCacheError=null;
+function syncMicroscope(){
+ if(!run){microscopeCachedFrame=null;microscopeCachedRun=null;microscopeCachedGraph=null;microscopeView.clear();return;}
+ const current=runGraph||graph;
+ if(microscopeCachedRun!==run||microscopeCachedGraph!==current){
+  try{microscopeCachedFrame=Microscope.learning(current,run,L);microscopeCacheError=null;}
+  catch(error){microscopeCachedFrame=null;microscopeCacheError=error.message;}
+  microscopeCachedRun=run;microscopeCachedGraph=current;
+ }
+ if(microscopeCachedFrame)microscopeView.show(microscopeCachedFrame,selected);
+ else microscopeView.clear('当前图无法构造可验证的逐坐标轨迹：'+microscopeCacheError);
+}
+window.SeetheTruthMicroscopeWorkbench={get evidence(){return microscopeCachedFrame?.evidenceTier||null;},get visibleNode(){return microscopeView.selected;},get stageCount(){return microscopeCachedFrame?.steps.length||0;}};
 const ElementLineage=window.SeetheTruthElementLineage;
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
@@ -1121,7 +1143,7 @@ function render(){
  $("#courseProgress").textContent=activeComposite?
    "当前分解层级："+A.get(activeComposite).title+" · "+(run?"已推演 "+run.steps.length+" 个基础积木":"点击阶段展开；或运行原理推演"):
    run?(step===run.steps.length-1?"✓ 本次计算推演已完成。":"当前已展示第 "+(step+1)+" 步。"):"点击运行，逐步检查形状与数学作用。";
- renderBlocks();renderReadiness();renderLearningPath();inspect();
+ renderBlocks();renderReadiness();renderLearningPath();syncMicroscope();inspect();
 }
 $("#learningPathPanel").addEventListener("toggle",()=>renderLearningPath());
 $("#learningPathNumeric").onclick=()=>{
