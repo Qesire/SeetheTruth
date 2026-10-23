@@ -173,7 +173,9 @@ function perKind(k){
  // Tagged logical state is deliberately not a tensor; its real typed graph
  // contract is tested end-to-end in stream_graph_blocks_contracts.js.
  const StreamGraph=require('../stream_graph_blocks.js');
- for(const k of L.KINDS)if(!StreamGraph.isKind(k))perKind(k);
+ const Extensions=require('../block_extension_registry.js');
+ for(const k of L.KINDS)if(!StreamGraph.isKind(k)&&!Extensions.isKind(k))perKind(k);
+ for(const k of Extensions.kinds)assert.ok(L.defs[k]&&Extensions.defs[k],k+' must be separately tested by typed pack contracts');
  for(const k of StreamGraph.kinds)assert.ok(L.defs[k]&&StreamGraph.defs[k]);
 assert.deepEqual(C.analyze({id:'test',kind:'linear',params:{out:7}},{x:[2048,4096]}).shape,[2048,7],
  'concept inference on abstract large dimensions must not allocate the actual matrix');

@@ -13,6 +13,7 @@
   const TensorIR=(typeof module==="object"&&module.exports)?require("./tensor_ir.js"):globalThis.SeetheTruthTensorIR;
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
+  const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
   const MAX_NODES=80,MAX_EDGES=176;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
@@ -66,8 +67,10 @@
       caution:"这里只计算前向 Loss；梯度、反向传播和优化器尚未实现。",
       lesson:"Loss 标量并不等于完成一次训练；下一步还需导数与参数更新。"},
     ...BlockCatalog.defs,
-    ...StreamGraph.defs
+    ...StreamGraph.defs,
+    ...Extensions.defs
   });
+  for(const kind of Extensions.kinds)if(Object.hasOwn(BlockCatalog.defs,kind)||Object.hasOwn(StreamGraph.defs,kind)||["input","linear","rmsnorm","silu","add","mul","matmul","softmax","attention","gqa","mse"].includes(kind))throw Error("extension overrides builtin kind "+kind);
   const KINDS=Object.keys(defs);
   function fail(message,node){const e=new Error(message);e.nodeId=node||null;throw e;}
   function finite(v){return typeof v==="number"&&Number.isFinite(v);}
@@ -110,6 +113,7 @@
       if(type==="rmsnorm"&&(!finite(params.epsilon)||params.epsilon<=0||params.epsilon>1))fail("epsilon 必须在 (0,1] 内",n.id);
       if(Object.hasOwn(BlockCatalog.defs,type)){try{BlockCatalog.validate(type,params)}catch(err){fail(err.message,n.id);}}
         if(StreamGraph.isKind(type)){try{StreamGraph.validate(type,params)}catch(err){fail(err.message,n.id);}}
+      if(Extensions.isKind(type)){try{Extensions.validate(type,params)}catch(err){fail(err.message,n.id);}}
       ids.add(n.id);nodes.push({id:n.id,kind:n.kind,x:n.x,y:n.y,params});
     }
     const targetPorts=new Set(),edges=[];
@@ -180,7 +184,8 @@
     return a.map(row=>{const max=Math.max(...row),exp=row.map(x=>Math.exp(x-max));
       const sum=exp.reduce((x,y)=>x+y,0);return exp.map(v=>v/sum);});
   }
-  function calculate(n,inputs){
+  function calculate(n,inputs,records){
+    if(Extensions.isKind(n.kind))return Extensions.execute(n,inputs,records);
     if(n.kind.startsWith("nd_")){
       const out=BlockCatalog.execute(n,inputs);
       const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
@@ -266,15 +271,18 @@
       }
       let inferred,value;
       try{
-        inferred=StreamGraph.infer(n,
+        inferred=Extensions.isKind(n.kind)?Extensions.infer(n,
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
+          Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.axes||null]))):StreamGraph.infer(n,
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.shape])),
           Object.fromEntries(Object.entries(records).map(([k,r])=>[k,r.logicalState||null])));
-        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins);
+        value=StreamGraph.isKind(n.kind)?StreamGraph.run(n,records):calculate(n,ins,records);
       }catch(err){fail(err.message,n.id);}
       if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
       out.set(n.id,value);
       const {streamState,...publicValue}=value;
-      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,shape(v)])),
+      const extensionSubsteps=Extensions.isKind(n.kind)?Extensions.substeps(n,ins,value):null;
+      steps.push({id:n.id,kind:n.kind,...(extensionSubsteps?{extensionSubsteps}:{}),inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,Extensions.tensorShape(v)])),
         ...publicValue,formula:defs[n.kind].formula,why:defs[n.kind].why,
         training:"仅前向微型数值解释；尚未执行反向传播与权重更新。"});
     }
@@ -290,6 +298,8 @@
   }
   function node(id,kind,x,y,params={}){return{id,kind,x,y,params};}
   function preset(name){
+    const recipe=Extensions.recipe(name);
+    if(recipe)return validateGraph({schema:SCHEMA,...recipe});
     if(name==="stream_state_branches"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const nodes=[

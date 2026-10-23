@@ -53,6 +53,7 @@ jobs:
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js
+          node tests/unified_pack_registry_contracts.js
           node tests/graph_learning_path_contracts.js
           node tests/studio_graph_session_contracts.js
           node tests/training_session_contracts.js
