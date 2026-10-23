@@ -21,6 +21,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Real-browser UI behavior and adversarial imports
         run: python tests/browser_acceptance.py
+      - name: Verify static shape/index pedagogy in real Chromium
+        run: python tests/browser_shape_index.py
       - name: Verify node-level training inspector in real Chromium
         run: python tests/browser_node_timeline.py
       - name: Screenshot-backed KV Cache visual acceptance
