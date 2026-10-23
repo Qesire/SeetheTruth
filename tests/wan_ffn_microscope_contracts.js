@@ -99,6 +99,10 @@ for(const [seed,T,C,H]of [[17,3,4,8],[29,1,2,3],[93,4,6,11],[120,2,9,5]]){
   ['gate',d=>{d.steps[7].main.values[0]+=.33;},/e5 output gate contradicts/],
   ['residual',d=>{d.steps[8].main.values[0]+=.33;},/final residual contradicts/],
   ['condition',d=>{d.e[4][0]+=.33;},/e\[4\] contradicts/],
+  ['forged_GELU_input',d=>{d.steps[5].aux.preActivation.values[0]+=.33;},/Wan auxiliary 5.preActivation contradicts/],
+  ['forged_gate_input',d=>{d.steps[7].aux.gate.values[0]+=.33;},/Wan auxiliary 7.gate contradicts/],
+  ['forged_w1',d=>{d.steps[4].aux.weights.values[0]+=.33;},/Wan auxiliary 4.weights contradicts/],
+  ['forged_cross_delta',d=>{d.steps[1].aux.crossDelta.values[0]+=.33;},/Wan auxiliary 1.crossDelta contradicts/],
   ['source',d=>{d.source.source='https://github.com/Wan-Video/Wan2.2/blob/fake/wan/modules/model.py';},/pinned Wan source\/config identity mismatch/],
   ['claim',d=>{d.evidence='model_checkpoint_measured';},/Wan evidence label mismatch/]
  ]){
