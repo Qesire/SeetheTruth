@@ -17,6 +17,24 @@ function staticTensor(shape){
  must(Array.isArray(shape)&&shape.length>=1&&shape.length<=5&&shape.every(x=>Number.isSafeInteger(x)&&x>0),'invalid symbolic shape');
  return {shape:shape.slice(),values:null};
 }
+function tagAxes(tensor,axes){
+ if(axes==null)return tensor;
+ must(Array.isArray(axes)&&axes.length===tensor.shape.length&&new Set(axes).size===axes.length&&
+  axes.every(x=>typeof x==='string'&&/^[A-Za-z][A-Za-z0-9_]{0,15}$/.test(x)),
+  'invalid named axis metadata');
+ return {...tensor,axes:axes.slice()};
+}
+function checkAxes(tensor){
+ if(tensor.axes!==undefined)tagAxes(tensor,tensor.axes);
+}
+function flatCoords(index,shape){
+ const out=Array(shape.length);
+ for(let i=shape.length-1;i>=0;i--){out[i]=index%shape[i];index=Math.floor(index/shape[i]);}
+ return out;
+}
+function coordinateLabel(tensor,coords){
+ return '['+coords.map((value,i)=>(tensor.axes?tensor.axes[i]+'=':'')+value).join(',')+']';
+}
 function fromNested(values){
  must(Array.isArray(values)&&values.length>0,'empty tensor');
  const shape=[];let cursor=values;
@@ -46,6 +64,20 @@ function verifyDot(s){
   must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
  }
 }
+function verifyElementwise(s){
+ if(s.elementwise===undefined)return;
+ must(s.out.values!==null&&s.out.shape.length===2&&
+  s.elementwise&&['add','mul'].includes(s.elementwise.operator),
+  'unsupported numerical elementwise reconstruction');
+ const a=s.operands.a,b=s.operands.b;
+ must(a&&b&&a.values&&b.values&&
+  a.shape.join(',')===s.out.shape.join(',')&&b.shape.join(',')===s.out.shape.join(','),
+  'elementwise operands and output shapes disagree');
+ for(let i=0;i<s.out.values.length;i++){
+  const expected=s.elementwise.operator==='add'?a.values[i]+b.values[i]:a.values[i]*b.values[i];
+  must(expected===s.out.values[i],'elementwise arithmetic contradicts displayed output');
+ }
+}
 function verifyIndexMap(s){
  if(s.indexMap===undefined)return;
  must(s.out.values!==null&&Array.isArray(s.indexMap)&&s.indexMap.length===s.out.values.length,'invalid tensor index source map');
@@ -71,9 +103,10 @@ function validate(frame){
   must(s.out&&Array.isArray(s.out.shape),'missing output tensor');
   if(s.out.values!==null){numericTensor(s.out.shape,s.out.values);hasNumeric=true;}
   else staticTensor(s.out.shape);
+  checkAxes(s.out);
   must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
-  for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);}
-  verifyDot(s);verifyIndexMap(s);
+  for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);checkAxes(x);}
+  verifyDot(s);verifyIndexMap(s);verifyElementwise(s);
   if(s.substeps!==undefined){
    must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
    const nestedIds=new Set();
@@ -81,12 +114,13 @@ function validate(frame){
     must(child&&typeof child.id==='string'&&child.id.startsWith(s.id+':')&&/^[A-Za-z0-9_:\-]{1,80}$/.test(child.id)&&!ids.has(child.id)&&!nestedIds.has(child.id),'invalid or duplicate substep');
     must(typeof child.title==='string'&&child.title&&typeof child.kind==='string'&&typeof child.formula==='string'&&typeof child.why==='string','substep missing explanation');
     must(child.out&&child.out.values!==null,'nested substep needs measured teaching numerical data');
-    numericTensor(child.out.shape,child.out.values);
+    numericTensor(child.out.shape,child.out.values);checkAxes(child.out);
     must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
-    for(const tensor of Object.values(child.operands))numericTensor(tensor.shape,tensor.values);
-    verifyDot(child);verifyIndexMap(child);
+    for(const tensor of Object.values(child.operands)){numericTensor(tensor.shape,tensor.values);checkAxes(tensor);}
+    verifyDot(child);verifyIndexMap(child);verifyElementwise(child);
     if(child.outputIsParent===true){
      must(s.out.values!==null&&child.out.shape.join(',')===s.out.shape.join(',')&&
+      JSON.stringify(child.out.axes||null)===JSON.stringify(s.out.axes||null)&&
       child.out.values.length===s.out.values.length&&
       child.out.values.every((value,i)=>value===s.out.values[i]),
       'declared final substep contradicts parent output');
@@ -111,19 +145,28 @@ function dot(frame,stepId,row,col,prefix=[]){
  must(Number.isInteger(row)&&row>=0&&row<T&&Number.isInteger(col)&&col>=0&&col<H,'invalid coordinate');
  let index=0;const coord=[...leading,...(dimensions===1?[]:[row]),col];
  for(let i=0;i<dimensions;i++)index=index*shape[i]+coord[i];
- const observed=s.out.values[index];
+ const observed=s.out.values[index],coordinate=coordinateLabel(s.out,coord);
  if(s.indexMap){
   const entry=s.indexMap[index],source=s.operands[entry.port].values[entry.index];
-  return {nodeId:s.id,row,col,prefix:leading,value:observed,
-   formula:'output['+coord.join(',')+'] = '+entry.port+'[flat '+entry.index+']',
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,
+   sourceCoordinateLabel:coordinateLabel(s.operands[entry.port],flatCoords(entry.index,s.operands[entry.port].shape)),
+   formula:'output'+coordinate+' = '+entry.port+'[flat '+entry.index+']',
    reconstructable:true,mapped:true,sourcePort:entry.port,sourceIndex:entry.index,
    recomputed:source,error:Math.abs(observed-source),terms:[]};
  }
- if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,formula:s.formula,reconstructable:false};
+ if(s.elementwise){
+  const a=s.operands.a.values[index],b=s.operands.b.values[index];
+  const recomputed=s.elementwise.operator==='add'?a+b:a*b;
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,
+   formula:s.elementwise.operator==='add'?'out=a+b':'out=a×b',
+   elementwise:true,operation:s.elementwise.operator,operands:[{port:'a',value:a},{port:'b',value:b}],
+   reconstructable:true,recomputed,error:Math.abs(observed-recomputed)};
+ }
+ if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,formula:s.formula,reconstructable:false};
  const {input,weights,bias}=s.dot,D=input.shape[1];
  const terms=Array.from({length:D},(_,k)=>({k,input:input.values[row*D+k],weight:weights.values[col*D+k],product:input.values[row*D+k]*weights.values[col*D+k]}));
  const recomputed=bias.values[col]+terms.reduce((a,b)=>a+b.product,0);
- return {nodeId:s.id,row,col,value:observed,bias:bias.values[col],terms,recomputed,error:Math.abs(observed-recomputed),formula:'bias[out] + Σ input[token,k] × W[out,k]',reconstructable:true};
+ return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,bias:bias.values[col],terms,recomputed,error:Math.abs(observed-recomputed),formula:'bias[out] + Σ input[token,k] × W[out,k]',reconstructable:true};
 }
 function learning(graph,run,catalog){
  must(graph&&Array.isArray(graph.nodes)&&Array.isArray(graph.edges),'missing graph');
@@ -143,6 +186,10 @@ function learning(graph,run,catalog){
    out=fromNested(r.values);
    must(r.shape.join(',')===out.shape.join(','),'trace tensor shape contradicts row data');
   }
+  const expectedAxes=def.outputAxes||null;
+  must(r.axes==null||JSON.stringify(r.axes)===JSON.stringify(expectedAxes),
+   'runtime named axes contradict registered contract '+n.kind);
+  out=tagAxes(out,expectedAxes);
   const operands={},kind=n.kind;let specification=null;
   if(!isConcept){
    for(const dep of dependencies){
@@ -178,9 +225,18 @@ function learning(graph,run,catalog){
     {id:r.id+':weighted_value',kind:'matmul',title:'Probabilities × V · Context',formula:'out[t,c] = Σ_j P[t,j] V[j,c]',why:'所有 key/value token 的值按概率汇聚到对应 Query，形成 Attention 的最终输出。',out,operands:{probabilities,v},dot:dotSpec(probabilities,valueWeights,zeroV)}
    ];
   }
-  if(!isConcept&&r.extensionSubsteps){must(!substeps,'node has ambiguous trace providers');substeps=r.extensionSubsteps;}
+  if(!isConcept&&r.extensionSubsteps){
+   must(!substeps,'node has ambiguous trace providers');
+   substeps=r.extensionSubsteps.map(child=>{
+    const operandTags=Object.fromEntries(Object.entries(child.operands||{}).map(([port,tensor])=>[
+     port,tagAxes(tensor,def.portAxes?.[port]||null)]));
+    return {...child,operands:operandTags,
+     out:child.outputIsParent?tagAxes(child.out,expectedAxes):child.out};
+   });
+  }
   const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
-   sourceLines:null,dependencies,out,operands,dot:specification,substeps,
+   sourceLines:null,dependencies,out,operands,dot:specification,
+   ...(numeric&&['add','mul'].includes(kind)?{elementwise:{operator:kind}}:{}),substeps,
    note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};
   byId.set(s.id,s);return s;
  });
