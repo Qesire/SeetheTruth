@@ -83,5 +83,23 @@
     formula:defs[kind].formula,why:defs[kind].why+' 输出形状 '+sh.join('×')+'；真实内容来自 TensorIR / SemanticState。',
     out,operands,...(indexMap?{indexMap}:{})}];
  }
- return Object.freeze({name:'semantic_video',defs,validate:valid,infer,execute,trace});
+ const recipes=Object.freeze([{
+  id:'extension_video_time_composition',
+  title:'模块包 · 五维视频时序切片与重组',
+  summary:'独立 B/T/H/W/C 视频积木：以真实五维 Float64 数值验证时间切分与有序拼接',
+  graph:{
+   title:'视频时序积木 · 原始视频 → 两段切片 → 有序重组',
+   nodes:[
+    {id:'video',kind:'semantic_video_source',x:20,y:170,params:{frames:3,seed:1}},
+    {id:'early',kind:'semantic_video_slice',x:310,y:65,params:{start:0,length:2}},
+    {id:'late',kind:'semantic_video_slice',x:310,y:320,params:{start:2,length:1}},
+    {id:'join',kind:'semantic_video_concat',x:650,y:170,params:{}}
+   ],
+   edges:[
+    {from:'video',to:'early',port:'x'},{from:'video',to:'late',port:'x'},
+    {from:'early',to:'join',port:'a'},{from:'late',to:'join',port:'b'}
+   ]
+  }
+ }]);
+ return Object.freeze({name:'semantic_video',defs,validate:valid,infer,execute,trace,recipes});
 });
