@@ -17,7 +17,7 @@ const coords=(flat,shape)=>{const result=Array(shape.length);for(let i=shape.len
 const sample=shape=>shape.map(n=>Math.min(1,n-1));
 const shapeText=shape=>"["+shape.join(" × ")+"]";
 const record=(port,shape,index)=>Object.freeze({port,shape:Object.freeze([...shape]),index:Object.freeze([...index])});
-function analyze(node,inputs){
+function analyze(node,inputs,options={}){
  if(!node||typeof node.kind!=="string"||!inputs||typeof inputs!=="object")throw Error("invalid shape rule request");
  const kind=node.kind,p=node.params||{};
  if(!supported.has(kind))return null;
@@ -59,7 +59,11 @@ function analyze(node,inputs){
   rule="从末轴对齐，仅长度为一的轴允许复用元素";
   gradientRule="对每个输入沿它被广播的轴汇总梯度";
  }
- const outIndex=sample(outputShape);
+ const selected=options.outputIndex;
+ if(selected!==undefined&&(!Array.isArray(selected)||selected.length!==outputShape.length||
+   selected.some((v,i)=>!Number.isSafeInteger(v)||v<0||v>=outputShape[i])))
+  throw Error("output index out of bounds for "+kind);
+ const outIndex=selected?[...selected]:sample(outputShape);
  if(kind==="nd_broadcast_add"){
   for(const port of ["a","b"]){
    const sh=get(port);
@@ -79,10 +83,22 @@ function analyze(node,inputs){
   else if(kind==="nd_repeat_kv")index=[outIndex[0],Math.floor(outIndex[1]/(p.queryHeads/x[1])),outIndex[2],outIndex[3]];
   sourceIndices.push(record("x",x,index));
  }
+ const reverseContributions=sourceIndices.map(source=>{
+  const ranges=outputShape.map((size,axis)=>[outIndex[axis],outIndex[axis]]);
+  if(kind==="nd_broadcast_add"){
+   source.shape.forEach((size,axis)=>{if(size===1&&outputShape[axis]>1)ranges[axis]=[0,outputShape[axis]-1];});
+  }else if(kind==="nd_repeat_kv"){
+   const factor=p.queryHeads/x[1],head=source.index[1];
+   ranges[1]=[head*factor,(head+1)*factor-1];
+  }
+  const outputCount=ranges.reduce((count,[start,end])=>count*(end-start+1),1);
+  return Object.freeze({port:source.port,inputIndex:source.index,
+   outputRanges:Object.freeze(ranges.map(r=>Object.freeze(r))),outputCount});
+ });
  return Object.freeze({schema:"seethetruth-shape-index-v1",kind,
   inputShapes:Object.freeze(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,Object.freeze([...v])]))),
   outputShape:Object.freeze(outputShape),outputIndex:Object.freeze(outIndex),
-  sourceIndices:Object.freeze(sourceIndices),rule,gradientRule,
+  sourceIndices:Object.freeze(sourceIndices),reverseContributions:Object.freeze(reverseContributions),rule,gradientRule,
   outputElements:prod(outputShape),indexExplanation:shapeText(outputShape)+" 输出索引 "+outIndex.join(",")+
    " 对应输入 "+sourceIndices.map(s=>s.port+"["+s.index.join(",")+"]").join(" + ")});
 }
