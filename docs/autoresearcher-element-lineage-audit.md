@@ -12,7 +12,7 @@ Relevant computation: `learning_lab.js` validates and orders the graph and produ
 
 ## Reconstructed mathematics
 
-For an elementwise activation `y_i=f(x_i)`, the only input dependency is coordinate `i` with local factor `f'(x_i)` from the *same* activation formula used in the runnable teaching stack. In structural mode the dependency is still exact, but the local derivative is unknown until a numeric input is supplied.
+For an elementwise activation `y_i=f(x_i)`, the only input dependency is coordinate `i` with local factor `f'(x_i)` from the *same* activation formula used in the runnable teaching stack. In structural mode the dependency is still exact, but the local derivative is unknown until a numeric input is supplied. At nondifferentiable kinks (e.g. Leaky ReLU at zero, HardSwish at ±3 and ELU with α≠1 at zero), the scalar library supplies an explicit branch-gradient convention, not a mathematically unique derivative.
 
 For a last-axis row `x ∈ R^D`, define `r = sqrt(D^{-1} Σ_k x_k² + ε)`. The complete RMSNorm / QK Norm Jacobian is
 
