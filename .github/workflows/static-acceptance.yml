@@ -29,6 +29,16 @@ jobs:
         run: python tests/browser_block_packs.py
       - name: Verify common 2D–5D arithmetic microscope in real Chromium
         run: python tests/browser_universal_microscope.py
+      - name: Verify official-source Wan2.2 FFN in the shared Chromium microscope
+        run: python tests/browser_wan_ffn.py
+      - name: Archive Wan official-source FFN desktop/phone coordinate proofs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-wan-ffn-shared-microscope
+          path: wan_ffn_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Archive universal microscope desktop and mobile evidence
         if: always()
         uses: actions/upload-artifact@v4
