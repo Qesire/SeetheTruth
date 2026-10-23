@@ -606,7 +606,7 @@ function drawWires(){
 function matrixHTML(matrix,label){
  const m=matrix;if(!Array.isArray(m)||!m.length)return "";
  if(Array.isArray(m[0])&&Array.isArray(m[0][0])){
-   const dims=window.SeetheTruthND.shape(m),axes=dims.slice(0,-2);
+   const dims=window.SeetheTruthBlockExtensions.tensorShape(m),axes=dims.slice(0,-2);
    const menus=axes.map((count,i)=>'<label class="study-mode-label">axis '+i+
       ' <select data-nd-slice="'+i+'" aria-label="四维张量切片 axis '+i+'">'+
       Array.from({length:count},(_,j)=>'<option value="'+j+'">'+j+' / '+(count-1)+'</option>').join('')+
@@ -889,6 +889,8 @@ function inspect(){
      $("#matrix .nd-plane").innerHTML=matrixHTML(view,"轴切片 "+values.join("/"));
    });
    $("#intermediates").innerHTML=active?.internals?Object.entries(active.internals).map(([key,val])=>{
+     if(!val||!Array.isArray(val.shape)||!Array.isArray(val.values))
+       return '<details data-tensor-stage="'+esc(key)+'"><summary>'+esc(key)+' · 算子元数据</summary><pre class="hint" style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(val))+'</pre></details>';
      const axes=Array.isArray(val.axes)?' [ '+val.axes.map((axis,i)=>axis+'='+val.shape[i]).join(' · ')+' ]':'';
      const options=val.tensor&&val.tensor.shape.length===4&&val.tensor.shape[1]>1?
        '<label class="param">Head 轴切片：<select data-stage="'+esc(key)+'">'+
