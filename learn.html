@@ -712,7 +712,8 @@ function renderElementLineage(selectedNode){
    (e.localDerivative!==null?' · 局部导数 '+display(e.localDerivative):'')+'</div>').join("");
   const sources=[...new Set(shown.vertices.filter(v=>v.status==="source").map(v=>v.id))];
   const summaryWithSources=summary+'<div class="hint">源节点：'+
-    (sources.length?sources.map(id=>'<span class="lineage-source-name">'+esc(id)+'</span>').join('、'):'尚无可追溯的源节点')+'</div>';
+    (sources.length?sources.map(id=>'<span class="lineage-source-name">'+esc(id)+'</span>').join('、'):'尚无可追溯的源节点')+'</div>'+
+    '<div class="hint">经过积木：'+[...ids.keys()].map(id=>esc(id)).join('、')+'</div>';
   detail=summaryWithSources+'<details class="lineage-details"><summary>逐层元素来源（按积木汇总）</summary>'+
    details+'</details><details class="lineage-details"><summary>逐元素依赖边示例（前 32 条）</summary>'+
    transitions+'</details><p class="hint">灵敏度为所选一个输出元素相对于上游元素的导数；多路径贡献自动求和。未求值不等于零。</p>';
