@@ -4,7 +4,8 @@
 const CORE=typeof module==='object'&&module.exports?require('./compute_microscope.js'):root.SeetheTruthComputeMicroscope;
 function el(tag,text,cls){const a=document.createElement(tag);if(text!==undefined)a.textContent=String(text);if(cls)a.className=cls;return a;}
 function mini(t,label,click,selected){
- const wrapper=el('div',undefined,'cmp-mini'),heading=el('div',label+' · ['+t.shape.join('×')+']','cmp-label');wrapper.append(heading);
+ const axes=t.axes||null;
+ const wrapper=el('div',undefined,'cmp-mini'),heading=el('div',label+' · ['+t.shape.join('×')+']'+(axes?' · '+axes.map((name,i)=>name+'='+t.shape[i]).join(' · '):''),'cmp-label');wrapper.append(heading);
  if(t.values===null){wrapper.append(el('p','静态形状推断：无数值矩阵。','cmp-hint'));return wrapper;}
  const shape=t.shape,rank=shape.length,R=rank===1?1:shape[rank-2],C=shape[rank-1];
  const prefix=Array.from({length:Math.max(0,rank-2)},(_,i)=>selected?.prefix?.[i]??0);
@@ -16,7 +17,7 @@ function mini(t,label,click,selected){
  if(prefix.length){
   const controls=el('div',undefined,'cmp-axes');
   for(let axis=0;axis<prefix.length;axis++){
-   const label=el('label','Axis '+axis+' · ','cmp-axis'),sel=el('select');sel.setAttribute('aria-label',label.textContent+' index');
+   const label=el('label',(axes?axes[axis]:'Axis '+axis)+' · ','cmp-axis'),sel=el('select');sel.setAttribute('aria-label',label.textContent+' index');
    for(let index=0;index<shape[axis];index++){const option=el('option',index);option.value=index;sel.append(option);}
    sel.value=String(prefix[axis]);sel.addEventListener('change',()=>updatePrefix(axis,Number(sel.value)));label.append(sel);controls.append(label);
   }
@@ -29,8 +30,9 @@ function mini(t,label,click,selected){
  for(let i=0;i<Math.min(R,20);i++)for(let j=0;j<Math.min(C,24);j++){
   const v=t.values[offset+i*C+j],b=el('button',Number(v).toPrecision(3),'cmp-cell');
   b.type='button';b.style.background='rgba('+(v>=0?'41,145,134,':'178,108,92,')+(.17+.69*Math.abs(v)/peak)+')';
-  b.title='['+[...prefix,...(rank===1?[]:[i]),j].join(',')+'] '+v.toPrecision(15);
-  b.setAttribute('aria-label',label+' index '+[...prefix,...(rank===1?[]:[i]),j].join(',')+' = '+v.toPrecision(9));
+  const coords=[...prefix,...(rank===1?[]:[i]),j],coordLabel='['+coords.map((value,axis)=>(axes?axes[axis]+'=':'')+value).join(',')+']';
+  b.title=coordLabel+' '+v.toPrecision(15);
+  b.setAttribute('aria-label',label+' index '+coordLabel+' = '+v.toPrecision(9));
   if(selected&&selected.row===i&&selected.col===j)b.classList.add('cmp-selected');
   if(click)b.addEventListener('click',()=>click(i,j,prefix));
   else b.disabled=true;
@@ -74,7 +76,7 @@ function mount(rootElement,onSelect){
    stages.append(steps);rootElement.append(stages);
   }
   const meta=el('div',undefined,'cmp-meta');
-  meta.append(el('strong',s.title+' · '+s.kind),el('span','Output '+s.out.shape.join(' × ')));
+  meta.append(el('strong',s.title+' · '+s.kind),el('span','Output '+s.out.shape.join(' × ')+(s.out.axes?' · '+s.out.axes.join(' / '):'')));
   rootElement.append(meta);
   const operands=el('div',undefined,'cmp-deps');
   operands.append(el('div','实际依赖 / DATAFLOW EDGES','cmp-label'));
@@ -94,12 +96,13 @@ function mount(rootElement,onSelect){
   if(s.out.values!==null){
    const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape.length===1?0:s.out.shape[s.out.shape.length-2]-1),Math.min(col,s.out.shape[s.out.shape.length-1]-1),prefix);
    const box=el('div',undefined,'cmp-breakdown');
-   box.append(el('div','坐标 ['+detail.row+','+detail.col+'] = '+detail.value.toPrecision(12),'cmp-label'));
+   box.append(el('div','坐标 '+(detail.coordinateLabel||'['+detail.row+','+detail.col+']')+' = '+detail.value.toPrecision(12),'cmp-label'));
    box.append(el('pre',detail.formula,'cmp-formula'));
    if(detail.reconstructable){
     box.append(el('p','逐项重建值 '+detail.recomputed.toPrecision(12)+' · 误差 '+detail.error.toExponential(2),'cmp-hint'));
-    if(detail.mapped)box.append(el('p','精确来源：'+detail.sourcePort+'[flat '+detail.sourceIndex+'] → 当前输出；这是数据索引/搬运，不是矩阵乘法。','cmp-hint'));
-    if(!detail.mapped){
+    if(detail.mapped)box.append(el('p','精确来源：'+detail.sourcePort+' '+detail.sourceCoordinateLabel+' [flat '+detail.sourceIndex+'] → 当前输出；这是数据索引/搬运，不是矩阵乘法。','cmp-hint'));
+    if(detail.elementwise)box.append(el('p','逐坐标原生运算：'+detail.operands.map(x=>x.port+'='+Number(x.value).toPrecision(9)).join('，')+'；'+(detail.operation==='add'?'加法':'乘法')+' → '+detail.recomputed.toPrecision(12),'cmp-hint'));
+    if(!detail.mapped&&!detail.elementwise){
     const table=el('table',undefined,'cmp-terms'),thead=el('tr');
     for(const head of ['输入通道 k','x[k]','W[out,k]','乘积'])thead.append(el('th',head));
     table.append(thead);
