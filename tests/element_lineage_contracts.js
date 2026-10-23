@@ -84,6 +84,9 @@ assert.ok(read('atlas_server.py').includes('"/element_lineage.js":"element_linea
 const html=read('learn.html');
 const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(x=>x[1]);
 assert.ok(scripts.indexOf('element_lineage.js')>scripts.indexOf('shape_index_rules.js'));
+assert.ok(scripts.indexOf('element_lineage.js')>scripts.indexOf('graph_readiness.js'));
+assert.ok(scripts.indexOf('element_lineage.js')>scripts.indexOf('nd_tensor.js'));
+
 assert.ok(scripts.indexOf('element_lineage.js')<scripts.indexOf('training_session.js'));
 assert.ok(html.includes('id="graphLineageSection"')&&html.includes('ElementLineage.inspect(graph,'));
 assert.ok(html.includes('id="traceGraphElement"'));
