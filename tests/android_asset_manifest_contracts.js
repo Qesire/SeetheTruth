@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const pages=["teaching.html","android_teaching.html","learn.html","tradeoffs.html","paper_lab.html","deepinfer_worker_lab.html","deepinfer_kv_lifecycle_lab.html","deepinfer_scheduler_lab.html","deepinfer_prefill_lab.html","cache.html","training.html","micro_training.html","capabilities.html","semantic_state.html"];
+const pages=["teaching.html","android_teaching.html","learn.html","tradeoffs.html","paper_lab.html","deepinfer_worker_lab.html","deepinfer_kv_lifecycle_lab.html","deepinfer_scheduler_lab.html","deepinfer_prefill_lab.html","cache.html","training.html","micro_training.html","capabilities.html","semantic_state.html","wan_ffn_lab.html"];
 const allow=read('android/teaching-assets.txt').split(/\r?\n/).map(s=>s.trim()).filter(s=>s&&!s.startsWith('#'));
 assert.equal(new Set(allow).size,allow.length,'duplicate entries');
 const set=new Set(allow);
