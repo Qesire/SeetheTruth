@@ -1,0 +1,72 @@
+"""A real Chromium proof that the free-form workbench shares one 2D–5D numerical microscope."""
+import sys,threading,unittest
+from pathlib import Path
+from http.server import ThreadingHTTPServer
+from playwright.sync_api import sync_playwright
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from atlas_server import Handler
+OUT=Path('microscope_screenshots')
+class MicroscopeBrowser(unittest.TestCase):
+ @classmethod
+ def setUpClass(cls):
+  OUT.mkdir(parents=True,exist_ok=True)
+  cls.server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+  threading.Thread(target=cls.server.serve_forever,daemon=True).start()
+  cls.pw=sync_playwright().start()
+  cls.browser=cls.pw.chromium.launch(headless=True,args=['--no-sandbox'])
+  cls.base=f'http://127.0.0.1:{cls.server.server_port}/learn.html'
+ @classmethod
+ def tearDownClass(cls):
+  cls.browser.close();cls.pw.stop();cls.server.shutdown();cls.server.server_close()
+ def test_ffn_attention_and_video(self):
+  p=self.browser.new_page(viewport={'width':1490,'height':960})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(p.goto(self.base).status,200)
+   p.locator('#studyMode').select_option('numeric')
+   p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===4')
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.evidence'),'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS')
+   p.locator('#computeMicroscope .cmp-step').nth(1).click()
+   self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
+   self.assertIn('误差',p.locator('#computeMicroscope .cmp-breakdown').inner_text())
+   p.screenshot(path=str(OUT/'ffn-coordinate-proof.png'),animations='disabled')
+   p.locator('[data-preset="attention"]').click()
+   p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===6')
+   p.locator('#computeMicroscope .cmp-step').nth(4).click()
+   self.assertEqual(p.locator('#computeMicroscope .cmp-substep').count(),4)
+   p.locator('#computeMicroscope .cmp-substep').nth(1).click()
+   self.assertIn('QK',p.locator('#computeMicroscope .cmp-meta').inner_text())
+   self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
+   p.locator('[data-preset="extension_video_time_composition"]').click()
+   p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===4')
+   p.locator('#computeMicroscope .cmp-step').last.click()
+   p.locator('#computeMicroscope .cmp-substep').last.click()
+   self.assertEqual(p.locator('#computeMicroscope .cmp-axes select').count(),3)
+   self.assertIn('1 × 3 × 2 × 2 × 2',p.locator('#computeMicroscope .cmp-meta').inner_text())
+   p.locator('#computeMicroscope .cmp-axes select').nth(1).select_option('2')
+   self.assertIn('精确来源',p.locator('#computeMicroscope .cmp-breakdown').inner_text())
+   p.screenshot(path=str(OUT/'video-five-axes-coordinate.png'),animations='disabled')
+   p.locator('#studyMode').select_option('concept');p.locator('#run').click()
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.evidence'),'STATIC_SHAPES_NO_EXECUTION')
+   self.assertEqual(p.locator('#computeMicroscope .cmp-cell').count(),0)
+   self.assertEqual(errors,[])
+  finally:p.close()
+ def test_mobile_named_axis(self):
+  p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  try:
+   p.goto(self.base)
+   p.locator('[data-preset="extension_named_axis_composition"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===7')
+   p.locator('#computeMicroscope .cmp-step').nth(3).click()
+   self.assertGreater(p.locator('#computeMicroscope .cmp-substep').count(),1)
+   p.locator('#computeMicroscope .cmp-substep').last.click()
+   self.assertIn('输出张量',p.locator('#computeMicroscope').inner_text())
+   p.screenshot(path=str(OUT/'mobile-named-axis-microscope.png'),full_page=True,animations='disabled')
+   self.assertEqual(errors,[])
+  finally:p.close()
+if __name__=='__main__':unittest.main()
