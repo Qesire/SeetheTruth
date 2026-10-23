@@ -143,6 +143,12 @@ input[type="file"]{display:none}
 .node-timeline-nav button[aria-pressed="true"]{border-color:#89ead6;background:#194a52;color:white}
 .node-timeline-content{border:1px solid #35586a;background:#0a2130;border-radius:7px;padding:9px;font:11px/1.7 ui-monospace,monospace;overflow-wrap:anywhere}
 .node-timeline-content b{color:#b7f0df}
+.shape-index-controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+.shape-index-axis{display:flex;gap:5px;align-items:center;padding:5px 7px;border:1px solid #36596a;border-radius:7px;font-size:11px}
+.shape-index-axis select{background:#0c2937;border:1px solid #537c8c;border-radius:5px;color:#e1f9ff;padding:4px}
+.shape-index-axis small{color:var(--muted)}
+.shape-index-source{border-left:2px solid #4f908e;padding:5px 8px;margin:6px 0;background:#102c3b;border-radius:3px}
+.shape-index-value{margin:9px 0;padding:8px;border:1px solid #51796a;border-radius:6px}
 </style><link rel="stylesheet" href="mobile_teaching.css"></head><body>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
@@ -371,6 +377,7 @@ let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
+const shapeCoordsByNode=new Map();
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -383,13 +390,13 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{shapeCoordsByNode.clear();realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
 }
 function openComposite(id,history){
- try{backwardTrace=null;trainStatus=null;
+ try{shapeCoordsByNode.clear();backwardTrace=null;trainStatus=null;
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
   activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
@@ -675,22 +682,63 @@ function inspect(){
   if(status?.status!=="ready"){
    shapeBody.textContent="等待输入形状有效后展示坐标映射："+(status?.reason||"计算图尚未完成");
   }else{
-   const graphIndex=L.indexGraph(L.validateGraph(graph));
-   const portShapes={};
+   const graphIndex=L.indexGraph(L.validateGraph(graph)),portShapes={};
    for(const port of L.defs[n.kind].ports){
     const from=graphIndex.incomingByPort.get(n.id+":"+port);
     portShapes[port]=readinessSnapshot.nodes.find(x=>x.id===from)?.shape;
    }
-   const mapping=ShapeRules.analyze(n,portShapes);
-   if(JSON.stringify(mapping.outputShape)!==JSON.stringify(status.shape))throw Error("static shape index mismatch "+n.id);
+   const dims=status.shape;
+   const previous=shapeCoordsByNode.get(n.id);
+   const coordinate=previous?.length===dims.length?previous.map((v,i)=>
+     Number.isSafeInteger(v)&&v>=0&&v<dims[i]?v:Math.min(1,dims[i]-1)):
+     dims.map(v=>Math.min(1,v-1));
+   shapeCoordsByNode.set(n.id,coordinate);
+   const mapping=ShapeRules.analyze(n,portShapes,{outputIndex:coordinate});
+   if(JSON.stringify(mapping.outputShape)!==JSON.stringify(dims))throw Error("static shape index mismatch "+n.id);
    const fmt=a=>"["+a.join(" × ")+"]";
-   const links=mapping.sourceIndices.map((s,i)=>
-    '<div class="hint">'+esc(s.port)+' '+fmt(s.shape)+' · 索引 ['+s.index.join(",")+']</div>').join("");
-   shapeBody.innerHTML='<div class="shape-index-label">输出 '+fmt(mapping.outputShape)+' · 索引 ['+mapping.outputIndex.join(",")+']</div>'+
-    '<div class="hint">'+esc(mapping.rule)+'</div>'+
-    '<div class="kicker" style="margin-top:10px">该输出位置实际读取</div>'+links+
-    '<div class="kicker" style="margin-top:10px">反向梯度</div>'+
-    '<div class="hint">'+esc(mapping.gradientRule)+'</div>';
+   const axes=dims.map((size,i)=>'<label class="shape-index-axis">轴 '+i+
+     ' <select data-shape-axis="'+i+'" aria-label="输出轴 '+i+' 的坐标">'+
+     Array.from({length:size},(_,v)=>'<option value="'+v+'"'+(v===coordinate[i]?' selected':'')+'>'+v+'</option>').join("")+
+     '</select><small>/ '+(size-1)+'</small></label>').join("");
+   const numerics=run?.steps?new Map(run.steps.map(x=>[x.id,x.values])):new Map();
+   const outputNumeric=numerics.get(n.id);
+   const observed=outputNumeric!==undefined;
+   const fromValue=(port,index)=>{
+    const id=graphIndex.incomingByPort.get(n.id+":"+port),value=numerics.get(id);
+    return value===undefined?null:window.SeetheTruthND.at(value,index);
+   };
+   const sources=mapping.sourceIndices.map((entry,i)=>{
+    const backward=mapping.reverseContributions[i];
+    const ranges=backward.outputRanges.map(([lo,hi])=>lo===hi?""+lo:lo+"…"+hi).join(", ");
+    const value=observed?fromValue(entry.port,entry.index):null;
+    return '<div class="shape-index-source"><b>'+esc(entry.port)+'</b> '+
+      fmt(entry.shape)+' ['+entry.index.join(", ")+']'+
+      (value===null?"":' · 数值 '+Number(value).toPrecision(6))+
+      '<div class="hint">该输入元素在本算子中影响 '+backward.outputCount+
+      ' 个输出坐标：['+ranges+']；反向梯度汇集对应这些输出位置的贡献</div></div>';
+   }).join("");
+   let numericHint='';
+   if(observed){
+    const value=window.SeetheTruthND.at(outputNumeric,mapping.outputIndex);
+    numericHint='<div class="shape-index-value">该输出元素实际计算值：<b>'+Number(value).toPrecision(7)+'</b>（已有的小张量运行轨迹）</div>';
+   }
+   shapeBody.innerHTML='<div class="hint">'+esc(mapping.rule)+'</div>'+
+     '<div class="shape-index-label">输出 '+fmt(mapping.outputShape)+'</div>'+
+     '<div class="shape-index-controls" role="group" aria-label="选择输出张量元素">'+axes+'</div>'+
+     numericHint+
+     '<div class="kicker" style="margin-top:10px">该输出坐标 ['+mapping.outputIndex.join(", ")+'] 实际读取</div>'+
+     '<div class="hint">'+(n.kind==="nd_reduce_sum"?'本输出汇聚 '+sources.length+' 个输入元素':'每个输入端口对应一个实际元素')+'</div>'+
+     sources+
+     '<div class="kicker" style="margin-top:10px">反向梯度</div>'+
+     '<div class="hint">'+esc(mapping.gradientRule)+'</div>'+
+     '<p class="hint">索引来源可在原理模式直接推导；具体数值仅在执行小张量后显示。</p>';
+   shapeBody.querySelectorAll("[data-shape-axis]").forEach(sel=>sel.onchange=()=>{
+    const axis=Number(sel.dataset.shapeAxis),position=Number(sel.value);
+    if(!Number.isSafeInteger(axis)||axis<0||axis>=dims.length||
+      !Number.isSafeInteger(position)||position<0||position>=dims[axis])return;
+    const next=[...coordinate];next[axis]=position;
+    shapeCoordsByNode.set(n.id,next);inspect();
+   });
   }
  }else{shapePanel.hidden=true;shapeBody.replaceChildren();}
  $("#formula").textContent=d?d.formula:"Y=F(X)";
