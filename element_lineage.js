@@ -94,9 +94,9 @@ function inspect(raw,options={}){
   if(d.Activation.KINDS.includes(activationKind)){
    const x=read("x",coordinate);
    const factor=x===null?null:d.Activation.derivative(activationKind,x,p);
-   add("x",[...coordinate],"f′(x) = "+activationKind+" 的局部解析导数",factor);
+   add("x",[...coordinate],"f′(x) / 约定分段梯度："+activationKind,factor);
    return {rule:"逐元素激活 "+activationKind,links:result,
-    gradientRule:"使用与教学执行引擎共享的解析导数，并沿唯一输入坐标反传"};
+    gradientRule:"复用教学引擎的局部梯度；Leaky ReLU、ELU 和 HardSwish 的不可微折点采用实现中明确规定的分段值"};
   }
   if(kind==="rmsnorm"||kind==="qk_norm"||kind==="layernorm"){
    const D=shape[shape.length-1],axis=shape.length-1;
