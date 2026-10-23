@@ -78,6 +78,48 @@ function verifyElementwise(s){
   must(expected===s.out.values[i],'elementwise arithmetic contradicts displayed output');
  }
 }
+function kernelCoordinate(s,row,col){
+ const {operator,inputPort,epsilon}=s.kernel,x=s.operands[inputPort];
+ const cols=x.shape[1],start=row*cols,v=x.values[start+col];
+ if(operator==='silu'){
+  const denominator=1+Math.exp(-v),recomputed=v/denominator;
+  return {recomputed,terms:[{k:col,input:v,term:denominator}],statistic:'1+exp(-x)',statisticValue:denominator,
+    formula:'SiLU(x)=x/(1+exp(-x))'};
+ }
+ if(operator==='rmsnorm'){
+  const values=x.values.slice(start,start+cols),squares=values.map(z=>z*z),
+   meanSquare=squares.reduce((a,b)=>a+b,0)/cols,
+   inverse=1/Math.sqrt(meanSquare+epsilon);
+  return {recomputed:v*inverse,terms:values.map((a,k)=>({k,input:a,term:squares[k]})),
+   statistic:'1/√(mean(x²)+ε)',statisticValue:inverse,
+   formula:'x/√(Σ_k x[k]² / D + ε), ε='+epsilon};
+ }
+ const values=x.values.slice(start,start+cols),maximum=Math.max(...values),
+  exps=values.map(z=>Math.exp(z-maximum)),denominator=exps.reduce((a,b)=>a+b,0);
+ return {recomputed:exps[col]/denominator,terms:values.map((a,k)=>({k,input:a,term:exps[k]})),
+  statistic:'Σ exp(x[k]−max(x))',statisticValue:denominator,
+  formula:'exp(x[c]−max(x))/Σ_k exp(x[k]−max(x)), max(x)='+maximum.toPrecision(10)};
+}
+function verifyKernel(s){
+ if(s.kernel===undefined)return;
+ const rule=s.kernel;
+ must(s.out.values!==null&&s.out.shape.length===2&&rule&&
+  ['rmsnorm','silu','softmax'].includes(rule.operator)&&s.kind===rule.operator,
+  'unsupported rowwise numerical proof');
+ const port=s.id.endsWith(':softmax')?'scores':'x';
+ must(rule.inputPort===port,'rowwise input port provenance mismatch');
+ if(rule.operator==='rmsnorm')
+  must(typeof rule.epsilon==='number'&&Number.isFinite(rule.epsilon)&&rule.epsilon>0&&rule.epsilon<=1,'invalid RMSNorm epsilon');
+ else must(rule.epsilon===undefined,'unexpected rowwise parameter');
+ const input=s.operands[port];
+ must(input&&input.values!==null&&input.shape.join(',')===s.out.shape.join(','),
+  'rowwise input/output shapes disagree');
+ for(let row=0;row<s.out.shape[0];row++)for(let col=0;col<s.out.shape[1];col++){
+  const value=kernelCoordinate(s,row,col).recomputed,actual=s.out.values[row*s.out.shape[1]+col];
+  must(Math.abs(value-actual)<=1e-11*Math.max(1,Math.abs(value)),
+   rule.operator+' numerical reconstruction contradicts output');
+ }
+}
 function verifyIndexMap(s){
  if(s.indexMap===undefined)return;
  must(s.out.values!==null&&Array.isArray(s.indexMap)&&s.indexMap.length===s.out.values.length,'invalid tensor index source map');
@@ -106,7 +148,7 @@ function validate(frame){
   checkAxes(s.out);
   must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
   for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);checkAxes(x);}
-  verifyDot(s);verifyIndexMap(s);verifyElementwise(s);
+  verifyDot(s);verifyIndexMap(s);verifyElementwise(s);verifyKernel(s);
   if(s.substeps!==undefined){
    must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
    const nestedIds=new Set();
@@ -117,7 +159,7 @@ function validate(frame){
     numericTensor(child.out.shape,child.out.values);checkAxes(child.out);
     must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
     for(const tensor of Object.values(child.operands)){numericTensor(tensor.shape,tensor.values);checkAxes(tensor);}
-    verifyDot(child);verifyIndexMap(child);verifyElementwise(child);
+    verifyDot(child);verifyIndexMap(child);verifyElementwise(child);verifyKernel(child);
     if(child.outputIsParent===true){
      for(const [port,tensor] of Object.entries(child.operands)){
       const parentOperand=s.operands[port];
@@ -170,6 +212,14 @@ function dot(frame,stepId,row,col,prefix=[]){
    formula:s.elementwise.operator==='add'?'out=a+b':'out=a×b',
    elementwise:true,operation:s.elementwise.operator,operands:[{port:'a',value:a},{port:'b',value:b}],
    reconstructable:true,recomputed,error:Math.abs(observed-recomputed)};
+ }
+ if(s.kernel){
+  const diagnostics=kernelCoordinate(s,row,col);
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,
+   formula:diagnostics.formula,reconstructable:true,kernel:s.kernel.operator,
+   input: s.operands[s.kernel.inputPort].values[index],
+   kernelTerms:diagnostics.terms,statistic:diagnostics.statistic,statisticValue:diagnostics.statisticValue,
+   recomputed:diagnostics.recomputed,error:Math.abs(observed-diagnostics.recomputed)};
  }
  if(!s.dot)return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,formula:s.formula,reconstructable:false};
  const {input,weights,bias}=s.dot,D=input.shape[1];
@@ -230,7 +280,7 @@ function learning(graph,run,catalog){
    const zeroV=numericTensor([1,v.shape[1]],Array(v.shape[1]).fill(0));
    substeps=[
     {id:r.id+':qk_scores',kind:'scaled_matmul',title:'QKᵀ / √d · Scores',formula:'scores[t,j] = Σ_k Q[t,k] K[j,k] / √d',why:'Attention 先对每个 query/token 和 key/token 完整计算相似度；不是逐元素乘同位置 Token。',out:scores,operands:{q,k},dot:dotSpec(qScaled,k,zeroQ)},
-    {id:r.id+':softmax',kind:'softmax',title:'Softmax · Attention probabilities',formula:'P[t,j] = exp(scores[t,j]−max)/Σ_j exp(scores[t,j]−max)',why:'沿每个 Query 的所有 Key 做归一化，避免大 logits 导致的数值溢出。',out:probabilities,operands:{scores}},
+    {id:r.id+':softmax',kind:'softmax',title:'Softmax · Attention probabilities',formula:'P[t,j] = exp(scores[t,j]−max)/Σ_j exp(scores[t,j]−max)',why:'沿每个 Query 的所有 Key 做归一化，避免大 logits 导致的数值溢出。',out:probabilities,operands:{scores},kernel:{operator:'softmax',inputPort:'scores'}},
     {id:r.id+':weighted_value',kind:'matmul',title:'Probabilities × V · Context',formula:'out[t,c] = Σ_j P[t,j] V[j,c]',why:'所有 key/value token 的值按概率汇聚到对应 Query，形成 Attention 的最终输出。',out,operands:{probabilities,v},dot:dotSpec(probabilities,valueWeights,zeroV)}
    ];
   }
@@ -245,7 +295,9 @@ function learning(graph,run,catalog){
   }
   const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
    sourceLines:null,dependencies,out,operands,dot:specification,
-   ...(numeric&&['add','mul'].includes(kind)?{elementwise:{operator:kind}}:{}),substeps,
+   ...(numeric&&['add','mul'].includes(kind)?{elementwise:{operator:kind}}:{}),
+   ...(numeric&&['rmsnorm','silu','softmax'].includes(kind)?{kernel:{operator:kind,inputPort:'x',
+    ...(kind==='rmsnorm'?{epsilon:n.params?.epsilon??def.params.epsilon}:{})}}:{}),substeps,
    note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};
   byId.set(s.id,s);return s;
  });
