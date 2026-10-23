@@ -81,7 +81,8 @@ training_objective.js
 video_causal_conv3d.js
 operator_contracts.js
 execution_ir.js
-graph_session.js\ngraph_learning_path.js
+graph_session.js
+graph_learning_path.js
 training_session.js
 gradient_inspection.js
 node_timeline.js
