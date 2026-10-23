@@ -72,4 +72,7 @@ function verifyMappedSubstep(step){
 }
 for(const step of trace.steps.filter(x=>X.isKind(x.kind)))verifyMappedSubstep(step);
 for(const step of run.steps.filter(x=>X.isKind(x.kind)))verifyMappedSubstep(step);
+const capabilityPage=read('capabilities.html');
+for(const f of ['semantic_block_pack.js','axis_block_pack.js','block_extension_registry.js'])
+ assert.ok(capabilityPage.includes('src="'+f+'"'),f+' must load in every capability catalogue runtime');
 console.log('UNIFIED_PACK_RUNTIME_PASS two independent packs, 8 kinds, 5D/2D, named axes, mixed native graph, graph learning route, negative contracts');
