@@ -56,8 +56,8 @@ const video=L.preset('extension_video_time_composition'),videoFrame=C.learning(v
 assert.equal(C.validate(videoFrame),videoFrame);verifyMap(videoFrame,'semantic_video_slice');verifyMap(videoFrame,'semantic_video_concat');
 const joined=videoFrame.steps.find(s=>s.id==='join');
 assert.deepEqual(joined.out.shape,[1,3,2,2,2]);
-assert.equal(C.dot(videoFrame,'join',0,1,[0,2,1]).mapped,true);
-assert.equal(C.dot(videoFrame,'join',0,1,[0,2,1]).error,0);
+assert.equal(C.dot(videoFrame,joined.substeps[0].id,0,1,[0,2,1]).mapped,true);
+assert.equal(C.dot(videoFrame,joined.substeps[0].id,0,1,[0,2,1]).error,0);
 const changed=structuredClone(videoFrame);changed.steps.find(s=>s.id==='join').substeps[0].indexMap[0].index=10000;
 assert.throws(()=>C.validate(changed),/source index out of bounds/);
 const fake=structuredClone(namedFrame);fake.evidenceTier='REAL_MODEL_VERIFIED';assert.throws(()=>C.validate(fake),/unknown evidence tier/);
