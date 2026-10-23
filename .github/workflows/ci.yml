@@ -48,6 +48,8 @@ jobs:
           node tests/normalization_rules_contracts.js
           node --check shape_index_rules.js
           node tests/shape_index_rules_contracts.js
+          node --check element_lineage.js
+          node tests/element_lineage_contracts.js
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js
