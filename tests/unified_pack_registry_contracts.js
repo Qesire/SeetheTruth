@@ -50,4 +50,19 @@ for(const f of ['semantic_block_pack.js','axis_block_pack.js','block_extension_r
  assert.ok(read('android/teaching-assets.txt').split(/\r?\n/).includes(f));
  assert.ok(read('atlas_server.py').includes('"/'+f+'":"'+f+'"'));
 }
+
+function flatten(v){return Array.isArray(v)?v.flatMap(flatten):[v];}
+function verifyMappedSubstep(step){
+ const sub=step.extensionSubsteps?.[0];
+ assert.ok(sub&&sub.out,'registered pack must emit real trace for '+step.id);
+ if(!sub.indexMap)return;
+ for(let i=0;i<sub.indexMap.length;i++){
+  const map=sub.indexMap[i],operand=sub.operands[map.port];
+  assert.ok(operand,'unknown source port in extension trace '+step.id);
+  assert.equal(sub.out.values[i],operand.values[map.index],
+   'numeric index provenance disagreement '+step.id+' @'+i);
+ }
+}
+for(const step of trace.steps.filter(x=>X.isKind(x.kind)))verifyMappedSubstep(step);
+for(const step of run.steps.filter(x=>X.isKind(x.kind)))verifyMappedSubstep(step);
 console.log('UNIFIED_PACK_RUNTIME_PASS two independent packs, 8 kinds, 5D/2D, named axes, mixed native graph, graph learning route, negative contracts');
