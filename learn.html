@@ -327,6 +327,9 @@ input[type="file"]{display:none}
 <script src="block_catalog.js"></script>
 <script src="semantic_state.js"></script>
 <script src="stream_graph_blocks.js"></script>
+<script src="semantic_block_pack.js"></script>
+<script src="axis_block_pack.js"></script>
+<script src="block_extension_registry.js"></script>
 <script src="learning_lab.js"></script>
 <script src="loop_transformer.js"></script>
 <script src="loop_input_injection.js"></script>
@@ -383,8 +386,8 @@ const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,NodeTimeline=window.SeetheTruthNodeTimeline,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const categories={memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
-const categoryNames={memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const categories={tensor:"▥",memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
+const categoryNames={tensor:"具名轴张量",memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
@@ -1126,6 +1129,15 @@ $("#viewport").addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer
 $("#viewport").addEventListener("drop",e=>{e.preventDefault();const kind=e.dataTransfer.getData("text/plain");
  if(!L.defs[kind])return;const box=$("#board").getBoundingClientRect();const scale=Number($("#board").style.zoom)||1;addBlock(kind,(e.clientX-box.left)/scale-100,(e.clientY-box.top)/scale-45);
 });
+const installedRecipes=window.SeetheTruthBlockExtensions.recipes;
+const blankRecipeButton=document.querySelector('[data-preset="blank"]');
+for(const recipe of installedRecipes){
+ const b=document.createElement("button");b.type="button";b.className="mission";b.dataset.preset=recipe.id;
+ const index=document.createElement("span");index.className="num";index.textContent="+";b.append(index);
+ const title=document.createElement("span");title.textContent=recipe.title;
+ const d=document.createElement("span");d.className="desc";d.textContent=recipe.summary;title.append(d);
+ b.append(title);blankRecipeButton.parentNode.insertBefore(b,blankRecipeButton);
+}
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
  try{
