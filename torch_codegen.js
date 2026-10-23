@@ -13,6 +13,7 @@ const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecu
 const Plan=isNode?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPlan;
 const StreamTorch=isNode?require("./torch_stream_lowering.js"):root.SeetheTruthStreamTorch;
 const Portable=isNode?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
+const Norm=isNode?require("./normalization_rules.js"):root.SeetheTruthNormalizationRules;
 const SUPPORTED=new Set([
  ...StreamTorch.kinds,"input","parameter","nd_input","nd_parameter","deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
@@ -58,8 +59,10 @@ function compile(raw,options={}){
    const id=n.id,k=n.kind,p=n.params,v='v['+py(id)+']',t=out.get(id);
    if(!t||!t.values||!t.shape)throw Error("no numeric trace for "+id);
    const portable=Portable.emit(n,name=>src(id,name));
+   const normalized=Norm.emit(n,"torch",name=>src(id,name));
    let expr="";
    if(portable!==null)expr=portable;
+   else if(normalized!==null)expr=normalized;
    else if(SOURCES.has(k)){
      const initializer='_tensor('+py(id)+','+py(JSON.stringify(t.values))+','+JSON.stringify(t.shape)+',overrides)';
      const trainable=TRAINABLE.has(k)&&!p.frozen;
@@ -128,18 +131,11 @@ function compile(raw,options={}){
    else if(k==="nd_cache_append")expr='torch.cat(('+src(id,"cache")+','+src(id,"segment")+'),dim=2)';
    else if(k==="nd_rope")expr='_rope('+src(id,"x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(k==="nd_causal_mask")expr='_causal('+src(id,"x")+','+p.queryStart+','+p.keyStart+')';
-   else if(["nd_softmax_last","softmax"].includes(k))expr='torch.softmax('+src(id,"x")+',dim=-1)';
-   else if(k==="rmsnorm")expr='('+src(id,"x")+'/torch.sqrt(torch.mean('+src(id,"x")+'**2,dim=-1,keepdim=True)+'+p.epsilon+'))';
-   else if(k==="layernorm")expr='F.layer_norm('+src(id,"x")+','+src(id,"x")+'.shape[-1:],eps='+p.epsilon+')';
-   else if(k==="attention")expr='(torch.softmax(('+src(id,"q")+' @ '+src(id,"k")+'.T)/math.sqrt('+src(id,"q")+'.shape[-1]),dim=-1) @ '+src(id,"v")+')';
    else if(["mse","nd_mse"].includes(k))expr='(('+src(id,"prediction")+' - '+src(id,"target")+')**2).mean().reshape(1,1)';
    else if(k==="row_mean")expr=src(id,"x")+".mean(dim=-1,keepdim=True)";
     else if(k==="row_sum")expr=src(id,"x")+".sum(dim=-1,keepdim=True)";
     else if(k==="row_var")expr=src(id,"x")+".var(dim=-1,correction=0,keepdim=True)";
-    else if(k==="row_logsumexp")expr="torch.logsumexp("+src(id,"x")+",dim=-1,keepdim=True)";
-    else if(k==="log_softmax")expr="F.log_softmax("+src(id,"x")+",dim=-1)";
     else if(k==="l2norm")expr="("+src(id,"x")+"/torch.linalg.vector_norm("+src(id,"x")+",dim=-1,keepdim=True).clamp_min("+p.epsilon+"))";
-    else if(k==="qk_norm")expr="("+src(id,"x")+"/torch.sqrt(torch.mean("+src(id,"x")+"**2,dim=-1,keepdim=True)+"+p.epsilon+"))";
     else if(k==="logit_softcap")expr="("+p.cap+"*torch.tanh("+src(id,"x")+"/"+p.cap+"))";
     else if(k==="token_depth_mask")expr="_depth_mask("+src(id,"depths")+","+p.step+","+p.width+")";
     else if(k==="state_mask_blend")expr="_blend_state("+src(id,"previous")+","+src(id,"candidate")+","+src(id,"mask")+")";
