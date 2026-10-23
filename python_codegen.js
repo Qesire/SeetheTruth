@@ -12,6 +12,7 @@ const L=node?require("./learning_lab.js"):root.SeetheTruthLearning;
 const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const Plan=node?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPlan;
 const StreamNumpy=node?require("./numpy_stream_lowering.js"):root.SeetheTruthStreamNumpy;
+const Portable=node?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
  ...SOURCES,...StreamNumpy.kinds,"deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
@@ -297,8 +298,10 @@ function compile(raw,options={}){
      if(!from)throw Error("缺少输入连接: "+id+"."+k);
      return 'v['+py(from)+']';
    };
+   const portable=Portable.emit(n,port);
    let expression;
-   if(SOURCES.has(kind)){
+   if(portable!==null)expression=portable;
+   else if(SOURCES.has(kind)){
      expression='_source('+py(id)+','+encoded(steps.get(id).values)+','+
        JSON.stringify(steps.get(id).shape)+',overrides)';
    }else if(StreamNumpy.kinds.includes(kind)){
@@ -343,9 +346,6 @@ function compile(raw,options={}){
    }else if(kind==="audio_mel_filterbank"){
      const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
      expression='('+port("x")+' @ np.asarray('+JSON.stringify(Adv.melWeights(p))+',dtype=np.float64))';
-   }else if(kind==="diffusion_ddim_step"){
-     const a=p.alphaT,b=p.alphaPrevious;
-     expression='('+JSON.stringify(Math.sqrt(b/a))+'*'+port("x")+' + '+JSON.stringify(Math.sqrt(1-b)-Math.sqrt(b*(1-a)/a))+'*'+port("epsilon")+')';
    }else if(kind==="vision_patchify"){
      const x=port("x"),H=p.height,W=p.width,C=p.channels,ph=p.patchHeight,pw=p.patchWidth;
      expression=x+'.reshape('+[H,W,C].join(',')+').reshape('+[H/ph,ph,W/pw,pw,C].join(',')+').transpose(0,2,1,3,4).reshape(-1,'+(ph*pw*C)+')';
@@ -357,9 +357,7 @@ function compile(raw,options={}){
      expression='np.stack([np.abs(np.fft.rfft('+x+'[0,i:i+'+N+']*np.hanning('+(N+1)+')[:-1]))**2 for i in range(0,'+x+'.shape[1]-'+N+'+1,'+h+')],axis=0)';
    }else if(kind==="audio_log_power"){
      expression='np.log10(np.maximum('+port("x")+','+p.floor+'))';
-   }else if(kind==="matmul"||kind==="nd_batched_matmul")expression='('+port("a")+' @ '+port("b")+')';
-   else if(["add","mul","subtract","divide"].includes(kind))expression='('+port("a")+' '+({add:"+",mul:"*",subtract:"-",divide:"/"}[kind])+' '+port("b")+')';
-   else if(kind==="nd_broadcast_add")expression='('+port("a")+' + '+port("b")+')';
+   }
    else if(kind==="transpose2d")expression='('+port("x")+'.T)';
    else if(kind==="nd_permute")expression='np.transpose('+port("x")+','+JSON.stringify([p.axis0,p.axis1,p.axis2,p.axis3])+')';
    else if(kind==="nd_reshape")expression=port("x")+'.reshape('+JSON.stringify([p.b,p.h,p.t,p.d])+')';
@@ -367,13 +365,9 @@ function compile(raw,options={}){
    else if(kind==="nd_flatten")expression=port("x")+'.reshape(-1,'+port("x")+'.shape[-1])';
    else if(kind==="nd_reduce_sum")expression='np.sum('+port("x")+',axis='+p.axis+',keepdims=True)';
    else if(kind==="nd_repeat_kv")expression='np.repeat('+port("x")+','+p.queryHeads+'//'+port("x")+'.shape[1],axis=1)';
-   else if(kind==="nd_cache_read")expression=port("x")+'[:,:, '+p.start+':'+(p.start+p.length)+',:]';
    else if(kind==="nd_cache_append")expression='np.concatenate(('+port("cache")+','+port("segment")+'),axis=2)';
    else if(kind==="nd_rope")expression='_rope('+port("x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(kind==="nd_causal_mask")expression='_causal('+port("x")+','+p.queryStart+','+p.keyStart+')';
-   else if(kind==="nd_scale"||kind==="scale")expression='('+port("x")+' * '+p.factor+')';
-   else if(kind==="bias")expression='('+port("x")+' + '+p.bias+')';
-   else if(kind==="square")expression='('+port("x")+' ** 2)';
    else if(kind==="nd_softmax_last"||kind==="softmax")expression='_softmax('+port("x")+')';
    else if(kind==="rmsnorm")expression='('+port("x")+'/np.sqrt(np.mean('+port("x")+'**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
    else if(kind==="layernorm")expression='(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))/np.sqrt(np.mean(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
@@ -387,24 +381,17 @@ function compile(raw,options={}){
    else if(kind==="l2norm")expression='('+port("x")+'/np.maximum(np.linalg.norm('+port("x")+',axis=-1,keepdims=True),'+p.epsilon+'))';
    else if(kind==="qk_norm")expression='('+port("x")+'/np.sqrt(np.mean('+port("x")+'**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
    else if(kind==="logit_softcap")expression='('+p.cap+'*np.tanh('+port("x")+'/'+p.cap+'))';
-   else if(kind==="low_rank_project")expression='(('+port("x")+' @ '+port("down")+') @ '+port("up")+')';
-   else if(kind==="row_bias_add")expression='('+port("scores")+' + '+port("bias")+')';
-   else if(kind==="weighted_sum")expression='('+port("weights")+' @ '+port("values")+')';
    else if(kind==="token_depth_mask")expression='_depth_mask('+port("depths")+','+p.step+','+p.width+')';
    else if(kind==="state_mask_blend")expression='_blend_state('+port("previous")+','+port("candidate")+','+port("mask")+')';
    else if(kind==="masked_softmax")expression='_masked_softmax('+port("logits")+','+port("mask")+')';
    else if(kind==="sliding_window_mask")expression='_sliding_window('+port("x")+','+p.window+')';
-   else if(kind==="temperature")expression='('+port("x")+' / '+p.temperature+')';
-   else if(kind==="residual_scale")expression='('+port("x")+' * '+p.factor+')';
    else if(kind==="mae_loss")expression='np.asarray([[np.mean(np.abs('+port("prediction")+'-'+port("target")+'))]],dtype=np.float64)';
    else if(kind==="topk")expression='np.take_along_axis('+port("x")+',np.argsort(-'+port("x")+',axis=-1,kind="stable")[:,:'+p.k+'],axis=-1)';
    else if(kind==="argmax")expression='np.argmax('+port("x")+',axis=-1).reshape(-1,1).astype(np.float64)';
    else if(kind==="detach_demo")expression=port("x")+'.copy()';
    else if(kind==="repeat_rows")expression='np.tile('+port("x")+',('+p.times+',1))';
-   else if(kind==="slice_cols")expression=port("x")+'[:,'+p.start+':'+(p.start+p.width)+']';
    else if(kind==="concat_cols")expression='np.concatenate(('+port("a")+','+port("b")+'),axis=1)';
    else if(kind==="rope2d")expression='_rope2d('+port("x")+','+p.offset+')';
-   else if(kind==="slice_rows")expression=port("x")+'['+p.start+':'+(p.start+p.length)+',:]';
    else if(kind==="pos_encoding")expression='_pos_encoding('+port("x")+')';
    else if(kind==="causal_mask")expression='np.tri('+port("x")+'.shape[0],'+port("x")+'.shape[0],dtype=np.float64)';
    else if(kind==="embedding")expression='_fixed_embedding('+port("ids")+','+p.vocab+','+p.width+')';

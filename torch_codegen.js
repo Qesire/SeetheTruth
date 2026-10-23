@@ -12,6 +12,7 @@ const Objective=isNode?require("./training_objective.js"):root.SeetheTruthTraini
 const Branch=isNode?require("./branch_execution.js"):root.SeetheTruthBranchExecution;
 const Plan=isNode?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPlan;
 const StreamTorch=isNode?require("./torch_stream_lowering.js"):root.SeetheTruthStreamTorch;
+const Portable=isNode?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
 const SUPPORTED=new Set([
  ...StreamTorch.kinds,"input","parameter","nd_input","nd_parameter","deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
  "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
@@ -56,8 +57,10 @@ function compile(raw,options={}){
  for(const n of sorted){
    const id=n.id,k=n.kind,p=n.params,v='v['+py(id)+']',t=out.get(id);
    if(!t||!t.values||!t.shape)throw Error("no numeric trace for "+id);
+   const portable=Portable.emit(n,name=>src(id,name));
    let expr="";
-   if(SOURCES.has(k)){
+   if(portable!==null)expr=portable;
+   else if(SOURCES.has(k)){
      const initializer='_tensor('+py(id)+','+py(JSON.stringify(t.values))+','+JSON.stringify(t.shape)+',overrides)';
      const trainable=TRAINABLE.has(k)&&!p.frozen;
      if(trainable)init.push('        self.parameters['+py(id)+'] = torch.nn.Parameter('+initializer+')');
@@ -103,9 +106,6 @@ function compile(raw,options={}){
    } else if(k==="audio_mel_filterbank"){
      const Adv=typeof module==="object"&&module.exports?require("./multimodal_advanced.js"):globalThis.SeetheTruthMultimodalAdvanced;
      expr='('+src(id,"x")+' @ torch.tensor('+JSON.stringify(Adv.melWeights(p))+',dtype=DTYPE))';
-   } else if(k==="diffusion_ddim_step"){
-     const a=p.alphaT,b=p.alphaPrevious;
-     expr='('+JSON.stringify(Math.sqrt(b/a))+'*'+src(id,"x")+' + '+JSON.stringify(Math.sqrt(1-b)-Math.sqrt(b*(1-a)/a))+'*'+src(id,"epsilon")+')';
    } else if(k==="vision_patchify"){
      const x=src(id,"x"),H=p.height,W=p.width,C=p.channels,ph=p.patchHeight,pw=p.patchWidth;
      expr=x+'.reshape('+[H,W,C].join(',')+').reshape('+[H/ph,ph,W/pw,pw,C].join(',')+').permute(0,2,1,3,4).reshape(-1,'+(ph*pw*C)+')';
@@ -117,9 +117,7 @@ function compile(raw,options={}){
      expr='torch.fft.rfft('+x+'.reshape(-1).unfold(0,'+N+','+h+') * torch.hann_window('+N+',periodic=True,dtype=DTYPE),dim=-1).abs().square()';
    } else if(k==="audio_log_power"){
      expr='torch.log10(torch.clamp('+src(id,"x")+',min='+p.floor+'))';
-   } else if(["matmul","nd_batched_matmul"].includes(k))expr='('+src(id,"a")+' @ '+src(id,"b")+')';
-   else if(["add","mul","subtract","divide"].includes(k))expr='('+src(id,"a")+' '+({add:"+",mul:"*",subtract:"-",divide:"/"}[k])+' '+src(id,"b")+')';
-   else if(k==="nd_broadcast_add")expr='('+src(id,"a")+' + '+src(id,"b")+')';
+   }
    else if(k==="transpose2d")expr=src(id,"x")+'.T';
    else if(k==="nd_permute")expr=src(id,"x")+'.permute('+[p.axis0,p.axis1,p.axis2,p.axis3].join(",")+')';
    else if(k==="nd_reshape")expr=src(id,"x")+'.reshape('+[p.b,p.h,p.t,p.d].join(",")+')';
@@ -127,13 +125,9 @@ function compile(raw,options={}){
    else if(k==="nd_flatten")expr=src(id,"x")+'.reshape(-1,'+src(id,"x")+'.shape[-1])';
    else if(k==="nd_reduce_sum")expr=src(id,"x")+'.sum(dim='+p.axis+',keepdim=True)';
    else if(k==="nd_repeat_kv")expr=src(id,"x")+'.repeat_interleave('+p.queryHeads+'//'+src(id,"x")+'.shape[1],dim=1)';
-   else if(k==="nd_cache_read")expr=src(id,"x")+'[:,:, '+p.start+':'+(p.start+p.length)+',:]';
    else if(k==="nd_cache_append")expr='torch.cat(('+src(id,"cache")+','+src(id,"segment")+'),dim=2)';
    else if(k==="nd_rope")expr='_rope('+src(id,"x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(k==="nd_causal_mask")expr='_causal('+src(id,"x")+','+p.queryStart+','+p.keyStart+')';
-   else if(["nd_scale","scale"].includes(k))expr='('+src(id,"x")+' * '+p.factor+')';
-   else if(k==="bias")expr='('+src(id,"x")+' + '+p.bias+')';
-   else if(k==="square")expr='('+src(id,"x")+' ** 2)';
    else if(["nd_softmax_last","softmax"].includes(k))expr='torch.softmax('+src(id,"x")+',dim=-1)';
    else if(k==="rmsnorm")expr='('+src(id,"x")+'/torch.sqrt(torch.mean('+src(id,"x")+'**2,dim=-1,keepdim=True)+'+p.epsilon+'))';
    else if(k==="layernorm")expr='F.layer_norm('+src(id,"x")+','+src(id,"x")+'.shape[-1:],eps='+p.epsilon+')';
@@ -147,24 +141,17 @@ function compile(raw,options={}){
     else if(k==="l2norm")expr="("+src(id,"x")+"/torch.linalg.vector_norm("+src(id,"x")+",dim=-1,keepdim=True).clamp_min("+p.epsilon+"))";
     else if(k==="qk_norm")expr="("+src(id,"x")+"/torch.sqrt(torch.mean("+src(id,"x")+"**2,dim=-1,keepdim=True)+"+p.epsilon+"))";
     else if(k==="logit_softcap")expr="("+p.cap+"*torch.tanh("+src(id,"x")+"/"+p.cap+"))";
-    else if(k==="low_rank_project")expr="(("+src(id,"x")+" @ "+src(id,"down")+") @ "+src(id,"up")+")";
-    else if(k==="row_bias_add")expr="("+src(id,"scores")+" + "+src(id,"bias")+")";
-    else if(k==="weighted_sum")expr="("+src(id,"weights")+" @ "+src(id,"values")+")";
     else if(k==="token_depth_mask")expr="_depth_mask("+src(id,"depths")+","+p.step+","+p.width+")";
     else if(k==="state_mask_blend")expr="_blend_state("+src(id,"previous")+","+src(id,"candidate")+","+src(id,"mask")+")";
     else if(k==="masked_softmax")expr="_masked_softmax("+src(id,"logits")+","+src(id,"mask")+")";
     else if(k==="sliding_window_mask")expr="_sliding_window("+src(id,"x")+","+p.window+")";
-    else if(k==="temperature")expr="("+src(id,"x")+" / "+p.temperature+")";
-    else if(k==="residual_scale")expr="("+src(id,"x")+" * "+p.factor+")";
     else if(k==="mae_loss")expr="("+src(id,"prediction")+" - "+src(id,"target")+").abs().mean().reshape(1,1)";
     else if(k==="detach_demo")expr=src(id,"x")+".detach().clone()";
     else if(k==="topk")expr="torch.gather("+src(id,"x")+",1,torch.argsort("+src(id,"x")+",dim=-1,descending=True,stable=True)[:,:"+p.k+"])";
     else if(k==="argmax")expr="torch.argmax("+src(id,"x")+",dim=-1).reshape(-1,1).to(DTYPE)";
     else if(k==="repeat_rows")expr=src(id,"x")+'.repeat(('+p.times+',1))';
-    else if(k==="slice_cols")expr=src(id,"x")+'[:,'+p.start+':'+(p.start+p.width)+']';
     else if(k==="concat_cols")expr='torch.cat(('+src(id,"a")+','+src(id,"b")+'),dim=1)';
     else if(k==="rope2d")expr='_rope2d('+src(id,"x")+','+p.offset+')';
-    else if(k==="slice_rows")expr=src(id,"x")+'['+p.start+':'+(p.start+p.length)+',:]';
     else if(k==="pos_encoding")expr="_pos_encoding("+src(id,"x")+")";
     else if(k==="causal_mask")expr="torch.tril(torch.ones(("+src(id,"x")+".shape[0],"+src(id,"x")+".shape[0]),dtype=DTYPE,device="+src(id,"x")+".device))";
     else if(k==="embedding")expr="_fixed_embedding("+src(id,"ids")+","+p.vocab+","+p.width+")";

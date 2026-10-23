@@ -34,3 +34,11 @@ LearningLab validated DAG
 ## Next integration point
 
 Move shared lowering *operator semantics* only after inspecting corresponding NumPy/PyTorch expressions and establishing numerical and gradient oracles. Do not deduplicate merely because two implementations have similar syntax. The shared plan provides the stable seam for independently verifiable backend lowerings.
+
+## Portable arithmetic lowering, 2026-10-23
+
+`portable_operator_rules.js` defines a single semantic expression emitter for the 20 operators whose emitted Python tensor arithmetic is identical in NumPy and PyTorch: matrix multiplication, elementary binary arithmetic (including 4D broadcast add), scalar scale/bias/temperature/square, low-rank projection, weighted sum and row bias, deterministic slice/cache read, and DDIM epsilon update. Each exporter now calls this rule emitter rather than repeating the formula. Unsupported kinds still follow their own backend lowering with the established fail-closed checks.
+
+The DDIM coefficients are explicitly `sqrt(alphaPrevious/alphaT)` and `sqrt(1-alphaPrevious) - sqrt(alphaPrevious*(1-alphaT)/alphaT)`. These are computed as JS numeric constants from the validated graph parameters, preserving the original emitted arithmetic. Shared rules do not imply the operators are validated against a downloaded diffusion model.
+
+The portable layer makes no claims about PyTorch gradient semantics for `detach`, in-place operations, reductions, broadcasting edge cases outside validated shapes, or stream-state graph mutation. Backend-specific operators retain independent lowering. We require actual CPU NumPy/PyTorch forward agreement with the bounded LearningLab interpreter, and a trainable-graph Torch gradient comparison against the bounded VJP, in addition to unchanged full exporter regression suites.
