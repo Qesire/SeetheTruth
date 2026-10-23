@@ -281,7 +281,8 @@
       if(inferred&&JSON.stringify(value.shape)!==JSON.stringify(inferred.shape))fail("流状态静态/数值形状不一致",n.id);
       out.set(n.id,value);
       const {streamState,...publicValue}=value;
-      steps.push({id:n.id,kind:n.kind,inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,Extensions.tensorShape(v)])),
+      const extensionSubsteps=Extensions.isKind(n.kind)?Extensions.substeps(n,ins,value):null;
+      steps.push({id:n.id,kind:n.kind,...(extensionSubsteps?{extensionSubsteps}:{}),inputs:Object.fromEntries(Object.entries(ins).map(([k,v])=>[k,Extensions.tensorShape(v)])),
         ...publicValue,formula:defs[n.kind].formula,why:defs[n.kind].why,
         training:"仅前向微型数值解释；尚未执行反向传播与权重更新。"});
     }
