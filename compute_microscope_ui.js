@@ -102,7 +102,20 @@ function mount(rootElement,onSelect){
     box.append(el('p','逐项重建值 '+detail.recomputed.toPrecision(12)+' · 误差 '+detail.error.toExponential(2),'cmp-hint'));
     if(detail.mapped)box.append(el('p','精确来源：'+detail.sourcePort+' '+detail.sourceCoordinateLabel+' [flat '+detail.sourceIndex+'] → 当前输出；这是数据索引/搬运，不是矩阵乘法。','cmp-hint'));
     if(detail.elementwise)box.append(el('p','逐坐标原生运算：'+detail.operands.map(x=>x.port+'='+Number(x.value).toPrecision(9)).join('，')+'；'+(detail.operation==='add'?'加法':'乘法')+' → '+detail.recomputed.toPrecision(12),'cmp-hint'));
-    if(!detail.mapped&&!detail.elementwise){
+    if(detail.kernel){
+     box.append(el('p','逐行/逐坐标运算 '+detail.kernel+' · 输入 x='+Number(detail.input).toPrecision(10)+
+      ' · '+detail.statistic+'='+detail.statisticValue.toPrecision(10),'cmp-hint'));
+     const table=el('table',undefined,'cmp-terms'),head=el('tr');
+     for(const label of ['行内坐标 k','输入 x[k]',detail.kernel==='softmax'?'exp(x[k]−max)':detail.kernel==='rmsnorm'?'x[k]²':'1+exp(−x)'])head.append(el('th',label));
+     table.append(head);
+     for(const term of detail.kernelTerms.slice(0,64)){
+      const tr=el('tr');for(const value of [term.k,term.input.toPrecision(7),term.term.toPrecision(7)])tr.append(el('td',value));
+      table.append(tr);
+     }
+     if(detail.kernelTerms.length>64)box.append(el('p','行内数据仅展示前 64 项；校验使用全部通道。','cmp-hint'));
+     box.append(table);
+    }
+    if(!detail.mapped&&!detail.elementwise&&!detail.kernel){
     const table=el('table',undefined,'cmp-terms'),thead=el('tr');
     for(const head of ['输入通道 k','x[k]','W[out,k]','乘积'])thead.append(el('th',head));
     table.append(thead);
