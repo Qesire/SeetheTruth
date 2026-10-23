@@ -27,6 +27,16 @@ jobs:
         run: python tests/browser_learning_path.py
       - name: Verify independent block-pack composition in Chromium
         run: python tests/browser_block_packs.py
+      - name: Verify common 2D–5D arithmetic microscope in real Chromium
+        run: python tests/browser_universal_microscope.py
+      - name: Archive universal microscope desktop and mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-universal-microscope-chromium
+          path: microscope_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify static shape/index pedagogy in real Chromium
         run: python tests/browser_shape_index.py
       - name: Verify node-level training inspector in real Chromium
