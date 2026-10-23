@@ -21,11 +21,12 @@
   catch(e){return Object.freeze({schema:"seethetruth-graph-learning-path-v1",
    executable:false,numericOk:false,firstError:s.readiness?.structuralError||e.message,
    evidence:"NO_EXECUTION",steps:Object.freeze([])});}
-  const nodes=new Map(s.nodes.map(n=>[n.id,n]));
+  const sessionNodes=s.nodes||s.readiness.nodes; // GraphSession numeric error returns readiness but no node projection.
+  const nodes=new Map(sessionNodes.map(n=>[n.id,n]));
   const trace=new Map((s.trace?.steps||[]).map(n=>[n.id,n]));
   const ir=new Map((s.ir?.nodes||[]).map(n=>[n.id,n]));
   const numericOk=!!(s.ir&&s.trace&&!s.error);
-  const steps=s.nodes.map((n,i)=>{
+  const steps=sessionNodes.map((n,i)=>{
    const op=d.O.resolve(n.kind),card=d.K.get(n.kind);
    if(!card)throw Error("missing knowledge "+n.kind);
    const ports=op.ports.map(port=>{
