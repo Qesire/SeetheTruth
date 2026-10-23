@@ -78,11 +78,11 @@ const sum=y.edges.filter(e=>e.from==='prob@0,0').reduce((a,e)=>a+e.localDerivati
 assert.ok(Math.abs(sum)<1e-10,'softmax Jacobian row sums to zero');
 const fs=require('node:fs'),path=require('node:path'),root=require('node:path').resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const resources=new Set(read('android/teaching-assets.txt').split(/\\r?\\n/).map(s=>s.trim()));
+const resources=new Set(read('android/teaching-assets.txt').split(/\r?\n/).map(s=>s.trim()));
 assert.ok(resources.has('element_lineage.js'));
 assert.ok(read('atlas_server.py').includes('"/element_lineage.js":"element_lineage.js"'));
 const html=read('learn.html');
-const scripts=[...html.matchAll(/<script src="([^"]+)"><\\/script>/g)].map(x=>x[1]);
+const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(x=>x[1]);
 assert.ok(scripts.indexOf('element_lineage.js')>scripts.indexOf('shape_index_rules.js'));
 assert.ok(scripts.indexOf('element_lineage.js')<scripts.indexOf('training_session.js'));
 assert.ok(html.includes('id="graphLineageSection"')&&html.includes('ElementLineage.inspect(graph,'));
