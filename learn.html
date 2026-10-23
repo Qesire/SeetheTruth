@@ -149,6 +149,13 @@ input[type="file"]{display:none}
 .shape-index-axis small{color:var(--muted)}
 .shape-index-source{border-left:2px solid #4f908e;padding:5px 8px;margin:6px 0;background:#102c3b;border-radius:3px}
 .shape-index-value{margin:9px 0;padding:8px;border:1px solid #51796a;border-radius:6px}
+.lineage-controls{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.lineage-axis{display:flex;align-items:center;gap:5px;font-size:11px}
+.lineage-axis input{width:55px;border-radius:6px;background:#0d2938;color:#e9faff;border:1px solid #537c8c;padding:5px}
+.lineage-summary{margin:10px 0;line-height:1.7;color:#b6e5e9}
+.lineage-node,.lineage-details{border:1px solid #335467;border-radius:7px;margin-top:6px;padding:7px;background:#0d2839}
+.lineage-node summary,.lineage-details summary{cursor:pointer;font-size:12px}
+.lineage-element{padding:5px;margin-top:5px;border-left:2px solid #4c958d;background:#122d3a;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace}
 </style><link rel="stylesheet" href="mobile_teaching.css"></head><body>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
@@ -290,6 +297,7 @@ input[type="file"]{display:none}
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
   <section class="section" id="shapeIndexSection" aria-label="张量形状和索引的映射" hidden><div class="kicker">SHAPE & INDEX / 形状、坐标与梯度</div><div id="shapeIndexInspector" class="shape-index-detail"></div></section>
+  <section class="section" id="graphLineageSection" aria-label="跨积木的逐元素计算溯源" hidden><div class="kicker">ELEMENT LINEAGE / 跨积木来源与梯度</div><div id="graphLineageInspector" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
@@ -334,6 +342,7 @@ input[type="file"]{display:none}
 <script src="portable_operator_rules.js"></script>
 <script src="normalization_rules.js"></script>
 <script src="shape_index_rules.js"></script>
+<script src="element_lineage.js"></script>
 <script src="graph_readiness.js"></script>
 <script src="graph_cost_report.js"></script>
 <script src="numpy_stream_lowering.js"></script>
@@ -365,6 +374,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
+const ElementLineage=window.SeetheTruthElementLineage;
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,NodeTimeline=window.SeetheTruthNodeTimeline,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
@@ -378,6 +388,7 @@ let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readabl
 let realTrace=null,realAssociationId=null;
 let graphCostBaseline=null;
 const shapeCoordsByNode=new Map();
+let elementLineageState=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const say=(message,error=false)=>{$("#status").textContent=message;$("#status").classList.toggle("error",error)};
 function remember(){undo.push(clone(graph));if(undo.length>40)undo.shift();redo=[];}
@@ -386,17 +397,17 @@ function mutate(fn){
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
   // Duplicate change events and idempotent connections must not consume history.
   if(JSON.stringify(before)===JSON.stringify(valid)){render();return false;}
-  undo.push(before);if(undo.length>40)undo.shift();redo=[];graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];elementLineageState=null;graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{shapeCoordsByNode.clear();realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{shapeCoordsByNode.clear();elementLineageState=null;realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
 }
 function openComposite(id,history){
- try{shapeCoordsByNode.clear();backwardTrace=null;trainStatus=null;
+ try{shapeCoordsByNode.clear();elementLineageState=null;backwardTrace=null;trainStatus=null;
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
   activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
@@ -659,6 +670,75 @@ function renderKnowledge(d,n){
    '<p class="knowledge-basis">引用支持通用原理或公开 API 约定，不等于已检查你当前导入的模型实现。</p></details>';
 }
 
+function renderElementLineage(selectedNode){
+ const section=$("#graphLineageSection"),view=$("#graphLineageInspector");
+ const status=readinessSnapshot?.nodes?.find(x=>x.id===selectedNode?.id);
+ if(!selectedNode||status?.status!=="ready"){
+  section.hidden=true;view.replaceChildren();return;
+ }
+ section.hidden=false;
+ const shape=status.shape,previous=shapeCoordsByNode.get(selectedNode.id);
+ const coordinate=previous?.length===shape.length?previous.map((v,i)=>
+  Number.isSafeInteger(v)&&v>=0&&v<shape[i]?v:Math.min(1,shape[i]-1)):
+  shape.map(x=>Math.min(1,x-1));
+ shapeCoordsByNode.set(selectedNode.id,coordinate);
+ const axes=shape.map((length,axis)=>'<label class="lineage-axis">轴 '+axis+
+  ' <input type="number" inputmode="numeric" min="0" max="'+(length-1)+
+  '" value="'+coordinate[axis]+'" data-lineage-axis="'+axis+'" aria-label="溯源输出轴 '+axis+' 的坐标"/></label>').join("");
+ const state=elementLineageState;
+ const shown=state&&state.graph===graph&&state.id===selectedNode.id&&
+  JSON.stringify(state.index)===JSON.stringify(coordinate)?state.report:null;
+ let detail='<p class="hint">选择输出坐标并点击“追踪上游”。逐层展开受验证的索引与运算依赖；未知算子保留明确边界。</p>';
+ if(shown){
+  const display=x=>x===null?'未求值':Number(x).toPrecision(6);
+  const ids=new Map();
+  for(const v of shown.vertices){const group=ids.get(v.id)||[];group.push(v);ids.set(v.id,group);}
+  const details=[...ids].map(([id,verts])=>{
+   const first=verts[0];
+   return '<details class="lineage-node"><summary>'+esc(id)+' · '+esc(first.kind)+
+    ' · '+verts.length+' 个坐标'+(first.status==='boundary'?' · 精确规则边界':'')+'</summary>'+
+    verts.map(v=>'<div class="lineage-element">['+v.index.join(', ')+']'+
+     (v.value!==null?' · 值 '+display(v.value):'')+
+     (v.sensitivity!==null?' · ∂输出/∂该元素 '+display(v.sensitivity):' · 导数待数值计算')+
+     (v.rule?'<div class="hint">'+esc(v.rule)+'</div>':'')+'</div>').join("")+
+    '</details>';
+  }).join("");
+  const summary='<div class="lineage-summary"><b>'+shown.vertices.length+
+   '</b> 个唯一元素节点 · <b>'+shown.edges.length+'</b> 条依赖边 · '+
+   (shown.complete?'已覆盖全部受支持路径':shown.truncated?'达到当前展示预算，路径未完全展开':'包含不支持的逐元素规则边界')+
+   ' · '+(shown.mode==='bounded-numeric'?'真实微型数值轨迹':'静态依赖推导')+'</div>';
+  const transitions=shown.edges.slice(0,32).map(e=>
+   '<div>'+esc(e.from)+' ← '+esc(e.to)+' ('+esc(e.port)+')'+
+   (e.localDerivative!==null?' · 局部导数 '+display(e.localDerivative):'')+'</div>').join("");
+  detail=summary+'<details class="lineage-details"><summary>逐层元素来源（按积木汇总）</summary>'+
+   details+'</details><details class="lineage-details"><summary>逐元素依赖边示例（前 32 条）</summary>'+
+   transitions+'</details><p class="hint">灵敏度为所选一个输出元素相对于上游元素的导数；多路径贡献自动求和。未求值不等于零。</p>';
+ }
+ view.innerHTML='<div class="hint">当前输出形状 ['+shape.join(' × ')+']；按元素查看整个上游 DAG。</div>'+
+  '<div class="lineage-controls" role="group" aria-label="跨积木溯源输出坐标">'+axes+'</div>'+
+  '<button type="button" id="traceGraphElement" class="btn small">追踪上游</button>'+
+  '<div id="graphLineageResult">'+detail+'</div>';
+ view.querySelectorAll("[data-lineage-axis]").forEach(input=>input.onchange=()=>{
+  const axis=Number(input.dataset.lineageAxis),v=Number(input.value);
+  if(!Number.isSafeInteger(v)||v<0||v>=shape[axis]){input.value=coordinate[axis];return;}
+  const next=[...coordinate];next[axis]=v;
+  shapeCoordsByNode.set(selectedNode.id,next);
+  elementLineageState=null;inspect();
+ });
+ $("#traceGraphElement").onclick=()=>{
+  try{
+   const order=L.indexGraph(graph).ordered;
+   const numerical=run?.steps?.length===order.length&&
+    run.steps.every((step,i)=>step.id===order[i].id&&step.values!==undefined)?run:null;
+   const report=ElementLineage.inspect(graph,{targetId:selectedNode.id,outputIndex:coordinate,
+     trace:numerical,maxVertices:512,maxEdges:2048});
+   elementLineageState={graph,id:selectedNode.id,index:[...coordinate],report};
+   renderElementLineage(selectedNode);
+  }catch(error){
+   $("#graphLineageResult").textContent="无法溯源："+error.message;
+  }
+ };
+}
 function inspect(){
  const n=graph.nodes.find(x=>x.id===selected),d=n&&L.defs[n.kind];
  const realStatus=$("#traceReferenceStatus"),realPanel=$("#realTracePanel");
@@ -741,6 +821,7 @@ function inspect(){
    });
   }
  }else{shapePanel.hidden=true;shapeBody.replaceChildren();}
+ renderElementLineage(n);
  $("#formula").textContent=d?d.formula:"Y=F(X)";
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
