@@ -88,3 +88,4 @@ node_timeline.js
 graph_lowering_plan.js
 portable_operator_rules.js
 normalization_rules.js
+shape_index_rules.js
