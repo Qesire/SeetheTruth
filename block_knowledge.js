@@ -237,6 +237,12 @@ const notes={
  mae_loss:["逐元素取绝对误差，再对所有有效元素求平均。","MAE 相比 MSE 对离群值放大较弱，但何者更好取决于目标分布。","一次 MAE 前向不会更新参数，也不必然代表感知质量。","比较误差为 1 和 10 的贡献比例。","mse"],
  kl_prob:["KL(P||Q) 按 P 加权对数概率比，通常有明确方向且不对称。","PyTorch KLDivLoss 使用 logprob 输入，默认 mean 与严格 KL 的 batchmean 语义不同。","不能交换 P/Q 也不能把未归一化 logits 当概率直接代入。","对 P=[1,0] 和 Q=[.5,.5] 正反计算 KL。","kl,ce"]
 };
+const Extensions=typeof module==="object"&&module.exports?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
+for(const [kind,def] of Object.entries(Extensions.defs)){
+ const k=def.knowledge;
+ if(!k||Object.hasOwn(notes,kind))throw Error("missing/duplicate extension knowledge "+kind);
+ notes[kind]=[k.flow,k.practice,k.trap,k.exercise,k.refs];
+}
 function validate(){
  const keys=Object.keys(L.defs);if(Object.keys(notes).length!==keys.length)throw Error("knowledge coverage mismatch");
  for(const id of keys){
