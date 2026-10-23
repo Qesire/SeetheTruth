@@ -23,6 +23,8 @@ jobs:
         run: python tests/browser_acceptance.py
       - name: Verify cross-graph scalar lineage and VJP in Chromium
         run: python tests/browser_element_lineage.py
+      - name: Verify graph-derived learning route in Chromium
+        run: python tests/browser_learning_path.py
       - name: Verify static shape/index pedagogy in real Chromium
         run: python tests/browser_shape_index.py
       - name: Verify node-level training inspector in real Chromium
