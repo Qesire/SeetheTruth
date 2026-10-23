@@ -14,6 +14,7 @@ const Plan=node?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPlan
 const StreamNumpy=node?require("./numpy_stream_lowering.js"):root.SeetheTruthStreamNumpy;
 const Portable=node?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
 const Norm=node?require("./normalization_rules.js"):root.SeetheTruthNormalizationRules;
+const Shape=node?require("./shape_index_rules.js"):root.SeetheTruthShapeIndexRules;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
  ...SOURCES,...StreamNumpy.kinds,"deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
@@ -301,9 +302,11 @@ function compile(raw,options={}){
    };
    const portable=Portable.emit(n,port);
    const normalized=Norm.emit(n,"numpy",port);
+   const shapeExpr=Shape.emit(n,"numpy",port);
    let expression;
    if(portable!==null)expression=portable;
    else if(normalized!==null)expression=normalized;
+   else if(shapeExpr!==null)expression=shapeExpr;
    else if(SOURCES.has(kind)){
      expression='_source('+py(id)+','+encoded(steps.get(id).values)+','+
        JSON.stringify(steps.get(id).shape)+',overrides)';
@@ -361,13 +364,6 @@ function compile(raw,options={}){
    }else if(kind==="audio_log_power"){
      expression='np.log10(np.maximum('+port("x")+','+p.floor+'))';
    }
-   else if(kind==="transpose2d")expression='('+port("x")+'.T)';
-   else if(kind==="nd_permute")expression='np.transpose('+port("x")+','+JSON.stringify([p.axis0,p.axis1,p.axis2,p.axis3])+')';
-   else if(kind==="nd_reshape")expression=port("x")+'.reshape('+JSON.stringify([p.b,p.h,p.t,p.d])+')';
-   else if(kind==="nd_expand4d")expression=port("x")+'[None,None,:,:]';
-   else if(kind==="nd_flatten")expression=port("x")+'.reshape(-1,'+port("x")+'.shape[-1])';
-   else if(kind==="nd_reduce_sum")expression='np.sum('+port("x")+',axis='+p.axis+',keepdims=True)';
-   else if(kind==="nd_repeat_kv")expression='np.repeat('+port("x")+','+p.queryHeads+'//'+port("x")+'.shape[1],axis=1)';
    else if(kind==="nd_cache_append")expression='np.concatenate(('+port("cache")+','+port("segment")+'),axis=2)';
    else if(kind==="nd_rope")expression='_rope('+port("x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(kind==="nd_causal_mask")expression='_causal('+port("x")+','+p.queryStart+','+p.keyStart+')';

@@ -283,6 +283,7 @@ input[type="file"]{display:none}
   <div class="badge" id="evidence">QUALITATIVE CONTRACT · 无矩阵执行</div>
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
+  <section class="section" id="shapeIndexSection" aria-label="张量形状和索引的映射" hidden><div class="kicker">SHAPE & INDEX / 形状、坐标与梯度</div><div id="shapeIndexInspector" class="shape-index-detail"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
     <div id="blockKnowledge"><p class="hint">选择积木，展开详细机制、工程惯例和来源。</p></div>
@@ -326,6 +327,7 @@ input[type="file"]{display:none}
 <script src="graph_lowering_plan.js"></script>
 <script src="portable_operator_rules.js"></script>
 <script src="normalization_rules.js"></script>
+<script src="shape_index_rules.js"></script>
 <script src="graph_readiness.js"></script>
 <script src="graph_cost_report.js"></script>
 <script src="numpy_stream_lowering.js"></script>
@@ -356,6 +358,7 @@ input[type="file"]{display:none}
 <script src="node_timeline.js"></script>
 <script>
 (()=>{"use strict";
+const ShapeRules=window.SeetheTruthShapeIndexRules;
 const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
   K=window.SeetheTruthBlockKnowledge,Consensus=window.SeetheTruthConsensus,Readiness=window.SeetheTruthGraphReadiness,Branch=window.SeetheTruthBranchExecution,Session=window.SeetheTruthGraphSession,
   A=window.SeetheTruthComposites,G=window.SeetheTruthGraphLayout,Reverse=window.SeetheTruthGRPOBackward,GeneralReverse=window.SeetheTruthGraphAutodiff,AdamW=window.SeetheTruthAdamW,Train=window.SeetheTruthTrainStep,TrainingSession=window.SeetheTruthTrainingSession,NodeTimeline=window.SeetheTruthNodeTimeline,PaperRewrite=window.SeetheTruthPaperGraphRewrites,Codegen=window.SeetheTruthPythonExport,TorchCodegen=window.SeetheTruthTorchExport,TraceBridge=window.SeetheTruthTraceBridge,$=q=>document.querySelector(q);
@@ -665,6 +668,31 @@ function inspect(){
      "尚未导入真实观测；当前矩阵均为教学数据。";
  }
  $("#inspectorTitle").textContent=d?d.title:"选择一个积木";
+ const shapePanel=$("#shapeIndexSection"),shapeBody=$("#shapeIndexInspector");
+ if(n&&ShapeRules.kinds.includes(n.kind)){
+  shapePanel.hidden=false;
+  const status=readinessSnapshot?.nodes?.find(x=>x.id===n.id);
+  if(status?.status!=="ready"){
+   shapeBody.textContent="等待输入形状有效后展示坐标映射："+(status?.reason||"计算图尚未完成");
+  }else{
+   const graphIndex=L.indexGraph(L.validateGraph(graph));
+   const portShapes={};
+   for(const port of L.defs[n.kind].ports){
+    const from=graphIndex.incomingByPort.get(n.id+":"+port);
+    portShapes[port]=readinessSnapshot.nodes.find(x=>x.id===from)?.shape;
+   }
+   const mapping=ShapeRules.analyze(n,portShapes);
+   if(JSON.stringify(mapping.outputShape)!==JSON.stringify(status.shape))throw Error("static shape index mismatch "+n.id);
+   const fmt=a=>"["+a.join(" × ")+"]";
+   const links=mapping.sourceIndices.map((s,i)=>
+    '<div class="hint">'+esc(s.port)+' '+fmt(s.shape)+' · 索引 ['+s.index.join(",")+']</div>').join("");
+   shapeBody.innerHTML='<div class="shape-index-label">输出 '+fmt(mapping.outputShape)+' · 索引 ['+mapping.outputIndex.join(",")+']</div>'+
+    '<div class="hint">'+esc(mapping.rule)+'</div>'+
+    '<div class="kicker" style="margin-top:10px">该输出位置实际读取</div>'+links+
+    '<div class="kicker" style="margin-top:10px">反向梯度</div>'+
+    '<div class="hint">'+esc(mapping.gradientRule)+'</div>';
+  }
+ }else{shapePanel.hidden=true;shapeBody.replaceChildren();}
  $("#formula").textContent=d?d.formula:"Y=F(X)";
  $("#purpose").textContent=d?d.why:"单击画布上的任意积木查看功能。";
  $("#lesson").textContent=d?d.lesson:"尝试从第一个任务开始。";
