@@ -58,6 +58,7 @@ class ElementLineageBrowserAcceptance(unittest.TestCase):
             out=page.locator("#graphLineageResult").inner_text()
             self.assertIn("真实微型数值轨迹",out)
             page.locator("#graphLineageResult summary").first.click()
+            page.locator("#graphLineageResult .lineage-node summary").first.click()
             self.assertIn("∂输出/∂该元素",page.locator("#graphLineageResult").inner_text())
             page.locator('[data-preset="ffn"]').click()
             page.locator('#blocks [data-node="act"] .block-formula').click()
