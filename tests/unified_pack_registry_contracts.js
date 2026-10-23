@@ -21,6 +21,13 @@ assert.throws(()=>L.evaluate(wrongAxes),/named-axis port mismatch/);
 assert.equal(R.check(wrongAxes).executable,false);
 const wrongWidth=JSON.parse(JSON.stringify(named));wrongWidth.nodes.find(n=>n.id==='bias').params.width=4;
 assert.throws(()=>L.evaluate(wrongWidth),/named feature bias/);
+const videoRecipe=L.preset('extension_video_time_composition');
+assert.equal(videoRecipe.nodes.length,4);
+const videoRecipeRun=L.evaluate(videoRecipe);
+assert.equal(R.check(videoRecipe,{numeric:true}).executable,true);
+const temporal=Object.fromEntries(videoRecipeRun.steps.map(x=>[x.id,x.values]));
+assert.deepEqual(temporal.join,temporal.video);
+assert.deepEqual(videoRecipeRun.steps.find(s=>s.id==='join').axes,['B','T','H','W','C']);
 const graph={schema:L.SCHEMA,title:'Video and named axis packs with native arithmetic',nodes:[
  {id:'v',kind:'semantic_video_source',params:{frames:3,seed:1},x:10,y:40},
  {id:'a',kind:'semantic_video_slice',params:{start:0,length:2},x:270,y:40},
