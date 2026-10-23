@@ -252,10 +252,77 @@ function learning(graph,run,catalog){
  return validate({schema:SCHEMA,title:graph.title||'可执行积木计算图',evidenceTier:isConcept?TIERS.STATIC:TIERS.MICRO,
   source:null,steps,origin:'learning_lab_executor',limits:'no_real_model_weights_or_hardware_profiling'});
 }
+// Independent numerical oracle for the pinned Wan attention-block FFN slice.
+// Sources: Wan-Video/Wan2.2, commit 1ea34ff, wan/modules/model.py
+// norm2 is non-affine LayerNorm; FFN is Linear→GELU(tanh)→Linear;
+ // modulation chunk indices 3/4/5 and post-projection e5 gate matter.
+function verifyWanArithmetic(data){
+ const c=data.config,steps=data.steps,near=(a,b,label)=>{
+  must(Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=1e-10*Math.max(1,Math.abs(b)),label+' contradicts pinned FFN arithmetic');
+ };
+ must(c&&Number.isInteger(c.tokens)&&c.tokens>=1&&c.tokens<=8&&Number.isInteger(c.dim)&&c.dim>=2&&c.dim<=12&&
+  Number.isInteger(c.hidden)&&c.hidden>=2&&c.hidden<=24&&
+  [c.gate,c.scale,c.shift].every(x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=2),
+  'invalid bounded Wan teaching parameters');
+ const T=c.tokens,C=c.dim,H=c.hidden;
+ const source=(name,n)=>{const a=c[name];must(Array.isArray(a)&&a.length===n&&a.every(Number.isFinite),'invalid Wan source '+name);return a;};
+ const after=source('afterSelf',T*C),cross=source('crossDelta',T*C);
+ const e0=source('e0',T*6*C),modulation=source('modulation',6*C);
+ const w1=source('w1',H*C),b1=source('b1',H),w2=source('w2',C*H),b2=source('b2',C);
+ must(Array.isArray(data.e)&&data.e.length===6,'missing six Wan conditioning branches');
+ for(let g=0;g<6;g++){
+  const branch=data.e[g];must(Array.isArray(branch)&&branch.length===T*C,'invalid Wan conditioning branch '+g);
+  for(let t=0;t<T;t++)for(let d=0;d<C;d++)
+   near(branch[t*C+d],e0[t*6*C+g*C+d]+modulation[g*C+d],'e['+g+']');
+ }
+ const dims=[[T,6*C],[T,C],[T,C],[T,C],[T,H],[T,H],[T,C],[T,C],[T,C]];
+ const val=steps.map((step,i)=>{
+  must(step&&step.id===['condition','cross','norm','affine','up','gelu','down','gate','residual'][i],
+   'unexpected Wan arithmetic step order');
+  must(step.main&&step.main.shape.join(',')===dims[i].join(','),'unexpected Wan stage shape');
+  numericTensor(step.main.shape,step.main.values);
+  return step.main.values;
+ });
+ for(let t=0;t<T;t++){
+  for(let g=0;g<6;g++)for(let d=0;d<C;d++)
+   near(val[0][t*6*C+g*C+d],data.e[g][t*C+d],'condition');
+  let mean=0;for(let d=0;d<C;d++)mean+=val[1][t*C+d];mean/=C;
+  let variance=0;for(let d=0;d<C;d++)variance+=(val[1][t*C+d]-mean)**2;variance/=C;
+  const inv=1/Math.sqrt(variance+1e-6);
+  for(let d=0;d<C;d++){
+   const i=t*C+d;
+   near(val[1][i],after[i]+cross[i],'cross');
+   near(val[2][i],(val[1][i]-mean)*inv,'LayerNorm');
+   near(val[3][i],val[2][i]*(1+c.scale*data.e[4][i])+c.shift*data.e[3][i],'FFN affine');
+  }
+  for(let h=0;h<H;h++){
+   let up=b1[h];for(let d=0;d<C;d++)up+=val[3][t*C+d]*w1[h*C+d];
+   const v=val[4][t*H+h];near(v,up,'Linear1');
+   const q=Math.sqrt(2/Math.PI)*(v+.044715*v*v*v);
+   near(val[5][t*H+h],.5*v*(1+Math.tanh(q)),'GELU tanh');
+  }
+  for(let d=0;d<C;d++){
+   const i=t*C+d;
+   let down=b2[d];for(let h=0;h<H;h++)down+=val[5][t*H+h]*w2[d*H+h];
+   near(val[6][i],down,'Linear2');
+   near(val[7][i],val[6][i]*c.gate*data.e[5][i],'e5 output gate');
+   near(val[8][i],val[1][i]+val[7][i],'final residual');
+  }
+ }
+ must(data.final&&data.final.shape.join(',')===dims[8].join(',')&&Array.isArray(data.final.values)&&
+  data.final.values.length===val[8].length,'missing final output contract');
+ data.final.values.forEach((v,i)=>near(v,val[8][i],'final observation'));
+}
 function wan(data){
  must(data&&data.source&&Array.isArray(data.steps)&&data.steps.length===9,'missing pinned Wan FFN trace');
  const ref=data.source,srcUrl=ref.source;
  must(ref.commit==='1ea34ff48f87168174e12956e200b1d908b1c5ff','unsupported Wan source revision');
+ must(ref.repo==='Wan-Video/Wan2.2'&&ref.path==='wan/modules/model.py'&&ref.config==='wan/configs/wan_i2v_A14B.py'&&
+  ref.dim===5120&&ref.ffnDim===13824&&ref.layers===40&&ref.heads===40&&ref.eps===1e-6&&
+  srcUrl==='https://github.com/Wan-Video/Wan2.2/blob/'+ref.commit+'/wan/modules/model.py',
+  'pinned Wan source/config identity mismatch');
+ must(data.evidence==='source-pinned-structure_plus_synthetic_float64_not_original_wan_weights','Wan evidence label mismatch');
+ verifyWanArithmetic(data);
  const steps=data.steps.map((s,i)=>{
   const previous=i===0?[]:[{from:data.steps[i-1].id,port:'previous'}];
   const operands=Object.fromEntries(Object.entries(s.aux||{}).filter(([k,v])=>v&&Array.isArray(v.shape)&&Array.isArray(v.values)).map(([k,v])=>[k,numericTensor(v.shape,v.values)]));
