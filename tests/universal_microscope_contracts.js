@@ -71,6 +71,7 @@ assert.throws(()=>C.validate(badDep),/dependencies must point backward/);
 const h=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
 for(const asset of ['compute_microscope.js','compute_microscope_ui.js'])assert.ok(h.includes('src="'+asset+'"'));
 assert.ok(h.includes('id="computeMicroscope"')&&h.includes('Microscope.learning(current,run,L)'));
+assert.ok(h.includes('MicroscopeUI.mount(document.querySelector("#computeMicroscope")')&& !h.includes('MicroscopeUI.mount($("#computeMicroscope")'));
 const allow=fs.readFileSync(path.join(__dirname,'../android/teaching-assets.txt'),'utf8').split(/\r?\n/);
 for(const a of ['compute_microscope.css','compute_microscope.js','compute_microscope_ui.js'])assert.ok(allow.includes(a));
 for(const a of ['compute_microscope.js','compute_microscope_ui.js'])new vm.Script(fs.readFileSync(path.join(__dirname,'..',a),'utf8'));
