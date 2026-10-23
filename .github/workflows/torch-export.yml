@@ -4,6 +4,8 @@ on:
     paths:
       - 'torch_codegen.js'
       - 'portable_operator_rules.js'
+      - 'normalization_rules.js'
+      - 'tests/normalization_runtime_parity.js'
       - 'tests/portable_operator_runtime_parity.js'
       - 'torch_stream_lowering.js'
       - 'tests/torch_stream_autograd_contracts.js'
@@ -70,6 +72,7 @@ jobs:
       - run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
       - run: node --check torch_codegen.js && node --check torch_stream_lowering.js
       - run: node --check portable_operator_rules.js && node tests/portable_operator_runtime_parity.js
+      - run: node --check normalization_rules.js && node tests/normalization_runtime_parity.js
       - run: node tests/multimodal_codegen_parity.js
       - run: node tests/multimodal_advanced_codegen_parity.js
       - run: node tests/video_causal_conv3d_codegen_parity.js

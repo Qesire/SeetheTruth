@@ -13,6 +13,7 @@ const Branch=node?require("./branch_execution.js"):root.SeetheTruthBranchExecuti
 const Plan=node?require("./graph_lowering_plan.js"):root.SeetheTruthLoweringPlan;
 const StreamNumpy=node?require("./numpy_stream_lowering.js"):root.SeetheTruthStreamNumpy;
 const Portable=node?require("./portable_operator_rules.js"):root.SeetheTruthPortableOperatorRules;
+const Norm=node?require("./normalization_rules.js"):root.SeetheTruthNormalizationRules;
 const SOURCES=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const SUPPORTED=new Set([
  ...SOURCES,...StreamNumpy.kinds,"deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","add","mul","subtract","divide","transpose2d",
@@ -299,8 +300,10 @@ function compile(raw,options={}){
      return 'v['+py(from)+']';
    };
    const portable=Portable.emit(n,port);
+   const normalized=Norm.emit(n,"numpy",port);
    let expression;
    if(portable!==null)expression=portable;
+   else if(normalized!==null)expression=normalized;
    else if(SOURCES.has(kind)){
      expression='_source('+py(id)+','+encoded(steps.get(id).values)+','+
        JSON.stringify(steps.get(id).shape)+',overrides)';
@@ -368,18 +371,11 @@ function compile(raw,options={}){
    else if(kind==="nd_cache_append")expression='np.concatenate(('+port("cache")+','+port("segment")+'),axis=2)';
    else if(kind==="nd_rope")expression='_rope('+port("x")+','+p.offset+','+p.rotaryDim+','+p.base+')';
    else if(kind==="nd_causal_mask")expression='_causal('+port("x")+','+p.queryStart+','+p.keyStart+')';
-   else if(kind==="nd_softmax_last"||kind==="softmax")expression='_softmax('+port("x")+')';
-   else if(kind==="rmsnorm")expression='('+port("x")+'/np.sqrt(np.mean('+port("x")+'**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
-   else if(kind==="layernorm")expression='(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))/np.sqrt(np.mean(('+port("x")+'-'+port("x")+'.mean(axis=-1,keepdims=True))**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
-   else if(kind==="attention")expression='(_softmax(('+port("q")+' @ '+port("k")+'.T)/np.sqrt('+port("q")+'.shape[-1])) @ '+port("v")+')';
    else if(kind==="mse"||kind==="nd_mse")expression='np.asarray([[np.mean(('+port("prediction")+'-'+port("target")+')**2)]],dtype=np.float64)';
    else if(kind==="row_mean")expression='np.mean('+port("x")+',axis=-1,keepdims=True)';
    else if(kind==="row_sum")expression='np.sum('+port("x")+',axis=-1,keepdims=True)';
    else if(kind==="row_var")expression='np.var('+port("x")+',axis=-1,keepdims=True)';
-   else if(kind==="row_logsumexp")expression='np.logaddexp.reduce('+port("x")+',axis=-1,keepdims=True)';
-   else if(kind==="log_softmax")expression='('+port("x")+'-np.logaddexp.reduce('+port("x")+',axis=-1,keepdims=True))';
    else if(kind==="l2norm")expression='('+port("x")+'/np.maximum(np.linalg.norm('+port("x")+',axis=-1,keepdims=True),'+p.epsilon+'))';
-   else if(kind==="qk_norm")expression='('+port("x")+'/np.sqrt(np.mean('+port("x")+'**2,axis=-1,keepdims=True)+'+p.epsilon+'))';
    else if(kind==="logit_softcap")expression='('+p.cap+'*np.tanh('+port("x")+'/'+p.cap+'))';
    else if(kind==="token_depth_mask")expression='_depth_mask('+port("depths")+','+p.step+','+p.width+')';
    else if(kind==="state_mask_blend")expression='_blend_state('+port("previous")+','+port("candidate")+','+port("mask")+')';
