@@ -29,3 +29,16 @@ Independent follow-up: registered pack `outputAxes` and `portAxes` now propagate
 Original native `add` and `mul` now have validated per-coordinate arithmetic `y[i]=a[i]±b[i]` / `y[i]=a[i]×b[i]` for the actual executor's two-port same-shape semantics (the add contract uses addition, not subtraction). These are standalone pointwise proofs, never incorrectly presented as GEMM or source index copies. Altered outputs or claimed math operations fail the proof validation. Pack-provided final substep inputs must match the parent graph's shape, numeric values and named axes, and their output must match the parent output.
 
 The additional native proof and axis annotation do not imply unsupported operator gradients, backend export or real-checkpoint data. The execution is bounded Float64 teaching numerics. See `tests/microscope_named_axes_pointwise_contracts.js` and the real Chromium acceptance suite.
+
+## 2026-10-23 · Native nonlinear and row-normalization proofs
+
+This incremental extension gives the **same** numerical microscope full verification contracts for:
+
+- `RMSNorm`: per-token `mean_k x[k]^2`, the configured positive `epsilon`, `1/sqrt(mean+epsilon)` and every output coordinate `x[c]*inverse`. It is not LayerNorm.
+- `SiLU`: exact `x/(1+exp(-x))` at each coordinate, with a visible denominator. This is not the GELU(tanh) activation in the pinned Wan I2V adapter.
+- `Softmax`: stable row-wise `max(x)`, `exp(x[k]-max)`, their sum and normalized per-coordinate output. The existing Attention module's **actual** intermediate score matrix is independently checked using this same rowwise proof.
+- Distinguish these proofs from per-coordinate GEMM dot summands and copy/index maps. Each kind retains an explicit operator identity and input port, rather than accepting unverified claims attached by arbitrary metadata.
+
+Corrupting a numerical output, changing the operator name, swapping an input port, changing epsilon or editing an internal Attention probability fails a real Node proof. Static mode still only provides shapes, not invented numeric proofs.
+
+This is forward arithmetic reconstruction, **not** proof of a VJP, autograd graph, real model activations or GPU timing.
