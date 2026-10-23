@@ -75,6 +75,7 @@ jobs:
       - run: node --check torch_codegen.js && node --check torch_stream_lowering.js
       - run: node --check portable_operator_rules.js && node tests/portable_operator_runtime_parity.js
       - run: node --check normalization_rules.js && node tests/normalization_runtime_parity.js
+      - run: node tests/shape_index_runtime_parity.js
       - run: node tests/multimodal_codegen_parity.js
       - run: node tests/multimodal_advanced_codegen_parity.js
       - run: node tests/video_causal_conv3d_codegen_parity.js
