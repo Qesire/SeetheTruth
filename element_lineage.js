@@ -6,9 +6,11 @@
  const node=typeof module==="object"&&module.exports;
  const api=factory(node?{
   L:require("./learning_lab.js"),Ready:require("./graph_readiness.js"),
-  Shape:require("./shape_index_rules.js"),ND:require("./nd_tensor.js")
+  Shape:require("./shape_index_rules.js"),ND:require("./nd_tensor.js"),
+  Activation:require("./activation_math.js")
  }:{L:root.SeetheTruthLearning,Ready:root.SeetheTruthGraphReadiness,
-    Shape:root.SeetheTruthShapeIndexRules,ND:root.SeetheTruthND});
+    Shape:root.SeetheTruthShapeIndexRules,ND:root.SeetheTruthND,
+    Activation:root.SeetheTruthActivations});
  if(node)module.exports=api;
  if(root)root.SeetheTruthElementLineage=api;
 })(typeof window!=="undefined"?window:null,function(d){"use strict";
@@ -38,7 +40,16 @@ function inspect(raw,options={}){
   if(!Array.isArray(steps)||steps.length!==ordered.ordered.length||
      steps.some((step,i)=>step.id!==ordered.ordered[i].id||!same(step.shape,shapes.get(step.id))))
    throw Error("lineage numerical trace does not match current graph");
-  if(steps.every(step=>step.values!==undefined))numeric=new Map(steps.map(step=>[step.id,step.values]));
+  if(steps.some(step=>step.values===undefined))
+   throw Error("lineage numerical trace does not match current graph: incomplete values");
+  // Shapes and node IDs alone cannot bind a trace to current parameters or wiring.
+  // Re-evaluate the bounded deterministic teaching graph and compare every output.
+  // This is a consistency check, not an independent numerical oracle.
+  const reference=d.L.evaluate(graph);
+  if(steps.some((step,i)=>step.kind!==reference.steps[i].kind||
+      !same(step.values,reference.steps[i].values)))
+   throw Error("lineage numerical trace does not match current graph: stale or altered values");
+  numeric=new Map(steps.map(step=>[step.id,step.values]));
  }
  const sampleValue=(nodeId,coordinate)=>{
   if(!numeric?.has(nodeId))return null;
@@ -78,6 +89,38 @@ function inspect(raw,options={}){
    else {factor=1/p.temperature;rule="除以温度参数";}
    add("x",[...coordinate],rule,factor);
    return {rule,links:result,gradientRule:"局部导数乘上游梯度"};
+  }
+  const activationKind=kind.startsWith("nd_")?kind.slice(3):kind;
+  if(d.Activation.KINDS.includes(activationKind)){
+   const x=read("x",coordinate);
+   const factor=x===null?null:d.Activation.derivative(activationKind,x,p);
+   add("x",[...coordinate],"f′(x) = "+activationKind+" 的局部解析导数",factor);
+   return {rule:"逐元素激活 "+activationKind,links:result,
+    gradientRule:"使用与教学执行引擎共享的解析导数，并沿唯一输入坐标反传"};
+  }
+  if(kind==="rmsnorm"||kind==="qk_norm"||kind==="layernorm"){
+   const D=shape[shape.length-1],axis=shape.length-1;
+   const row=Array.from({length:D},(_,j)=>{
+    const source=[...coordinate];source[axis]=j;return read("x",source);
+   });
+   const hasNumbers=row.every(v=>v!==null);
+   const mean=hasNumbers?row.reduce((s,v)=>s+v,0)/D:null;
+   const centered=hasNumbers?row.map(v=>v-mean):null;
+   const squares=hasNumbers?(kind==="layernorm"?centered:row).reduce((s,v)=>s+v*v,0)/D:null;
+   const den=hasNumbers?Math.sqrt(squares+p.epsilon):null;
+   const xi=hasNumbers?(kind==="layernorm"?centered:row)[coordinate[axis]]:null;
+   for(let j=0;j<D;j++){
+    const source=[...coordinate];source[axis]=j;
+    const delta=j===coordinate[axis]?1:0;
+    const factor=!hasNumbers?null:kind==="layernorm"?
+     (delta-1/D)/den-xi*centered[j]/(D*den*den*den):
+     delta/den-xi*row[j]/(D*den*den*den);
+    add("x",source,kind==="layernorm"?
+     "(δij−1/D)/σ − (xi−μ)(xj−μ)/(Dσ³)":
+     "δij/r − xi*xj/(D*r³)",factor);
+   }
+   return {rule:kind+" 每个输出坐标依赖同一行全部 "+D+" 个输入特征",
+    links:result,gradientRule:"显式展开最后一维的完整 Jacobian，而非错误的逐元素缩放"};
   }
   if(binary.has(kind)){
    const a=read("a",coordinate),b=read("b",coordinate);
