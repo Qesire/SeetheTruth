@@ -56,6 +56,7 @@ jobs:
           node tests/unified_pack_registry_contracts.js
           node tests/graph_learning_path_contracts.js
           node tests/universal_microscope_contracts.js
+          node tests/microscope_named_axes_pointwise_contracts.js
           node tests/studio_graph_session_contracts.js
           node tests/training_session_contracts.js
           node tests/gradient_inspection_contracts.js
