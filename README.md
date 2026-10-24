@@ -4,7 +4,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
-**2026-10-24 统一学习内核候选：** 新增 [统一课程与执行适配层](docs/unified-learning-core-v1.md)，为全部积木、59 门引导图、自由画布、两个扩展配方、八门跨平台课程以及 15 个专项页面建立统一身份、数学域和证据契约。自由组合图仍走相同的 DAG/形状/数值核心；Prefill、Worker、KV 和 Scheduler 使用各自真实领域算法的显式运行适配器。其他专项页面已经登记，但仍保留独立执行引擎，不能将“统一登记”视为所有执行路径已重构完成。最终验证状态以该功能分支的 CI 为准。
+**2026-10-24 统一学习内核候选：** 新增 [统一课程与执行适配层](docs/unified-learning-core-v1.md)，为全部积木、59 门引导图、自由画布、两个扩展配方、十门跨平台课程以及 17 个专项页面建立统一身份、数学域和证据契约。自由组合图仍走相同的 DAG/形状/数值核心；Prefill、Worker、KV 和 Scheduler 使用各自真实领域算法的显式运行适配器。其他专项页面已经登记，但仍保留独立执行引擎，不能将“统一登记”视为所有执行路径已重构完成。最终验证状态以该功能分支的 CI 为准。
 
 **2026-10-20 推理系统时间实验：** [DeepInfer Worker ZOS / 非 ZOS 对照](deepinfer_worker_lab.html) 独立展示跨 Step 的 Scheduler、GPU Forward、上一轮延迟 Post-process、Sample、Flush 的可执行事件依赖图。它以用户输入的假设时长进行可证伪的逻辑调度对照，**不是 DeepInfer 的实测吞吐或框架复刻**。精确来源与限制详见 [时序重建与证据](docs/deepinfer-worker-events.md)。
 
@@ -28,7 +28,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 ## PC / Android 同一份教学内容
 
-新的 [跨平台教学中心](teaching.html) 将 8 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
+新的 [跨平台教学中心](teaching.html) 将 10 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS，以及工程入门与训练流水线）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
 
 ## 立即体验
 
