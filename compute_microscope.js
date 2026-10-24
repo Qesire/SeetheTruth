@@ -193,7 +193,7 @@ function validate(frame){
  must(Object.values(TIERS).includes(frame.evidenceTier),'unknown evidence tier');
  must(Array.isArray(frame.steps)&&frame.steps.length>=1&&frame.steps.length<=MAX_STEPS,'invalid step count');
  must(typeof frame.title==='string'&&frame.title.length>0,'missing title');
- const ids=new Set();let hasNumeric=false;
+ const ids=new Set(),resolved=new Map();let hasNumeric=false;
  for(const s of frame.steps){
   must(s&&typeof s.id==='string'&&/^[A-Za-z0-9_:\-]{1,80}$/.test(s.id)&&!ids.has(s.id),'duplicate or invalid step id');
   must(typeof s.kind==='string'&&s.kind.length>0&&typeof s.title==='string'&&s.title.length>0,'missing step metadata');
@@ -236,6 +236,17 @@ function validate(frame){
     nestedIds.add(child.id);
    }
   }
+  if(frame.origin==='learning_lab_executor'&&s.out.values!==null){
+   for(const dep of s.dependencies){
+    const parent=resolved.get(dep.from),got=s.operands[dep.port];
+    must(parent&&got&&got.shape.join(',')===parent.shape.join(',')&&
+     JSON.stringify(got.axes||null)===JSON.stringify(parent.axes||null)&&
+     got.values&&parent.values&&got.values.length===parent.values.length&&
+     got.values.every((v,i)=>v===parent.values[i]),
+     'execution dependency operand provenance mismatch');
+   }
+  }
+  resolved.set(s.id,s.out);
   ids.add(s.id);
  }
  must((frame.evidenceTier===TIERS.STATIC)===(hasNumeric===false),'symbolic vs numeric provenance mismatch');
