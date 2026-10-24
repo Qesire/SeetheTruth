@@ -97,6 +97,8 @@ function inspect(graph,run,frame,options={}){
   backward:Object.freeze({complete:scalar.complete,truncated:scalar.truncated,
    boundaryNodes:scalar.frontiers.slice(),nodeCount:scalar.vertices.length,
    edgeCount:scalar.edges.length,localEdges,sources,
+   internalStages:root.stages||[],discreteConditional:scalar.discreteConditional,
+   conditionalCuts:scalar.cutEdges||[],
    note:"Unit seed at one selected output coordinate; accumulated derivatives are not necessarily a loss gradient."}),
   loss:lossAdjoint(graph,run,{nodeId:step.id,index:[...idx]},scalar,options),
   codegen:Object.freeze({numpyOperatorEligible:capability.numpyEligible,
