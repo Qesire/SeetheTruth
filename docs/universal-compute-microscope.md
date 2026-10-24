@@ -144,3 +144,42 @@ real Parameter tensors and rerun the original numerical graph interpreter,
 checking multiple Q/K/V keys, tied QKV, shared gate/up branches, routed
 MoE expert banks, selected router affinities, and a no-numeric selection
 counterexample. Chromium desktop/mobile checks the shared microscope.
+
+## Four-axis GQA / MQA, RoPE and immutable cache scalar VJP (2026-10-24)
+
+The generic `element_lineage.js` graph interpreter now continues through the
+**already registered four-axis operators** `nd_rope`, `nd_cache_read`,
+`nd_cache_append`, and `nd_causal_mask`. These are local analytic Jacobians,
+not new copies of a specialized decoder or a claim to reconstruct actual Wan
+runtime weights.
+
+- **RoPE:** adjacent-pair convention (the actual `nd_tensor.rope4` CPU
+  kernel); for `θ=(offset+token)/base^(2·pair/rotaryDim)`, the selected
+  channel depends on its own input by `cosθ` and the partner by
+  `±sinθ`. Channels outside the rotary window have derivative 1.
+- **Cache read:** output Token `t` pulls from absolute input Token
+  `start+t`. **Cache append:** output Token `t` pulls from either
+  prefix cache `t` or newly appended segment `t-prefixLength`, with
+  exact source port metadata. This is immutable tensor concatenation.
+- **Causal visibility:** absolute `queryStart+q` and `keyStart+k`
+  decide if an attention score is kept. Visible scores have local derivative
+  1; masked scores are assigned the constant `-1e9` and have derivative
+  **zero**. This does not give a real-valued gradient to discrete mask
+  topology or replace the teaching kernel with symbolic infinities.
+
+Together with existing `nd_repeat_kv`, `nd_permute`,
+`nd_batched_matmul`, `nd_scale` and `nd_softmax_last`, the same
+general-purpose element lineage now traverses a complete numerical
+`nd_cached_gqa_decode` pipeline from one selected context coordinate
+to original Q/K/V values. The UI displays local RoPE rotation terms,
+absolute cache positions and causal visibility through the common
+PC/Android graph microscope. Source shapes, batch/head grouping and
+realized stage values come from this graph, not from guessed model
+architecture.
+
+`tests/nd_incremental_coordinate_jacobians.js` independently perturbs
+four-axis Q/K/V parameters and reruns the **original forward interpreter**.
+It covers GQA and MQA head sharing, causal exclusion and whole-loss VJP,
+plus cached decode with RoPE offsets and prefix/segment source boundaries.
+Structural-only source graphs and stale traces are separate negative tests.
+Chromium desktop/mobile checks the visible read-only microscope.
