@@ -22,6 +22,7 @@
    executable:false,numericOk:false,firstError:s.readiness?.structuralError||e.message,
    evidence:"NO_EXECUTION",steps:Object.freeze([])});}
   const sessionNodes=s.nodes||s.readiness.nodes; // GraphSession numeric error returns readiness but no node projection.
+  const nodeById=new Map(g.nodes.map(node=>[node.id,node]));
   const nodes=new Map(sessionNodes.map(n=>[n.id,n]));
   const trace=new Map((s.trace?.steps||[]).map(n=>[n.id,n]));
   const ir=new Map((s.ir?.nodes||[]).map(n=>[n.id,n]));
@@ -42,7 +43,7 @@
     status:n.status,reason:n.reason||null,ports:Object.freeze(ports),
     shape:n.shape?[...n.shape]:null,formula:op.formula,
     why:card.intuition,flow:card.flow,practice:card.practice,trap:card.trap,exercise:card.exercise,
-    params:Object.freeze({...index.ordered[i].params}),
+    params:Object.freeze({...nodeById.get(n.id).params}),
     evidence:observed?"SYNTHETIC_NUMERIC":"STATIC_ONLY",
     sample:observed?preview(t.values):null,
     numpyCandidate:op.backends.numpyEligible,torchCandidate:op.backends.torchEligible});
