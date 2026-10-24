@@ -16,7 +16,14 @@
   worker:require("./deepinfer_worker_events.js"),
   kv:require("./deepinfer_kv_lifecycle.js"),
   scheduler:require("./deepinfer_scheduler_workflow.js"),
-  state:require("./state_microscope.js")
+  state:require("./state_microscope.js"),
+  compute:require("./compute_microscope.js"),
+  wan:require("./wan_ffn_trace.js"),
+  tradeoffs:require("./architecture_tradeoffs.js"),
+  cacheLab:require("./kv_cache_lab.js"),
+  scalarTraining:require("./training_flow.js"),
+  journey:require("./engineering_journey_engine.js"),
+  pipeline:require("./engineering_training_pipeline.js")
  }:{
   learning:root.SeetheTruthLearning,operators:root.SeetheTruthOperatorContracts,
   session:root.SeetheTruthGraphSession,path:root.SeetheTruthGraphLearningPath,
@@ -24,7 +31,14 @@
   prefill:root.SeetheTruthPrefillPolicy,
   worker:root.SeetheTruthDeepInferEvents,kv:root.SeetheTruthKVLifecycle,
   scheduler:root.SeetheTruthSchedulerWorkflow,
-  state:root.SeetheTruthStateMicroscope
+  state:root.SeetheTruthStateMicroscope,
+  compute:root.SeetheTruthComputeMicroscope,
+  wan:root.SeetheTruthWanFFNTrace,
+  tradeoffs:root.SeetheTruthTradeoffs,
+  cacheLab:root.SeetheTruthCacheLab,
+  scalarTraining:root.SeetheTruthTraining,
+  journey:root.SeetheTruthEngineeringEngine,
+  pipeline:root.SeetheTruthTrainingPipeline
  };
  const api=factory(deps);
  if(isNode)module.exports=api;
@@ -138,7 +152,36 @@
   deepinfer_scheduler:Object.freeze({
    simulate:Object.freeze({module:"scheduler",method:"simulate",
     run:(m,x)=>m.simulate(x.spec,x.options||{})})
-  })
+  }),
+  wan_ffn:Object.freeze({trace:Object.freeze({module:"wan",method:"trace",
+   run:(m,x)=>m.trace(x.options||{})})}),
+  tradeoffs:Object.freeze(Object.fromEntries(["gqa","moe","loop"].map(name=>
+   [name,Object.freeze({module:"tradeoffs",method:name,run:(m,x)=>m[name](x)})]))),
+  training:Object.freeze({scalar:Object.freeze({module:"scalarTraining",method:"build",
+   run:(m,x)=>m.build(x.config||{},"scalar")})}),
+  cache:Object.freeze({replay_steps:Object.freeze({module:"cacheLab",method:"Session",run:(m,x)=>{
+   const session=m.Session(x.config||{});
+   const count=x.steps===undefined?session.config.decode+1:x.steps;
+   if(!Number.isSafeInteger(count)||count<1||count>session.config.decode+1)
+    fail("cache steps must be 1..declared workload");
+   const snapshots=[session.snapshot()];
+   for(let i=0;i<count;i++)snapshots.push(session.advance());
+   return Object.freeze({config:session.config,snapshots});
+  }})}),
+  engineering_journey:Object.freeze({train:Object.freeze({module:"journey",method:"create",
+   run:(m,x)=>{
+    if(!Number.isSafeInteger(x.steps)||x.steps<1||x.steps>120)fail("guided Bigram steps must be 1..120");
+    const model=m.create(x.config||{}),initial=model.checkpoint(),training=model.train(x.steps);
+    return Object.freeze({initial,training,checkpoint:model.checkpoint(),
+     validation:model.evaluate("validation"),source:m.SCHEMA});
+  }})}),
+  engineering_pipeline:Object.freeze({train:Object.freeze({module:"pipeline",method:"create",
+   run:(m,x)=>{
+    if(!Number.isSafeInteger(x.steps)||x.steps<1||x.steps>12)fail("pipeline optimizer steps must be 1..12");
+    const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
+    for(let i=0;i<x.steps;i++){model.train(1);snapshots.push(model.checkpoint());}
+    return Object.freeze({snapshots,diagnostic:model.diagnostic(),source:m.SCHEMA});
+  }})})
  });
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];
@@ -153,15 +196,20 @@
    "deepinfer_prefill/inspect_pair":()=>deps.state.prefill({voteInput:input.voteInput,chunkInput:input.chunkInput,voteResult:value.vote,chunkResult:value.chunk},deps.prefill),
    "deepinfer_worker/simulate":()=>deps.state.worker(value),
    "deepinfer_kv/replay":()=>deps.state.kv(value,deps.kv),
-   "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv)
+   "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv),
+   "training/scalar":()=>deps.state.scalar(value),
+   "cache/replay_steps":()=>deps.state.cache(value.snapshots,deps.cacheLab),
+   "engineering_pipeline/train":()=>deps.state.training(value.snapshots)
   };
   const eventKey=id+"/"+operation;
   if(eventAdapters[eventKey]&&!deps.state)
    fail("state microscope dependency unavailable for "+eventKey);
   const stateTrace=eventAdapters[eventKey]?eventAdapters[eventKey]():null;
+  if(id==="wan_ffn"&&!deps.compute)fail("shared computation microscope unavailable");
+  const computationTrace=id==="wan_ffn"?deps.compute.wan(value):null;
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:lab.domain,engine:lab.engine,
-   evidence:lab.evidence,value,stateTrace,
+   evidence:lab.evidence,value,stateTrace,computationTrace,
    note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
  function inspectCourse(id){

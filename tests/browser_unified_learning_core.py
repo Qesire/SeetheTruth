@@ -71,6 +71,43 @@ class UnifiedLearningBrowser(unittest.TestCase):
     finally:
      page.close()
 
+ def test_shared_numeric_specialist_adapters(self):
+  page=self.browser.new_page(viewport={"width":1280,"height":850})
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/wan_ffn_lab.html").status,200)
+   page.wait_for_function("!!window.SeetheTruthSpecializedLesson")
+   result=page.evaluate("""() => {
+    const x=window.SeetheTruthSpecializedLesson.execute("trace",{options:{
+      seed:17,tokens:3,dim:4,hidden:8}});
+    return {steps:x.computationTrace.steps.length,
+     tier:x.computationTrace.evidenceTier,
+     parity:JSON.stringify(x.value)===JSON.stringify(
+      window.SeetheTruthWanFFNTrace.trace({seed:17,tokens:3,dim:4,hidden:8}))};
+   }""")
+   self.assertEqual(result["steps"],9)
+   self.assertEqual(result["tier"],"PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64")
+   self.assertTrue(result["parity"])
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+  page=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True)
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/engineering_pipeline.html").status,200)
+   page.wait_for_function("!!window.SeetheTruthSpecializedLesson")
+   x=page.evaluate("""() => {
+    const r=window.SeetheTruthSpecializedLesson.execute("train",{config:{seed:7},steps:2});
+    return {steps:r.stateTrace.steps.length,tier:r.stateTrace.evidenceTier};
+   }""")
+   self.assertEqual(x["steps"],3)
+   self.assertEqual(x["tier"],"EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION")
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
  def test_independent_lab_adapter_preserves_domain_truth(self):
   for route,id,domain in [
    ("deepinfer_worker_lab.html","deepinfer_worker","event_dag"),

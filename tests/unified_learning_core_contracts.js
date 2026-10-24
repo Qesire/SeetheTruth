@@ -149,6 +149,40 @@ assert.deepEqual(Core.executeLab('deepinfer_scheduler','simulate',sched).value,
 const schedFrame=Core.executeLab('deepinfer_scheduler','simulate',sched).stateTrace;
 assert.equal(schedFrame.evidenceTier,state.TIERS.SCHEDULER);
 assert.equal(schedFrame.steps.length,SW.simulate(sched.spec,sched.options).decisions.length+1);
+const Wan=require('../wan_ffn_trace.js'),Mic=require('../compute_microscope.js');
+const wo={seed:17,tokens:3,dim:4,hidden:8};
+const w=Core.executeLab('wan_ffn','trace',{options:wo});
+assert.deepEqual(w.value,Wan.trace(wo));
+assert.deepEqual(w.computationTrace,Mic.wan(w.value));
+assert.equal(w.computationTrace.evidenceTier,Mic.TIERS.WAN);
+assert.throws(()=>Core.executeLab('wan_ffn','trace',{options:{tokens:0}}),/tokens/);
+const Trade=require('../architecture_tradeoffs.js');
+for(const [kind,input] of Object.entries({
+ gqa:{layers:2,heads:8,kvHeads:2,headDim:16,context:10,batch:3,bytes:2},
+ moe:{tokens:4,hidden:8,intermediate:16,experts:8,topK:2,sharedExperts:1},
+ loop:{width:8,intermediate:16,steps:6,untiedLayers:6}}))
+ assert.deepEqual(Core.executeLab('tradeoffs',kind,input).value,Trade[kind](input));
+assert.throws(()=>Core.executeLab('tradeoffs','gqa',{layers:1,heads:7,kvHeads:2,headDim:8,context:5}),/divisible/);
+const scalar=Core.executeLab('training','scalar',{config:{}});
+assert.deepEqual(scalar.value,require('../training_flow.js').build({},'scalar'));
+assert.equal(scalar.stateTrace.evidenceTier,state.TIERS.SCALAR);
+const Cache=require('../kv_cache_lab.js'),cached=Core.executeLab('cache','replay_steps',{config:{prefix:2,decode:1},steps:2});
+const c=Cache.Session({prefix:2,decode:1});
+assert.deepEqual(cached.value.snapshots,[c.snapshot(),c.advance(),c.advance()]);
+assert.equal(cached.stateTrace.evidenceTier,state.TIERS.CACHE);
+assert.throws(()=>Core.executeLab('cache','replay_steps',{config:{prefix:2,decode:1},steps:3}),/cache steps/);
+const E=require('../engineering_journey_engine.js'),guide=Core.executeLab('engineering_journey','train',{config:{seed:7},steps:2});
+const g=E.create({seed:7}),trained=g.train(2);
+assert.deepEqual(guide.value.training,trained);
+assert.deepEqual(guide.value.checkpoint,g.checkpoint());
+assert.throws(()=>Core.executeLab('engineering_journey','train',{steps:121}),/Bigram steps/);
+const Pipeline=require('../engineering_training_pipeline.js');
+const p=Core.executeLab('engineering_pipeline','train',{config:{seed:7},steps:2}),p0=Pipeline.create({seed:7});
+const snapshots=[p0.checkpoint()];for(let i=0;i<2;i++){p0.train(1);snapshots.push(p0.checkpoint());}
+assert.deepEqual(p.value.snapshots,snapshots);
+assert.equal(p.stateTrace.evidenceTier,state.TIERS.TRAIN);
+assert.equal(p.stateTrace.steps.length,3);
+assert.throws(()=>Core.executeLab('engineering_pipeline','train',{steps:13}),/optimizer steps/);
 assert.throws(()=>Core.executeLab('deepinfer_worker','vote',args),/no registered executable adapter/);
 assert.throws(()=>Core.executeLab('deepinfer_prefill','unknown',args),/no registered executable adapter/);
 assert.throws(()=>Core.inspectLab('does_not_exist'),/unknown specialized adapter/);
