@@ -157,6 +157,29 @@ function mount(rootElement,onSelect,onCoordinate){
       detail.append(el('p',source.nodeId+' ['+source.index.join(',')+'] · ∂selected/∂source = '+
        (source.sensitivity===null?'未知，非零值未获证明':Number(source.sensitivity).toPrecision(9)),'cmp-hint'));
      if(report.backward.sources.length>24)detail.append(el('p','仅展示前 24 个来源，VJP 汇总已按完整探索范围计算。','cmp-hint'));
+     const loss=report.loss;
+     if(loss?.status==='VERIFIED_GRAPH_LOSS_VJP'){
+      detail.append(el('div','TRAINING LOSS / 独立完整反向传播','cmp-label'));
+      detail.append(el('p','目标 '+loss.targetId+' · L='+Number(loss.loss).toPrecision(9)+
+       ' · 选定坐标 ∂L/∂yᵢ='+loss.selectedAdjoint.toPrecision(9)+
+       (loss.selectedOnLossPath?' · 位于损失路径':' · 不在损失路径'),'cmp-hint'));
+      detail.append(el('p','对每个来源：经本坐标贡献 = (∂L/∂yᵢ)(∂yᵢ/∂source)，'+
+       '完整梯度还包括经过其他输出坐标或其他分支的贡献。','cmp-hint'));
+      for(const source of loss.sourceContributions.slice(0,24)){
+       detail.append(el('p',source.nodeId+' ['+source.index.join(',')+'] · 经此输出 = '+
+        (source.throughSelected===null?'未验证/不适用':source.throughSelected.toPrecision(8))+
+        '；完整 dL/dSource = '+source.wholeLossGradient.toPrecision(8)+
+        (source.stopped?' · 本图中有停梯度边':'') ,'cmp-hint'));
+      }
+      if(loss.sourceContributions.length>24)detail.append(el('p','只展示前 24 个源坐标，完整梯度仍由全图反向传播计算。','cmp-hint'));
+      if(loss.cutEdges.length)detail.append(el('p','停止梯度：'+loss.cutEdges.slice(0,12).map(c=>
+       c.nodeId+'.'+c.port+' ← '+c.from+'：'+c.reason).join('；'),'cmp-hint'));
+     }else if(loss?.status==='NO_LOSS_OBJECTIVE'){
+      detail.append(el('p','TRAINING LOSS · 当前图无符合规则的标量损失；以上只是所选输出坐标的 VJP。','cmp-hint'));
+     }else if(loss?.status==='UNAVAILABLE_GRAPH_LOSS_VJP'){
+      detail.append(el('p','TRAINING LOSS · '+loss.targetId+' 的完整反向传播未通过：'+loss.reason+
+       '；不以零梯度代替缺失算子。','cmp-hint'));
+     }
      detail.append(el('p','NumPy 单算子资格 '+(report.codegen.numpyOperatorEligible?'有':'无')+
       ' · PyTorch 单算子资格 '+(report.codegen.torchOperatorEligible?'有':'无')+
       '；整图导出及 VJP 代码导出均未在此证明。','cmp-hint'));

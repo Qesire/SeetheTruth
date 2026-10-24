@@ -51,6 +51,7 @@ jobs:
           node --check element_lineage.js
           node tests/element_lineage_contracts.js
           node tests/coordinate_vjp_bridge_contracts.js
+          node tests/coordinate_loss_adjoint_contracts.js
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js

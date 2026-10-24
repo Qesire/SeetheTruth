@@ -6,16 +6,58 @@
  const node=typeof module==="object"&&module.exports;
  const api=factory(node?{
   L:require("./learning_lab.js"),M:require("./compute_microscope.js"),
-  E:require("./element_lineage.js"),Cap:require("./block_capabilities.js")
+  E:require("./element_lineage.js"),Cap:require("./block_capabilities.js"),
+  Grad:require("./graph_autodiff.js"),Objective:require("./training_objective.js"),ND:require("./nd_tensor.js")
  }:{
   L:root.SeetheTruthLearning,M:root.SeetheTruthComputeMicroscope,
-  E:root.SeetheTruthElementLineage,Cap:root.SeetheTruthCapabilities
+  E:root.SeetheTruthElementLineage,Cap:root.SeetheTruthCapabilities,
+  Grad:root.SeetheTruthGraphAutodiff,Objective:root.SeetheTruthTrainingObjective,ND:root.SeetheTruthND
  });
  if(node)module.exports=api;
  if(root)root.SeetheTruthCoordinateVJP=api;
 })(typeof window!=="undefined"?window:null,function(d){"use strict";
 const SCHEMA="seethetruth-coordinate-vjp-bridge-v1";
 function must(ok,message){if(!ok)throw Error("coordinate VJP: "+message);}
+function lossAdjoint(graph,run,selected,scalar,options={}){
+ must(d.Grad&&d.Objective&&d.ND,"loss-gradient dependency missing");
+ const analyzed=d.Objective.analyze(graph);
+ const targetId=options.lossId??analyzed.preferred;
+ if(!targetId)return Object.freeze({status:"NO_LOSS_OBJECTIVE",
+  message:"This graph has no eligible, explicitly derived scalar training loss."});
+ must(analyzed.isLoss(targetId),"requested target is not a verified scalar training loss");
+ try{
+  const backward=d.Grad.backward(graph,run,{targetId});
+  const grad=backward.gradients[selected.nodeId];
+  must(grad!==undefined,"selected node has no reverse record");
+  const adjoint=d.ND.at(grad,selected.index);
+  must(Number.isFinite(adjoint),"nonfinite selected loss adjoint");
+  const active=backward.pathIds.includes(selected.nodeId);
+  const relevantCuts=backward.cutEdges.filter(c=>scalar.vertices.some(v=>v.id===c.nodeId)&&
+    scalar.edges.some(e=>e.from.startsWith(c.nodeId+"@")&&e.port===c.port));
+  const safe=scalar.complete&&active&&relevantCuts.length===0;
+  const sourceContributions=scalar.vertices.filter(v=>v.status==="source").map(v=>{
+   const overall=d.ND.at(backward.gradients[v.id],v.index);
+   must(Number.isFinite(overall),"nonfinite source loss gradient");
+   const throughSelected=safe&&v.sensitivity!==null?adjoint*v.sensitivity:null;
+   return Object.freeze({nodeId:v.id,kind:v.kind,index:[...v.index],
+    throughSelected,wholeLossGradient:overall,onLossPath:backward.pathIds.includes(v.id),
+    stopped:backward.cutEdges.some(c=>c.from===v.id)});
+  });
+  return Object.freeze({status:"VERIFIED_GRAPH_LOSS_VJP",
+   targetId,loss:backward.loss,selectedAdjoint:adjoint,
+   selectedOnLossPath:active,completeSelectedPath:scalar.complete,
+   throughSelectedEligible:safe,sourceContributions,
+   cutEdges:backward.cutEdges.map(c=>({...c})),
+   note:"dL/dy_i is the exact whole-loss adjoint at the selected output. "+
+    "dL/dy_i × dy_i/dx_j is only the contribution THROUGH that one selected coordinate; "+
+    "the whole-loss dL/dx_j includes all other routes. Fixed targets and Detach remain cut."});
+ }catch(error){
+  // A valid objective can include future operators whose exact VJP has not
+  // been implemented. Report the blocker without faking a zero gradient.
+  return Object.freeze({status:"UNAVAILABLE_GRAPH_LOSS_VJP",targetId,
+   reason:String(error.message||error)});
+ }
+}
 function inspect(graph,run,frame,options={}){
  must(d.L&&d.M&&d.E&&d.Cap,"missing shared runtime");
  must(run&&run.mode!=="concept"&&frame?.evidenceTier===d.M.TIERS.MICRO,
@@ -56,6 +98,7 @@ function inspect(graph,run,frame,options={}){
    boundaryNodes:scalar.frontiers.slice(),nodeCount:scalar.vertices.length,
    edgeCount:scalar.edges.length,localEdges,sources,
    note:"Unit seed at one selected output coordinate; accumulated derivatives are not necessarily a loss gradient."}),
+  loss:lossAdjoint(graph,run,{nodeId:step.id,index:[...idx]},scalar,options),
   codegen:Object.freeze({numpyOperatorEligible:capability.numpyEligible,
    torchOperatorEligible:capability.torchEligible,wholeGraphExport:"NOT_VERIFIED",
    vjpExport:"NOT_CLAIMED"})
