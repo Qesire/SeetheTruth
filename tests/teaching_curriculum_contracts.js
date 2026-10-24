@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
 const C=require('../teaching_curriculum.js');
-assert.equal(C.lessons.length,8,'all eight shared explanatory tracks must be present');
+assert.equal(C.lessons.length,10,'all ten shared explanatory and engineering tracks must be present');
 assert.equal(new Set(C.lessons.map(x=>x.id)).size,C.lessons.length);
 for(const lesson of C.lessons){
  assert.ok(fs.existsSync(path.join(root,lesson.href)),lesson.href+' must be a real shared PC/Android lesson');
