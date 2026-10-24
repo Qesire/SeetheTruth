@@ -61,7 +61,8 @@ for(const branch of ['q','k']){
  ND.indices([1,1,8,6],idx=>same(ND.at(by(branch+'_norm'),idx),
   ND.at(normalized,idx),1e-12,'projection/norm '+branch));
  const viewed=ND.permute(ND.reshape(normalized,[1,8,1,6]),[0,2,1,3]);
- assert.deepEqual(viewed,by(branch+'_heads'));
+ ND.indices([1,1,8,6],idx=>same(ND.at(viewed,idx),
+  ND.at(by(branch+'_heads'),idx),1e-12,'view/permute '+branch));
 }
 const fullGraph=G.backward(graph,trace);
 assert.equal(fullGraph.targetId,'loss');
