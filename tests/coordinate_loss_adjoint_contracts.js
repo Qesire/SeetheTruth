@@ -103,4 +103,17 @@ assert.equal(stopped.loss.status,'VERIFIED_GRAPH_LOSS_VJP');
 assert.equal(stopped.loss.cutEdges.some(e=>e.from==='x'),true);
 assert.equal(stopped.loss.throughSelectedEligible,false);
 assert.equal(ND.at(Grad.backward(det,detRun).gradients.x,[0,0]),0);
+// Browser is script-tag UMD rather than CommonJS: graph-autodiff must already
+// exist when coordinate_vjp_bridge.js captures its dependency.
+const fs=require('node:fs'),path=require('node:path');
+const html=fs.readFileSync(path.resolve(__dirname,'../learn.html'),'utf8');
+const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(x=>x[1]);
+const before=(a,b)=>scripts.indexOf(a)>=0&&scripts.indexOf(a)<scripts.indexOf(b);
+for(const required of ['learning_lab.js','training_objective.js','nd_tensor.js',
+ 'element_lineage.js','graph_autodiff.js','compute_microscope.js','block_capabilities.js'])
+ assert.ok(before(required,'coordinate_vjp_bridge.js'),
+  'browser must initialize '+required+' before the VJP bridge');
+assert.ok(before('coordinate_vjp_bridge.js','compute_microscope_ui.js')||
+ before('coordinate_vjp_bridge.js','training_session.js'),
+ 'bridge must initialize before the inline workbench closure');
 console.log('COORDINATE_LOSS_ADJOINT_PASS: full-loss vs seeded VJP, fan-out conservation, finite differences, weighted losses, target stops, Detach, unsupported operators');
