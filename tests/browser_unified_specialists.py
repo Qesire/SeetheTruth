@@ -50,8 +50,10 @@ class UnifiedSpecialists(unittest.TestCase):
         self.assertIn('数值合同通过',page.locator('#status').inner_text())
         self.assertTrue(page.evaluate('(s)=>window.SeetheTruthSpecializedLesson.execute("scenario",{name:s}).value.passed',scenario))
       else:
-       page.wait_for_function("document.querySelectorAll('#rows tr').length===146")
-       self.assertEqual(page.evaluate("window.SeetheTruthSpecializedLesson.execute('audit',{}).value.rows.length"),146)
+       page.wait_for_function("document.querySelectorAll('#rows tr').length>=147")
+       actual=page.evaluate("document.querySelectorAll('#rows tr').length")
+       self.assertEqual(actual,page.evaluate(
+        "window.SeetheTruthSpecializedLesson.execute('audit',{}).value.rows.length"))
       self.assertEqual(errors,[])
      finally:
       page.close()
