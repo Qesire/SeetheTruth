@@ -119,7 +119,8 @@
  const domainRunners=Object.freeze({
   deepinfer_prefill:Object.freeze({
    vote:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>m.vote(x)}),
-   chunk:Object.freeze({module:"prefill",method:"chunk",run:(m,x)=>m.chunk(x)})
+   chunk:Object.freeze({module:"prefill",method:"chunk",run:(m,x)=>m.chunk(x)}),
+   inspect_pair:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>({vote:m.vote(x.voteInput),chunk:m.chunk(x.chunkInput)})})
   }),
   deepinfer_worker:Object.freeze({
    simulate:Object.freeze({module:"worker",method:"simulate",
@@ -146,6 +147,7 @@
    fail("domain source engine unavailable: "+lab.engine);
   const value=runner.run(engine,copy(input));
   const eventAdapters={
+   "deepinfer_prefill/inspect_pair":()=>deps.state.prefill({voteInput:input.voteInput,chunkInput:input.chunkInput,voteResult:value.vote,chunkResult:value.chunk},deps.prefill),
    "deepinfer_worker/simulate":()=>deps.state.worker(value),
    "deepinfer_kv/replay":()=>deps.state.kv(value,deps.kv),
    "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv)
