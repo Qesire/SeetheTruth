@@ -119,16 +119,27 @@ const steps=Worker.DEFAULT_STEPS.slice(0,2);
 const workerArgs={steps,options:{zeroOverhead:true}};
 assert.deepEqual(Core.executeLab('deepinfer_worker','simulate',workerArgs).value,
  Worker.simulate(steps,{zeroOverhead:true}));
+const state=require('../state_microscope.js');
+const workerFrame=Core.executeLab('deepinfer_worker','simulate',workerArgs).stateTrace;
+assert.equal(workerFrame.schema,state.SCHEMA);
+assert.equal(workerFrame.evidenceTier,state.TIERS.WORKER);
+assert.equal(state.validate(workerFrame),workerFrame);
 assert.equal(Core.executeLab('deepinfer_worker','simulate',workerArgs).value.note.includes('not measured'),true);
 const KV=require('../deepinfer_kv_lifecycle.js');
 const ops=[{op:'arrive',id:'A',tokenLen:5},{op:'allocate',id:'A'}];
 const kvArgs={config:{numBlocks:6,blockSize:4},operations:ops};
 assert.deepEqual(Core.executeLab('deepinfer_kv','replay',kvArgs).value,
  KV.replay(kvArgs.config,kvArgs.operations));
+const kvFrame=Core.executeLab('deepinfer_kv','replay',kvArgs).stateTrace;
+assert.equal(kvFrame.evidenceTier,state.TIERS.KV);
+assert.equal(kvFrame.steps.length,ops.length+1);
 const SW=require('../deepinfer_scheduler_workflow.js');
 const sched={spec:SW.EXAMPLES.ample,options:{}};
 assert.deepEqual(Core.executeLab('deepinfer_scheduler','simulate',sched).value,
  SW.simulate(sched.spec,sched.options));
+const schedFrame=Core.executeLab('deepinfer_scheduler','simulate',sched).stateTrace;
+assert.equal(schedFrame.evidenceTier,state.TIERS.SCHEDULER);
+assert.equal(schedFrame.steps.length,SW.simulate(sched.spec,sched.options).decisions.length+1);
 assert.throws(()=>Core.executeLab('deepinfer_worker','vote',args),/no registered executable adapter/);
 assert.throws(()=>Core.executeLab('deepinfer_prefill','unknown',args),/no registered executable adapter/);
 assert.throws(()=>Core.inspectLab('does_not_exist'),/unknown specialized adapter/);
