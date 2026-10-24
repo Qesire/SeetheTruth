@@ -168,6 +168,16 @@
    "[B,H,T,D] → [B·H·T,D]","将多个前导轴合并，接入原有 MatMul 等二维积木。","比较原四维张量与展平矩阵的线性存储次序。","原始轴划分会丢失，必须明确 reshape 参数才能复原。"),
   nd_expand4d:block("二维嵌入四轴","Expand Matrix To 4D","compute",["x"],{},
    "[T,D] → [1,1,T,D]","给二维矩阵增加批次、头的长度为 1 的轴，以接入多轴积木。","连接旧二维 Input 和新四维算子，观察形状兼容性。","不重复 Token、不创造新的有效头内容；只有 singleton 轴。"),
+  nd_broadcast_mul:block("多维广播相乘","N-D Broadcast Multiply","combine",["a","b"],{},
+    "Y=broadcast(A)×broadcast(B)",
+    "单例轴按 NumPy 规则展开，精确显示 e2 对 Self-Attention 输出的逐通道门控和来源梯度汇合。",
+    "连接 [1,1,T,C] 与 [1,1,1,C]，验证各 Token 对共享 e2 的梯度求和。",
+    "只有显式一致或 singleton 轴可以广播；不隐式生成 1+scale。"),
+  nd_layernorm_last:block("四轴通道 LayerNorm","N-D Last-Channel LayerNorm","norm",["x"],{epsilon:0.000001},
+    "mu=mean_C(x); sigma²=mean_C((x-mu)^2); y=(x-mu)/sqrt(sigma²+eps)",
+    "源自 WanLayerNorm 的最后通道无仿射 LayerNorm；准确求导时一个输出通道依赖整行所有输入通道。",
+    "单独改变一个特征通道，观察其余通道的中心化输出和梯度。",
+    "与 RMSNorm 不同；有界 Float64 示教，不模拟源 float32 转换和 GPU kernel。"),
   nd_broadcast_add:block("多维广播相加","N-D Broadcast Add","combine",["a","b"],{},
    "Y = broadcast(A)+broadcast(B)","按 NumPy/PyTorch 风格从右对齐，只有相等或为 1 的轴可以广播。","把 [1,2,3,4] 与 [1,1,3,4] 相加，查看 Head 广播。","不会自动转置轴，也不会任意重复不兼容的维度。"),
   nd_reduce_sum:block("指定轴求和","N-D Axis Sum","combine",["x"],{axis:2},
@@ -391,6 +401,7 @@
      if(p.some(x=>!Number.isSafeInteger(x)||x<0||x>3)||new Set(p).size!==4)fail('N-D permutation requires each axis 0,1,2,3 exactly once');
    }
    if(kind==='nd_reduce_sum')int(n.axis,0,3,'N-D reduction axis');
+   if(kind==='nd_layernorm_last')float(n.epsilon,0.000000001,1,'N-D LayerNorm epsilon');
    if(kind==='nd_scale')float(n.factor,-100,100,'N-D scale factor');
    if(kind==='leaky_relu')float(n.slope,0,1,'Leaky ReLU slope');
    if(kind==='elu'||kind==='nd_elu')float(n.alpha,0.000001,10,'ELU alpha');
@@ -480,6 +491,8 @@
      else if(kind==='nd_flatten'){const sh=ND.shape(inputs.x);if(sh.length!==4)fail('N-D flatten expects rank 4');value=ND.reshape(inputs.x,[sh[0]*sh[1]*sh[2],sh[3]]);}
      else if(kind==='nd_expand4d'){const sh=ND.shape(inputs.x);if(sh.length!==2)fail('N-D expand expects rank 2');value=ND.reshape(inputs.x,[1,1,sh[0],sh[1]]);}
      else if(kind==='nd_broadcast_add')value=ND.broadcastBinary(inputs.a,inputs.b,(a,b)=>a+b);
+     else if(kind==='nd_broadcast_mul')value=ND.broadcastBinary(inputs.a,inputs.b,(a,b)=>a*b);
+     else if(kind==='nd_layernorm_last')value=ND.layerNormLast4(inputs.x,params.epsilon);
      else if(kind==='nd_reduce_sum')value=ND.reduceSum(inputs.x,params.axis,true);
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
      else if(kind==='nd_repeat_kv')value=ND.repeatKVHeads(inputs.x,params.queryHeads);
