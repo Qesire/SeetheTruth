@@ -7,7 +7,7 @@
  const core=root.SeetheTruthUnifiedCore;
  if(!id||!core)throw Error("missing unified core / specialized experience identity");
  const contract=core.inspectLab(id);
- if(contract.href!==location.pathname.split("/").at(-1))
+ if(contract.href!==(location.pathname.split("/").at(-1)||"index.html"))
   throw Error("specialized experience route mismatch "+id);
  root.SeetheTruthSpecializedLesson=Object.freeze({
   ...contract,
