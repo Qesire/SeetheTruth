@@ -64,6 +64,7 @@ for(const [page,deps] of Object.entries({
  const html=read(page);let pos=-1;for(const name of deps){const loc=html.indexOf('src="'+name+'"');assert.ok(loc>pos,'script order '+page+' '+name);pos=loc;}
 }
 assert.ok(read('index.html').includes('UnifiedCore.inspectEvidence("source_atlas"'));
+assert.ok(!read('index.html').includes('SeetheTruthSourceView.project('),'all source projector UI paths must use one inspected evidence contract');
 assert.ok(read('real_model_lab.html').includes('UnifiedCore.inspectEvidence("real_model"'));
 assert.ok(read('telemetry.html').includes('UnifiedCore.inspectEvidence("telemetry"'));
 assert.ok(!read('telemetry.html').includes('function validate(d){'),'no divergent telemetry validator may remain in UI');
