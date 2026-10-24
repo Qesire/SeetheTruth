@@ -183,3 +183,48 @@ It covers GQA and MQA head sharing, causal exclusion and whole-loss VJP,
 plus cached decode with RoPE offsets and prefix/segment source boundaries.
 Structural-only source graphs and stale traces are separate negative tests.
 Chromium desktop/mobile checks the visible read-only microscope.
+
+## Wan2.2 I2V · F/H/W complex-frequency rotary (2026-10-24)
+
+Pinned reference: [Wan-Video/Wan2.2 `1ea34ff48f87168174e12956e200b1d908b1c5ff`](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L27-L66),
+`rope_params()` and `rope_apply()`. The actual source accepts
+`[B,Token,Heads,D]`, represents adjacent real pairs as complex values,
+splits the **D/2 complex frequency channels** into
+`[D/2-2*floor((D/2)/3), floor((D/2)/3), floor((D/2)/3)]` for
+**frames, height, width**, and multiplies each complex channel by the
+corresponding video-grid frequency. Frequency exponents preserve the
+**global pair index**, including across F/H/W group boundaries.
+
+The general N-D teaching graph uses explicit `[B,Head,Token,D]` and
+offers `nd_wan_rope3d` on that view. For a grid `[F,H,W]`,
+`t=f·H·W+h·W+w`, global complex pair `p=floor(d/2)` and axis
+`a(p)`, `θ=position_{a(p)}/base^(2p/D)`.
+For even/odd real channels, the complex multiplication is:
+
+`out[...,2p]=x[...,2p]cosθ-x[...,2p+1]sinθ`;
+`out[...,2p+1]=x[...,2p]sinθ+x[...,2p+1]cosθ`.
+
+This is **not equivalent** to the previous one-dimensional
+`nd_rope(offset+token)`. It is a full-dimensional complex rotation,
+not a split-half RoPE. The bounded lesson requires an exact
+`T=F·H·W` (no padded tokens or varying grids per sample).
+
+Runnable lesson: `nd_wan_video_rope_attention`. It wires the rotary
+operator into the existing `nd_batched_matmul`, `nd_permute`,
+`nd_scale`, `nd_softmax_last`, and the final context projection
+(`PV`), *without a causal mask* because the pinned WanSelfAttention
+uses a FlashAttention call with explicit `window_size` rather than a
+causal decoder. This first lesson treats Q/K/V as **already-projected,
+already-normalized** synthetic micro-tensors; the real `norm_q/norm_k`
+WanRMSNorm, Q/K/V learned projections, output projection, batch-specific
+grid padding and GPU FlashAttention remain separate source tasks.
+It does **not** claim a complete Wan block reproduction.
+
+Exact analytic scalar coordinate gradients come from
+`element_lineage.js` and the local full-tensor adjoint from
+`nd_autodiff.js`. `tests/wan_video_rope3d_contracts.js` independently
+constructs the complex phase, verifies norm preservation, all input
+coordinate central differences for three grid shapes/base values,
+full QK→Softmax→PV parity and sampled end-to-end context derivatives.
+Negative contracts reject mismatched F/H/W, odd/short D, wrong one-axis
+formula and stale graph observations.
