@@ -47,7 +47,7 @@ main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-te
 <div class="panel"><div class="panel-title"><strong>采样值分布</strong><select id="histmode"><option value="hist">采样直方图</option><option value="rowenergy">行 L2 能量</option><option value="colabs">列平均绝对值</option></select><span class="badge" id="samplecount">sample</span></div><canvas id="hist" class="chart"></canvas><div class="tiny">直方图只代表有限的抽样值，不是整个张量的精确分布。</div></div></div>
 <div class="panel"><div class="panel-title"><strong>Evidence contract · 指标口径</strong><span class="badge">可追溯</span></div><div id="evidence" class="notice"></div></div></div></main>
 <aside class="inspector"><div class="eyebrow">03 / TENSOR INSPECTOR</div><h2 style="margin-top:10px" id="selTitle">未选择张量</h2><div class="hint" id="selHint">载入数据后，可单击左侧张量切片查看逻辑 shape、stride、dtype、样本直方图与热力图。</div><div id="details"></div><hr><div class="eyebrow">04 / INTERPRETATION</div><div class="notice" id="interpret">数据展示与计算机制分开：shape、stride 为运行时观测；数值分布是有界抽样。不能据此断言具体 CUDA kernel 数量、理论峰值利用率或完整显存峰值。</div></aside></div><div id="tooltip"></div>
-<script>
+<script src="telemetry_evidence.js"></script><script src="learning_evidence_core.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="telemetry"></script><script>
 (()=>{'use strict';
 const $=s=>document.querySelector(s);
 let doc=null,activeSnap=0,selectedModule=null,rankMetric='cpu',synthetic=false;
@@ -55,68 +55,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&
 const format=(n,d=2)=>Number.isFinite(+n)?Number(n).toLocaleString(undefined,{maximumFractionDigits:d}):'—';
 const bytes=n=>n==null?'—':Math.abs(n)>=1024**3?format(n/1024**3)+' GiB':Math.abs(n)>=1024**2?format(n/1024**2)+' MiB':format(n/1024)+' KiB';
 const F=Number.isFinite;
-function example(){
-const mat=Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>+(Math.sin(i*.66)*Math.cos(j*.39)+Math.sin((i-j)*.16)*.23).toFixed(4)));
-const flat=mat.flat(),lo=Math.min(...flat),hi=Math.max(...flat),bins=Array(24).fill(0);
-for(const x of flat)bins[Math.min(23,Math.floor((x-lo)/(hi-lo)*24))]++;
-return {schema:'seethetruth-telemetry-v1',name:'Synthetic tutorial (not a measured model)',meta:{measurement:'SYNTHETIC_DEMO_NOT_MEASURED',gpu_activity:false,tensor_values_opt_in:true,host_timing_is_not_gpu_latency:true,notes:['Synthetic numeric values demonstrate the UI only.']},modules:[{name:'layers.0.attn',type:'DemoAttention',calls:1,host_wall_ms:3.8,last_outputs:[{shape:[1,20,20],stride:[400,20,1],dtype:'float32'}]},{name:'layers.0.ffn',type:'DemoFFN',calls:1,host_wall_ms:2.6,last_outputs:[{shape:[1,20,20],stride:[400,20,1],dtype:'float32'}]}],operators:[{name:'aten::mm',count:4,self_cpu_ms:3.0,self_device_ms:null},{name:'aten::softmax',count:2,self_cpu_ms:1.2,self_device_ms:null},{name:'aten::mul',count:3,self_cpu_ms:.6,self_device_ms:null}],snapshots:[{module:'layers.0.attn',tensor:{shape:[1,20,20],stride:[400,20,1],dtype:'float32',device:'cpu',numel:400,logical_bytes:1600,contiguous:true},summary:{population:400,sampled:400,finite_count:400,nonfinite_count:0,sample_zero_fraction:0,statistics:{min:lo,max:hi,mean:0,std:.6},histogram:{bins,domain:[lo,hi]},matrix:mat,matrix_original_shape:[20,20],matrix_stride:[1,1],leading_indices:[0]}}],gpu_memory:null};
-}
-function validate(d){
- const fail=msg=>{throw Error('Telemetry schema：'+msg)};
- const obj=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
- const finite=x=>typeof x==='number'&&Number.isFinite(x);
- const text=x=>typeof x==='string'&&x.length<=500;
- const ints=(x,max)=>Array.isArray(x)&&x.length<=max&&x.every(y=>Number.isSafeInteger(y)&&y>=0);
- const nullableNumber=x=>x===null||finite(x);
- if(!obj(d)||d.schema!=='seethetruth-telemetry-v1'||!Array.isArray(d.operators)||!Array.isArray(d.modules)||!Array.isArray(d.snapshots))fail('不是 SeetheTruth Telemetry v1');
- if(d.operators.length>5000||d.modules.length>5000||d.snapshots.length>64)fail('数据超过允许的条目数');
- if(d.meta!=null&&(!obj(d.meta)||
-   (d.meta.notes!=null&&(!Array.isArray(d.meta.notes)||d.meta.notes.length>100||!d.meta.notes.every(text)))||
-   (d.meta.measurement!=null&&!text(d.meta.measurement))))fail('非法采集元数据');
- for(const op of d.operators){
-  if(!obj(op)||!text(op.name)||!Number.isSafeInteger(op.count)||op.count<0||
-    !finite(op.self_cpu_ms)||op.self_cpu_ms<0||
-    !(op.self_device_ms==null||(finite(op.self_device_ms)&&op.self_device_ms>=0)))fail('非法算子耗时或调用次数');
- }
- for(const m of d.modules){
-  if(!obj(m)||!text(m.name)||!text(m.type)||!Number.isSafeInteger(m.calls)||m.calls<0||!finite(m.host_wall_ms)||m.host_wall_ms<0)fail('非法模块名称或 Host 时间');
-  if(m.last_outputs!=null&&!Array.isArray(m.last_outputs))fail('模块张量元数据需要数组');
-  if(m.exclusive_self_cpu_ms!=null&&(!finite(m.exclusive_self_cpu_ms)||m.exclusive_self_cpu_ms<0||
-      !finite(m.inclusive_attributed_cpu_ms)||m.inclusive_attributed_cpu_ms<0||
-      m.inclusive_attributed_cpu_ms+.0002<m.exclusive_self_cpu_ms))fail('非法模块独占或含下级 ATen CPU 成本');
- }
- if(d.module_calls!==undefined){
-  if(!Array.isArray(d.module_calls)||d.module_calls.length>10000)fail('过多模块逐次调用');
-  const keys=new Set();
-  for(const c of d.module_calls){
-   if(!obj(c)||!text(c.name)||!text(c.type)||!text(c.invocation_key)||
-       !Number.isSafeInteger(c.invocation_index)||c.invocation_index<1||
-       !finite(c.exclusive_self_cpu_ms)||c.exclusive_self_cpu_ms<0||
-       !finite(c.inclusive_attributed_cpu_ms)||c.inclusive_attributed_cpu_ms<0||
-       c.inclusive_attributed_cpu_ms+.0002<c.exclusive_self_cpu_ms||
-       keys.has(c.invocation_key))fail('非法或重复模块调用成本');
-   keys.add(c.invocation_key);
-  }
- }
- for(const t of d.snapshots){
-  if(!obj(t)||!text(t.module)||!obj(t.tensor)||!obj(t.summary))fail('非法 snapshot 格式');
-  if(!ints(t.tensor.shape,16)||!Array.isArray(t.tensor.stride)||t.tensor.stride.length!==t.tensor.shape.length||
-    !t.tensor.stride.every(Number.isSafeInteger)||!text(t.tensor.dtype||'')||!text(t.tensor.device||''))fail('非法 shape/stride/dtype');
-  const z=t.summary, mat=z.matrix, hist=z.histogram;
-  if(!Array.isArray(mat)||mat.length>32||mat.some(row=>!Array.isArray(row)||row.length>32||row.some(v=>!nullableNumber(v))))fail('非法热力图矩阵');
-  if(!obj(hist)||!Array.isArray(hist.bins)||hist.bins.length<1||hist.bins.length>256||
-    !ints(hist.bins,256)||!Array.isArray(hist.domain)||hist.domain.length!==2||!hist.domain.every(nullableNumber))fail('非法采样直方图');
-  if(!obj(z.statistics)||Object.values(z.statistics).some(v=>!nullableNumber(v)))fail('非法统计量');
-  if(!Number.isSafeInteger(z.sampled)||!Number.isSafeInteger(z.population)||z.sampled<0||z.population<z.sampled||
-    !Number.isSafeInteger(z.finite_count)||!Number.isSafeInteger(z.nonfinite_count)||
-    z.finite_count+z.nonfinite_count!==z.sampled||
-    !finite(z.sample_zero_fraction)||z.sample_zero_fraction<0||z.sample_zero_fraction>1)fail('采样计数或比例不一致');
-  if(hist.bins.reduce((a,v)=>a+v,0)!==z.finite_count)fail('直方图计数和有效样本数不匹配');
-  if(!ints(z.matrix_original_shape,2)||z.matrix_original_shape.length!==2||
-    !ints(z.matrix_stride,2)||z.matrix_stride.length!==2)fail('矩阵切片形状与间隔无效');
- }
-}
-function load(d,isDemo){validate(d);doc=d;synthetic=isDemo;activeSnap=0;selectedModule=null;$('#empty').hidden=true;$('#body').hidden=false;render();}
+function load(d,isDemo){const evidence=window.SeetheTruthUnifiedCore.inspectEvidence("telemetry","validate_import",{data:d,synthetic:isDemo});window.SeetheTruthLastTelemetryEvidence=evidence;doc=d;synthetic=evidence.data.synthetic;activeSnap=0;selectedModule=null;$('#empty').hidden=true;$('#body').hidden=false;render();}
 function render(){if(!doc)return;const meta=doc.meta||{},ops=doc.operators,mods=doc.modules,snaps=doc.snapshots;
 const gpu=meta.gpu_activity&&ops.some(o=>Number.isFinite(o.self_device_ms));rankMetric=gpu?'device':'cpu';
 const sum=ops.reduce((a,v)=>a+(Number(v[gpu?'self_device_ms':'self_cpu_ms'])||0),0);
@@ -168,7 +107,7 @@ $('#histmode').addEventListener('change',()=>{if(doc?.snapshots.length)drawHisto
 $('#heatmap').addEventListener('mousemove',e=>{const a=window.__heat;if(!a)return;const rect=e.target.getBoundingClientRect(),i=Math.floor((e.clientY-rect.top-a.startY)/a.cell),j=Math.floor((e.clientX-rect.left-a.startX)/a.cell),t=$('#tooltip');if(i<0||i>=a.rows||j<0||j>=a.cols){t.style.display='none';return;}t.textContent='['+i+', '+j+'] = '+String(a.mat[i][j]);t.style.left=(e.clientX+16)+'px';t.style.top=(e.clientY+14)+'px';t.style.display='block';});
 $('#heatmap').addEventListener('mouseleave',()=>$('#tooltip').style.display='none');
 $('#file').onchange=async e=>{let f=e.target.files?.[0];if(!f)return;try{if(f.size>8_000_000)throw Error('最大支持 8 MB JSON');load(JSON.parse(await f.text()),false);}catch(err){alert('加载失败：'+err.message)}finally{e.target.value='';}};
-$('#demo').onclick=()=>load(example(),true);
+$('#demo').onclick=()=>load(window.SeetheTruthTelemetryEvidence.example(),true);
 addEventListener('resize',()=>{if(doc?.snapshots.length)renderSnapshot()});
 })();
-</script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="telemetry"></script></body></html>
+</script></body></html>

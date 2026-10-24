@@ -81,6 +81,9 @@
 <div class="overlay" id="sourceModal"><div class="modal" role="dialog" aria-modal="true" aria-label="从源码重建模型结构"><div style="display:flex;justify-content:space-between;align-items:start;gap:20px"><div><h2>从源码生成全息计算图</h2><p>支持公开 GitHub、Hugging Face 模型仓库 URL，或运行本地服务电脑上的 Python 文件/目录。不会加载权重，也不会执行导入的模型代码。</p></div><button id="analyzeClose" class="icon-button">×</button></div><label class="journey-label" for="sourceLocation">REPOSITORY URL / LOCAL PATH</label><input id="sourceLocation" placeholder="https://github.com/owner/repo 或 C:\\models\\my_model" style="width:100%;margin:6px 0 13px;padding:12px;border:1px solid #3b5875;border-radius:9px;background:#081626;color:#e9f9ff;outline:none"/><label class="journey-label" for="sourceEntry">入口函数（可选，推荐明确提供）</label><input id="sourceEntry" placeholder="TransformerBlock.forward / train_step / grpo_step" style="width:100%;margin:6px 0 12px;padding:12px;border:1px solid #3b5875;border-radius:9px;background:#081626;color:#e9f9ff;outline:none"/><div class="micro-example">启动本地源码服务：<code>python atlas_server.py --port 8765</code>。浏览器访问 <code>http://127.0.0.1:8765</code>，即可提交解析请求。<b>单文件 HTML 离线模式仍可使用导入 JSON 和内置演示，但无法独立解析 Python AST。</b></div><div class="error" id="analysisError" aria-live="polite"></div><div class="modal-actions"><span style="color:#89adc9;font-size:10px">SOURCE AST → SYMBOLIC DEPENDENCIES → 3D</span><button id="analyzeApply" class="btn primary">开始静态解析 →</button></div></div></div>
 <script src="tensor_subgraph.js"></script>
 <script src="source_evidence_levels.js"></script>
+<script src="learning_evidence_core.js"></script>
+<script src="learning_experience_core.js"></script>
+<script src="specialized_learning_adapter.js" data-experience="source_atlas"></script>
 <script src="consensus_knowledge.js"></script>
 <script>
 (()=>{'use strict';
@@ -116,7 +119,7 @@ function edge(a,b,color='#5cb5ce',dashed=false){return{a,b,color,dashed}}
 // model-atlas-graph-v1 is an evidence-carrying semantic interchange format, not an automatic source-code verifier.
 function manifestScene(){let g=st.customGraph;if(!g)return {nodes:[],edges:[]};
  const view=g.meta?.analysis==='static-python-ast'
-   ? window.SeetheTruthSourceView.project(g,st.graphScope,st.level)
+   ? window.SeetheTruthUnifiedCore.inspectEvidence("source_atlas","project",{graph:g,scope:st.graphScope,level:st.level}).data.projection
    : {nodes:g.nodes.filter(n=>(n.parent||null)===(st.graphScope||null)),
       edges:g.edges,matches:null,level:'macro',matchCount:0,total:0,omitted:0};
  const nsraw=view.nodes;
@@ -594,6 +597,5 @@ $('#telemetryFile').onchange=async e=>{
 };
 resize();sync();requestAnimationFrame(loop);
 })();
-</script>
-<script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="source_atlas"></script></body>
+</script></body>
 </html>
