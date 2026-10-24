@@ -32,7 +32,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#0b1a27;border:1px soli
 </div>
 </section>
 <section class="panel"><h2>证据边界</h2><p>数值切片只保留样本顺序，不恢复被截断的 Tensor 全部轴；不得将局部采样矩阵冒充完整 GEMM 运算，也不根据样本推断实际 GPU kernel、训练性能或硬件瓶颈。</p><p>只有能定位同一模型完整 revision、相同模块和计算目标，并可独立重现采样数值，才能把记录进一步提升为可复现实测证据。</p></section>
-</main><script src="model_trace.js"></script>
+</main><script src="model_trace.js"></script><script src="learning_evidence_core.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="real_model"></script>
 <script>
 (()=>{"use strict";
 const $=q=>document.querySelector(q),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -54,7 +54,7 @@ function stats(info,title){
 }
 async function load(file){
  if(!file||file.size>256*1024)throw Error("请选择不超过 256 KiB 的合法采集 JSON");
- const value=JSON.parse(await file.text()),summary=window.SeetheTruthTrace.validate(value),p=value.provenance;
+ const value=JSON.parse(await file.text()),summary=window.SeetheTruthUnifiedCore.inspectEvidence("real_model","validate_import",{trace:value}).data.summary,p=value.provenance;
  $("#modelName").textContent=summary.source;
  $("#metadata").innerHTML='<div class="metric-grid">'+
  '<div class="metric"><label>模块身份</label><strong>'+esc(summary.module)+'</strong></div>'+
@@ -73,4 +73,4 @@ $("#traceUpload").addEventListener("change",async e=>{
  finally{e.target.value="";}
 });
 })();
-</script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="real_model"></script></body></html>
+</script></body></html>

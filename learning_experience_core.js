@@ -28,7 +28,8 @@
   paperRewrite:require("./paper_graph_rewrites.js"),
   microScenarios:require("./micro_training_scenarios.js"),
   semanticExamples:require("./semantic_state_examples.js"),
-  capabilities:require("./block_capabilities.js")
+  capabilities:require("./block_capabilities.js"),
+  evidence:require("./learning_evidence_core.js")
  }:{
   learning:root.SeetheTruthLearning,operators:root.SeetheTruthOperatorContracts,
   session:root.SeetheTruthGraphSession,path:root.SeetheTruthGraphLearningPath,
@@ -48,7 +49,8 @@
   paperRewrite:root.SeetheTruthPaperGraphRewrites,
   microScenarios:root.SeetheTruthMicroScenarios,
   semanticExamples:root.SeetheTruthSemanticExamples,
-  capabilities:root.SeetheTruthCapabilities
+  capabilities:root.SeetheTruthCapabilities,
+  evidence:root.SeetheTruthEvidenceCore
  };
  const api=factory(deps);
  if(isNode)module.exports=api;
@@ -250,6 +252,12 @@
    evidence:lab.evidence,value,stateTrace,computationTrace,
    note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
+ function inspectEvidence(id,operation,input={}){
+  if(!["source_atlas","real_model","telemetry"].includes(id)||!byId.has(id))
+   fail("not a registered evidence-only specialist "+id);
+  if(!deps.evidence)fail("evidence inspector unavailable");
+  return deps.evidence.inspect(id,operation,input);
+ }
  function inspectCourse(id){
   const curriculum=deps.curriculum;
   if(!curriculum)fail("shared teaching curriculum unavailable");
@@ -277,5 +285,5 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,inspectCourse,inventory});
+  executeLab,inspectEvidence,inspectCourse,inventory});
 });
