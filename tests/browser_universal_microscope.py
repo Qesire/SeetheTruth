@@ -165,6 +165,18 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIn('TRAINING LOSS',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    self.assertIn('停止梯度',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    p.screenshot(path=str(OUT/'mobile-training-loss-adjoint.png'),full_page=True,animations='disabled')
+   p.locator('[data-preset="trainable_moe"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='expert_gate':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'expert_gate')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   self.assertIn('expert_channel_product',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertIn('DISCRETE ROUTING',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   p.screenshot(path=str(OUT/'mobile-moe-expert-coordinate-jacobian.png'),full_page=True,animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
 if __name__=='__main__':unittest.main()
