@@ -5,8 +5,11 @@ const params=new URLSearchParams(location.search);
 const teachingMode=params.get("edition")==="teaching"||location.hostname==="appassets.androidplatform.net";
 $("editionLabel").textContent=teachingMode?"离线教学版 · 不生成模型产物":"跨平台教学版 · PC / Android";
 $("version").textContent="课程版本 "+C.VERSION;
-$("lessonCount").textContent=C.lessons.length+" 个专题";
-let selected=C.lessons[0].id,filter="all";
+const courses=Core.inventory().courses;
+$("lessonCount").textContent=courses.length+" 个专题";
+const coverage=Core.inventory().counts;
+$("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主题 / "+coverage.labs+" 个专项计算域";
+let selected=courses[0].id,filter="all";
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
@@ -14,7 +17,7 @@ const safeTarget=l=>{
 };
 function detail(){
  const l=Core.inspectCourse(selected);if(!l)return;
- $("detailTitle").textContent=l.title;$("level").textContent=C.lookup(selected).level;
+ $("detailTitle").textContent=l.title;$("level").textContent=l.level;
  $("theory").textContent=l.theory;$("why").textContent=l.why;
  $("question").textContent=l.check;$("answer").textContent=l.answer;
  $("answer").hidden=true;$("reveal").setAttribute("aria-expanded","false");
@@ -23,7 +26,7 @@ function detail(){
 }
 function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
- const lessons=C.lessons.filter((l,i)=>{
+ const lessons=courses.filter((l,i)=>{
   if(filter==="fundamentals"&&i>=4)return false;
   if(filter==="inference"&&i<4)return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
@@ -81,7 +84,7 @@ function runVote(){
 $("voteCase").addEventListener("change",runVote);
 runVote();
 detail();render();
-window.SeetheTruthTeachingHub={version:C.VERSION,lessons:C.lessons.length,coreSchema:Core.SCHEMA,select(id){
+window.SeetheTruthTeachingHub={version:C.VERSION,lessons:courses.length,coreSchema:Core.SCHEMA,select(id){
  if(!C.lookup(id))throw Error("unknown lesson");selected=id;detail();render();
 }};
 })();
