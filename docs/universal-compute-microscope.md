@@ -67,3 +67,37 @@ explicit Parameter feeding MatMul. The shared-path source derivative is checked 
 independent central differences of the original small forward interpreter;
 stale trace, invalid coordinate, reordered graph, forged microscope and structural
 mode are refused. All numeric evidence remains bounded synthetic Float64.
+
+## Full loss adjoint · selected coordinate / full-graph gradient
+
+A valid loss must be a scalar MSE/MAE/CE-derived objective approved by
+`training_objective.js` (with optional explicit `lossId` for compound objectives).
+The shared coordinate bridge now calls the existing `graph_autodiff.js` on the
+**same authenticated numerical forward run**. It keeps the following distinct:
+
+- `dY[i]/dX[j]`: a **unit-seeded** scalar dependency, from ElementLineage
+- `dL/dY[i]`: the selected coordinate of the global reverse-pass adjoint
+- `(dL/dY[i])·(dY[i]/dX[j])`: contribution **through this one output**, only
+  when its complete scalar path is supported and no relevant stop-gradient is crossed
+- `dL/dX[j]`: independent whole-graph backward tensor, including all other
+  downstream output coordinates and graph branches
+
+For a loss itself, the scalar microscope may show an explicit **boundary**
+even though the dedicated training objective VJP is supported; this is
+intentional: fixed targets must not be assigned imaginary gradients by
+implicitly treating MSE as an ordinary mathematical scalar function.
+
+Absent objectives expose `NO_LOSS_OBJECTIVE`. Unsupported reachable
+operators expose `UNAVAILABLE_GRAPH_LOSS_VJP` and their specific failure,
+without fabricating zero; cut edges remain visible. A source with zero
+whole-loss gradient can still have a nonzero seeded derivative of another
+output (or vice versa). The source and output views do not imply full
+backend-generated VJP support or GPU execution.
+
+**Independent oracle:** `tests/coordinate_loss_adjoint_contracts.js`
+recomputes actual bounded graph forwards under per-element central differences,
+verifies `dL/dX` for both shared MatMul sources, and checks the exact chain-rule
+conservation by summing all 2×2 output-coordinate contributions across shared
+fan-out routes. Compound weighted loss selection, explicit fixed target,
+Detach and unsupported reachable division are negative/semantic cases. Real
+Chromium checks desktop and mobile teaching screenshots of the full loss view.
