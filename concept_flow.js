@@ -100,6 +100,16 @@
     }else if(kind==="nd_expand4d"){
       const x=get("x");by(x.length===2,"N-D expand requires 2 axes",n.id);
       output=[1,1,x[0],x[1]];rule="给二维矩阵的两个前导维增加 singleton axes，不复制内容";
+    }else if(kind==="nd_broadcast_mul"){
+      const [a,b]=ports(n,inputs,"a","b"),k=Math.max(a.length,b.length),out=[];
+      for(let i=0;i<k;i++){
+       const x=a[a.length-1-i]??1,y=b[b.length-1-i]??1;
+       by(x===y||x===1||y===1,"N-D broadcast mul incompatible axes",n.id);out.unshift(Math.max(x,y));
+      }
+      output=out;rule="沿 singleton 轴广播后逐元素相乘；反向将每个复用的源坐标梯度累加";
+    }else if(kind==="nd_layernorm_last"){
+      const x=get("x");by(x.length===4,"four-axis last-channel LayerNorm expected",n.id);
+      output=x.slice();rule="最后特征轴 C 去中心化和方差归一化；反向每个特征与其他 C-1 个通道耦合";
     }else if(kind==="nd_broadcast_add"){
       const [a,b]=ports(n,inputs,"a","b");
       const k=Math.max(a.length,b.length),out=[];
