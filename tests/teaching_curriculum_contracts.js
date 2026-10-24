@@ -16,7 +16,7 @@ const activity=text('android/app/src/main/java/io/github/qesire/seethetruth/Teac
 const manifest=text('android/app/src/main/AndroidManifest.xml');
 assert.ok(hub.includes('src="teaching_curriculum.js"')&&hub.includes('src="teaching_hub.js"'));
 assert.ok(hub.includes('src="deepinfer_prefill_policy.js"'),'both platforms must load the same actual vote computation');
-assert.ok(text('teaching_hub.js').includes('V.vote('),'mechanism output must be computed instead of hardcoded');
+assert.ok(text('teaching_hub.js').includes('Core.executeLab("deepinfer_prefill","vote"'),'mechanism output must come from the actual source-derived domain adapter');
 assert.ok(studio.includes('href="teaching.html"'),'PC must link shared teaching entry');
 assert.ok(studio.includes('src="teaching_edition.js"'),'teaching edition controls supported on desktop/mobile');
 assert.ok(studio.includes('mobile_teaching.css'),'same math workbench adapts to small screens');
