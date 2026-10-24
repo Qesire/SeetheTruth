@@ -128,5 +128,8 @@ assert.ok(scripts.indexOf('activation_math.js')<scripts.indexOf('wan_ffn_coordin
 assert.ok(scripts.indexOf('wan_ffn_coordinate_vjp.js')<scripts.indexOf('wan_ffn_lab.js'));
 const assets=fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/);
 assert.ok(assets.includes('wan_ffn_coordinate_vjp.js'));
+const server=fs.readFileSync(path.join(root,'atlas_server.py'),'utf8');
+assert.ok(server.includes('"/wan_ffn_coordinate_vjp.js":"wan_ffn_coordinate_vjp.js"'),
+ 'Wan pinned VJP must be routable by the real offline teaching web server');
 assert.ok(script.includes("state.acceptedOptions=accepted")&&script.includes("SpecializedLesson.execute('trace'"));
 console.log('WAN_FFN_COORDINATE_VJP_PASS: nine stages, LayerNorm cross-channel, e3/e4/e5, W1/W2, gate-zero, all source finite differences, stale controller and source pin');
