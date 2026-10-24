@@ -49,7 +49,7 @@ assert.equal(incomplete.evidence,'STATIC_ONLY');
 const parent=B.slice(L.preset('residual'),'act');
 const scoped=Core.inspectGraph(L.preset('residual'),{targetId:'act',numeric:true});
 assert.deepEqual(scoped.graph.nodes.map(n=>n.id),parent.nodes.map(n=>n.id));
-assert.deepEqual(scoped.path.steps.map(s=>s.id),scoped.graph.nodes.map(n=>n.id));
+assert.deepEqual(scoped.path.steps.map(s=>s.id),scoped.session.nodes.map(n=>n.id));
 assert.ok(scoped.path.steps.every(step=>
  JSON.stringify(step.params)===JSON.stringify(scoped.graph.nodes.find(n=>n.id===step.id).params)));
 for(const l of C.lessons){
