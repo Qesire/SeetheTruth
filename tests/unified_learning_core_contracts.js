@@ -98,6 +98,23 @@ const vote=Core.executeLab('deepinfer_prefill','vote',args);
 assert.deepEqual(vote.value,P.vote(args));
 assert.equal(vote.evidence,'SOURCE_DERIVED_DETERMINISTIC');
 assert.deepEqual(vote.value.perRank,['prompt','empty-prompt']);
+const prefillChunk={tokens:['TEXT','TEXT','TEXT'],cached:0,maxBatchedTokens:2};
+assert.deepEqual(Core.executeLab('deepinfer_prefill','chunk',prefillChunk).value,P.chunk(prefillChunk));
+const Worker=require('../deepinfer_worker_events.js');
+const steps=Worker.DEFAULT_STEPS.slice(0,2);
+const workerArgs={steps,options:{zeroOverhead:true}};
+assert.deepEqual(Core.executeLab('deepinfer_worker','simulate',workerArgs).value,
+ Worker.simulate(steps,{zeroOverhead:true}));
+assert.equal(Core.executeLab('deepinfer_worker','simulate',workerArgs).value.note.includes('not measured'),true);
+const KV=require('../deepinfer_kv_lifecycle.js');
+const ops=[{op:'arrive',id:'A',tokenLen:5},{op:'allocate',id:'A'}];
+const kvArgs={config:{numBlocks:6,blockSize:4},operations:ops};
+assert.deepEqual(Core.executeLab('deepinfer_kv','replay',kvArgs).value,
+ KV.replay(kvArgs.config,kvArgs.operations));
+const SW=require('../deepinfer_scheduler_workflow.js');
+const sched={spec:SW.EXAMPLES.ample,options:{}};
+assert.deepEqual(Core.executeLab('deepinfer_scheduler','simulate',sched).value,
+ SW.simulate(sched.spec,sched.options));
 assert.throws(()=>Core.executeLab('deepinfer_worker','vote',args),/no registered executable adapter/);
 assert.throws(()=>Core.executeLab('deepinfer_prefill','unknown',args),/no registered executable adapter/);
 assert.throws(()=>Core.inspectLab('does_not_exist'),/unknown specialized adapter/);
