@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const shared=require('../teaching_curriculum.js');
-assert.equal(shared.lessons.length,8,'mobile APK shares the PC course database');
+assert.equal(shared.lessons.length,10,'mobile APK shares all ten PC learning tracks');
 const home=read('android_teaching.html'),policy=read('android_teaching_mode.js'),
  activity=read('android/app/src/main/java/io/github/qesire/seethetruth/TeachingActivity.java'),
  manifest=read('android/app/src/main/AndroidManifest.xml'),
