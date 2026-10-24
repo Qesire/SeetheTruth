@@ -113,6 +113,14 @@
       const x=get("x");by(x.length===4,"N-D RoPE requires [B,H,T,D]",n.id);
       by(p.rotaryDim<=x[3]&&p.rotaryDim%2===0,"N-D RoPE rotary dimension must be even and <= channel dimension",n.id);
       output=x.slice();rule="对旋转维内的相邻通道二元组按 offset+Token 位置执行正交旋转，其余通道保持原值";
+    }else if(kind==="nd_wan_qk_rmsnorm"){
+      const [x,gamma]=ports(n,inputs,"x","weight");
+      by(x.length===4&&x[1]===1&&gamma.length===4&&
+         gamma[0]===1&&gamma[1]===1&&gamma[2]===1&&gamma[3]===x[3],
+         "Wan QK RMSNorm must normalize full projected C before head view: [B,1,T,C] and [1,1,1,C] gamma",n.id);
+      output=x.slice();
+      rule="Pinned WanRMSNorm: FP32 norm_q/norm_k over all projected C, learned gamma per channel; head reshape happens afterward";
+      conditions.push("ND uses bounded Float64 educational values; hardware/autocast to float32 is not simulated");
     }else if(kind==="nd_wan_rope3d"){
       const x=get("x");by(x.length===4&&x[3]>=6&&x[3]%2===0,
        "Wan video RoPE needs an even per-head channel D>=6 in [B,N,T,D]",n.id);

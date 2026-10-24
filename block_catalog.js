@@ -136,6 +136,11 @@
     "对 Token 绝对位置逐对旋转 Q/K 的前 R 个通道，兼容 GQA 和只处理当前 Token 的增量解码。",
     "将同一 Q/K 分别以全序列和分段绝对 offset 编码，比对每个 Token 的数值。",
     "采用邻接通道配对，不等于所有架构的 split-half RoPE；旋转维必须为不超过 D 的偶数。"),
+  nd_wan_qk_rmsnorm:block("Wan Q/K 归一化（完整通道）","Wan2.2 Learned Q/K RMSNorm","norm",["x","weight"],{epsilon:0.000001},
+    "Y[b,0,t,c] = gamma[c] X[b,0,t,c] / sqrt(sum_j X[b,0,t,j]^2/C + epsilon)",
+    "固定 Wan2.2 WanRMSNorm 源码，在 Linear 后、Head view 前对整个 C 维归一化；gamma 是独立可学习通道参数，支持完整梯度。",
+    "先在 [B,1,T,C] 算子归一化，再 view [B,T,H,D] 和 permute；对比错误地在 [B,H,T,D] 对每个 Head 分别归一化。",
+    "仅接收完整通道 H=1 的预拆头视图与 [1,1,1,C] 权重；没有自动加载 Wan 权重、隐式批量广播或浮点内核舍入模拟。"),
   nd_wan_rope3d:block("Wan 视频三维 RoPE","Wan2.2 Video 3D RoPE","position",["x"],
     {frames:2,height:2,width:2,base:10000},
     "Wan2.2 rope_apply: [B,T,N,D] → 显式 Permute 至 [B,N,T,D]；complex pair 按 F/H/W 三段分别使用帧、行、列位置",
@@ -403,6 +408,7 @@
       if(n.rotaryDim%2!==0)fail('N-D RoPE rotary dimension must be even');
       float(n.base,2,1000000,'N-D RoPE base');
    }
+   if(kind==='nd_wan_qk_rmsnorm')float(n.epsilon,0,1,'Wan QK RMSNorm epsilon',false);
    if(kind==='nd_wan_rope3d'){
       for(const axis of ['frames','height','width'])int(n[axis],1,8,'Wan '+axis);
       if(n.frames*n.height*n.width>8)fail('Wan video RoPE grid exceeds bounded Token axis');
@@ -478,6 +484,7 @@
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
      else if(kind==='nd_repeat_kv')value=ND.repeatKVHeads(inputs.x,params.queryHeads);
      else if(kind==='nd_rope')value=ND.rope4(inputs.x,params.offset,params.rotaryDim,params.base);
+     else if(kind==='nd_wan_qk_rmsnorm')value=ND.wanQKWeightedRMSNorm4(inputs.x,inputs.weight,params.epsilon);
      else if(kind==='nd_wan_rope3d')value=ND.wanVideoRoPE3D4(inputs.x,params.frames,params.height,params.width,params.base);
      else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
      else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);

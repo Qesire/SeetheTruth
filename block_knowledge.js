@@ -24,6 +24,7 @@ const sources=Object.freeze({
  vivit_tubelet:["Hugging Face ViViT tubelet embedding: 3D convolution + sequence flatten","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vivit/modeling_vivit.py"],
  whisper_audio:["OpenAI Whisper audio: windowed STFT, mel filters and log normalization","https://github.com/openai/whisper/blob/main/whisper/audio.py"],
  wan_vae:["Wan2.2 video VAE: causal Conv3d and temporal chunk state","https://github.com/Wan-Video/Wan2.2/blob/main/wan/modules/vae2_2.py"],
+ wan_qk_norm:["Wan2.2 pinned WanRMSNorm and QK projection/head-view ordering","https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L69-L155"],
  wan_video_rope:["Wan2.2 pinned video rope_params / rope_apply (3D F/H/W complex pairing)","https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L27-L66"],
 
  mor:["Mixture-of-Recursions: adaptive token-level recursive computation (NeurIPS 2025)","https://arxiv.org/abs/2507.10524"],
@@ -130,6 +131,11 @@ const notes={
 
  nd_parameter:["四轴 Parameter 不是每次重播种子的输入，而是 JSON 工程中具有稳定节点身份的张量值 θ[B,H,T,D]。同一个参数输出可以同时连到多个消费者，反向传播按节点 ID 汇合 VJP。","训练状态保存 θ 以及独立的 AdamW m/v 张量和 t 步数；每一步都重新运行当前 DAG Forward，再计算反向梯度和下一次权重数值。PyTorch Parameter 和 AdamW 是标准来源。","仅有界 Float64 CPU 教学；这并不是 GPU 上真实的大模型训练。修改参数值后必须重置矩阵形状一致的动量，不能沿用原状态。","将课程 29/30 中的 Q/K/V 从多个输入替换为共享 Parameter，观察各 Head 梯度总和、两步 AdamW、导出再恢复第三步。","pytorch,adamw,gqa_paper"],
  nd_rope:["标准相邻通道对 RoPE 对第 (2i,2i+1) 个通道执行二维正交旋转，角度 (offset+t)/base^(2i/R)。位置索引必须对应当前 Query 和 Key 的真实绝对 Token 位置。","RoFormer (Su et al., 2021) 用正交旋转把绝对位置信息写进 Q/K，并使点积含相对位置信息；开源模型还有 split-half 等配对习惯及额外 RoPE scaling。","本积木采用明确的 adjacent-pair 约定；不要与 split-half 权重布局直接混用。旋转维 R 必须为偶数、不得超过 D。","先计算 RoPE(完整 K,offset=0)，再把 K 分为 prefix[0,2) 与新 Token[2,3)，以 offset=0/2 旋转并拼接，核对每个元素。","rope_paper,transformer"],
+ nd_wan_qk_rmsnorm:["Wan Q/K 的 Linear 输出仍是 [B,T,C]，先沿全部 C 通道算 RMS、再乘每通道可学习 gamma，然后才 view(B,T,Heads,HeadDim)；课程以 [B,1,T,C] 显式表示未拆分 Head。",
+ "WanSelfAttention 在 norm_q(self.q(x)) 后 view(b,s,n,d)，WanRMSNorm 用 mean(x²) 做归一化并乘可训练 weight；维度顺序决定 Head 之间是否共享分母，这一数值差异直接改变 QK 点积与反向梯度。",
+ "不能先拆 Head 再逐 Head 独立 RMSNorm，否则归一化范围变化；也不应以每通道 gamma 的普通逐元素导数取代 RMSNorm 对所有通道的耦合。",
+ "对完整 C=6 的一个 Query Token 构造非均匀 gamma，分别验证所有 x 通道与 gamma 的中心有限差分；另将同一向量拆为两头手算各头 RMS 作为反例。",
+ "wan_qk_norm,rope_paper"],
  nd_wan_rope3d:["以实际网格 F×H×W 展开视频 Token，并将每个头的相邻实通道组成复数对；按源码将全部复数频率分成帧、行、列三段，相位使用对应网格坐标。",
  "真实 Wan2.2 的 rope_apply 用复数乘法并保留全局复数通道索引的频率幂次；在小张量的 [B,N,T,D] 显式视图上，可以分辨一维 RoPE 与三维视频位置编码。",
  "此积木只实现已归一化 Q/K 上的位置旋转，不包含投影权重、WanRMSNorm、FlashAttention 或 QK 头之外的条件分支；输入要求视频 Token 数恰等于 F×H×W。",

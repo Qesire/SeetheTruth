@@ -29,6 +29,27 @@ function vjp(kind,input,params,upstream,output){
      return d%2===0?cos*g+sin*other:cos*g-sin*other;
    });return result;
  }
+ if(kind==="nd_wan_qk_rmsnorm"){
+   const sh=ND.shape(X),w=source("weight"),C=sh[3],eps=params.epsilon;
+   if(sh.length!==4||sh[1]!==1||!eq(ND.shape(w),[1,1,1,C]))
+     throw Error("Wan QK full-width RMSNorm VJP input/gamma shape mismatch");
+   const inv=(b,t)=>{
+     let sq=eps;for(let j=0;j<C;j++)sq+=X[b][0][t][j]**2/C;
+     return 1/Math.sqrt(sq);
+   };
+   result.x=ND.build(sh,([b,h,t,c])=>{
+     const u=inv(b,t);let dot=0;
+     for(let j=0;j<C;j++)dot+=upstream[b][0][t][j]*w[0][0][0][j]*X[b][0][t][j];
+     return upstream[b][0][t][c]*w[0][0][0][c]*u-
+       X[b][0][t][c]*u**3*dot/C;
+   });
+   result.weight=ND.build([1,1,1,C],([b,h,t,c])=>{
+     let total=0;for(let batch=0;batch<sh[0];batch++)for(let token=0;token<sh[2];token++)
+       total+=upstream[batch][0][token][c]*X[batch][0][token][c]*inv(batch,token);
+     return total;
+   });
+   return result;
+ }
  if(kind==="nd_wan_rope3d"){
    const sh=ND.shape(X),{frames,height,width,base}=params;
    result.x=ND.build(sh,idx=>{

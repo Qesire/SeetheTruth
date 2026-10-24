@@ -218,6 +218,32 @@ class MicroscopeBrowser(unittest.TestCase):
    p.screenshot(path=str(OUT/'wan-video-composable-attention-context.png'),animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
+ def test_wan_projected_qkv_learned_fullwidth_norm(self):
+  for width in [1440,390]:
+   p=self.browser.new_page(viewport={'width':width,'height':880},
+    is_mobile=width==390,has_touch=width==390)
+   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+   try:
+    p.goto(self.base)
+    p.locator('[data-preset="nd_wan_qkv_fullwidth_attention"]').click()
+    p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===36')
+    for btn in p.locator('#computeMicroscope .cmp-step').all():
+     btn.click()
+     if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='q_norm':
+      break
+    self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'q_norm')
+    p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+    evidence=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+    self.assertIn('wan_qk_fullwidth_rmsnorm',evidence)
+    self.assertIn('weight → gamma_q',evidence)
+    self.assertIn('invRms=',evidence)
+    self.assertIn('已覆盖全部可验证路径',evidence)
+    self.assertNotIn('反向路径拒绝',evidence)
+    p.screenshot(path=str(OUT/('mobile-wan-qkv-gamma-fullwidth.png' if width==390
+     else 'desktop-wan-qkv-gamma-fullwidth.png')),full_page=width==390,animations='disabled')
+    self.assertEqual(errors,[])
+   finally:p.close()
  def test_mobile_named_axis(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))

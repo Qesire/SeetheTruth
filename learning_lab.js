@@ -576,6 +576,71 @@
         N("lion","opt_lion",380,720,{lr:0.004,weightDecay:0.01})
       ];
       edges=nodes.slice(2).flatMap(n=>[["weights",n.id,"parameter"],["gradient",n.id,"gradient"]]);
+    }else if(name==="nd_wan_qkv_fullwidth_attention"){
+      title="Wan2.2 pinned · QKV Linear+bias → Q/K learned full-width RMSNorm → Head view → F/H/W RoPE → Attention → output Linear";
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      const param=(sh,seed,scale=0.25,offset=0)=>{
+        const v=ND.seedTensor(sh,seed),values=ND.build(sh,i=>offset+scale*ND.at(v,i)),
+          zero=ND.build(sh,()=>0);
+        return {values,optimizer:{t:0,m:zero,v:ND.build(sh,()=>0)}};
+      };
+      nodes=[
+        N("attention_input","nd_input",20,25,{b:1,h:1,t:8,d:6,seed:4}),
+        N("w_q","nd_parameter",40,350,param([1,1,6,6],5)),
+        N("w_k","nd_parameter",40,650,param([1,1,6,6],7)),
+        N("w_v","nd_parameter",40,950,param([1,1,6,6],9)),
+        N("b_q","nd_input",40,1200,{b:1,h:1,t:1,d:6,seed:10}),
+        N("b_k","nd_input",40,1430,{b:1,h:1,t:1,d:6,seed:11}),
+        N("b_v","nd_input",40,1660,{b:1,h:1,t:1,d:6,seed:12}),
+        N("gamma_q","nd_parameter",350,1200,param([1,1,1,6],13,0.18,1)),
+        N("gamma_k","nd_parameter",350,1490,param([1,1,1,6],14,0.18,1)),
+        N("q_linear","nd_batched_matmul",365,60),
+        N("k_linear","nd_batched_matmul",365,350),
+        N("v_linear","nd_batched_matmul",365,650),
+        N("q_bias","nd_broadcast_add",695,60),
+        N("k_bias","nd_broadcast_add",695,350),
+        N("v_bias","nd_broadcast_add",695,650),
+        N("q_norm","nd_wan_qk_rmsnorm",1015,60,{epsilon:0.000001}),
+        N("k_norm","nd_wan_qk_rmsnorm",1015,350,{epsilon:0.000001}),
+        N("q_view","nd_reshape",1350,60,{b:1,h:8,t:1,d:6}),
+        N("k_view","nd_reshape",1350,350,{b:1,h:8,t:1,d:6}),
+        N("v_view","nd_reshape",1350,650,{b:1,h:8,t:1,d:6}),
+        N("q_heads","nd_permute",1670,60,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("k_heads","nd_permute",1670,350,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("v_heads","nd_permute",1670,650,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("q_rope","nd_wan_rope3d",1990,60,{frames:2,height:2,width:2,base:10000}),
+        N("k_rope","nd_wan_rope3d",1990,350,{frames:2,height:2,width:2,base:10000}),
+        N("kt","nd_permute",2300,350,{axis0:0,axis1:1,axis2:3,axis3:2}),
+        N("scores","nd_batched_matmul",2610,160),
+        N("scaled","nd_scale",2930,160,{factor:1/Math.sqrt(6)}),
+        N("prob","nd_softmax_last",3250,160),
+        N("context","nd_batched_matmul",3570,290),
+        N("w_o","nd_parameter",3570,650,param([1,1,6,6],15)),
+        N("b_o","nd_input",3930,650,{b:1,h:1,t:1,d:6,seed:16}),
+        N("o_linear","nd_batched_matmul",3910,270),
+        N("out","nd_broadcast_add",4240,270),
+        N("target","nd_input",4240,640,{b:1,h:1,t:8,d:6,seed:17}),
+        N("loss","nd_mse",4600,350)
+      ];
+      edges=[
+        ["attention_input","q_linear","a"],["w_q","q_linear","b"],
+        ["attention_input","k_linear","a"],["w_k","k_linear","b"],
+        ["attention_input","v_linear","a"],["w_v","v_linear","b"],
+        ["q_linear","q_bias","a"],["b_q","q_bias","b"],
+        ["k_linear","k_bias","a"],["b_k","k_bias","b"],
+        ["v_linear","v_bias","a"],["b_v","v_bias","b"],
+        ["q_bias","q_norm","x"],["gamma_q","q_norm","weight"],
+        ["k_bias","k_norm","x"],["gamma_k","k_norm","weight"],
+        ["q_norm","q_view","x"],["k_norm","k_view","x"],["v_bias","v_view","x"],
+        ["q_view","q_heads","x"],["k_view","k_heads","x"],["v_view","v_heads","x"],
+        ["q_heads","q_rope","x"],["k_heads","k_rope","x"],
+        ["k_rope","kt","x"],["q_rope","scores","a"],["kt","scores","b"],
+        ["scores","scaled","x"],["scaled","prob","x"],
+        ["prob","context","a"],["v_heads","context","b"],
+        ["context","o_linear","a"],["w_o","o_linear","b"],
+        ["o_linear","out","a"],["b_o","out","b"],
+        ["out","loss","prediction"],["target","loss","target"]
+      ];
     }else if(name==="nd_wan_video_rope_attention"){
       title="Wan2.2 固定源码 · 视频 F/H/W RoPE → 双头 Self-Attention 核心";
       nodes=[

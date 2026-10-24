@@ -126,5 +126,6 @@ assert.throws(()=>E.inspect(graph,{targetId:'context',outputIndex:[0,0,0,0],trac
  /stale or altered/);
 const html=fs.readFileSync(path.join(__dirname,'../learn.html'),'utf8');
 assert.ok(html.includes('data-preset="nd_wan_video_rope_attention"'));
-assert.ok(html.includes('"nd_wan_video_rope_attention","activation_gallery"'));
+assert.ok(html.includes('"nd_wan_video_rope_attention"'));
+assert.ok(html.includes('"nd_wan_qkv_fullwidth_attention"'));
 console.log('WAN_VIDEO_ROPE3D_PASS: source-pinned F/H/W complex-phase, 3 head sizes, independent finite differences, full video attention scalar Jacobians and negative tests');

@@ -179,6 +179,26 @@ function inspect(raw,options={}){
    return {rule:"矩阵乘法按 K 维求和；每项使用一对 A/B 元素",
     links:result,gradientRule:"乘以相应另一输入元素，并对所有 K 维贡献求和"};
   }
+  if(kind==="nd_wan_qk_rmsnorm"){
+   const X=inputs.x,W=inputs.weight,C=shape[3],eps=p.epsilon;
+   if(shape.length!==4||X.length!==4||!same(X,shape)||
+      X[1]!==1||!same(W,[1,1,1,C]))
+     throw Error("Wan QK full-width normalization is before head view");
+   const [b,,t,c]=coordinate,values=Array.from({length:C},(_,j)=>read("x",[b,0,t,j]));
+   const gamma=read("weight",[0,0,0,c]),hasValues=values.every(v=>v!==null)&&gamma!==null;
+   const inv=hasValues?1/Math.sqrt(eps+values.reduce((sum,v)=>sum+v*v,0)/C):null;
+   for(let j=0;j<C;j++)add("x",[b,0,t,j],
+     "gamma[c](delta/r-xc*xj/(C*r³))",
+     hasValues?gamma*((j===c?inv:0)-values[c]*values[j]*inv**3/C):null,
+     "sourceChannel="+j);
+   add("weight",[0,0,0,c],"∂y/∂gamma[c]=x[c]/r",
+     hasValues?values[c]*inv:null,"learnedGamma="+c);
+   stages.push({stage:"wan_qk_fullwidth_rmsnorm",width:C,channel:c,
+     invRms:inv,gamma,normalized:hasValues?values[c]*inv:null,
+     output:hasValues?gamma*values[c]*inv:null});
+   return {rule:"Wan2.2 Q/K: learned weighted RMSNorm across full projected C before .view(B,T,Heads,D)",
+     links:result,stages,gradientRule:"full cross-channel Jacobian plus per-channel gamma gradient"};
+  }
   if(kind==="nd_wan_rope3d"){
    const x=inputs.x;
    if(x.length!==4||!same(x,shape))
