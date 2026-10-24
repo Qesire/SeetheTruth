@@ -29,6 +29,21 @@ function vjp(kind,input,params,upstream,output){
      return d%2===0?cos*g+sin*other:cos*g-sin*other;
    });return result;
  }
+ if(kind==="nd_layernorm_last"){
+   const sh=ND.shape(X),C=sh[3],eps=params.epsilon;
+   result.x=ND.build(sh,([b,h,t,c])=>{
+     let mean=0;for(let j=0;j<C;j++)mean+=X[b][h][t][j]/C;
+     let var0=0;for(let j=0;j<C;j++)var0+=(X[b][h][t][j]-mean)**2/C;
+     const inv=1/Math.sqrt(var0+eps),normC=(X[b][h][t][c]-mean)*inv;
+     let avgG=0,avgGZ=0;
+     for(let j=0;j<C;j++){
+       const g=upstream[b][h][t][j];
+       avgG+=g/C;avgGZ+=g*(X[b][h][t][j]-mean)*inv/C;
+     }
+     return inv*(upstream[b][h][t][c]-avgG-normC*avgGZ);
+   });
+   return result;
+ }
  if(kind==="nd_wan_qk_rmsnorm"){
    const sh=ND.shape(X),w=source("weight"),C=sh[3],eps=params.epsilon;
    if(sh.length!==4||sh[1]!==1||!eq(ND.shape(w),[1,1,1,C]))
@@ -120,6 +135,21 @@ function vjp(kind,input,params,upstream,output){
      });
    };
    result.a=unbroadcast(A);result.b=unbroadcast(B);return result;
+ }
+ if(kind==="nd_broadcast_mul"){
+   const ash=ND.shape(A),bsh=ND.shape(B),out=ND.shape(output);
+   const reduce=(src,other)=>{
+     const sh=ND.shape(src),os=ND.shape(other);
+     return ND.build(sh,idx=>{
+       let total=0;ND.indices(out,coord=>{
+         const local=coord.map((v,i)=>sh[i]===1?0:v);
+         if(!local.every((v,i)=>v===idx[i]))return;
+         const paired=coord.map((v,i)=>os[i]===1?0:v);
+         total+=ND.at(upstream,coord)*ND.at(other,paired);
+       });return total;
+     });
+   };
+   result.a=reduce(A,B);result.b=reduce(B,A);return result;
  }
  if(kind==="nd_batched_matmul"){
    const a=ND.shape(A),b=ND.shape(B),out=ND.shape(output),K=a[3];
