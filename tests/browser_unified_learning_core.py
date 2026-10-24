@@ -64,9 +64,9 @@ class UnifiedLearningBrowser(unittest.TestCase):
     page.on("pageerror",lambda e:errors.append(str(e)))
     try:
      self.assertEqual(page.goto(self.base+"/"+route).status,200)
-     page.wait_for_function("(name) => !!window[name] && !!window.SeetheTruthSpecializedLesson",global_name)
+     page.wait_for_function("(name) => !!window[name] && !!window.SeetheTruthSpecializedLesson",arg=global_name)
      self.assertEqual(page.evaluate("window.SeetheTruthSpecializedLesson.id"),id)
-     self.assertEqual(page.evaluate("(name) => window[name].lessons",global_name),count)
+     self.assertEqual(page.evaluate("(name) => window[name].lessons",arg=global_name),count)
      self.assertEqual(errors,[])
     finally:
      page.close()
