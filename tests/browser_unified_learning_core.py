@@ -54,6 +54,23 @@ class UnifiedLearningBrowser(unittest.TestCase):
   finally:
    phone.close()
 
+ def test_restored_engineering_journeys_share_actual_core(self):
+  for route,id,global_name,count in [
+   ("engineering_journey.html","engineering_journey","SeetheTruthEngineeringJourney",12),
+   ("engineering_pipeline.html","engineering_pipeline","SeetheTruthEngineeringPipeline",6)]:
+   with self.subTest(route=route):
+    page=self.browser.new_page(viewport={"width":1280,"height":900})
+    errors=[]
+    page.on("pageerror",lambda e:errors.append(str(e)))
+    try:
+     self.assertEqual(page.goto(self.base+"/"+route).status,200)
+     page.wait_for_function("(name) => !!window[name] && !!window.SeetheTruthSpecializedLesson",global_name)
+     self.assertEqual(page.evaluate("window.SeetheTruthSpecializedLesson.id"),id)
+     self.assertEqual(page.evaluate("(name) => window[name].lessons",global_name),count)
+     self.assertEqual(errors,[])
+    finally:
+     page.close()
+
  def test_independent_lab_adapter_preserves_domain_truth(self):
   for route,id,domain in [
    ("deepinfer_worker_lab.html","deepinfer_worker","event_dag"),
