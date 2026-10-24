@@ -42,7 +42,7 @@ function mini(t,label,click,selected){
  if(R>20||C>24)wrapper.append(el('p','仅显示前 '+Math.min(R,20)+' 行、'+Math.min(C,24)+' 列；计算仍使用完整的有界张量。','cmp-hint'));
  return wrapper;
 }
-function mount(rootElement,onSelect){
+function mount(rootElement,onSelect,onCoordinate){
  if(!rootElement||typeof rootElement.replaceChildren!=='function')throw Error('microscope UI mount required');
  let frame=null,active=null,subSelected=null,row=0,col=0,prefix=[];
  function clear(msg='运行数值图或进行静态形状分析后，选择积木即可展开；当前没有执行证据。'){
@@ -128,6 +128,40 @@ function mount(rootElement,onSelect){
     }
    }else box.append(el('p','此运算不是单一 GEMM 点积；仍可查看输入/输出与数学公式，不伪造逐项分解。','cmp-hint'));
    rootElement.append(box);
+  }
+  // The same selected graph node and coordinate drive forward and backward
+  // observations; nested substeps are not standalone graph nodes.
+  if(s===parent&&s.out.values!==null&&frame.evidenceTier===CORE.TIERS.MICRO&&typeof onCoordinate==='function'){
+   const vjp=el('div',undefined,'cmp-vjp'),action=el('button','追踪此坐标的局部 VJP / 梯度汇合','cmp-vjp-trigger');
+   action.type='button';
+   const detail=el('div','选择此输出坐标的反向贡献；不等于对整个训练损失求导。','cmp-vjp-result cmp-hint');
+   action.addEventListener('click',()=>{
+    try{
+     const rank=s.out.shape.length;
+     const index=[...prefix,...(rank===1?[]:[row]),col];
+     const report=onCoordinate({stepId:s.id,coordinate:index,frame});
+     if(report?.schema!=='seethetruth-coordinate-vjp-bridge-v1')throw Error('unregistered VJP observation');
+     detail.replaceChildren();
+     detail.append(el('strong','已绑定输出 '+report.selected.nodeId+' ['+report.selected.index.join(',')+'] · 值 '+report.selected.value.toPrecision(9)));
+     detail.append(el('p',report.backward.nodeCount+' 个元素坐标、'+report.backward.edgeCount+' 条局部 VJP 边；'+
+      (report.backward.complete?'已覆盖全部可验证路径':'存在规则边界或探索预算截断：仅展示已核验路径'),'cmp-hint'));
+     const local=report.backward.localEdges.slice(0,12);
+     if(local.length){
+      detail.append(el('div','首层局部导数 ∂当前输出/∂上游坐标','cmp-label'));
+      for(const edge of local)detail.append(el('p',edge.port+' → '+edge.source+
+       '：'+(edge.localDerivative===null?'尚无数值':Number(edge.localDerivative).toPrecision(9)),'cmp-hint'));
+     }
+     detail.append(el('div','源张量坐标的累计灵敏度（相同来源的多条路径已求和）','cmp-label'));
+     for(const source of report.backward.sources.slice(0,24))
+      detail.append(el('p',source.nodeId+' ['+source.index.join(',')+'] · ∂selected/∂source = '+
+       (source.sensitivity===null?'未知，非零值未获证明':Number(source.sensitivity).toPrecision(9)),'cmp-hint'));
+     if(report.backward.sources.length>24)detail.append(el('p','仅展示前 24 个来源，VJP 汇总已按完整探索范围计算。','cmp-hint'));
+     detail.append(el('p','NumPy 单算子资格 '+(report.codegen.numpyOperatorEligible?'有':'无')+
+      ' · PyTorch 单算子资格 '+(report.codegen.torchOperatorEligible?'有':'无')+
+      '；整图导出及 VJP 代码导出均未在此证明。','cmp-hint'));
+    }catch(error){detail.replaceChildren(el('p','反向路径拒绝：'+error.message,'cmp-hint'));}
+   });
+   vjp.append(action,detail);rootElement.append(vjp);
   }
   if(Object.keys(s.operands).length){
    const details=el('details'),head=el('summary','展开本步骤全部输入、权重与中间值');details.append(head);
