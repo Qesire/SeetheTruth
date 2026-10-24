@@ -270,3 +270,21 @@ of real Wan 40-head parameter magnitudes or FlashAttention implementation.
 Wan normalization, verifies all X and gamma coordinates via central
 finite differences and the wrong per-head alternative, and checks full
 loss gradients through learned gamma and Q/K/V/O projection weights.
+
+## Wan2.2 norm1 · e0/e1 pre-Self-Attention · e2 residual (2026-10-25)
+
+Pinned source [WanAttentionBlock.forward `model.py:237-258`](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L237-L258).
+In the original forward code, `e=(modulation.unsqueeze(0)+e).chunk(6,dim=2)`, then `y=self.self_attn(self.norm1(x).float()*(1+e[1].squeeze(2))+e[0].squeeze(2), ...)`, then `x=x+y*e[2].squeeze(2)`. The source later applies Cross-Attention after the e2 residual, followed by e3/e4 FFN conditioning and e5 gated residual. The demonstration in this PR covers **only the first e0/e1/e2 self-attention envelope**, reusing the already verified Q/K/V learned projectors and F/H/W rotary. It does not claim the full Transformer Block.
+
+To avoid a second execution engine or a monolithic AdaLN-only operator, two genuinely reusable tensor bricks are introduced:
+`nd_layernorm_last(x:[B,H,T,C])` calculates a non-affine last-channel LayerNorm, with cross-channel analytic VJP; and `nd_broadcast_mul(a,b)` multiplies broadcast-compatible four-axis tensors and sums gradients over repeated singleton coordinates. The existing `nd_broadcast_add` builds the rest. E0/E1/E2 in the lesson are **explicit three bounded slices** from the original six-chunk conditioning; each combines a synthetic timestep input with an independent per-channel trainable modulation tensor. No hidden six-chunk value is invented.
+
+The exact computation of the bounded lesson is
+`e_i=condition_i+modulation_i` for i=0,1,2,
+`u=LayerNorm(x)`,
+`z=u + u*e1 + e0`,
+`a=SelfAttention(z)`,
+`y=x+a*e2`.
+The original `SelfAttention(z)` contains learned Wq/Wk/Wv, Q/K full-width weighted RMSNorm, Head view, Wan 3D RoPE and output Wo/b. MSE is an explicitly *illustrative* training target to verify gradients, not a Wan diffusion loss.
+
+`tests/wan_adaln_self_gate_contracts.js` independently reimplements LN arithmetic and verifies all input and gate gradients through centered differences, checks the e0/e1/e2 wiring, tests selected whole-graph parameter FD, enforces zero-e2 cut of Attention parameter gradients while residual identity remains, checks that gate parameters remain sensitive at zero, and rejects stale numeric traces. Desktop/mobile Chromium screenshots follow the native `norm1` and broadcast gate stages in the shared microscope.
