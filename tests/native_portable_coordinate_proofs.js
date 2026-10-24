@@ -32,7 +32,7 @@ for(const id of targets){
 }
 function mutate(id,modify,pattern){const bad=structuredClone(frame);modify(bad.steps.find(s=>s.id===id));assert.throws(()=>M.validate(bad),pattern,id);}
 mutate('subtract',s=>s.elementwise.operator='add',/unsupported numerical elementwise/);
-mutate('divide',s=>s.operands.b.values[0]=0,/elementwise division by zero/);
+mutate('divide',s=>{s.operands.b=structuredClone(s.operands.b);s.operands.b.values[0]=0;},/elementwise division by zero/);
 mutate('scale',s=>s.unary.factor=1.1,/scalar numerical reconstruction contradicts/);
 mutate('bias',s=>s.unary.operator='square',/unsupported scalar numerical proof/);
 mutate('square',s=>s.unary.bias=2,/invalid scalar proof parameter/);
