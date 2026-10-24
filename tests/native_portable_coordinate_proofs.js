@@ -42,6 +42,13 @@ mutate('cols',s=>s.indexRule.params.start=0,/native source index contract mismat
 mutate('repeat',s=>s.indexRule.params.times=1,/native repeated row shape mismatch/);
 mutate('cat',s=>s.indexMap[0].port='b',/native source index contract mismatch/);
 mutate('cat',s=>delete s.indexMap,/native index rule without source map/);
+const spoof=structuredClone(frame);
+const scale=spoof.steps.find(s=>s.id==='scale');
+scale.operands.x=structuredClone(scale.operands.x);
+scale.operands.x.values[0]+=0.25;
+scale.out.values[0]=scale.operands.x.values[0]*scale.unary.factor;
+assert.throws(()=>M.validate(spoof),/execution dependency operand provenance mismatch/,
+ 'arithmetic that closes against a forged, non-upstream operand must still fail');
 const concept=M.learning(graph,Concept.evaluate(graph),L);
 assert.equal(concept.evidenceTier,M.TIERS.STATIC);
 assert.ok(concept.steps.every(s=>s.out.values===null&&s.unary===undefined&&s.indexMap===undefined&&s.elementwise===undefined));
