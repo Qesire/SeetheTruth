@@ -28,7 +28,8 @@ function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
  const lessons=courses.filter((l,i)=>{
   if(filter==="fundamentals"&&i>=4)return false;
-  if(filter==="inference"&&i<4)return false;
+  if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")))return false;
+  if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
  });
  const cards=lessons.map(l=>{
@@ -47,9 +48,9 @@ function render(){
  });
  $("cards").replaceChildren(...cards);$("empty").hidden=!!cards.length;
 }
-for(const name of ["all","fundamentals","inference"]){
+for(const name of ["all","fundamentals","inference","engineering"]){
  $(name).addEventListener("click",()=>{filter=name;
-  for(const n of ["all","fundamentals","inference"])$(n).setAttribute("aria-pressed",String(n===filter));
+  for(const n of ["all","fundamentals","inference","engineering"])$(n).setAttribute("aria-pressed",String(n===filter));
   render();
  });
 }
