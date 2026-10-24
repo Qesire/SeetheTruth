@@ -9,6 +9,11 @@
  const worker=root.SeetheTruthDeepInferEvents;
  const scheduler=root.SeetheTruthSchedulerWorkflow;
  const fixtures={
+  deepinfer_prefill:()=>({operation:"inspect_pair",input:{
+   voteInput:{decodeStep:4,allInterval:2,anyInterval:4,ranks:[
+    {waitingSchedulable:true,canActuallySchedule:true,cacheUsage:.2},
+    {waitingSchedulable:false,canActuallySchedule:false,cacheUsage:.2}]},
+   chunkInput:{tokens:["TEXT","TEXT","TEXT"],cached:0,maxBatchedTokens:2}}}),
   deepinfer_worker:()=>({operation:"simulate",input:{
    steps:worker.DEFAULT_STEPS.slice(0,2),options:{zeroOverhead:true}}}),
   deepinfer_kv:()=>({operation:"replay",input:{
