@@ -113,6 +113,12 @@
       const x=get("x");by(x.length===4,"N-D RoPE requires [B,H,T,D]",n.id);
       by(p.rotaryDim<=x[3]&&p.rotaryDim%2===0,"N-D RoPE rotary dimension must be even and <= channel dimension",n.id);
       output=x.slice();rule="对旋转维内的相邻通道二元组按 offset+Token 位置执行正交旋转，其余通道保持原值";
+    }else if(kind==="nd_wan_rope3d"){
+      const x=get("x");by(x.length===4&&x[3]>=6&&x[3]%2===0,
+       "Wan video RoPE needs an even per-head channel D>=6 in [B,N,T,D]",n.id);
+      by(x[2]===p.frames*p.height*p.width,"Wan video RoPE grid F*H*W must equal Token count",n.id);
+      output=x.slice();rule="Wan2.2 3D RoPE (pinned source): global adjacent complex pairs divided into F/H/W frequency segments, phase uses actual grid coordinates";
+      conditions.push("Source operates [B,T,N,D]; this graph has explicit [B,N,T,D] axis convention. Only mathematical small-tensor parity is claimed");
     }else if(kind==="nd_cache_read"){
       const x=get("x");by(x.length===4,"N-D KV cache read requires four axes",n.id);
       by(p.start+p.length<=x[2],"N-D cache read window exceeds cached Token axis",n.id);
