@@ -53,5 +53,5 @@ assert.throws(()=>C.validate(dup),/invalid named axis metadata/);
 const falsified=structuredClone(N);falsified.steps.find(s=>s.id==='swap').substeps[0].operands.x.axes=['Wrong','D'];
 assert.throws(()=>C.validate(falsified),/named-axis operand/);
 const missing=structuredClone(frame);missing.steps.find(s=>s.id==='sum').elementwise.operator='mul';
-assert.throws(()=>C.validate(missing),/elementwise arithmetic contradicts/);
+assert.throws(()=>C.validate(missing),/unsupported numerical elementwise reconstruction|elementwise arithmetic contradicts/);
 console.log('MICROSCOPE_AXES_POINTWISE_PASS: T/D and B/T/H/W/C traced coordinates, exact native add/mul, corrupt outputs and axis spoofing rejected');

@@ -64,17 +64,72 @@ function verifyDot(s){
   must(Math.abs(sum-s.out.values[t*H+h])<=1e-9*Math.max(1,Math.abs(sum)),'GEMM reconstruction contradicts displayed output');
  }
 }
+const BINARY_PROOFS=['add','mul','subtract','divide'];
+const UNARY_PROOFS=['scale','bias','square','relu','relu_squared','sigmoid','tanh','gelu_tanh','softplus'];
+const INDEX_PROOFS=['transpose2d','slice_rows','slice_cols','concat_cols','repeat_rows'];
+function unaryValue(op,x,p){
+ if(op==='scale')return x*p.factor;
+ if(op==='bias')return x+p.bias;
+ if(op==='square')return x*x;
+ if(op==='relu')return Math.max(0,x);
+ if(op==='relu_squared')return Math.max(0,x)**2;
+ if(op==='sigmoid')return x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
+ if(op==='tanh')return Math.tanh(x);
+ if(op==='gelu_tanh')return .5*x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+.044715*x**3)));
+ if(op==='softplus')return Math.max(x,0)+Math.log1p(Math.exp(-Math.abs(x)));
+ throw Error('microscope: unknown unary proof');
+}
+function verifyUnary(s){
+ if(s.unary===undefined)return;
+ const p=s.unary,op=p?.operator,x=s.operands.x;
+ must(s.out.values!==null&&s.out.shape.length===2&&UNARY_PROOFS.includes(op)&&s.kind===op,
+  'unsupported scalar numerical proof');
+ must(x&&x.values&&x.shape.join(',')===s.out.shape.join(','),'scalar operand and output shapes disagree');
+ const key=op==='scale'?'factor':op==='bias'?'bias':null;
+ must(key?(Number.isFinite(p[key])&&Object.keys(p).length===2):Object.keys(p).length===1,
+  'invalid scalar proof parameter');
+ for(let i=0;i<s.out.values.length;i++){
+  const value=unaryValue(op,x.values[i],p);
+  must(Number.isFinite(value)&&Math.abs(value-s.out.values[i])<=1e-12*Math.max(1,Math.abs(value)),
+   'scalar numerical reconstruction contradicts displayed output');
+ }
+}
+function nativeIndexPlan(s){
+ const op=s.indexRule?.operator,p=s.indexRule?.params||{},O=s.out.shape;
+ must(INDEX_PROOFS.includes(op)&&op===s.kind&&O.length===2,'unsupported native indexed proof');
+ const x=s.operands.x,a=s.operands.a,b=s.operands.b,[R,C]=O;
+ if(op==='concat_cols')must(a&&b&&a.shape.length===2&&b.shape.length===2&&
+  a.shape[0]===R&&b.shape[0]===R&&a.shape[1]+b.shape[1]===C,'native concat shape mismatch');
+ else{
+  must(x&&x.shape.length===2,'native indexed source missing');
+  const [r,c]=x.shape;
+  if(op==='transpose2d')must(R===c&&C===r,'native transpose shape mismatch');
+  if(op==='slice_rows')must(Number.isSafeInteger(p.start)&&p.start>=0&&R===p.length&&C===c&&p.start+R<=r,'native row slice shape mismatch');
+  if(op==='slice_cols')must(Number.isSafeInteger(p.start)&&p.start>=0&&C===p.width&&R===r&&p.start+C<=c,'native col slice shape mismatch');
+  if(op==='repeat_rows')must(Number.isSafeInteger(p.times)&&p.times>0&&R===r*p.times&&C===c,'native repeated row shape mismatch');
+ }
+ return Array.from({length:R*C},(_,n)=>{
+  const i=Math.floor(n/C),j=n%C;
+  if(op==='transpose2d')return {port:'x',index:j*x.shape[1]+i};
+  if(op==='slice_rows')return {port:'x',index:(i+p.start)*x.shape[1]+j};
+  if(op==='slice_cols')return {port:'x',index:i*x.shape[1]+j+p.start};
+  if(op==='repeat_rows')return {port:'x',index:(i%x.shape[0])*x.shape[1]+j};
+  return j<a.shape[1]?{port:'a',index:i*a.shape[1]+j}:{port:'b',index:i*b.shape[1]+j-a.shape[1]};
+ });
+}
 function verifyElementwise(s){
  if(s.elementwise===undefined)return;
  must(s.out.values!==null&&s.out.shape.length===2&&
-  s.elementwise&&['add','mul'].includes(s.elementwise.operator),
+  s.elementwise&&BINARY_PROOFS.includes(s.elementwise.operator)&&s.elementwise.operator===s.kind,
   'unsupported numerical elementwise reconstruction');
  const a=s.operands.a,b=s.operands.b;
  must(a&&b&&a.values&&b.values&&
   a.shape.join(',')===s.out.shape.join(',')&&b.shape.join(',')===s.out.shape.join(','),
   'elementwise operands and output shapes disagree');
  for(let i=0;i<s.out.values.length;i++){
-  const expected=s.elementwise.operator==='add'?a.values[i]+b.values[i]:a.values[i]*b.values[i];
+  const op=s.elementwise.operator,x=a.values[i],y=b.values[i];
+  must(op!=='divide'||y!==0,'elementwise division by zero');
+  const expected=op==='add'?x+y:op==='mul'?x*y:op==='subtract'?x-y:x/y;
   must(expected===s.out.values[i],'elementwise arithmetic contradicts displayed output');
  }
 }
@@ -121,10 +176,12 @@ function verifyKernel(s){
  }
 }
 function verifyIndexMap(s){
- if(s.indexMap===undefined)return;
+ if(s.indexMap===undefined){must(s.indexRule===undefined,'native index rule without source map');return;}
  must(s.out.values!==null&&Array.isArray(s.indexMap)&&s.indexMap.length===s.out.values.length,'invalid tensor index source map');
+ const expectedIndex=s.indexRule?nativeIndexPlan(s):null;
  for(let i=0;i<s.indexMap.length;i++){
   const entry=s.indexMap[i];
+  if(expectedIndex)must(entry&&entry.port===expectedIndex[i].port&&entry.index===expectedIndex[i].index,'native source index contract mismatch');
   must(entry&&typeof entry.port==='string'&&Object.hasOwn(s.operands,entry.port),'unresolved tensor source port');
   const input=s.operands[entry.port];
   must(input&&input.values!==null&&Number.isSafeInteger(entry.index)&&entry.index>=0&&entry.index<input.values.length,'source index out of bounds');
@@ -136,7 +193,7 @@ function validate(frame){
  must(Object.values(TIERS).includes(frame.evidenceTier),'unknown evidence tier');
  must(Array.isArray(frame.steps)&&frame.steps.length>=1&&frame.steps.length<=MAX_STEPS,'invalid step count');
  must(typeof frame.title==='string'&&frame.title.length>0,'missing title');
- const ids=new Set();let hasNumeric=false;
+ const ids=new Set(),resolved=new Map();let hasNumeric=false;
  for(const s of frame.steps){
   must(s&&typeof s.id==='string'&&/^[A-Za-z0-9_:\-]{1,80}$/.test(s.id)&&!ids.has(s.id),'duplicate or invalid step id');
   must(typeof s.kind==='string'&&s.kind.length>0&&typeof s.title==='string'&&s.title.length>0,'missing step metadata');
@@ -148,7 +205,7 @@ function validate(frame){
   checkAxes(s.out);
   must(s.operands&&typeof s.operands==='object'&&!Array.isArray(s.operands),'missing operands');
   for(const x of Object.values(s.operands)){if(x.values!==null)numericTensor(x.shape,x.values);else staticTensor(x.shape);checkAxes(x);}
-  verifyDot(s);verifyIndexMap(s);verifyElementwise(s);verifyKernel(s);
+  verifyDot(s);verifyIndexMap(s);verifyElementwise(s);verifyUnary(s);verifyKernel(s);
   if(s.substeps!==undefined){
    must(Array.isArray(s.substeps)&&s.substeps.length>=1&&s.substeps.length<=12,'invalid nested substeps');
    const nestedIds=new Set();
@@ -159,7 +216,7 @@ function validate(frame){
     numericTensor(child.out.shape,child.out.values);checkAxes(child.out);
     must(child.operands&&typeof child.operands==='object'&&!Array.isArray(child.operands),'nested inputs invalid');
     for(const tensor of Object.values(child.operands)){numericTensor(tensor.shape,tensor.values);checkAxes(tensor);}
-    verifyDot(child);verifyIndexMap(child);verifyElementwise(child);verifyKernel(child);
+    verifyDot(child);verifyIndexMap(child);verifyElementwise(child);verifyUnary(child);verifyKernel(child);
     if(child.outputIsParent===true){
      for(const [port,tensor] of Object.entries(child.operands)){
       const parentOperand=s.operands[port];
@@ -179,6 +236,17 @@ function validate(frame){
     nestedIds.add(child.id);
    }
   }
+  if(frame.origin==='learning_lab_executor'&&s.out.values!==null){
+   for(const dep of s.dependencies){
+    const parent=resolved.get(dep.from),got=s.operands[dep.port];
+    must(parent&&got&&got.shape.join(',')===parent.shape.join(',')&&
+     JSON.stringify(got.axes||null)===JSON.stringify(parent.axes||null)&&
+     got.values&&parent.values&&got.values.length===parent.values.length&&
+     got.values.every((v,i)=>v===parent.values[i]),
+     'execution dependency operand provenance mismatch');
+   }
+  }
+  resolved.set(s.id,s.out);
   ids.add(s.id);
  }
  must((frame.evidenceTier===TIERS.STATIC)===(hasNumeric===false),'symbolic vs numeric provenance mismatch');
@@ -207,11 +275,17 @@ function dot(frame,stepId,row,col,prefix=[]){
  }
  if(s.elementwise){
   const a=s.operands.a.values[index],b=s.operands.b.values[index];
-  const recomputed=s.elementwise.operator==='add'?a+b:a*b;
+  const op=s.elementwise.operator,recomputed=op==='add'?a+b:op==='mul'?a*b:op==='subtract'?a-b:a/b;
   return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,
-   formula:s.elementwise.operator==='add'?'out=a+b':'out=a×b',
+   formula:'out=a '+({add:'+',mul:'×',subtract:'−',divide:'/'}[op])+' b',
    elementwise:true,operation:s.elementwise.operator,operands:[{port:'a',value:a},{port:'b',value:b}],
    reconstructable:true,recomputed,error:Math.abs(observed-recomputed)};
+ }
+ if(s.unary){
+  const x=s.operands.x.values[index],recomputed=unaryValue(s.unary.operator,x,s.unary);
+  return {nodeId:s.id,row,col,prefix:leading,value:observed,coordinateLabel:coordinate,
+   formula:s.formula,reconstructable:true,unary:true,operation:s.unary.operator,input:x,
+   parameter:s.unary.factor??s.unary.bias??null,recomputed,error:Math.abs(observed-recomputed)};
  }
  if(s.kernel){
   const diagnostics=kernelCoordinate(s,row,col);
@@ -293,9 +367,17 @@ function learning(graph,run,catalog){
      out:child.outputIsParent?tagAxes(child.out,expectedAxes):child.out};
    });
   }
+  const indexed=!isConcept&&INDEX_PROOFS.includes(kind)?{indexRule:{operator:kind,
+   params:kind==='slice_rows'?{start:n.params.start,length:n.params.length}:
+    kind==='slice_cols'?{start:n.params.start,width:n.params.width}:
+    kind==='repeat_rows'?{times:n.params.times}:{}}}:null;
+  if(indexed)indexed.indexMap=nativeIndexPlan({kind,operands,out,indexRule:indexed.indexRule});
   const s={id:r.id,kind,title:def.title,formula:def.formula,why:def.why,
    sourceLines:null,dependencies,out,operands,dot:specification,
-   ...(numeric&&['add','mul'].includes(kind)?{elementwise:{operator:kind}}:{}),
+   ...(numeric&&BINARY_PROOFS.includes(kind)?{elementwise:{operator:kind}}:{}),
+   ...(numeric&&UNARY_PROOFS.includes(kind)?{unary:{operator:kind,
+    ...(kind==='scale'?{factor:n.params.factor}:{}),...(kind==='bias'?{bias:n.params.bias}:{})}}:{}),
+   ...(indexed||{}),
    ...(numeric&&['rmsnorm','silu','softmax'].includes(kind)?{kernel:{operator:kind,inputPort:'x',
     ...(kind==='rmsnorm'?{epsilon:n.params?.epsilon??def.params.epsilon}:{})}}:{}),substeps,
    note:isConcept?'仅静态推导，数值不可用':'执行器真实返回的小矩阵；未装载实际模型'};

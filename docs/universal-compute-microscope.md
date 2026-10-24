@@ -42,3 +42,9 @@ This incremental extension gives the **same** numerical microscope full verifica
 Corrupting a numerical output, changing the operator name, swapping an input port, changing epsilon or editing an internal Attention probability fails a real Node proof. Static mode still only provides shapes, not invented numeric proofs.
 
 This is forward arithmetic reconstruction, **not** proof of a VJP, autograd graph, real model activations or GPU timing.
+
+## 2026-10-24 · Portable native coordinate proofs
+
+The common arithmetic microscope now independently reconstructs bounded forward results of **Subtract/Divide**; **Scale/Bias/Square/ReLU/ReLU²/Sigmoid/Tanh/GELU(tanh)/Softplus**; and **Transpose2D/SliceRows/SliceCols/ConcatCols/RepeatRows**. These are three shared binary/unary/indexed proof families, not isolated educational pages. Native indexed proofs regenerate every source port and flat offset from operator-specific shape/params. Wrong mappings are rejected even when the source has duplicate values. The UI displays these individual operations without misidentifying them as GEMM terms.
+
+An adversarial mixed-graph regression, `node tests/native_portable_coordinate_proofs.js`, verifies numerical closure, falsified parameters/indices/operator identity and concept-only separation. This is synthetic bounded Float64 forward evidence, **not** gradient/VJP validation, codegen eligibility, real checkpoint capture or CUDA performance. Existing saved graphs and specialist adapters are unchanged.
