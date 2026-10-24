@@ -14,7 +14,8 @@ const original=JSON.stringify(graph),projected=Core.inspectEvidence('source_atla
 assert.equal(projected.kind,'evidence_inspection');assert.equal(projected.executed,false);
 assert.equal(projected.independentlyReplayed,false);assert.equal(projected.evidenceTier,'STATIC_SOURCE_ONLY');
 assert.deepEqual(projected.data.projection.nodes.map(x=>x.id),['linear']);
-assert.deepEqual(projected.data.projection.matches,['linear']);
+assert.deepEqual(projected.data.projection.matchIds,['linear']);
+assert.equal(projected.data.projection.matches.has('linear'),true);
 assert.equal(JSON.stringify(graph),original);
 assert.throws(()=>Core.inspectEvidence('source_atlas','project',{graph:{...graph,meta:{analysis:'synthetic'}},scope:'root'}),/not a static Python AST/);
 assert.throws(()=>Core.inspectEvidence('source_atlas','project',{graph,scope:'unknown',level:'matrix'}),/Unknown source scope/);

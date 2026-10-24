@@ -29,6 +29,8 @@ jobs:
         run: python tests/browser_unified_learning_core.py
       - name: Verify paper, micro-training, semantic and capability shared execution in Chromium
         run: python tests/browser_unified_specialists.py
+      - name: Verify source, model and telemetry read-only evidence boundaries in Chromium
+        run: python tests/browser_unified_evidence.py
       - name: Verify independent block-pack composition in Chromium
         run: python tests/browser_block_packs.py
       - name: Verify common 2D–5D arithmetic microscope in real Chromium

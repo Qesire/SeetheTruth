@@ -32,7 +32,7 @@ class EvidenceOnlyBrowser(unittest.TestCase):
        graph:{meta:{analysis:'static-python-ast'},nodes:[
         {id:'a',parent:null,label:'decoder'},{id:'b',parent:'a',callee:'linear',label:'linear'}],
         edges:[{from:'a',to:'b',kind:'hierarchy'}]},scope:'a',level:'matrix'})""")
-      self.assertEqual(out['data']['projection']['matches'],['b'])
+      self.assertEqual(out['data']['projection']['matchIds'],['b'])
       self.assertEqual(out['evidenceTier'],'STATIC_SOURCE_ONLY')
       self.assertFalse(out['executed'])
      elif domain=='telemetry':
@@ -41,7 +41,8 @@ class EvidenceOnlyBrowser(unittest.TestCase):
       self.assertEqual(result['evidenceTier'],'SYNTHETIC_TELEMETRY_DEMO')
       self.assertFalse(result['independentlyReplayed'])
       self.assertEqual(result['data']['counts']['snapshots'],1)
-      self.assertFalse(page.locator('#body').is_hidden() is False and page.locator('#empty').is_hidden() is False)
+      self.assertFalse(page.locator('#body').is_hidden())
+      self.assertTrue(page.locator('#empty').is_hidden())
      else:
       result=page.evaluate("""() => {
        try{window.SeetheTruthUnifiedCore.inspectEvidence('real_model','validate_import',{

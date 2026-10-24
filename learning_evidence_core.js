@@ -19,6 +19,10 @@
    if(!Number.isSafeInteger(capacity)||capacity<1||capacity>190)fail("invalid projection capacity");
    const result=Source.project(graph,scope,level,capacity);
    const projection=JSON.parse(JSON.stringify({...result,matches:[...result.matches]}));
+   // Existing 3D atlas uses matches.has(id); retain Set behavior while exposing
+   // a transport-safe matchIds list for JSON serialization and evidence tests.
+   projection.matchIds=projection.matches;
+   projection.matches=new Set(projection.matchIds);
    return wrap(domain,op,"STATIC_SOURCE_ONLY",Object.freeze({projection}));
   }
   if(domain==="real_model"&&op==="validate_import"){
