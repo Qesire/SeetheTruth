@@ -55,7 +55,7 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
    if(j===t*C+k&&stage===8){
     link("cross",[t,k],1,"x residual bypass");
     link("gate",[t,k],1,"post-FFN delta");
-    pushStage("wan_residual_add",crossValue:s[1][j],gatedFFN:s[7][j]);
+    pushStage("wan_residual_add",{crossValue:s[1][j],gatedFFN:s[7][j]});
    }
   }
   if(i===7)for(let j=0;j<T*C;j++){
@@ -67,8 +67,8 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
    if(j===t*C+k&&stage===7){
     link("down",[t,k],gain,"down[t,c] × demoGate × e5[t,c]");
     link("e5",[t,k],s[6][j]*c.gate,"e5 is post-projection output gate");
-    pushStage("wan_output_gate",down:s[6][j],e5:e[5][j],
-     demoMultiplier:c.gate,localDownDerivative:gain);
+    pushStage("wan_output_gate",{down:s[6][j],e5:e[5][j],
+     demoMultiplier:c.gate,localDownDerivative:gain});
    }
   }
   if(i===6)for(let j=0;j<T*C;j++){
@@ -84,7 +84,7 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
      link("w2",[k,h],s[5][t*H+h],"∂Linear2/∂weight=hidden activation");
     }
     link("b2",[k],1,"Linear2 bias");
-    pushStage("wan_linear2",inputWidth:H,outputChannel:k,bias:c.b2[k]);
+    pushStage("wan_linear2",{inputWidth:H,outputChannel:k,bias:c.b2[k]});
    }
   }
   if(i===5)for(let j=0;j<T*H;j++){
@@ -92,7 +92,7 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
    g[4][j]+=g[5][j]*slope;
    if(j===t*H+k&&stage===5){
     link("up",[t,k],slope,"GELU(tanh) exact analytic derivative");
-    pushStage("wan_gelu_tanh",input:upstream,activation:s[5][j],derivative:slope);
+    pushStage("wan_gelu_tanh",{input:upstream,activation:s[5][j],derivative:slope});
    }
   }
   if(i===4)for(let j=0;j<T*H;j++){
@@ -108,7 +108,7 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
      link("w1",[k,ch],s[3][t*C+ch],"∂Linear1/∂weight=conditioned activation");
     }
     link("b1",[k],1,"Linear1 bias");
-    pushStage("wan_linear1",inputWidth:C,hiddenChannel:k,bias:c.b1[k]);
+    pushStage("wan_linear1",{inputWidth:C,hiddenChannel:k,bias:c.b1[k]});
    }
   }
   if(i===3)for(let j=0;j<T*C;j++){
@@ -123,8 +123,8 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
     link("norm",[t,k],gain,"1 + scaleMultiplier × e4[t,c]");
     link("e4",[t,k],z*c.scale,"normalized × scaleMultiplier");
     link("e3",[t,k],c.shift,"shiftMultiplier × e3");
-    pushStage("wan_conditional_affine",normalized:z,e3:e[3][j],e4:e[4][j],
-     scaleMultiplier:c.scale,shiftMultiplier:c.shift);
+    pushStage("wan_conditional_affine",{normalized:z,e3:e[3][j],e4:e[4][j],
+     scaleMultiplier:c.scale,shiftMultiplier:c.shift});
    }
   }
   if(i===2)for(let token=0;token<T;token++){
@@ -143,8 +143,8 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
      const factor=inv*((ch===k?1:0)-1/C-normalized[k]*normalized[ch]/C);
      link("cross",[t,ch],factor,"LayerNorm across C, including mean/variance covariance");
     }
-    pushStage("wan_layernorm_not_rmsnorm",mean,variance,epsilon:d.Trace.SOURCE.eps,
-     invStd:inv,normalizedSelected:normalized[k]);
+    pushStage("wan_layernorm_not_rmsnorm",{mean,variance,epsilon:d.Trace.SOURCE.eps,
+     invStd:inv,normalizedSelected:normalized[k]});
    }
   }
   if(i===1)for(let j=0;j<T*C;j++){
@@ -152,7 +152,7 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
    if(j===t*C+k&&stage===1){
     link("afterSelf",[t,k],1,"output of self-attention branch");
     link("crossDelta",[t,k],1,"EXTERNAL cross-attention delta, not computed here");
-    pushStage("wan_cross_attention_external_residual",base:c.afterSelf[j],externalDelta:c.crossDelta[j]);
+    pushStage("wan_cross_attention_external_residual",{base:c.afterSelf[j],externalDelta:c.crossDelta[j]});
    }
   }
   if(i===0)for(let token=0;token<T;token++)for(let group=0;group<6;group++)
@@ -162,8 +162,8 @@ function inspect(data,frame,{stepId,coordinate,options}={}){
     if(stage===0&&token===t&&group*C+ch===k){
      link("e0",[t,group,ch],1,"per-token six-way conditioning");
      link("modulation",[group,ch],1,"shared modulation across tokens");
-     pushStage("wan_six_chunk_condition",group,channel:ch,
-      conditioning:e[group][t*C+ch]);
+     pushStage("wan_six_chunk_condition",{group,channel:ch,
+      conditioning:e[group][t*C+ch]});
     }
    }
  }
