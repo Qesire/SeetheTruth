@@ -101,3 +101,46 @@ conservation by summing all 2×2 output-coordinate contributions across shared
 fan-out routes. Compound weighted loss selection, explicit fixed target,
 Detach and unsupported reachable division are negative/semantic cases. Real
 Chromium checks desktop and mobile teaching screenshots of the full loss view.
+
+## Exact composite scalar Jacobians (2026-10-24)
+
+The **same free-graph** `element_lineage.js` now exposes exact coordinate
+dependencies and bounded internal mathematical stages for these implemented
+2-D teaching primitives, available without a separate specialist engine:
+
+- **Attention:** for `Y[t,c]=Σ_j P[t,j]V[j,c]`,
+  `P=softmax(QKᵀ/√D)`. A selected `Y[t,c]` includes
+  `∂Y/∂V[j,c]=P_j`,
+  `∂Y/∂Q[t,d]=Σ_j P_j(V[j,c]−Y[t,c])K[j,d]/√D`, and
+  `∂Y/∂K[j,d]=P_j(V[j,c]−Y[t,c])Q[t,d]/√D`.
+  Each key's stable score, probability, weighted value and local
+  softmax-score derivative are inspectable; using one node as Q/K/V
+  sums all three roles without silently removing duplicate edges.
+- **SwiGLU / GEGLU:** `Y=SiLU(Gate)·Up` or
+  `Y=GELU_tanh(Gate)·Up`; gate derivative is
+  `Up·activation'(Gate)`, distinct from the up derivative
+  `activation(Gate)`. A shared source receives both contributions.
+- **Routed Expert:** a dispatch index maps route `r=tK+k` back
+  to token `t`; an expert linear output uses the actual expert ID and
+  the flattened weight bank coordinate `[expert·D+d,h]`.
+  `routed_weighted_reduce` emits one product per chosen route;
+  `router_gate_weights` differentiates the selected continuous
+  affinities, with the correct identity / sigmoid / softmax and optional
+  normalization Jacobians. Repeated selected expert IDs keep their
+  contributions, never overwrite. **TopK indices remain fixed discrete
+  choices** and are surfaced as conditional cut metadata, not assigned
+  fabricated real-valued gradients.
+
+The common microscope shows the local stage ledger and selected discrete
+route IDs, with a bounded number of rows on the screen; full bounded
+Jacobian calculation is not truncated by UI display limits.
+A structural trace lacking the selected expert index stops at an explicit
+frontier. These are *coordinate-level teaching proofs*, not claims of
+PyTorch/Numpy exported VJP parity, unbounded tensor scalability or
+GPU kernel performance.
+
+Independent oracle `tests/composite_coordinate_jacobians.js`: perturb
+real Parameter tensors and rerun the original numerical graph interpreter,
+checking multiple Q/K/V keys, tied QKV, shared gate/up branches, routed
+MoE expert banks, selected router affinities, and a no-numeric selection
+counterexample. Chromium desktop/mobile checks the shared microscope.
