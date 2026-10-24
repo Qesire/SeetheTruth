@@ -75,7 +75,8 @@ class UnifiedLearningBrowser(unittest.TestCase):
   for route,id,domain in [
    ("deepinfer_worker_lab.html","deepinfer_worker","event_dag"),
    ("deepinfer_kv_lifecycle_lab.html","deepinfer_kv","kv_state_machine"),
-   ("wan_ffn_lab.html","wan_ffn","source_operator")]:
+   ("wan_ffn_lab.html","wan_ffn","source_operator"),
+   ("deepinfer_prefill_lab.html","deepinfer_prefill","scheduler_decision")]:
    with self.subTest(route=route):
     page=self.browser.new_page(viewport={"width":1280,"height":800})
     errors=[]
@@ -91,7 +92,7 @@ class UnifiedLearningBrowser(unittest.TestCase):
      self.assertEqual(contract["runtime"],domain)
      self.assertEqual(contract["evidence"],"NOT_EXECUTED")
      self.assertTrue(contract["engine"].endswith(".js"))
-     if id in ("deepinfer_worker","deepinfer_kv","deepinfer_scheduler"):
+     if id in ("deepinfer_worker","deepinfer_kv","deepinfer_scheduler","deepinfer_prefill"):
       page.locator("#runUnifiedState").click()
       self.assertGreater(page.locator("#unifiedStateSteps .sm-step").count(),1)
       self.assertIn("已核验",page.locator("#unifiedStateStatus").inner_text())
