@@ -40,7 +40,17 @@
    level:"研究",theory:"跟踪上一轮 Sample → 当前 Metadata Correction → Forward → Postprocess/Flush 的事件依赖，区分抽象 CPU/GPU 事件与真实设备 Trace。",
    why:"流水化试图重叠主机后处理与设备前向，但跨步依赖和状态一致性比单步 FLOPs 更重要。",
    check:"模拟时间线中的 CPU/GPU 阶段重叠，能直接证明线上加速吗？",
-   answer:"不能。这里只证明给定假设耗时下的合法依赖与可能重叠；实测加速需要真实设备追踪。"}
+   answer:"不能。这里只证明给定假设耗时下的合法依赖与可能重叠；实测加速需要真实设备追踪。"},
+  {id:"engineering_journey",group:"09 · 工程实践",title:"从数据到推理 · 十二阶段工程学习",href:"engineering_journey.html",
+   level:"基础 → 进阶",theory:"通过真正的小词表 Bigram 模型逐步完成训练集/验证集隔离、标签移位、参数维度、交叉熵、解析梯度、AdamW、Checkpoint 与自回归推理。",
+   why:"完整工程实践不只包含模型计算图，也包含随机性、数据谱系、优化器状态和可恢复的推理接口；这些因果链必须可重放。",
+   check:"只保存模型参数并固定随机种子，可以完全恢复训练吗？",
+   answer:"不能。还需要优化器状态、数据采样顺序与游标、版本和待累积梯度等状态；具体内容取决于中断位置。"},
+  {id:"engineering_pipeline",group:"10 · 工程实践",title:"进阶 · 六阶段训练流水线",href:"engineering_pipeline.html",
+   level:"进阶 → 研究",theory:"执行 Epoch Shuffle、Microbatch 梯度积累、Clip、Warmup/Cosine、半累积状态 Checkpoint/Restore 和同一模型的推理续接。",
+   why:"梯度累计必须按实际样本权重聚合；重放需要保持参数、优化器、采样游标、缓冲梯度与调度器步数一致。",
+   check:"在未完成 Gradient Accumulation 时保存的 Checkpoint，只包含 W、m、v 和 Step 足够吗？",
+   answer:"不够，还必须保存或可确定性重建累计梯度、有效样本数、Epoch/Cursor 与相关数据来源，才能精确续训。"}
  ]);
  const ids=new Set(),targets=new Set();
  for(const lesson of lessons){
@@ -49,5 +59,5 @@
   if(!lesson.theory||!lesson.why||!lesson.answer)throw Error("missing teaching explanation");
   ids.add(lesson.id);targets.add(lesson.href);
  }
- return Object.freeze({VERSION:"2026.10.21",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
+ return Object.freeze({VERSION:"2026.10.24",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
 });
