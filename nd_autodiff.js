@@ -29,6 +29,14 @@ function vjp(kind,input,params,upstream,output){
      return d%2===0?cos*g+sin*other:cos*g-sin*other;
    });return result;
  }
+ if(kind==="nd_wan_rope3d"){
+   const sh=ND.shape(X),{frames,height,width,base}=params;
+   result.x=ND.build(sh,idx=>{
+     const d=idx[3],m=ND.wanVideoRoPE3DCoordinate(sh,idx,frames,height,width,base),
+      pair=[...idx.slice(0,3),m.partner],g=ND.at(upstream,idx),other=ND.at(upstream,pair);
+     return d%2===0?m.cos*g+m.sin*other:m.cos*g-m.sin*other;
+   });return result;
+ }
  if(kind==="nd_cache_read"){
    const sh=ND.shape(X);
    result.x=ND.build(sh,idx=>{
