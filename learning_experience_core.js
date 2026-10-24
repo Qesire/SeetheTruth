@@ -12,12 +12,17 @@
   path:require("./graph_learning_path.js"),
   branch:require("./branch_execution.js"),
   curriculum:require("./teaching_curriculum.js"),
-  prefill:require("./deepinfer_prefill_policy.js")
+  prefill:require("./deepinfer_prefill_policy.js"),
+  worker:require("./deepinfer_worker_events.js"),
+  kv:require("./deepinfer_kv_lifecycle.js"),
+  scheduler:require("./deepinfer_scheduler_workflow.js")
  }:{
   learning:root.SeetheTruthLearning,operators:root.SeetheTruthOperatorContracts,
   session:root.SeetheTruthGraphSession,path:root.SeetheTruthGraphLearningPath,
   branch:root.SeetheTruthBranchExecution,curriculum:root.SeetheTruthCurriculum,
-  prefill:root.SeetheTruthPrefillPolicy
+  prefill:root.SeetheTruthPrefillPolicy,
+  worker:root.SeetheTruthDeepInferEvents,kv:root.SeetheTruthKVLifecycle,
+  scheduler:root.SeetheTruthSchedulerWorkflow
  };
  const api=factory(deps);
  if(isNode)module.exports=api;
@@ -105,18 +110,41 @@
    executable:null,numericOk:false,
    note:"Use the lab's declared domain engine. This contract alone is not execution evidence."});
  }
- // The first migrated executable specialization: *same* source-derived vote as
- // the existing DeepInfer teaching widgets. New lab executors must be reviewed
- // independently before becoming dispatchable.
+ // Domain adapters preserve the engines' real input semantics instead of
+ // treating a KV state or CPU/GPU event as an ordinary numeric tensor.
+ const domainRunners=Object.freeze({
+  deepinfer_prefill:Object.freeze({
+   vote:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>m.vote(x)}),
+   chunk:Object.freeze({module:"prefill",method:"chunk",run:(m,x)=>m.chunk(x)})
+  }),
+  deepinfer_worker:Object.freeze({
+   simulate:Object.freeze({module:"worker",method:"simulate",
+    run:(m,x)=>m.simulate(x.steps,x.options||{zeroOverhead:true})}),
+   compare:Object.freeze({module:"worker",method:"compare",
+    run:(m,x)=>m.compare(x.steps,x.durations)})
+  }),
+  deepinfer_kv:Object.freeze({
+   replay:Object.freeze({module:"kv",method:"replay",
+    run:(m,x)=>m.replay(x.config,x.operations)})
+  }),
+  deepinfer_scheduler:Object.freeze({
+   simulate:Object.freeze({module:"scheduler",method:"simulate",
+    run:(m,x)=>m.simulate(x.spec,x.options||{})})
+  })
+ });
  function executeLab(id,operation,input){
-  if(id!=="deepinfer_prefill"||operation!=="vote")fail("no registered executable adapter for "+id+"/"+operation);
-  if(!deps.prefill||typeof deps.prefill.vote!=="function")fail("DeepInfer prefill source-derived engine unavailable");
-  if(!input||typeof input!=="object"||Array.isArray(input))fail("domain operation requires an input object");
-  const value=deps.prefill.vote(copy(input));
+  const lab=byId.get(id),runner=domainRunners[id]?.[operation];
+  if(!lab||!runner)fail("no registered executable adapter for "+id+"/"+operation);
+  if(!input||typeof input!=="object"||Array.isArray(input))
+   fail("domain operation requires an input object");
+  const engine=deps[runner.module];
+  if(!engine||typeof engine[runner.method]!=="function")
+   fail("domain source engine unavailable: "+lab.engine);
+  const value=runner.run(engine,copy(input));
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
-   id,operation,runtime:"scheduler_decision",engine:"deepinfer_prefill_policy.js",
-   evidence:"SOURCE_DERIVED_DETERMINISTIC",value,
-   note:"Bounded vote decision, no GPU, distributed communication or real latency measurement."});
+   id,operation,runtime:lab.domain,engine:lab.engine,
+   evidence:lab.evidence,value,
+   note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
  function inspectCourse(id){
   const curriculum=deps.curriculum;
