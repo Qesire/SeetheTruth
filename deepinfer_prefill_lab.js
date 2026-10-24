@@ -10,11 +10,21 @@ const inputs={
  aligned:{tokens:["TEXT","TEXT","TEXT","TEXT","TEXT","TEXT","TEXT"],maxBatchedTokens:8,cpAlign:2}
 };
 const asRank=value=>({waitingSchedulable:value!=="no",canActuallySchedule:value==="yes",cacheUsage:.2});
+let lastVoteInput=null,lastVoteOutput=null,lastChunkInput=null,lastChunkOutput=null;
+function publish(){
+ if(!lastVoteInput||!lastChunkInput)return;
+ window.SeetheTruthCurrentDomainRun=Object.freeze({
+  id:"deepinfer_prefill",operation:"inspect_pair",selectedIndex:0,
+  input:JSON.parse(JSON.stringify({voteInput:lastVoteInput,chunkInput:lastChunkInput})),
+  observed:{vote:lastVoteOutput,chunk:lastChunkOutput}
+ });
+}
 function vote(){
  try{
-  const result=P.vote({engine:"NORMAL",decodeStep:Number($("decodeStep").value),
+  const voteInput={engine:"NORMAL",decodeStep:Number($("decodeStep").value),
    allInterval:Number($("allInterval").value),anyInterval:Number($("anyInterval").value),
-   ranks:[asRank($("rank0").value),asRank($("rank1").value)]});
+   ranks:[asRank($("rank0").value),asRank($("rank1").value)]};
+  const result=P.vote(voteInput);
   $("votePoint").textContent=result.point;
   $("voteStep").textContent=result.step==="prompt"?"Prompt":"Decode";
   $("voteCount").textContent=result.scheduledCount;
@@ -25,6 +35,7 @@ function vote(){
    "第二轮回退: "+(result.secondVoteFallback?"是":"否"),
    "下一次 decodeStep: "+result.nextDecodeStep].join("\n");
   window.SeetheTruthPrefillLast={...(window.SeetheTruthPrefillLast||{}),vote:result};
+  lastVoteInput=JSON.parse(JSON.stringify(voteInput));lastVoteOutput=result;publish();
  }catch(err){$("voteDetail").textContent="投票输入错误："+err.message}
 }
 function renderTokens(tokens,cached,q){
@@ -51,6 +62,7 @@ function chunk(){
    "不将逻辑 Token 数推断为 GPU 运行耗时"].join("\n");
   renderTokens(sample.tokens,sample.cached||0,result.q);
   window.SeetheTruthPrefillLast={...(window.SeetheTruthPrefillLast||{}),chunk:result};
+  lastChunkInput=JSON.parse(JSON.stringify(sample));lastChunkOutput=result;publish();
  }catch(err){$("chunkDetail").textContent="Chunk 输入被拒绝："+err.message}
 }
 $("evalVote").addEventListener("click",vote);

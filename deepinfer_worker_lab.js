@@ -156,6 +156,11 @@ function render(){
      metadataRows.length+" 个跨步元数据修正已执行（合成采样数据）":
      "此场景未启用数值 Fixture；事件顺序仍可独立运行";
    window.SeetheTruthLastWorkerComparison={zos,non};
+   window.SeetheTruthCurrentDomainRun=Object.freeze({
+    id:"deepinfer_worker",operation:"simulate",selectedIndex:0,
+    input:JSON.parse(JSON.stringify({steps,options:{...options,zeroOverhead:true}})),
+    observed:zos
+   });
    $("editorStatus").textContent="已执行合法事件图；时间为假设值。";
  }catch(err){$("editorStatus").textContent="输入被拒绝："+err.message;}
 }

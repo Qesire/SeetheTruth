@@ -72,6 +72,11 @@ function paint(){
  $("previous").disabled=index===0;$("next").disabled=index===run.cycles.length;
  window.SeetheTruthLastSchedulerState=state;
  window.SeetheTruthLastSchedulerRun=run;
+ window.SeetheTruthCurrentDomainRun=Object.freeze({
+  id:"deepinfer_scheduler",operation:"simulate",selectedIndex:index,
+  input:JSON.parse(JSON.stringify({spec,options:{stopPreempted:$("stopPreempted").checked}})),
+  observed:run
+ });
 }
 const applyNew=(candidate)=>{
  const next=S.simulate(candidate,{stopPreempted:$("stopPreempted").checked});

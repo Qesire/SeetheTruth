@@ -93,9 +93,33 @@ class UnifiedLearningBrowser(unittest.TestCase):
      self.assertEqual(contract["evidence"],"NOT_EXECUTED")
      self.assertTrue(contract["engine"].endswith(".js"))
      if id in ("deepinfer_worker","deepinfer_kv","deepinfer_scheduler","deepinfer_prefill"):
+      # Change the real lab controller's scenario; the inspector must replay
+      # that accepted input rather than displaying an unrelated fixture.
+      if id=="deepinfer_worker":
+       page.locator("#forwardTime").fill("11")
+      elif id=="deepinfer_kv":
+       page.locator("#scenario").select_option("preempt")
+      elif id=="deepinfer_scheduler":
+       page.locator("#scenario").select_option("ample")
+      else:
+       page.locator("#scenario").select_option("grow")
       page.locator("#runUnifiedState").click()
       self.assertGreater(page.locator("#unifiedStateSteps .sm-step").count(),1)
-      self.assertIn("已核验",page.locator("#unifiedStateStatus").inner_text())
+      self.assertIn("当前实验结果一致",page.locator("#unifiedStateStatus").inner_text())
+      self.assertTrue(page.evaluate("""() => {
+       const x=window.SeetheTruthCurrentDomainRun;
+       const y=window.SeetheTruthUnifiedStateLab.accepted;
+       return x && y && x.id===y.id &&
+          JSON.stringify(x.input)===JSON.stringify(y.input);
+      }"""))
+      if id=="deepinfer_kv":
+       self.assertEqual(page.evaluate("window.SeetheTruthUnifiedStateLab.frame.steps.length"),
+        page.evaluate("window.SeetheTruthCurrentDomainRun.input.operations.length+1"))
+      if id=="deepinfer_scheduler":
+       self.assertEqual(page.evaluate("window.SeetheTruthUnifiedStateLab.frame.steps.length"),
+        page.evaluate("window.SeetheTruthCurrentDomainRun.observed.decisions.length+1"))
+      if id=="deepinfer_prefill":
+       self.assertEqual(page.evaluate("window.SeetheTruthUnifiedStateLab.frame.steps[1].dependencies.length"),0)
      self.assertEqual(errors,[])
     finally:
      page.close()
