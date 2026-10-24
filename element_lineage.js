@@ -179,6 +179,25 @@ function inspect(raw,options={}){
    return {rule:"矩阵乘法按 K 维求和；每项使用一对 A/B 元素",
     links:result,gradientRule:"乘以相应另一输入元素，并对所有 K 维贡献求和"};
   }
+  if(kind==="nd_wan_rope3d"){
+   const x=inputs.x;
+   if(x.length!==4||!same(x,shape))
+    throw Error("Wan three-axis rotary requires fixed four-axis input");
+   const m=d.ND.wanVideoRoPE3DCoordinate(shape,coordinate,
+    p.frames,p.height,p.width,p.base);
+   const other=[...coordinate.slice(0,3),m.partner],
+    v=read("x",coordinate),paired=read("x",other),odd=coordinate[3]%2===1;
+   add("x",[...coordinate],"Wan F/H/W complex-pair cosθ",m.cos,"self");
+   add("x",other,odd?"+sinθ partner":"−sinθ partner",
+    odd?m.sin:-m.sin,"pair");
+   stages.push({stage:"wan_video_3d_rope",axis:m.axis,frame:m.frame,
+    height:m.height,width:m.width,frequencyPair:m.pair,angle:m.angle,
+    cos:m.cos,sin:m.sin,temporalPairs:m.temporalPairs,
+    heightPairs:m.heightPairs,widthPairs:m.widthPairs,
+    output:v===null||paired===null?null:v*m.cos+(odd?1:-1)*paired*m.sin});
+   return {rule:"固定 Wan2.2 video rope_apply：复数通道切分 F/H/W；输入明确为 [B,N,T,D] 而原代码为 [B,T,N,D]",
+    links:result,stages,gradientRule:"对两相邻实通道，局部 VJP 是旋转矩阵的转置"};
+  }
   if(kind==="nd_rope"){
    const x=inputs.x,dim=coordinate[3],rotary=p.rotaryDim,base=p.base,position=p.offset+coordinate[2];
    if(x.length!==4||!same(x,shape)||!Number.isSafeInteger(rotary)||
