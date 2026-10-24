@@ -87,6 +87,7 @@ class UnifiedLearningBrowser(unittest.TestCase):
       window.SeetheTruthWanFFNTrace.trace({seed:17,tokens:3,dim:4,hidden:8}))};
    }""")
    self.assertEqual(result["steps"],9)
+   self.assertEqual(page.evaluate("window.SeetheTruthWanFFNLearning.stages"),9)
    self.assertEqual(result["tier"],"PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64")
    self.assertTrue(result["parity"])
    self.assertEqual(errors,[])

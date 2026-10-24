@@ -129,12 +129,12 @@ function render(){
  $('steps').replaceChildren(...d.steps.map((s,i)=>{const b=element('button',undefined,'step');b.type='button';
   b.setAttribute('aria-current',i===state.step?'step':'false');b.append(element('span',String(i).padStart(2,'0'),'idx'),
   element('span',s.name));b.addEventListener('click',()=>{state.step=i;state.row=0;state.col=0;render();});return b;}));
- if(commonData!==d){commonFrame=commonMicroscope.wan(d);commonData=d;}
+ if(commonData!==d){commonFrame=state.provenFrame||commonMicroscope.wan(d);commonData=d;}
  sharedMicroscope.show(commonFrame,step.id);
  flow();branches();breakdown();renderAblation();integrity();
 }
 function recompute(){
- try{state.data=A.trace(options());state.error=null;state.row=0;state.col=0;render();}
+ try{const executed=window.SeetheTruthSpecializedLesson.execute("trace",{options:options()});state.data=executed.value;state.provenFrame=executed.computationTrace;state.error=null;state.row=0;state.col=0;render();}
  catch(e){state.error=e.message;$('numerics').textContent='拒绝不合法输入：'+e.message;}
 }
 $('ablate').addEventListener('click',renderAblation);
