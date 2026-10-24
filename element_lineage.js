@@ -16,6 +16,12 @@
 })(typeof window!=="undefined"?window:null,function(d){"use strict";
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const at=(x,i)=>d.ND.at(x,i);
+// Matches the deterministic fixed teaching Linear weights in learning_lab.calculate.
+// This derivative does not create a trainable W parameter: only the input x is differentiated.
+const fixedLinearWeight=(id,r,c)=>{let h=2166136261;
+ for(const ch of id+":"+r+":"+c)h=Math.imul(h^ch.charCodeAt(0),16777619);
+ return ((h>>>0)%2001-1000)/2600;
+};
 const leafKinds=new Set(["input","parameter","nd_input","nd_parameter","token_ids"]);
 const unary=new Set(["scale","nd_scale","residual_scale","bias","square","temperature"]);
 const binary=new Set(["add","mul","subtract","divide"]);
@@ -129,6 +135,16 @@ function inspect(raw,options={}){
    const fb=kind==="add"?1:kind==="subtract"?-1:kind==="mul"?a:(a===null||b===null)?null:-a/(b*b);
    add("a",[...coordinate],"∂输出/∂a",fa);add("b",[...coordinate],"∂输出/∂b",fb);
    return {rule:"同一坐标的逐元素运算",links:result,gradientRule:"按各输入的局部导数分流梯度"};
+  }
+  if(kind==="linear"){
+   const x=inputs.x;
+   if(x.length!==2||shape.length!==2||x[0]!==shape[0]||shape[1]!==p.out)
+    throw Error("lineage Linear input/output shape mismatch");
+   for(let k=0;k<x[1];k++)
+    add("x",[coordinate[0],k],"W[out,in] · 固定教学线性权重",
+     fixedLinearWeight(n.id,coordinate[1],k),"k="+k);
+   return {rule:"Y=XWᵀ+b，按输入通道求和；W 为固定的确定性教学参数",
+    links:result,gradientRule:"dY[t,h]/dX[t,k]=W[h,k]；无可训练权重端口，不声称 dW"};
   }
   if(kind==="matmul"||kind==="nd_batched_matmul"){
    const a=inputs.a,b=inputs.b,four=kind==="nd_batched_matmul";
