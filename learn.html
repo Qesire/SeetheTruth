@@ -1172,7 +1172,7 @@ for(const recipe of installedRecipes){
  b.append(title);blankRecipeButton.parentNode.insertBefore(b,blankRecipeButton);
 }
 const coreLessons=UnifiedCore.activateGraphLessons(
- [...document.querySelectorAll("[data-preset]")].map(b=>b.dataset.preset));
+ [...document.querySelectorAll("[data-preset]")].map(b=>b.dataset.preset).concat(["stream_state_branches"]));
 const coreInventory=UnifiedCore.inventory(coreLessons.map(x=>x.id));
 window.SeetheTruthUnifiedWorkbench=Object.freeze({
  schema:UnifiedCore.SCHEMA,counts:coreInventory.counts,
