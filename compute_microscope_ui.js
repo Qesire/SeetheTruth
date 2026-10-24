@@ -138,7 +138,8 @@ function mount(rootElement,onSelect,onCoordinate){
    action.addEventListener('click',()=>{
     try{
      const rank=s.out.shape.length;
-     const index=[...prefix,...(rank===1?[]:[row]),col];
+     const leading=Array.from({length:Math.max(0,rank-2)},(_,i)=>prefix[i]??0);
+     const index=[...leading,...(rank===1?[]:[row]),col];
      const report=onCoordinate({stepId:s.id,coordinate:index,frame});
      if(report?.schema!=='seethetruth-coordinate-vjp-bridge-v1')throw Error('unregistered VJP observation');
      detail.replaceChildren();
