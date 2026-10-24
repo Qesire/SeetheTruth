@@ -236,7 +236,8 @@ class MicroscopeBrowser(unittest.TestCase):
     p.locator('#computeMicroscope .cmp-vjp-trigger').click()
     evidence=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
     self.assertIn('wan_qk_fullwidth_rmsnorm',evidence)
-    self.assertIn('learnedGamma',evidence)
+    self.assertIn('weight → gamma_q',evidence)
+    self.assertIn('invRms=',evidence)
     self.assertIn('已覆盖全部可验证路径',evidence)
     self.assertNotIn('反向路径拒绝',evidence)
     p.screenshot(path=str(OUT/('mobile-wan-qkv-gamma-fullwidth.png' if width==390
