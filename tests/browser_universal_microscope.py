@@ -142,6 +142,47 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertEqual(p.locator('#computeMicroscope .cmp-vjp-trigger').count(),0)
    self.assertEqual(errors,[])
   finally:p.close()
+ def test_nd_cached_gqa_coordinate_lineage(self):
+  p=self.browser.new_page(viewport={'width':1450,'height':960})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  try:
+   p.goto(self.base)
+   p.locator('[data-preset="nd_cached_gqa_decode"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount>17')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='q_rope':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'q_rope')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   rope=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('adjacent_rope_pair',rope)
+   self.assertIn('absolutePosition=2',rope)
+   self.assertIn('已覆盖全部可验证路径',rope)
+   self.assertNotIn('反向路径拒绝',rope)
+   p.screenshot(path=str(OUT/'cached-gqa-absolute-rope-jacobian.png'),animations='disabled')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='cached_k':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'cached_k')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   self.assertIn('immutable_cache_append',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   p.screenshot(path=str(OUT/'cached-gqa-prefix-and-token-provenance.png'),animations='disabled')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='context':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'context')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   context=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('已覆盖全部可验证路径',context)
+   self.assertIn('累计灵敏度',context)
+   self.assertNotIn('反向路径拒绝',context)
+   p.screenshot(path=str(OUT/'cached-gqa-end-to-end-vjp.png'),animations='disabled')
+   self.assertEqual(errors,[])
+  finally:p.close()
  def test_mobile_named_axis(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
@@ -177,6 +218,18 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIn('DISCRETE ROUTING',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    p.screenshot(path=str(OUT/'mobile-moe-expert-coordinate-jacobian.png'),full_page=True,animations='disabled')
+   p.locator('[data-preset="nd_cached_gqa_decode"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount>17')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='q_rope':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'q_rope')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   self.assertIn('adjacent_rope_pair',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   p.screenshot(path=str(OUT/'mobile-cached-gqa-rope-coordinate.png'),full_page=True,animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
 if __name__=='__main__':unittest.main()

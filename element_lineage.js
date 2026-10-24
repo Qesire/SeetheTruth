@@ -179,6 +179,70 @@ function inspect(raw,options={}){
    return {rule:"矩阵乘法按 K 维求和；每项使用一对 A/B 元素",
     links:result,gradientRule:"乘以相应另一输入元素，并对所有 K 维贡献求和"};
   }
+  if(kind==="nd_rope"){
+   const x=inputs.x,dim=coordinate[3],rotary=p.rotaryDim,base=p.base,position=p.offset+coordinate[2];
+   if(x.length!==4||!same(x,shape)||!Number.isSafeInteger(rotary)||
+      rotary<2||rotary>x[3]||rotary%2!==0||!Number.isFinite(base)||base<2)
+    throw Error("lineage four-axis adjacent-pair RoPE shape/parameters mismatch");
+   if(dim>=rotary){
+    add("x",[...coordinate],"outside rotary window: identity",1);
+    stages.push({stage:"rope_passthrough",channel:dim,rotaryDim:rotary,absolutePosition:position});
+   }else{
+    const first=dim-dim%2,pair=[...coordinate];pair[3]=dim%2?first:first+1;
+    const theta=position/Math.pow(base,first/rotary),cos=Math.cos(theta),sin=Math.sin(theta);
+    const self=read("x",coordinate),other=read("x",pair);
+    add("x",[...coordinate],"RoPE adjacent pair diagonal cos(theta)",cos,"self");
+    add("x",pair,dim%2?"odd channel +sin(theta)":"even channel -sin(theta)",
+     dim%2?sin:-sin,"paired");
+    stages.push({stage:"adjacent_rope_pair",absolutePosition:position,channel:dim,
+     partner:pair[3],angle:theta,cos,sin,input:self,pairedInput:other,
+     output:self===null||other===null?null:self*cos+(dim%2?1:-1)*other*sin});
+   }
+   return {rule:"RoPE 四轴 [B,H,T,D]：同一 Token 的邻接通道二维旋转；位置 offset+t",
+    links:result,stages,gradientRule:"转置旋转 Jacobian：对本通道 cosθ，对配对通道 ±sinθ"};
+  }
+  if(kind==="nd_cache_read"){
+   const x=inputs.x;
+   if(x.length!==4||shape.length!==4||shape[0]!==x[0]||shape[1]!==x[1]||
+      shape[2]!==p.length||shape[3]!==x[3]||p.start+shape[2]>x[2])
+    throw Error("lineage cache window shape mismatch");
+   const atToken=p.start+coordinate[2],source=[coordinate[0],coordinate[1],atToken,coordinate[3]];
+   add("x",source,"pure cache slice, gradient scatters to absolute token",1);
+   stages.push({stage:"cache_window",start:p.start,length:p.length,
+    windowToken:coordinate[2],absoluteToken:atToken});
+   return {rule:"CacheRead4 输出 Token t 读取输入 Token start+t；无状态变更",
+    links:result,stages,gradientRule:"对窗口内来源坐标恒等映射，对窗口外来源梯度零"};
+  }
+  if(kind==="nd_cache_append"){
+   const cache=inputs.cache,segment=inputs.segment;
+   if(cache.length!==4||segment.length!==4||shape.length!==4||
+      cache[0]!==segment[0]||cache[1]!==segment[1]||cache[3]!==segment[3]||
+      shape[0]!==cache[0]||shape[1]!==cache[1]||shape[2]!==cache[2]+segment[2]||
+      shape[3]!==cache[3])throw Error("lineage cache append geometry mismatch");
+   const token=coordinate[2],prefix=cache[2],isPrefix=token<prefix;
+   const port=isPrefix?"cache":"segment",source=[...coordinate];
+   if(!isPrefix)source[2]=token-prefix;
+   add(port,source,"immutable KV append selects "+port+" token",1);
+   stages.push({stage:"immutable_cache_append",prefixLength:prefix,
+    selectedPort:port,outputToken:token,sourceToken:source[2]});
+   return {rule:"CacheAppend4 沿 Token 轴拼接，不修改输入历史帧",
+    links:result,stages,gradientRule:"按绝对 Token 来源拆分 VJP，prefix 和新增 segment 各自收集梯度"};
+  }
+  if(kind==="nd_causal_mask"){
+   const x=inputs.x;
+   if(x.length!==4||shape.length!==4||!same(x,shape))
+    throw Error("lineage causal scores require [B,H,Tq,Tk]");
+   const tq=p.queryStart+coordinate[2],tk=p.keyStart+coordinate[3],allowed=tk<=tq;
+   // The teaching forward sets masked logits to the constant -1e9:
+   // their derivative is zero, not the identity. Mask topology has no input port.
+   add("x",[...coordinate],allowed?
+    "visible score: ∂maskedScore/∂score=1":
+    "future key: fixed -1e9 ∂maskedScore/∂score=0",allowed?1:0);
+   stages.push({stage:"absolute_causal_visibility",queryPosition:tq,keyPosition:tk,
+    allowed,localDerivative:allowed?1:0,maskedConstant:allowed?null:-1e9});
+   return {rule:"Causal Mask 使用绝对 queryStart/keyStart；未来 Key 数值替换为固定 -1e9",
+    links:result,stages,gradientRule:"合法分数保留梯度，遮蔽分数 Jacobian 为零（不是对 Mask 求导）"};
+  }
   if(kind==="swiglu"||kind==="geglu"){
    if(!same(inputs.gate,shape)||!same(inputs.up,shape))
     throw Error("lineage gated FFN shape mismatch");
