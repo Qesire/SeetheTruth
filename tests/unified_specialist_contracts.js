@@ -20,7 +20,9 @@ for(const [op,input,expected] of [
 }
 assert.throws(()=>Core.executeLab('paper','switch_top1',{}),/no registered executable adapter/);
 assert.throws(()=>Core.executeLab('paper','lora',{x,w,a:[[1]],b}),/invalid LoRA dimensions/);
-assert.throws(()=>Core.executeLab('paper','online_attention',{q:[[1,0]],k:[[1,0]],v:[[1]],chunk:0}),/chunk/);
+assert.throws(()=>Core.executeLab('paper','lora',{x,w,a,b,alpha:Infinity}),/non-finite numeric input/);
+assert.throws(()=>Core.executeLab('paper','dora',{x,w,a,b,m:[[NaN,3]]}),/non-finite numeric input/);
+assert.throws(()=>Core.executeLab('paper','online_attention',{q:[[1,0]],k:[[1,0]],v:[[1]],chunk:0}),/attention dimensions/);
 const graph=L.preset('autodiff_core'),snapshot=JSON.stringify(graph);
 const rew=Core.executeLab('paper','rewrite_lora',{graph,outputId:'project',options:{rank:2,alpha:2}});
 eq(rew.value,Rewrite.lora(graph,'project',{rank:2,alpha:2}));

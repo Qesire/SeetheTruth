@@ -82,7 +82,19 @@
  const byId=new Map(labs.map(x=>[x.id,x])),byHref=new Map(labs.map(x=>[x.href,x]));
  if(byId.size!==labs.length||byHref.size!==labs.length)throw Error("duplicate specialized learning identity");
  const fail=message=>{throw Error("unified learning core: "+message);};
- const copy=v=>JSON.parse(JSON.stringify(v));
+ // JSON transport must preserve the numeric experiment. JSON.stringify normally
+ // converts NaN/Infinity to null, silently changing an invalid scientific input.
+ const copy=v=>{
+  const json=JSON.stringify(v,(key,value)=>{
+   if(typeof value==="number"&&!Number.isFinite(value))
+    fail("non-finite numeric input: "+(key||"root"));
+   if(typeof value==="bigint"||typeof value==="function"||typeof value==="symbol")
+    fail("non-serializable input: "+(key||"root"));
+   return value;
+  });
+  if(json===undefined)fail("missing input");
+  return JSON.parse(json);
+ };
  const bound=()=>!!(deps.learning&&deps.operators&&deps.session&&deps.path&&deps.branch);
  const sourceName=s=>typeof s==="string"&&/^[a-z0-9_.-]+$/.test(s);
  function inspectGraph(raw,options={}){
