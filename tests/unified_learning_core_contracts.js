@@ -63,6 +63,10 @@ for(const l of C.lessons){
 const labIds=new Set(Core.labs.map(l=>l.id)),labHrefs=new Set(Core.labs.map(l=>l.href));
 assert.equal(labIds.size,Core.labs.length);
 assert.equal(labHrefs.size,Core.labs.length);
+const allHtml=fs.readdirSync(root).filter(f=>f.endsWith('.html')&&
+ !['learn.html','teaching.html','android_teaching.html'].includes(f));
+assert.deepEqual([...labHrefs].sort(),allHtml.sort(),
+ 'every specialized root HTML route must have one explicit shared-core contract');
 for(const lab of Core.labs){
  assert.ok(fs.existsSync(path.join(root,lab.href)),'missing lab page '+lab.id);
  assert.ok(fs.existsSync(path.join(root,lab.engine)),'missing real engine source '+lab.engine);
