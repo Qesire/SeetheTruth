@@ -69,7 +69,8 @@ assert.equal(noTrace.complete,true);
 assert.equal(noTrace.vertices.find(v=>v.id==='queries').sensitivity,null);
 const divergent=E.inspect(L.preset('ffn'),{targetId:'act',outputIndex:[0,1]});
 assert.equal(divergent.complete,false);assert.equal(divergent.frontiers.length,1);
-assert.equal(divergent.vertices.find(v=>v.id==='act').status,'boundary');
+assert.equal(divergent.vertices.find(v=>v.id==='act').status,'computed');
+assert.equal(divergent.vertices.find(v=>v.id==='up').status,'boundary');
 const soft=L.preset('sampling');
 const y=E.inspect(soft,{targetId:'prob',outputIndex:[0,0],trace:L.evaluate(soft)});
 assert.equal(y.complete,true);
@@ -90,4 +91,79 @@ assert.ok(scripts.indexOf('element_lineage.js')>scripts.indexOf('nd_tensor.js'))
 assert.ok(scripts.indexOf('element_lineage.js')<scripts.indexOf('training_session.js'));
 assert.ok(html.includes('id="graphLineageSection"')&&html.includes('ElementLineage.inspect(graph,'));
 assert.ok(html.includes('id="traceGraphElement"'));
-console.log('ELEMENT_LINEAGE_PASS shared-path VJP, 4D GEMM finite difference, static unknowns, boundary, coordinate limits, softmax');
+
+/* AutoResearcher M3/CR: reconstruct the exact last-axis Jacobian, not only a
+ * same-shaped tensor's scalar chain. Independent central differences perturb
+ * the actual upstream parameter through the complete LearningLab forward. */
+const scalarForward=(g,target,sourceIdx,offset,outputIdx=[0,1])=>{
+ const clone=JSON.parse(JSON.stringify(g));
+ let values=clone.nodes.find(n=>n.id==='x').params.values;
+ for(const v of sourceIdx.slice(0,-1))values=values[v];
+ values[sourceIdx.at(-1)]+=offset;
+ return ND.at(L.evaluate(clone).steps.find(step=>step.id===target).values,outputIdx);
+};
+const numericalDerivative=(g,target,sourceIdx)=>
+ (scalarForward(g,target,sourceIdx,h)-scalarForward(g,target,sourceIdx,-h))/(2*h);
+const oneOp=(kind,params={})=>L.validateGraph({schema:L.SCHEMA,title:'lineage '+kind,
+ nodes:[param(),node('act',kind,params)],edges:[wire('x','act','x')]});
+for(const kind of ['silu','gelu_erf','gelu_tanh','mish','relu_squared','leaky_relu','elu','hardswish']){
+ const g=oneOp(kind,kind==='leaky_relu'?{slope:.12}:{});
+ const audited=E.inspect(g,{targetId:'act',outputIndex:[0,1],trace:L.evaluate(g)});
+ assert.equal(audited.complete,true,kind+' full dependency closure');
+ const source=audited.vertices.find(v=>v.key==='x@0,1');
+ assert.ok(source&&Number.isFinite(source.sensitivity),kind+' analytic derivative');
+ assert.ok(Math.abs(source.sensitivity-numericalDerivative(g,'act',[0,1]))<3e-5,
+  kind+' finite difference: '+source.sensitivity);
+ const symbolic=E.inspect(g,{targetId:'act',outputIndex:[0,1]});
+ assert.equal(symbolic.vertices.find(v=>v.key==='x@0,1').sensitivity,null,
+  kind+' must not invent a numerical derivative in structural mode');
+}
+// A genuine rank-four activation exercises ND tensor indexing, not a 2D alias.
+for(const kind of ['nd_silu','nd_gelu_erf','nd_mish']){
+ const tensor=[[[[.13,-.7]],[[.4,1.1]]]];
+ const initial={values:tensor,optimizer:{kind:'adamw',t:0,
+  m:ND.build([1,2,1,2],()=>0),v:ND.build([1,2,1,2],()=>0)}};
+ const g=L.validateGraph({schema:L.SCHEMA,title:'4D '+kind,nodes:[
+  node('x','nd_parameter',initial),node('act',kind)
+ ],edges:[wire('x','act','x')]});
+ const outputIndex=[0,1,0,1],trace4=L.evaluate(g);
+ const audited=E.inspect(g,{targetId:'act',outputIndex,trace:trace4});
+ assert.equal(audited.complete,true,kind+' rank-four lineage');
+ const source=audited.vertices.find(v=>v.key==='x@0,1,0,1');
+ assert.ok(source&&Number.isFinite(source.sensitivity));
+ const forward=delta=>{
+  const copy=JSON.parse(JSON.stringify(g));
+  copy.nodes.find(n=>n.id==='x').params.values[0][1][0][1]+=delta;
+  return ND.at(L.evaluate(copy).steps.find(step=>step.id==='act').values,outputIndex);
+ };
+ assert.ok(Math.abs(source.sensitivity-(forward(h)-forward(-h))/(2*h))<3e-5,
+  kind+' four-axis finite difference');
+}
+for(const kind of ['rmsnorm','qk_norm','layernorm']){
+ const g=oneOp(kind,{epsilon:.08});
+ const audited=E.inspect(g,{targetId:'act',outputIndex:[0,1],trace:L.evaluate(g)});
+ assert.equal(audited.complete,true,kind+' full row coupling');
+ assert.equal(audited.edges.length,2,kind+' uses both same-row features');
+ for(const sourceIdx of [[0,0],[0,1]]){
+  const source=audited.vertices.find(v=>v.key==='x@'+sourceIdx.join(','));
+  assert.ok(source&&Number.isFinite(source.sensitivity),kind+' row sensitivity');
+  assert.ok(Math.abs(source.sensitivity-numericalDerivative(g,'act',sourceIdx))<3e-5,
+   kind+' finite difference: '+sourceIdx.join(',')+' / '+source.sensitivity);
+ }
+ const symbolic=E.inspect(g,{targetId:'act',outputIndex:[0,1]});
+ assert.equal(symbolic.edges.length,2);
+ assert.equal(symbolic.vertices.find(v=>v.key==='x@0,0').sensitivity,null);
+}
+const staleGraph=JSON.parse(JSON.stringify(graph));
+staleGraph.nodes.find(n=>n.id==='a').params.factor=4;
+assert.throws(()=>E.inspect(staleGraph,{targetId:'sq',outputIndex:[0,1],trace}),
+ /trace does not match current graph/,'same-shaped parameter edits invalidate numeric evidence');
+const poisonedTrace=JSON.parse(JSON.stringify(trace));
+poisonedTrace.steps.find(step=>step.id==='x').values[0][1]+=0.125;
+assert.throws(()=>E.inspect(graph,{targetId:'sq',outputIndex:[0,1],trace:poisonedTrace}),
+ /trace does not match current graph/,'altered trace values cannot carry bounded-numeric status');
+const incompleteTrace=JSON.parse(JSON.stringify(trace));
+delete incompleteTrace.steps.find(step=>step.id==='x').values;
+assert.throws(()=>E.inspect(graph,{targetId:'sq',outputIndex:[0,1],trace:incompleteTrace}),
+ /trace does not match current graph/,'partial traces must not silently downgrade their evidence');
+console.log('ELEMENT_LINEAGE_PASS analytic activations, row normalization Jacobians, stale numeric trace rejection, shared-path VJP, 4D GEMM, softmax');
