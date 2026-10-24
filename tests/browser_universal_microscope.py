@@ -91,7 +91,10 @@ class MicroscopeBrowser(unittest.TestCase):
    p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===10')
    # SwiGLU shared gate/up path: inspect the same real training graph.
-   p.locator('#computeMicroscope .cmp-step').nth(7).click()
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='activated':
+     break
    self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'activated')
    p.locator('#computeMicroscope .cmp-vjp-trigger').click()
    swi=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
@@ -121,7 +124,11 @@ class MicroscopeBrowser(unittest.TestCase):
    p.screenshot(path=str(OUT/'trainable-swiglu-parameter-loss-vjp.png'),animations='disabled')
    p.locator('[data-preset="trainable_moe"]').click()
    p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
-   p.locator('#computeMicroscope .cmp-step').filter(has_text='expert_gate').first.click()
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='expert_gate':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'expert_gate')
    p.locator('#computeMicroscope .cmp-vjp-trigger').click()
    expert=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
    self.assertIn('expert_channel_product',expert)
