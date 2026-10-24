@@ -61,7 +61,7 @@ assert.throws(()=>Core.executeLab('micro_training','scenario',{name:'shared',par
 assert.throws(()=>Core.executeLab('micro_training','scenario',{name:'wrong',parameters:{}}),/unknown micro training scenario/);
 const audit=Core.executeLab('capabilities','audit',{});
 eq(audit.value,Capability.audit());
-assert.equal(audit.evidence,'STATIC_ONLY');assert.equal(audit.value.rows.length,146);
+assert.equal(audit.evidence,'STATIC_ONLY');assert.equal(audit.value.rows.length,L.KINDS.length);
 assert.ok(audit.value.rows.every(r=>r.graphAutodiff==='requires_graph_test'&&r.modelParity==='not_claimed'));
 assert.throws(()=>Core.executeLab('capabilities','unsupported',{}),/no registered executable adapter/);
 const routeScripts={
