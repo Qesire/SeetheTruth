@@ -23,7 +23,7 @@ PC Learning Studio       PC/Android Shared Teaching       Dedicated labs
 
 A freely composed tensor program is a directed acyclic graph `G=(V,E,θ)` with tensor-valued ports, shape/axis contracts and conditional reverse-mode rules. KV management and a request Scheduler instead form a transition system `s[t+1]=F(s[t],a[t])`; Worker execution has resource-constrained event edges and causal timestamps. Treating such state machines as a fake tensor operator would erase important invariants. The common layer therefore shares **identity, execution entrypoints, teaching descriptions and evidence contracts**, not a false numerical algebra.
 
-All 146 native/extension operators pass through the existing `operator_contracts.js` inventory; an operator being registered is not proof of all NumPy/Torch lowerings. `inspectGraph(graph,{numeric:false|true,targetId?})` calls the existing `GraphSession` and `GraphLearningPath`, preserving target slicing and unexecuted static status. `activateGraphLessons` registers the real HTML studio missions and installed pack recipes, then `openPreset` rejects an unregistered preset. The contract audits **59 guided mission graphs, one blank editable canvas and two independently registered pack recipes = 62 graph entries**.
+All 146 native/extension operators pass through the existing `operator_contracts.js` inventory; an operator being registered is not proof of all NumPy/Torch lowerings. `inspectGraph(graph,{numeric:false|true,targetId?})` calls the existing `GraphSession` and `GraphLearningPath`, preserving target slicing and unexecuted static status. `activateGraphLessons` registers the real HTML studio missions and installed pack recipes, then `openPreset` rejects an unregistered preset. The contract audits **59 guided mission graphs, one blank editable canvas, two independently registered pack recipes and one source-state shortcut = 63 reachable graph entries**.
 
 The ten PC/Android explanation tracks now project from the same `teaching_curriculum.js` into typed `curriculum` records. Every other shipped root HTML learning page has an explicit `specialized` contract via `specialized_learning_adapter.js`: 17 specialist modules, each with a concrete engine source file, domain kind and declared evidence boundary. Cross-platform lesson cards now consume the core inventory rather than a separate presentation-specific list.
 
@@ -32,7 +32,7 @@ The ten PC/Android explanation tracks now project from the same `teaching_curric
 | Substrate | Shared metadata/route | Executed through common API | Actual compute |
 | --- | --- | --- | --- |
 | All 146 native/pack bricks | Yes | Yes: complete and selected-output graph inspection | Existing bounded LearningLab engine |
-| 59 guided graphs + blank + pack recipes | Yes | Yes: same graph engine | Real preset graphs; no template whitelist on free editing |
+| 59 guided graphs + blank + 2 pack recipes + state shortcut | Yes | Yes: same graph engine | Real preset graphs; no template whitelist on free editing |
 | Ten shared curriculum tracks | Yes | Linked to graph or specialist domain | A description alone has **no** execution evidence |
 | DeepInfer Prefill | Yes | `executeLab(vote/chunk)` | Source-derived deterministic decision mathematics |
 | DeepInfer Worker | Yes | `executeLab(simulate/compare)` | Event DAG with explicitly assumed abstract durations |
@@ -49,6 +49,10 @@ The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_
 - `python tests/browser_unified_learning_core.py`: Chromium learning studio graph count, Android-width shared curriculum, real source lab adapters and no browser exceptions.
 - Existing codegen, gradient, shape/axis, source-pinned, streaming and Android build tests are preserved.
 - CI is valid only at the **final PR head SHA**; a previous successful run is not transferred to later edits.
+
+## Shared verified event/state microscope
+
+The new `executeLab` adapter directly invokes original source-derived Prefill/Worker/KV/Scheduler reference engines. Prefill exposes an explicit `inspect_pair` that independently evaluates vote and chunk (no invented order); the other three produce the same validated `stateTrace` event contract via `state_microscope.js`. A shared read-only interactive UI (`unified_state_lab_ui.js`) runs these adapters directly inside their specialist pages, showing state-before, state-after and proven causal links. Timings remain assumed abstract ticks, never measured GPU latency. Independent state-engine proofs remain in place.
 
 ## Extension interface
 
