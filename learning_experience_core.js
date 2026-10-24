@@ -34,6 +34,8 @@
  // graph operator; adding a lab must explicitly declare its contract.
  const labs=Object.freeze([
   ["source_atlas","index.html","source_graph","atlas_parser.py","SOURCE_OR_DECLARED"],
+  ["engineering_journey","engineering_journey.html","guided_training_workflow","engineering_journey_engine.js","SYNTHETIC_NUMERIC"],
+  ["engineering_pipeline","engineering_pipeline.html","training_state_machine","engineering_training_pipeline.js","SYNTHETIC_NUMERIC"],
   ["tradeoffs","tradeoffs.html","analytical_cost","architecture_tradeoffs.js","ANALYTICAL_ESTIMATE"],
   ["paper","paper_lab.html","graph_rewrite","paper_graph_rewrites.js","DECLARED_OR_SYNTHETIC"],
   ["training","training.html","training_state","training_flow.js","SYNTHETIC_NUMERIC"],
