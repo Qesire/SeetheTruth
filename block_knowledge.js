@@ -24,6 +24,7 @@ const sources=Object.freeze({
  vivit_tubelet:["Hugging Face ViViT tubelet embedding: 3D convolution + sequence flatten","https://github.com/huggingface/transformers/blob/main/src/transformers/models/vivit/modeling_vivit.py"],
  whisper_audio:["OpenAI Whisper audio: windowed STFT, mel filters and log normalization","https://github.com/openai/whisper/blob/main/whisper/audio.py"],
  wan_vae:["Wan2.2 video VAE: causal Conv3d and temporal chunk state","https://github.com/Wan-Video/Wan2.2/blob/main/wan/modules/vae2_2.py"],
+ wan_video_rope:["Wan2.2 pinned video rope_params / rope_apply (3D F/H/W complex pairing)","https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L27-L66"],
 
  mor:["Mixture-of-Recursions: adaptive token-level recursive computation (NeurIPS 2025)","https://arxiv.org/abs/2507.10524"],
  adam_official:["PyTorch Adam — coupled L2 and decoupled_weight_decay option","https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html"],
@@ -129,6 +130,11 @@ const notes={
 
  nd_parameter:["四轴 Parameter 不是每次重播种子的输入，而是 JSON 工程中具有稳定节点身份的张量值 θ[B,H,T,D]。同一个参数输出可以同时连到多个消费者，反向传播按节点 ID 汇合 VJP。","训练状态保存 θ 以及独立的 AdamW m/v 张量和 t 步数；每一步都重新运行当前 DAG Forward，再计算反向梯度和下一次权重数值。PyTorch Parameter 和 AdamW 是标准来源。","仅有界 Float64 CPU 教学；这并不是 GPU 上真实的大模型训练。修改参数值后必须重置矩阵形状一致的动量，不能沿用原状态。","将课程 29/30 中的 Q/K/V 从多个输入替换为共享 Parameter，观察各 Head 梯度总和、两步 AdamW、导出再恢复第三步。","pytorch,adamw,gqa_paper"],
  nd_rope:["标准相邻通道对 RoPE 对第 (2i,2i+1) 个通道执行二维正交旋转，角度 (offset+t)/base^(2i/R)。位置索引必须对应当前 Query 和 Key 的真实绝对 Token 位置。","RoFormer (Su et al., 2021) 用正交旋转把绝对位置信息写进 Q/K，并使点积含相对位置信息；开源模型还有 split-half 等配对习惯及额外 RoPE scaling。","本积木采用明确的 adjacent-pair 约定；不要与 split-half 权重布局直接混用。旋转维 R 必须为偶数、不得超过 D。","先计算 RoPE(完整 K,offset=0)，再把 K 分为 prefix[0,2) 与新 Token[2,3)，以 offset=0/2 旋转并拼接，核对每个元素。","rope_paper,transformer"],
+ nd_wan_rope3d:["以实际网格 F×H×W 展开视频 Token，并将每个头的相邻实通道组成复数对；按源码将全部复数频率分成帧、行、列三段，相位使用对应网格坐标。",
+ "真实 Wan2.2 的 rope_apply 用复数乘法并保留全局复数通道索引的频率幂次；在小张量的 [B,N,T,D] 显式视图上，可以分辨一维 RoPE 与三维视频位置编码。",
+ "此积木只实现已归一化 Q/K 上的位置旋转，不包含投影权重、WanRMSNorm、FlashAttention 或 QK 头之外的条件分支；输入要求视频 Token 数恰等于 F×H×W。",
+ "固定两帧、两行、两列，分别在相邻帧与水平/垂直位置变动时检查三组频率相位，同时用独立有限差分验证每个旋转通道的 VJP。",
+ "wan_video_rope,rope_paper"],
  nd_cache_read:["纯函数式地读取 [B,H,T,D] 的 Token 窗口 [start,start+length)，不修改上游 Cache 或输入张量。","Hugging Face 的 DynamicCache 在实际解码过程中按层维护 KV 张量；读取 prefix 和新 Token 是学习这一行为的可拆分积木。","该积木只保存一张可复现的快照视图；不是浏览器外持续生效的缓存服务，也不假装测量真实 Cache 命中率。","让原始 K/V 既连接到前缀读取，又连接到当前位置读取，最后写入 Append；检查读取后两个片段元素不丢失。","hf_cache,tensor_views"],
  nd_cache_append:["要求两输入 Batch、KV Head 和 Channel 维一致，仅沿 Token 轴把 segment 追加到 cache。完整 K/V 历史由同一张可编辑 DAG 表示，所有输入保持不变。","Hugging Face Transformers DynamicCache 的逻辑是随新 Token 将 Key/Value 追加到已缓存的 Token 序列；GQA 通常在 KV Head 轴保留更少的头。","这是可测试的不可变追加表达，不是实际 KV 内存原地写、预分配 StaticCache 或环形缓存。注意不能重复追加同一 Token。","分别旋转完整 Key 和分段 Key，再验证 Append 的绝对 RoPE 结果相同；V 不应用 RoPE。","hf_cache,gqa_paper,rope_paper"],
  nd_input:["显式生成轴次序 [B,H,T,D] 的 4D 合成张量，按行主序储存。形状如 [1,2,3,4] 表示一个批次、两个头、三个时间坐标、每个四维通道。","常见 Transformer 计算会把批次、头、Token 与通道作为独立轴；不同实现实际轴顺序可能不同。","轴名仅是当前课程约定，形状数值不意味着真实模型参数。全部数值有 512 元素上限。","独立改变 H 与 T，看 MatMul 是否受内维约束。","transformer,tensor_views"],

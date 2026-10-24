@@ -23,10 +23,11 @@ for(const name of presetNames){
 }
 function perKind(k){
  if(k.startsWith('nd_')){
-  if(k==='nd_rope'){
+  if(k==='nd_rope'||k==='nd_wan_rope3d'){
     const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};
-    const input=ND.seedTensor([1,2,3,4],5),actual=B.execute(n,{x:input});
-    assert.deepEqual(C.analyze(n,{x:[1,2,3,4]}).shape,actual.shape);return;
+    const sh=k==='nd_wan_rope3d'?[1,2,8,6]:[1,2,3,4],
+     input=ND.seedTensor(sh,5),actual=B.execute(n,{x:input});
+    assert.deepEqual(C.analyze(n,{x:sh}).shape,actual.shape);return;
   }
   if(k==='nd_parameter'){
    const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params};

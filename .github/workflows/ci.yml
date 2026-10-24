@@ -54,6 +54,7 @@ jobs:
           node tests/coordinate_loss_adjoint_contracts.js
           node tests/composite_coordinate_jacobians.js
           node tests/nd_incremental_coordinate_jacobians.js
+          node tests/wan_video_rope3d_contracts.js
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js

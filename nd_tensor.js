@@ -123,6 +123,45 @@ function rope4(x,offset=0,rotaryDim=4,base=10000){
    return channel%2===0?a*cos-b*sin:a*cos+b*sin;
  });
 }
+/* Wan2.2 pinned video RoPE: wan/modules/model.py@1ea34ff, rope_params
+ * and rope_apply. Source layout is [B,T,N,D]; this native learning block
+ * consumes the explicit [B,N,T,D] permuted view used by all N-D operators.
+ * complex-frequency segments are (time, height, width), with each pair's
+ * frequency exponent its GLOBAL complex index 2*pair/D.
+ */
+function wanVideoRoPE3DCoordinate(sh,idx,frames,height,width,base=10000){
+ dims(sh);
+ if(sh.length!==4||sh[3]%2!==0||sh[3]<6||
+    !Number.isSafeInteger(frames)||frames<1||frames>8||
+    !Number.isSafeInteger(height)||height<1||height>8||
+    !Number.isSafeInteger(width)||width<1||width>8||
+    frames*height*width!==sh[2]||
+    typeof base!=="number"||!Number.isFinite(base)||base<2||base>1000000)
+   fail("Wan video RoPE requires [B,N,F*H*W,D even >=6], F/H/W <=8 and valid base");
+ if(!Array.isArray(idx)||idx.length!==4||idx.some((v,i)=>!Number.isSafeInteger(v)||v<0||v>=sh[i]))
+   fail("Wan video RoPE coordinate out of range");
+ const t=idx[2],d=idx[3],pair=Math.floor(d/2),complex=sh[3]/2,
+  spatial=Math.floor(complex/3),temporal=complex-2*spatial;
+ const axis=pair<temporal?"F":pair<temporal+spatial?"H":"W";
+ const f=Math.floor(t/(height*width)),h=Math.floor(t/width)%height,w=t%width;
+ const position=axis==="F"?f:axis==="H"?h:w;
+ const theta=position/Math.pow(base,2*pair/sh[3]);
+ return Object.freeze({axis,frame:f,height:h,width:w,position,
+  pair,partner:d%2===0?d+1:d-1,angle:theta,cos:Math.cos(theta),
+  sin:Math.sin(theta),temporalPairs:temporal,heightPairs:spatial,widthPairs:spatial});
+}
+function wanVideoRoPE3D4(x,frames,height,width,base=10000){
+ const sh=shape(x);
+ // Validation is independent of element magnitudes, and performed even
+ // for a zero tensor. N-D build keeps the existing small-CPU bounds.
+ wanVideoRoPE3DCoordinate(sh,[0,0,0,0],frames,height,width,base);
+ return build(sh,idx=>{
+  const meta=wanVideoRoPE3DCoordinate(sh,idx,frames,height,width,base),
+   value=at(x,idx),other=at(x,[...idx.slice(0,3),meta.partner]);
+  return idx[3]%2===0?value*meta.cos-other*meta.sin:
+    value*meta.cos+other*meta.sin;
+ });
+}
 /* Explicit cache read = materialize a contiguous absolute prefix/window.
  * This is a pure DAG operation, not mutable cross-turn model state.
  */
@@ -146,5 +185,5 @@ function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,cacheRead4,cacheAppend4});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,wanVideoRoPE3DCoordinate,wanVideoRoPE3D4,cacheRead4,cacheAppend4});
 });

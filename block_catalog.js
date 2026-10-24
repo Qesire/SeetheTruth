@@ -136,6 +136,12 @@
     "对 Token 绝对位置逐对旋转 Q/K 的前 R 个通道，兼容 GQA 和只处理当前 Token 的增量解码。",
     "将同一 Q/K 分别以全序列和分段绝对 offset 编码，比对每个 Token 的数值。",
     "采用邻接通道配对，不等于所有架构的 split-half RoPE；旋转维必须为不超过 D 的偶数。"),
+  nd_wan_rope3d:block("Wan 视频三维 RoPE","Wan2.2 Video 3D RoPE","position",["x"],
+    {frames:2,height:2,width:2,base:10000},
+    "Wan2.2 rope_apply: [B,T,N,D] → 显式 Permute 至 [B,N,T,D]；complex pair 按 F/H/W 三段分别使用帧、行、列位置",
+    "固定 Wan-Video/Wan2.2@1ea34ff 的 rope_params / rope_apply 数学；按复数通道全局索引分割时间/高度/宽度频率。此积木要求 T=F·H·W，不隐藏 padding。",
+    "以 F=2,H=2,W=2 构建视频 Token；在不同空间位置保持帧索引不变时，观察同一头的 Q/K 旋转相位；独立验证相邻通道正交性。",
+    "输入是显式重排后的 [B,N,T,D] 小型合成张量，不是 Wan checkpoint 的 Q/K；本算子不包含 QK Norm、线性投影或 FlashAttention 内核。"),
   nd_cache_read:block("四轴 KV Cache 切片","4D KV Cache Read","memory",["x"],
     {start:0,length:1},
     "Y[b,h,t,d] = X[b,h,start+t,d]",
@@ -397,6 +403,11 @@
       if(n.rotaryDim%2!==0)fail('N-D RoPE rotary dimension must be even');
       float(n.base,2,1000000,'N-D RoPE base');
    }
+   if(kind==='nd_wan_rope3d'){
+      for(const axis of ['frames','height','width'])int(n[axis],1,8,'Wan '+axis);
+      if(n.frames*n.height*n.width>8)fail('Wan video RoPE grid exceeds bounded Token axis');
+      float(n.base,2,1000000,'Wan RoPE base');
+   }
    if(kind==='nd_cache_read'){
       int(n.start,0,7,'N-D cache start');int(n.length,1,8,'N-D cache length');
    }
@@ -467,6 +478,7 @@
      else if(kind==='nd_batched_matmul')value=ND.matmul4(inputs.a,inputs.b);
      else if(kind==='nd_repeat_kv')value=ND.repeatKVHeads(inputs.x,params.queryHeads);
      else if(kind==='nd_rope')value=ND.rope4(inputs.x,params.offset,params.rotaryDim,params.base);
+     else if(kind==='nd_wan_rope3d')value=ND.wanVideoRoPE3D4(inputs.x,params.frames,params.height,params.width,params.base);
      else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
      else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);
      else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
