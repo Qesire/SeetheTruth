@@ -67,7 +67,12 @@ for(const [id,index,stage]of [
  assert.equal(p.complete,true,id+' incomplete: '+p.frontiers.join(','));
  assert.equal(p.vertices.find(v=>v.id===id).stages[0].stage,stage);
  const b=Bridge.inspect(graph,run,frame,{stepId:id,coordinate:index});
- assert.equal(b.backward.complete,true);
+ // The shared browser microscope intentionally bounds recursion at 512
+ // vertices. The full graph proof above may cover more; do not pretend
+ // a bounded displayed excerpt is complete for the final Attention gate.
+ if(id!=='gated_attention')assert.equal(b.backward.complete,true,id);
+ else assert.ok(b.backward.truncated||b.backward.complete,
+   'large Attention gate must report explicit truncation, not fabricated completeness');
  assert.equal(b.backward.internalStages[0].stage,stage);
 }
 const whole=G.backward(graph,run);
