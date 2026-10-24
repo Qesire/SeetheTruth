@@ -100,6 +100,17 @@ function inspect(raw,options={}){
    add("x",[...coordinate],rule,factor);
    return {rule,links:result,gradientRule:"局部导数乘上游梯度"};
   }
+  if(["sigmoid","tanh","relu","softplus"].includes(kind)){
+   const x=read("x",coordinate),y=sampleValue(n.id,coordinate);
+   const factor=x===null||y===null?null:
+    kind==="sigmoid"?y*(1-y):
+    kind==="tanh"?1-y*y:
+    kind==="relu"?(x>0?1:0):
+    x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
+   add("x",[...coordinate],"pointwise "+kind+"′(x)",factor);
+   return {rule:kind+" 逐坐标数学变换",links:result,
+    gradientRule:"从真实前向计算值取得导数，折点按教学引擎分段约定处理"};
+  }
   const activationKind=kind.startsWith("nd_")?kind.slice(3):kind;
   if(d.Activation.KINDS.includes(activationKind)){
    const x=read("x",coordinate);
