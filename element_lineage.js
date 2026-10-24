@@ -70,10 +70,14 @@ function inspect(raw,options={}){
    return [port,shapes.get(from)];
   }));
  }
+ const cutEdges=[];
  function dependencies(n,coordinate){
   const kind=n.kind,shape=shapes.get(n.id),p=n.params||{};
   const inputs=inputsFor(n),read=(port,i)=>sampleValue(incoming.get(n.id+":"+port),i);
-  const result=[];
+  const result=[],stages=[];
+  const cut=(port,reason,selection=null)=>cutEdges.push(Object.freeze({
+   nodeId:n.id,port,outputIndex:Object.freeze([...coordinate]),reason,selection
+  }));
   const add=(port,coords,rule,factor,term="")=>{
    const sh=inputs[port];
    if(!sh||coords.length!==sh.length||coords.some((v,i)=>v<0||v>=sh[i]))
@@ -95,6 +99,17 @@ function inspect(raw,options={}){
    else {factor=1/p.temperature;rule="除以温度参数";}
    add("x",[...coordinate],rule,factor);
    return {rule,links:result,gradientRule:"局部导数乘上游梯度"};
+  }
+  if(["sigmoid","tanh","relu","softplus"].includes(kind)){
+   const x=read("x",coordinate),y=sampleValue(n.id,coordinate);
+   const factor=x===null||y===null?null:
+    kind==="sigmoid"?y*(1-y):
+    kind==="tanh"?1-y*y:
+    kind==="relu"?(x>0?1:0):
+    x>=0?1/(1+Math.exp(-x)):Math.exp(x)/(1+Math.exp(x));
+   add("x",[...coordinate],"pointwise "+kind+"′(x)",factor);
+   return {rule:kind+" 逐坐标数学变换",links:result,
+    gradientRule:"从真实前向计算值取得导数，折点按教学引擎分段约定处理"};
   }
   const activationKind=kind.startsWith("nd_")?kind.slice(3):kind;
   if(d.Activation.KINDS.includes(activationKind)){
@@ -164,6 +179,152 @@ function inspect(raw,options={}){
    return {rule:"矩阵乘法按 K 维求和；每项使用一对 A/B 元素",
     links:result,gradientRule:"乘以相应另一输入元素，并对所有 K 维贡献求和"};
   }
+  if(kind==="swiglu"||kind==="geglu"){
+   if(!same(inputs.gate,shape)||!same(inputs.up,shape))
+    throw Error("lineage gated FFN shape mismatch");
+   const gate=read("gate",coordinate),up=read("up",coordinate);
+   const gelu=kind==="geglu",name=gelu?"gelu_tanh":"silu";
+   const activated=gate===null?null:d.Activation.value(name,gate,p);
+   const slope=gate===null?null:d.Activation.derivative(name,gate,p);
+   add("gate",[...coordinate],"Up · "+name+"′(Gate)",
+    slope===null||up===null?null:up*slope);
+   add("up",[...coordinate],name+"(Gate)",activated);
+   stages.push({stage:"gate_activation",value:activated,derivative:slope},
+    {stage:"elementwise_product",gate,up});
+   return {rule:"Y="+name+"(Gate) ⊙ Up；门控非线性与上投影独立分流",
+    links:result,stages,gradientRule:"dY/dGate=Up·"+name+"′(Gate), dY/dUp="+name+"(Gate)"};
+  }
+  if(kind==="attention"){
+   const q=inputs.q,k=inputs.k,v=inputs.v;
+   const [t,c]=coordinate,D=q[1],N=k[0];
+   if(q.length!==2||k.length!==2||v.length!==2||
+     k[1]!==D||v[0]!==N||shape[0]!==q[0]||shape[1]!==v[1])
+    throw Error("lineage attention Q/K/V shape mismatch");
+   const scores=Array.from({length:N},(_,j)=>{
+    const products=Array.from({length:D},(_,d)=>{
+     const a=read("q",[t,d]),b=read("k",[j,d]);
+     return a===null||b===null?null:a*b;
+    });
+    return products.every(x=>x!==null)?
+      products.reduce((a,b)=>a+b,0)/Math.sqrt(D):null;
+   });
+   const ready=scores.every(x=>x!==null);
+   const shifted=ready?Math.max(...scores):null;
+   const ex=ready?scores.map(z=>Math.exp(z-shifted)):null;
+   const den=ready?ex.reduce((a,b)=>a+b,0):null;
+   const P=ready?ex.map(x=>x/den):null;
+   const Y=sampleValue(n.id,coordinate);
+   for(let j=0;j<N;j++){
+    const val=read("v",[j,c]),prob=P===null?null:P[j];
+    const scoreDelta=prob===null||val===null||Y===null?null:
+     prob*(val-Y)/Math.sqrt(D);
+    add("v",[j,c],"P[t,j] · V[j,c]",prob,"value-key="+j);
+    for(let d=0;d<D;d++){
+     const kVal=read("k",[j,d]),qVal=read("q",[t,d]);
+     add("q",[t,d],"P[t,j](V[j,c]−Y[t,c])K[j,d]/√D",
+      scoreDelta===null||kVal===null?null:scoreDelta*kVal,
+      "query-key="+j+",feature="+d);
+     add("k",[j,d],"P[t,j](V[j,c]−Y[t,c])Q[t,d]/√D",
+      scoreDelta===null||qVal===null?null:scoreDelta*qVal,
+      "key="+j+",feature="+d);
+    }
+    stages.push({stage:"key_softmax_value",key:j,scaledScore:scores[j],
+     probability:prob,value:val,weightedContribution:
+      val===null||prob===null?null:prob*val,
+     softmaxScoreDerivative:scoreDelta===null?null:scoreDelta*Math.sqrt(D)});
+   }
+   return {rule:"Scores=QKᵀ/√D → row Softmax → Context=P·V；逐 Key 展开数值项",
+    links:result,stages,gradientRule:"dV[j,c]=P_j; dQ[t,d]=Σ_j P_j(V_jc−Y_tc)K_jd/√D; dK[j,d]=P_j(V_jc−Y_tc)Q_td/√D"};
+  }
+  if(kind==="dispatch_routed_tokens"){
+   const [row,d]=coordinate,K=inputs.indices[1],t=Math.floor(row/K),slot=row%K;
+   if(inputs.indices[0]!==inputs.x[0]||shape[0]!==inputs.x[0]*K||shape[1]!==inputs.x[1])
+    throw Error("lineage dispatch route shape mismatch");
+   const expert=read("indices",[t,slot]);
+   cut("indices","离散专家下标决定复制位置，反向不穿过专家选择",expert);
+   add("x",[t,d],"Z[tK+k,d]=X[t,d]",1,"slot="+slot);
+   stages.push({stage:"selected_route",token:t,slot,expert});
+   return {rule:"Token × TopK 路由复制，k 是离散选择位置",
+    links:result,stages,gradientRule:"dX[t,d]=Σ_k dZ[tK+k,d]；相同 Token 多路贡献相加"};
+  }
+  if(kind==="expert_linear_bank"){
+   const [row,h]=coordinate,K=inputs.indices[1],t=Math.floor(row/K),slot=row%K,D=inputs.x[1];
+   if(shape[0]!==inputs.x[0]||shape[1]!==inputs.weights[1]||
+     inputs.x[0]!==inputs.indices[0]*K||inputs.weights[0]%D)
+    throw Error("lineage routed expert weight shape mismatch");
+   const expert=read("indices",[t,slot]);
+   if(expert!==null&&(!Number.isSafeInteger(expert)||expert<0||expert>=inputs.weights[0]/D))
+    throw Error("lineage expert index mismatch");
+   cut("indices","专家 ID 是离散路由，权重只对选定专家求导",expert);
+   for(let d=0;d<D;d++){
+    const input=read("x",[row,d]);
+    if(expert!==null){
+     const w=read("weights",[expert*D+d,h]);
+     add("x",[row,d],"W[eD+d,h]",w,"route="+row+",d="+d);
+     add("weights",[expert*D+d,h],"X[route,d]",input,"expert="+expert+",d="+d);
+     stages.push({stage:"expert_channel_product",expert,route:row,feature:d,
+       activation:input,weight:w,product:input===null||w===null?null:input*w});
+    }
+   }
+   if(expert===null)return null; // structural mode cannot bind expert weight rows
+   return {rule:"Y[route,h]=Σ_d X[route,d]·W[e·D+d,h]，e=Indices[t,k]",
+    links:result,stages,gradientRule:"对 X 是相应 W；对所选专家 W 是相应 X；复用专家行时梯度相加"};
+  }
+  if(kind==="routed_weighted_reduce"){
+   const [t,d]=coordinate,K=inputs.gates[1];
+   if(shape[0]!==inputs.gates[0]||inputs.values[0]!==shape[0]*K||
+      inputs.values[1]!==shape[1])throw Error("lineage weighted expert reduce shape mismatch");
+   for(let slot=0;slot<K;slot++){
+    const value=read("values",[t*K+slot,d]),gate=read("gates",[t,slot]);
+    add("values",[t*K+slot,d],"Gate[t,k]",gate,"slot="+slot);
+    add("gates",[t,slot],"Value[tK+k,d]",value,"slot="+slot);
+    stages.push({stage:"route_weighted_contribution",slot,gate,value,
+      product:value===null||gate===null?null:value*gate});
+   }
+   return {rule:"Y[t,d]=Σ_k Gate[t,k]·Value[tK+k,d]",
+    links:result,stages,gradientRule:"值路径由 Gate 加权，门控梯度对通道求和"};
+  }
+  if(kind==="router_gate_weights"){
+   const [t,i]=coordinate,K=inputs.indices[1];
+   if(inputs.scores[0]!==shape[0]||inputs.indices[0]!==shape[0]||shape[1]!==K)
+    throw Error("lineage router weights shape mismatch");
+   const selected=Array.from({length:K},(_,j)=>read("indices",[t,j]));
+   const values=selected.map(e=>e===null?null:read("scores",[t,e]));
+   if(selected.some(e=>e===null))return null; // cannot locate score dependencies without an executed TopK choice
+   const ready=values.every(v=>v!==null);
+   const sigmoid=z=>z>=0?1/(1+Math.exp(-z)):Math.exp(z)/(1+Math.exp(z));
+   const modes=["identity","sigmoid","softmax"];
+   if(!modes.includes(p.mode))throw Error("lineage gate mode not supported");
+   let raw=null;
+   if(ready){
+    raw=p.mode==="identity"?values:p.mode==="sigmoid"?values.map(sigmoid):
+     (()=>{const max=Math.max(...values),ex=values.map(z=>Math.exp(z-max)),
+      sum=ex.reduce((a,b)=>a+b,0);return ex.map(z=>z/sum);})();
+   }
+   const den=raw===null?null:raw.reduce((a,b)=>a+b,0);
+   const gate=raw===null?null:p.normalize?raw.map(z=>z/den):raw;
+   for(let j=0;j<K;j++){
+    const expert=selected[j];
+    cut("indices","TopK 专家选择 ID 不可微；仅对选中的连续分数反传",expert);
+    if(expert===null)continue;
+    let factor=null;
+    if(ready){
+     if(p.mode==="softmax"){
+      factor=gate[i]*((i===j?1:0)-gate[j]);
+     }else{
+      const prime=p.mode==="identity"?1:raw[j]*(1-raw[j]);
+      factor=(p.normalize?
+       ((i===j?den:0)-raw[i])/(den*den):i===j?1:0)*prime;
+     }
+    }
+    add("scores",[t,expert],"∂Gate_i/∂Score_expert_j",factor,"selection_slot="+j);
+    stages.push({stage:"selected_gate",slot:j,expert,affinity:values[j],
+     gate:gate===null?null:gate[j],localDerivative:factor});
+   }
+   return {rule:"先按 Indices 选出 logits，再进行 "+p.mode+
+    (p.normalize?" 与归一化":"；未额外归一化"),
+    links:result,stages,gradientRule:"每个选定 slot 对 scores 求导；重复 ID 的路径归并；未选专家无连续分数梯度"};
+  }
   if(kind==="softmax"||kind==="nd_softmax_last"){
    const last=shape.length-1;
    const yi=sampleValue(n.id,coordinate);
@@ -186,12 +347,12 @@ function inspect(raw,options={}){
   if(vertices.size>=limit){truncated=true;return null;}
   const n=nodes.get(nodeId),shape=shapes.get(nodeId);
   const v={key,id:nodeId,kind:n.kind,index:Object.freeze([...coordinate]),shape:Object.freeze([...shape]),
-   depth,value:sampleValue(nodeId,coordinate),status:"computed",rule:null,gradientRule:null};
+   depth,value:sampleValue(nodeId,coordinate),status:"computed",rule:null,gradientRule:null,stages:null};
   vertices.set(key,v);
   if(leafKinds.has(n.kind)||d.L.defs[n.kind].ports.length===0){v.status="source";return key;}
   const deps=dependencies(n,coordinate);
   if(!deps){v.status="boundary";v.rule="该算子尚未提供精确的逐元素依赖规则";frontiers.push(key);return key;}
-  v.rule=deps.rule;v.gradientRule=deps.gradientRule;
+  v.rule=deps.rule;v.gradientRule=deps.gradientRule;v.stages=deps.stages||null;
   for(const link of deps.links){
    if(edges.length>=maxEdges){truncated=true;break;}
    const parent=incoming.get(nodeId+":"+link.port);
@@ -227,11 +388,12 @@ function inspect(raw,options={}){
  const report=Object.freeze({
   schema:"seethetruth-element-lineage-v1",targetId:id,outputIndex:Object.freeze([...index]),
   mode:numeric?"bounded-numeric":"structural",complete:!truncated&&frontiers.length===0,
-  truncated,frontiers:Object.freeze(frontiers),
+  truncated,frontiers:Object.freeze(frontiers),cutEdges:Object.freeze(cutEdges),
+  discreteConditional:cutEdges.length>0,
   vertices:Object.freeze([...vertices.values()].map(v=>Object.freeze({...v,
     sensitivity:accumulated.has(v.key)?accumulated.get(v.key):null}))),
   edges:Object.freeze(edges),
-  note:"单个输出元素对上游元素的依赖和局部 VJP；仅已验证算子会继续展开。空缺的数值导数不等于零。"
+  note:"单个输出元素对上游元素的依赖和局部 VJP；离散路由按已执行的专家 ID 条件化，不求导；未知算子保留边界。空缺数值导数不等于零。"
  });
  return report;
 }

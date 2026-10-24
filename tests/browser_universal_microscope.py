@@ -58,6 +58,16 @@ class MicroscopeBrowser(unittest.TestCase):
    p.locator('#computeMicroscope .cmp-substep').nth(2).click()
    self.assertIn('逐行/逐坐标运算 softmax',p.locator('#computeMicroscope .cmp-breakdown').inner_text())
    self.assertGreater(p.locator('#computeMicroscope .cmp-terms tr').count(),2)
+   # Unified Attention composite: use the actual graph output, not a
+   # standalone second simulated Attention explainer.
+   p.locator('#computeMicroscope .cmp-substep').first.click()
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   evidence=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('key_softmax_value',evidence)
+   self.assertIn('scaledScore=',evidence)
+   self.assertIn('probability=',evidence)
+   self.assertIn('累计灵敏度',evidence)
+   p.screenshot(path=str(OUT/'attention-keywise-coordinate-jacobian.png'),animations='disabled')
    p.locator('[data-preset="extension_video_time_composition"]').click()
    p.locator('#run').click()
    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===4')
@@ -80,6 +90,18 @@ class MicroscopeBrowser(unittest.TestCase):
    p.locator('[data-preset="trainable_swiglu"]').click()
    p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===10')
+   # SwiGLU shared gate/up path: inspect the same real training graph.
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='activated':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'activated')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   swi=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('gate_activation',swi)
+   self.assertIn('elementwise_product',swi)
+   self.assertNotIn('反向路径拒绝',swi)
+   p.screenshot(path=str(OUT/'swiglu-two-path-coordinate-jacobian.png'),animations='disabled')
    p.locator('#computeMicroscope .cmp-step').last.click()
    self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'loss')
    p.locator('#computeMicroscope .cmp-vjp-trigger').click()
@@ -100,6 +122,20 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIn('经此输出',param_report)
    self.assertNotIn('反向路径拒绝',param_report)
    p.screenshot(path=str(OUT/'trainable-swiglu-parameter-loss-vjp.png'),animations='disabled')
+   p.locator('[data-preset="trainable_moe"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='expert_gate':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'expert_gate')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   expert=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('expert_channel_product',expert)
+   self.assertIn('DISCRETE ROUTING',expert)
+   self.assertIn('固定离散选择',expert)
+   self.assertNotIn('反向路径拒绝',expert)
+   p.screenshot(path=str(OUT/'moe-expert-coordinate-vjp-and-cuts.png'),animations='disabled')
    p.locator('#studyMode').select_option('concept');p.locator('#run').click()
    self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.evidence'),'STATIC_SHAPES_NO_EXECUTION')
    self.assertEqual(p.locator('#computeMicroscope .cmp-cell').count(),0)
@@ -129,6 +165,18 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIn('TRAINING LOSS',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    self.assertIn('停止梯度',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    p.screenshot(path=str(OUT/'mobile-training-loss-adjoint.png'),full_page=True,animations='disabled')
+   p.locator('[data-preset="trainable_moe"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='expert_gate':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'expert_gate')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   self.assertIn('expert_channel_product',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertIn('DISCRETE ROUTING',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   p.screenshot(path=str(OUT/'mobile-moe-expert-coordinate-jacobian.png'),full_page=True,animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
 if __name__=='__main__':unittest.main()
