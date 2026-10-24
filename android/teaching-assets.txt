@@ -102,3 +102,12 @@ wan_ffn_lab.js
 wan_ffn_trace.js
 learning_experience_core.js
 specialized_learning_adapter.js
+engineering_journey.html
+engineering_journey_engine.js
+engineering_journey_ui.js
+engineering_pipeline.html
+engineering_pipeline_ui.js
+engineering_training_pipeline.js
+state_microscope.js
+state_microscope_ui.js
+state_microscope.css
