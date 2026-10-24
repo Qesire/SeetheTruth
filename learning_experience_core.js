@@ -15,14 +15,16 @@
   prefill:require("./deepinfer_prefill_policy.js"),
   worker:require("./deepinfer_worker_events.js"),
   kv:require("./deepinfer_kv_lifecycle.js"),
-  scheduler:require("./deepinfer_scheduler_workflow.js")
+  scheduler:require("./deepinfer_scheduler_workflow.js"),
+  state:require("./state_microscope.js")
  }:{
   learning:root.SeetheTruthLearning,operators:root.SeetheTruthOperatorContracts,
   session:root.SeetheTruthGraphSession,path:root.SeetheTruthGraphLearningPath,
   branch:root.SeetheTruthBranchExecution,curriculum:root.SeetheTruthCurriculum,
   prefill:root.SeetheTruthPrefillPolicy,
   worker:root.SeetheTruthDeepInferEvents,kv:root.SeetheTruthKVLifecycle,
-  scheduler:root.SeetheTruthSchedulerWorkflow
+  scheduler:root.SeetheTruthSchedulerWorkflow,
+  state:root.SeetheTruthStateMicroscope
  };
  const api=factory(deps);
  if(isNode)module.exports=api;
@@ -143,9 +145,18 @@
   if(!engine||typeof engine[runner.method]!=="function")
    fail("domain source engine unavailable: "+lab.engine);
   const value=runner.run(engine,copy(input));
+  const eventAdapters={
+   "deepinfer_worker/simulate":()=>deps.state.worker(value),
+   "deepinfer_kv/replay":()=>deps.state.kv(value,deps.kv),
+   "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv)
+  };
+  const eventKey=id+"/"+operation;
+  if(eventAdapters[eventKey]&&!deps.state)
+   fail("state microscope dependency unavailable for "+eventKey);
+  const stateTrace=eventAdapters[eventKey]?eventAdapters[eventKey]():null;
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:lab.domain,engine:lab.engine,
-   evidence:lab.evidence,value,
+   evidence:lab.evidence,value,stateTrace,
    note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
  function inspectCourse(id){
