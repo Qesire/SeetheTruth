@@ -255,8 +255,7 @@ function inspect(raw,options={}){
        activation:input,weight:w,product:input===null||w===null?null:input*w});
     }
    }
-   if(expert===null)return {rule:"专家下标没有数值，暂不展开依赖",
-     links:result,stages,gradientRule:"需要选定的离散专家索引才能定位参数坐标"};
+   if(expert===null)return null; // structural mode cannot bind expert weight rows
    return {rule:"Y[route,h]=Σ_d X[route,d]·W[e·D+d,h]，e=Indices[t,k]",
     links:result,stages,gradientRule:"对 X 是相应 W；对所选专家 W 是相应 X；复用专家行时梯度相加"};
   }
@@ -280,6 +279,7 @@ function inspect(raw,options={}){
     throw Error("lineage router weights shape mismatch");
    const selected=Array.from({length:K},(_,j)=>read("indices",[t,j]));
    const values=selected.map(e=>e===null?null:read("scores",[t,e]));
+   if(selected.some(e=>e===null))return null; // cannot locate score dependencies without an executed TopK choice
    const ready=values.every(v=>v!==null);
    const sigmoid=z=>z>=0?1/(1+Math.exp(-z)):Math.exp(z)/(1+Math.exp(z));
    const modes=["identity","sigmoid","softmax"];
