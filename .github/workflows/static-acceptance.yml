@@ -113,6 +113,10 @@ jobs:
           retention-days: 14
       - name: Verify shared PC/Android course explanations in real Chromium
         run: python tests/browser_shared_teaching.py
+      - name: Verify restored engineering journey and training pipeline in Chromium
+        run: |
+          python tests/browser_engineering_journey.py
+          python tests/browser_engineering_pipeline.py
       - name: Archive shared desktop/mobile teaching screenshots
         if: always()
         uses: actions/upload-artifact@v4
