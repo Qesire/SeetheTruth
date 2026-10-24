@@ -162,6 +162,22 @@ function wanVideoRoPE3D4(x,frames,height,width,base=10000){
     value*meta.cos+other*meta.sin;
  });
 }
+/* Pinned Wan2.2 WanRMSNorm + learned channel gamma before heads:
+ * model.py@1ea34ff lines 69-85 and 136-143, 169-172.
+ * x is [B,1,T,C], representing actual [B,T,C] BEFORE .view(B,T,H,D).
+ * Weight is [1,1,1,C]. Do not normalize each head independently.
+ */
+function wanQKWeightedRMSNorm4(x,weight,epsilon=1e-6){
+ const sh=shape(x),wh=shape(weight);
+ if(sh.length!==4||sh[1]!==1||wh.length!==4||
+    wh[0]!==1||wh[1]!==1||wh[2]!==1||wh[3]!==sh[3]||
+    typeof epsilon!=="number"||!Number.isFinite(epsilon)||epsilon<=0||epsilon>1)
+  fail("Wan QK RMSNorm requires full-channel [B,1,T,C], gamma [1,1,1,C] and positive epsilon");
+ return build(sh,([b,h,t,c])=>{
+  let norm=epsilon;for(let j=0;j<sh[3];j++)norm+=x[b][0][t][j]**2/sh[3];
+  return x[b][0][t][c]/Math.sqrt(norm)*weight[0][0][0][c];
+ });
+}
 /* Explicit cache read = materialize a contiguous absolute prefix/window.
  * This is a pure DAG operation, not mutable cross-turn model state.
  */
@@ -185,5 +201,5 @@ function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,wanVideoRoPE3DCoordinate,wanVideoRoPE3D4,cacheRead4,cacheAppend4});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,wanQKWeightedRMSNorm4,wanVideoRoPE3DCoordinate,wanVideoRoPE3D4,cacheRead4,cacheAppend4});
 });
