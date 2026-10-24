@@ -183,6 +183,41 @@ class MicroscopeBrowser(unittest.TestCase):
    p.screenshot(path=str(OUT/'cached-gqa-end-to-end-vjp.png'),animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
+ def test_wan_pinned_video_rope_3d(self):
+  p=self.browser.new_page(viewport={'width':1500,'height':960})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  try:
+   p.goto(self.base)
+   p.locator('[data-preset="nd_wan_video_rope_attention"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===10')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='q_video_rope':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'q_video_rope')
+   p.locator('#computeMicroscope .cmp-out .cmp-cell').nth(4).click()
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   text=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('wan_video_3d_rope',text)
+   self.assertIn('axis=W',text)
+   self.assertIn('frequencyPair=2',text)
+   self.assertIn('已覆盖全部可验证路径',text)
+   self.assertNotIn('反向路径拒绝',text)
+   p.screenshot(path=str(OUT/'wan-video-fhw-rope-coordinate.png'),animations='disabled')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='context':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'context')
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   evidence=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+   self.assertIn('已覆盖全部可验证路径',evidence)
+   self.assertIn('累计灵敏度',evidence)
+   self.assertNotIn('反向路径拒绝',evidence)
+   p.screenshot(path=str(OUT/'wan-video-composable-attention-context.png'),animations='disabled')
+   self.assertEqual(errors,[])
+  finally:p.close()
  def test_mobile_named_axis(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
@@ -230,6 +265,20 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIn('adjacent_rope_pair',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
    p.screenshot(path=str(OUT/'mobile-cached-gqa-rope-coordinate.png'),full_page=True,animations='disabled')
+   p.locator('[data-preset="nd_wan_video_rope_attention"]').click()
+   p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===10')
+   for button in p.locator('#computeMicroscope .cmp-step').all():
+    button.click()
+    if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')=='k_video_rope':
+     break
+   self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),'k_video_rope')
+   p.locator('#computeMicroscope .cmp-out .cmp-cell').nth(2).click()
+   p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+   self.assertIn('wan_video_3d_rope',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertIn('axis=H',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   self.assertNotIn('反向路径拒绝',p.locator('#computeMicroscope .cmp-vjp-result').inner_text())
+   p.screenshot(path=str(OUT/'mobile-wan-video-rope-fhw.png'),full_page=True,animations='disabled')
    self.assertEqual(errors,[])
   finally:p.close()
 if __name__=='__main__':unittest.main()
