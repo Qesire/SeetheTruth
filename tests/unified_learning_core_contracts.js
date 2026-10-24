@@ -33,6 +33,8 @@ for(const id of ids){
  assert.deepEqual(opened.path.steps.map(x=>x.kind),opened.session.nodes.map(x=>x.kind));
 }
 assert.throws(()=>Core.openPreset('not_an_installed_preset'),/unregistered guided-graph/);
+assert.throws(()=>Core.activateGraphLessons(['typo_invalid_mission']),/unknown guided-graph recipe/);
+assert.equal(Core.openPreset('stream_state_branches').graph.nodes.length,10,'hidden state demo must not silently return FFN');
 const g=L.preset('residual'),old=JSON.stringify(g);
 const inspected=Core.inspectGraph(g,{numeric:true,id:'free'});
 assert.equal(inspected.evidence,'SYNTHETIC_NUMERIC');
