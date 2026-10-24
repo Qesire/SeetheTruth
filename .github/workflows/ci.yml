@@ -56,6 +56,7 @@ jobs:
           node tests/nd_incremental_coordinate_jacobians.js
           node tests/wan_video_rope3d_contracts.js
           node tests/wan_qk_weighted_rmsnorm_contracts.js
+          node tests/wan_adaln_self_gate_contracts.js
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js
