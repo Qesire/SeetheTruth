@@ -100,3 +100,5 @@ element_lineage.js
 wan_ffn_lab.html
 wan_ffn_lab.js
 wan_ffn_trace.js
+learning_experience_core.js
+specialized_learning_adapter.js
