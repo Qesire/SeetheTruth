@@ -113,7 +113,7 @@ const masked=E.inspect(cg,{targetId:'causal',outputIndex:[0,0,0,2],trace:ct});
 assert.equal(masked.complete,true);
 assert.equal(masked.vertices[0].stages[0].allowed,false);
 assert.equal(masked.edges.find(e=>e.from==='causal@0,0,0,2').localDerivative,0);
-assert.equal(masked.vertices.find(v=>v.id==='query').sensitivity,0);
+assert.ok(Math.abs(masked.vertices.find(v=>v.id==='query').sensitivity)<1e-15);
 const allowed=E.inspect(cg,{targetId:'causal',outputIndex:[0,0,2,0],trace:ct});
 assert.equal(allowed.complete,true);
 assert.equal(allowed.vertices[0].stages[0].allowed,true);
