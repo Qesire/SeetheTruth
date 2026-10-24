@@ -24,4 +24,4 @@ $("#metrics").replaceChildren();for(const [key,val] of Object.entries(result.sta
 catch(e){$("#metrics").replaceChildren();$("#numeric").textContent="计算被拒绝："+e.message;}}
 P.variants.forEach(v=>{const b=document.createElement("button");b.dataset.patch=v.id;b.textContent=P.papers[v.source].title+" · "+v.scope;b.onclick=()=>{active=v;show();};$("#choices").append(b);});$("#calculate").onclick=calculate;show();
 })();
-</script></body></html>
+</script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="paper"></script></body></html>

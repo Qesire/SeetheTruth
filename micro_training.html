@@ -19,4 +19,4 @@ else{result=T.ppo([v("logit"),0],[0,0],0,v("adv"),v("eps"));summary={ratio:resul
 $("#metrics").replaceChildren();Object.entries(summary).forEach(([k,value])=>{const card=document.createElement("div");card.className="metric";const caption=document.createElement("span");caption.textContent=k;const num=document.createElement("b");num.textContent=typeof value==="number"?Number(value.toPrecision(6)).toString():String(value);card.append(caption,num);$("#metrics").append(card);});$("#details").textContent=lines.join("\n\n");}
 catch(e){$("#metrics").replaceChildren();$("#details").textContent="计算失败："+e.message;}}
 document.querySelectorAll("[data-case]").forEach(b=>b.addEventListener("click",()=>{active=b.dataset.case;show();}));$("#run").addEventListener("click",render);show();
-</script></body></html>
+</script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="micro_training"></script></body></html>

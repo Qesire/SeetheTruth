@@ -33,7 +33,7 @@ assert.ok(bad.firstError);
 assert.ok(bad.steps.every(n=>n.sample===null));
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const html=read('learn.html');
-assert.ok(html.includes('id="learningPathPanel"')&&html.includes('LearningPath.build(graph,{session:session})'));
+assert.ok(html.includes('id="learningPathPanel"')&&html.includes('UnifiedCore.inspectGraph(graph,{numeric:numerical}).path'));
 assert.ok(html.includes('src="graph_learning_path.js"'));
 assert.ok(read('atlas_server.py').includes('"/graph_learning_path.js":"graph_learning_path.js"'));
 assert.ok(read('android/teaching-assets.txt').split(/\r?\n/).includes('graph_learning_path.js'));

@@ -57,6 +57,13 @@ function draw(){
   "初始状态：物理块 0 永不分配；空闲块 FIFO=[1,...,N-1]；所有引用计数初始为 0。";
  $("prev").disabled=index===0;$("next").disabled=index===ops.length;
  window.SeetheTruthLastKVState=state;
+ // The shared microscope observes this exact accepted program and state,
+ // not an unrelated static fixture. Invalid edits never reach draw().
+ window.SeetheTruthCurrentDomainRun=Object.freeze({
+  id:"deepinfer_kv",operation:"replay",selectedIndex:index,
+  input:JSON.parse(JSON.stringify({config,operations:ops})),
+  observed:result
+ });
 }
 function setScenario(name){
  const s=scenarios[name];config={...s.config};ops=s.ops.map(x=>({...x}));

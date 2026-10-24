@@ -1,18 +1,22 @@
-(function(){"use strict";const C=window.SeetheTruthCurriculum;if(!C)throw Error("shared teaching curriculum unavailable");
+(function(){"use strict";const C=window.SeetheTruthCurriculum,Core=window.SeetheTruthUnifiedCore;
+if(!C||!Core)throw Error("shared teaching core unavailable");
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
 const teachingMode=params.get("edition")==="teaching"||location.hostname==="appassets.androidplatform.net";
 $("editionLabel").textContent=teachingMode?"离线教学版 · 不生成模型产物":"跨平台教学版 · PC / Android";
 $("version").textContent="课程版本 "+C.VERSION;
-$("lessonCount").textContent=C.lessons.length+" 个专题";
-let selected=C.lessons[0].id,filter="all";
+const courses=Core.inventory().courses;
+$("lessonCount").textContent=courses.length+" 个专题";
+const coverage=Core.inventory().counts;
+$("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主题 / "+coverage.labs+" 个专项计算域";
+let selected=courses[0].id,filter="all";
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
  return u.pathname.split("/").at(-1)+u.search;
 };
 function detail(){
- const l=C.lookup(selected);if(!l)return;
+ const l=Core.inspectCourse(selected);if(!l)return;
  $("detailTitle").textContent=l.title;$("level").textContent=l.level;
  $("theory").textContent=l.theory;$("why").textContent=l.why;
  $("question").textContent=l.check;$("answer").textContent=l.answer;
@@ -22,9 +26,10 @@ function detail(){
 }
 function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
- const lessons=C.lessons.filter((l,i)=>{
+ const lessons=courses.filter((l,i)=>{
   if(filter==="fundamentals"&&i>=4)return false;
-  if(filter==="inference"&&i<4)return false;
+  if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")))return false;
+  if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
  });
  const cards=lessons.map(l=>{
@@ -43,9 +48,9 @@ function render(){
  });
  $("cards").replaceChildren(...cards);$("empty").hidden=!!cards.length;
 }
-for(const name of ["all","fundamentals","inference"]){
+for(const name of ["all","fundamentals","inference","engineering"]){
  $(name).addEventListener("click",()=>{filter=name;
-  for(const n of ["all","fundamentals","inference"])$(n).setAttribute("aria-pressed",String(n===filter));
+  for(const n of ["all","fundamentals","inference","engineering"])$(n).setAttribute("aria-pressed",String(n===filter));
   render();
  });
 }
@@ -68,7 +73,8 @@ const voteCases={
 };
 function runVote(){
  const chosen=voteCases[$("voteCase").value];
- const out=V.vote({decodeStep:chosen.step,allInterval:2,anyInterval:4,ranks:chosen.ranks});
+ const out=Core.executeLab("deepinfer_prefill","vote",{
+  decodeStep:chosen.step,allInterval:2,anyInterval:4,ranks:chosen.ranks}).value;
  $("voteResult").textContent="投票点 "+out.point+" · 全组执行 "+out.step+
   " · 真正执行 Prefill 的 Rank "+out.scheduledCount+
   " · 逐 Rank ["+out.perRank.join(", ")+"]"+
@@ -79,7 +85,7 @@ function runVote(){
 $("voteCase").addEventListener("change",runVote);
 runVote();
 detail();render();
-window.SeetheTruthTeachingHub={version:C.VERSION,lessons:C.lessons.length,select(id){
+window.SeetheTruthTeachingHub={version:C.VERSION,lessons:courses.length,coreSchema:Core.SCHEMA,select(id){
  if(!C.lookup(id))throw Error("unknown lesson");selected=id;detail();render();
 }};
 })();

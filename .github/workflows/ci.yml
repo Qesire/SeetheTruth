@@ -55,6 +55,9 @@ jobs:
           node tests/graph_session_contracts.js
           node tests/unified_pack_registry_contracts.js
           node tests/graph_learning_path_contracts.js
+          node tests/unified_learning_core_contracts.js
+          node tests/engineering_journey_contracts.js
+          node tests/engineering_pipeline_contracts.js
           node tests/universal_microscope_contracts.js
           node tests/microscope_named_axes_pointwise_contracts.js
           node tests/wan_ffn_microscope_contracts.js

@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081725">
+<title>SeetheTruth · 工程训练进阶实验室</title>
+<link rel="stylesheet" href="state_microscope.css"><style>
+:root{color-scheme:dark;--bg:#081725;--pane:#102b3c;--line:#34576c;--text:#e9f8fe;--muted:#aac6d5;--mint:#7be4cb;--gold:#f1cd90}
+*{box-sizing:border-box}html{font-family:system-ui,"Microsoft YaHei",sans-serif;font-size:15px}body{margin:0;color:var(--text);background:radial-gradient(ellipse at 60% -10%,#1d495a,#081725 60%);line-height:1.65}
+a{color:#9be4f3;text-decoration:none}a:hover{text-decoration:underline}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+header{padding:16px max(14px,3vw);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+nav{display:flex;gap:14px;flex-wrap:wrap}.brand{font-weight:800;letter-spacing:.13em}.tagline{font:11px ui-monospace,monospace;color:var(--mint);letter-spacing:.08em}
+main{max-width:1440px;margin:auto;padding:22px 16px 55px}h1{font-size:clamp(25px,4vw,38px);margin:8px 0}h2{font-size:23px;line-height:1.3;margin:5px 0 12px}h3{font-size:15px;margin:6px 0 11px}.muted{color:var(--muted)}.intro{max-width:1040px}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr) 285px;gap:14px;align-items:start;margin-top:20px}.panel{background:#102838e8;border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.side{position:sticky;top:10px}.stage-list{display:grid;gap:7px}.stage{padding:11px;text-align:left;background:#0d2c3b;color:var(--text);border:1px solid #385d70;border-radius:9px;width:100%;min-height:46px}.stage[aria-current=step]{background:#245763;border-color:var(--mint)}.stage:disabled{opacity:.45;cursor:not-allowed}.stepid{display:inline-block;width:28px;color:var(--mint);font:11px ui-monospace,monospace}.done{float:right;color:#92e1bf}
+.caption{font-size:11px;letter-spacing:.07em;color:#95d2ce;font-weight:700}.block{padding:14px 0;border-top:1px solid #2c4d5f}.code{margin:10px 0;background:#091f2e;border:1px solid #315b6e;border-radius:9px;padding:13px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,monospace;color:#b5e7e2}
+#log{min-height:155px}#log[data-status=pass]{border-color:#59a693}#log[data-status=fail]{border-color:#ae755b}.row{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.field{flex:1 1 105px;min-width:80px;display:grid;gap:4px;font-size:12px;color:#b8d6e3}
+.field input,.field select{width:100%;background:#0a1d2d;border:1px solid #4b7083;border-radius:7px;padding:8px;color:white;min-height:42px}
+.btn{background:#1b4354;border:1px solid #4c778d;color:white;padding:10px 13px;min-height:44px;border-radius:9px}.btn.primary{background:#187874;border-color:#81e4cf;font-weight:700}.btn:disabled{opacity:.45;cursor:not-allowed}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric{border:1px solid #34566a;padding:9px;border-radius:8px;background:#0b2131;min-width:0}.metric dt{font-size:11px;color:#a6c8d3}.metric dd{margin:5px 0 0;color:#d9f5ed;font:bold 13px ui-monospace,monospace;overflow-wrap:anywhere}
+#schedule{display:flex;align-items:end;gap:3px;min-height:100px;margin:12px 0 8px;border-bottom:1px solid #527486;padding:0 3px}#schedule span{flex:1;display:block;min-width:2px;background:#3bafa5;border-radius:3px 3px 0 0}
+#weights{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}#weights span{aspect-ratio:1;border-radius:3px;min-width:0;border:1px solid #36566e}#links{display:flex;gap:9px;flex-wrap:wrap}#links a{border-bottom:1px dashed #91cece;font-size:12px}
+.progress{height:6px;background:#2b5262;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:var(--mint)}
+@media(max-width:1120px){.layout{grid-template-columns:220px 1fr}.right{grid-column:2;position:static}}@media(max-width:730px){main{padding:16px 12px 35px}.layout{display:flex;flex-direction:column}.panel,.side{position:static;width:100%}.stage-list{grid-template-columns:repeat(2,minmax(0,1fr))}.stage{font-size:12px}.row{gap:8px}.field{min-width:94px}}
+</style></head><body>
+<header><div><div class="brand">SEETHE TRUTH</div><div class="tagline">ENGINEERING DEPTH · OPTIMIZER STATE MACHINE</div></div>
+<nav><a href="engineering_journey.html">12 关基础工程</a><a href="teaching.html">课程中心</a><a href="learn.html?edition=teaching">积木工作台</a><a href="training.html">训练数学</a></nav></header>
+<main><div class="tagline">DATALOADER → MICROBATCH → GRADIENT BUFFER → OPTIMIZER → CHECKPOINT → INFERENCE</div>
+<h1>把训练循环拆成真正可操作的工程状态机</h1>
+<p class="intro muted">本实验室承接 12 关基础课程，使用同一套 8-token Bigram 数值引擎，进一步亲自检查 Shuffle/Epoch、梯度累积、学习率 Warmup/Cosine、梯度裁剪以及<strong>在一个优化器更新的中途被迫停止</strong>后的精确续训。所有数值在本机 JavaScript Float64 执行；不声称 GPU 速度、Transformer 完整训练或实际集群调度。</p>
+<div class="layout"><aside class="panel side"><div class="caption">6 个递进实验 · 答对再运行</div><div class="progress"><div id="progressFill"></div></div><div class="muted" id="progressText">0 / 6</div><div class="stage-list" id="stages"></div>
+<div class="block"><button class="btn" id="reset">清空全部实验状态</button><p class="muted" style="font-size:12px">Android 与桌面使用相同的计算代码。刷新会清空内存，不生成训练文件或 Python 脚本。</p></div></aside>
+<section class="panel"><div class="caption" id="category">—</div><h2 id="lessonTitle">—</h2><p id="goal"></p>
+<div class="block"><div class="caption">学习者动手操作</div><p id="task" class="muted"></p>
+<div class="row" id="config">
+<label class="field">模型种子<input id="modelSeed" type="number" min="1" value="7"></label><label class="field">Sampler 种子<input id="samplerSeed" type="number" min="1" value="19"></label>
+<label class="field">Microbatch<input id="microBatchSize" type="number" min="1" max="24" value="2"></label><label class="field">Accum Steps<input id="accumulationSteps" type="number" min="1" max="24" value="4"></label>
+<label class="field">基础 LR<input id="lr" type="number" min=".000001" max="1" step=".01" value=".08"></label><label class="field">Clip Norm<input id="maxGradNorm" type="number" min=".00001" max="1000" step=".05" value=".2"></label>
+</div>
+<label class="field" style="margin:12px 0"><span id="question">—</span><select id="answer"><option value="">选择机制判断…</option></select></label>
+<div class="row"><button class="btn primary" id="run">实际执行并验证</button><button class="btn" id="counterexample">查看故障注入</button><button class="btn" id="next" disabled>下一实验 →</button></div></div>
+<div class="block"><div class="caption">运算结果与运行证据</div><pre id="log" data-status="idle" class="code" aria-live="polite">选择正确的机制判断后开始。</pre></div>
+<div class="block"><div class="caption">等价数学 / 简化可执行伪代码</div><pre class="code" id="math"></pre><div class="caption">为什么这样设计</div><p id="why"></p><div class="caption">工程故障与排查路径</div><p class="muted" id="failure"></p><div id="links"></div></div>
+</section>
+<aside class="panel side right"><div class="caption">LIVE MODEL STATE</div><h3>Optimizer 与 DataLoader</h3><dl class="kpis" id="kpis"></dl>
+<div class="block"><div class="caption">Learning-rate schedule（24 更新步）</div><div id="schedule" role="img" aria-label="实际 warmup 与余弦衰减曲线"></div><p class="muted" style="font-size:11px">纵轴为学习率，显示的是确定性公式值，不是实测优化速度。</p></div>
+<div class="block"><div class="caption">当前 W[8×8] 参数强度矩阵</div><div id="weights" role="img" aria-label="微型模型权重矩阵数值色块"></div><p class="muted" style="font-size:11px">色块根据当前实际权重绘制；并非真实预训练模型的参数。</p></div>
+<div class="block"><div class="caption">通用状态显微镜 · 训练状态差分</div><p class="muted">与 KV 生命周期和 Worker 共享相同的事件审计内核。仅展示已通过的实验检查点，不将其冒充真实 GPU Trace。</p><div id="stateMicroscope" class="sm-surface"></div></div><div class="block"><div class="caption">衔接更深入的真实计算积木</div><div id="globalLinks"><p><a href="learn.html">可训练 Transformer 组合图</a></p><p><a href="cache.html">Token Decode / KV Cache</a></p><p><a href="deepinfer_scheduler_lab.html">Scheduler / Worker</a></p><p><a href="capabilities.html">PyTorch 导出能力审计</a></p></div></div></aside>
+</div></main>
+<script src="engineering_journey_engine.js"></script><script src="engineering_training_pipeline.js"></script><script src="state_microscope.js"></script><script src="state_microscope_ui.js"></script><script src="engineering_pipeline_ui.js"></script>
+<script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="engineering_pipeline"></script></body></html>

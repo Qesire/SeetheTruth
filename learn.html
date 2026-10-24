@@ -161,7 +161,7 @@ input[type="file"]{display:none}
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
@@ -359,6 +359,15 @@ input[type="file"]{display:none}
 <script src="execution_ir.js"></script>
 <script src="graph_session.js"></script>
 <script src="graph_learning_path.js"></script>
+<script src="teaching_curriculum.js"></script>
+<script src="deepinfer_prefill_policy.js"></script>
+<script src="deepinfer_zos_metadata.js"></script>
+<script src="deepinfer_decode_metadata.js"></script>
+<script src="deepinfer_worker_events.js"></script>
+<script src="deepinfer_kv_lifecycle.js"></script>
+<script src="deepinfer_scheduler_workflow.js"></script>
+<script src="state_microscope.js"></script>
+<script src="learning_experience_core.js"></script>
 <script src="compute_microscope.js"></script>
 <script src="compute_microscope_ui.js"></script>
 <script src="composite_atlas.js"></script>
@@ -382,7 +391,7 @@ input[type="file"]{display:none}
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
-const LearningPath=window.SeetheTruthGraphLearningPath;
+const LearningPath=window.SeetheTruthGraphLearningPath,UnifiedCore=window.SeetheTruthUnifiedCore;
 const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
 const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicroscope"),id=>{
  if(!run)return;
@@ -430,7 +439,7 @@ function mutate(fn){
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{shapeCoordsByNode.clear();elementLineageState=null;realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(L.preset(name)):L.preset(name));undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{shapeCoordsByNode.clear();elementLineageState=null;realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(UnifiedCore.openPreset(name).graph):UnifiedCore.openPreset(name).graph);undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
@@ -1005,8 +1014,8 @@ function renderTrainingMetrics(info){
 }
 function renderLearningPath(){
  if(!$("#learningPathPanel").open)return;
- const session=learningPathSession&&learningPathGraph===graph?learningPathSession:Session.inspect(graph);
- const report=LearningPath.build(graph,{session:session}),el=$("#learningPathSteps");
+ const numerical=!!(learningPathSession&&learningPathGraph===graph&&learningPathSession.trace);
+ const report=UnifiedCore.inspectGraph(graph,{numeric:numerical}).path,el=$("#learningPathSteps");
  el.innerHTML='<p class="hint">'+report.steps.length+' 个节点 · '+(report.executable?'当前图可运行':'当前图未完成')+
   ' · '+(report.numericOk?'微型数值已验证（SYNTHETIC）':'静态形状（未执行）')+
   (report.firstError?' · 问题：'+esc(report.firstError):'')+'</p>'+
@@ -1162,6 +1171,13 @@ for(const recipe of installedRecipes){
  const d=document.createElement("span");d.className="desc";d.textContent=recipe.summary;title.append(d);
  b.append(title);blankRecipeButton.parentNode.insertBefore(b,blankRecipeButton);
 }
+const coreLessons=UnifiedCore.activateGraphLessons(
+ [...document.querySelectorAll("[data-preset]")].map(b=>b.dataset.preset).concat(["stream_state_branches"]));
+const coreInventory=UnifiedCore.inventory(coreLessons.map(x=>x.id));
+window.SeetheTruthUnifiedWorkbench=Object.freeze({
+ schema:UnifiedCore.SCHEMA,counts:coreInventory.counts,
+ inspect:()=>UnifiedCore.inspectGraph(graph,{numeric:false})
+});
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
  try{
