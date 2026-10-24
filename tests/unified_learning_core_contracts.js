@@ -7,7 +7,8 @@ const X=require('../block_extension_registry.js'),P=require('../deepinfer_prefil
 const S=require('../graph_session.js'),B=require('../branch_execution.js');
 const studio=read('learn.html'),ids=[
  ...[...studio.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]),
- ...X.recipes.map(x=>x.id)
+ ...X.recipes.map(x=>x.id),
+ "stream_state_branches" // explicit standalone shortcut on Learning Studio
 ];
 assert.equal(Core.SCHEMA,'seethetruth-learning-experience-v1');
 assert.equal(new Set(ids).size,ids.length);
