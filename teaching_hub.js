@@ -1,4 +1,5 @@
-(function(){"use strict";const C=window.SeetheTruthCurriculum;if(!C)throw Error("shared teaching curriculum unavailable");
+(function(){"use strict";const C=window.SeetheTruthCurriculum,Core=window.SeetheTruthUnifiedCore;
+if(!C||!Core)throw Error("shared teaching core unavailable");
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
 const teachingMode=params.get("edition")==="teaching"||location.hostname==="appassets.androidplatform.net";
@@ -12,8 +13,8 @@ const safeTarget=l=>{
  return u.pathname.split("/").at(-1)+u.search;
 };
 function detail(){
- const l=C.lookup(selected);if(!l)return;
- $("detailTitle").textContent=l.title;$("level").textContent=l.level;
+ const l=Core.inspectCourse(selected);if(!l)return;
+ $("detailTitle").textContent=l.title;$("level").textContent=C.lookup(selected).level;
  $("theory").textContent=l.theory;$("why").textContent=l.why;
  $("question").textContent=l.check;$("answer").textContent=l.answer;
  $("answer").hidden=true;$("reveal").setAttribute("aria-expanded","false");
@@ -68,7 +69,8 @@ const voteCases={
 };
 function runVote(){
  const chosen=voteCases[$("voteCase").value];
- const out=V.vote({decodeStep:chosen.step,allInterval:2,anyInterval:4,ranks:chosen.ranks});
+ const out=Core.executeLab("deepinfer_prefill","vote",{
+  decodeStep:chosen.step,allInterval:2,anyInterval:4,ranks:chosen.ranks}).value;
  $("voteResult").textContent="投票点 "+out.point+" · 全组执行 "+out.step+
   " · 真正执行 Prefill 的 Rank "+out.scheduledCount+
   " · 逐 Rank ["+out.perRank.join(", ")+"]"+
@@ -79,7 +81,7 @@ function runVote(){
 $("voteCase").addEventListener("change",runVote);
 runVote();
 detail();render();
-window.SeetheTruthTeachingHub={version:C.VERSION,lessons:C.lessons.length,select(id){
+window.SeetheTruthTeachingHub={version:C.VERSION,lessons:C.lessons.length,coreSchema:Core.SCHEMA,select(id){
  if(!C.lookup(id))throw Error("unknown lesson");selected=id;detail();render();
 }};
 })();
