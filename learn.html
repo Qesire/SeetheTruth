@@ -298,7 +298,7 @@ input[type="file"]{display:none}
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
   <section class="section" id="shapeIndexSection" aria-label="张量形状和索引的映射" hidden><div class="kicker">SHAPE & INDEX / 形状、坐标与梯度</div><div id="shapeIndexInspector" class="shape-index-detail"></div></section>
-  <section class="section" aria-label="可复用逐坐标计算显微镜"><div class="kicker">COMPUTE MICROSCOPE / 逐坐标计算核验</div><p class="hint">同一张自由计算图的原生/扩展算子共享证据合同；数值必须来自本次执行。逐坐标前向重建与按需单输出 VJP 共用当前执行图；部分算子存在显式边界。代码导出、完整训练梯度与运行时性能需分别验证。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
+  <section class="section" aria-label="可复用逐坐标计算显微镜"><div class="kicker">COMPUTE MICROSCOPE / 逐坐标计算核验</div><p class="hint">同一张自由计算图的原生/扩展算子共享证据合同；数值必须来自本次执行。逐坐标前向重建、局部 VJP 与真实小图 Loss VJP 共用执行图；界面分别标明经单个坐标的贡献和整图梯度，显式显示停梯度边界。代码导出、真实模型性能需另行验证。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
   <section class="section" id="graphLineageSection" aria-label="跨积木的逐元素计算溯源" hidden><div class="kicker">ELEMENT LINEAGE / 跨积木来源与梯度</div><div id="graphLineageInspector" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
