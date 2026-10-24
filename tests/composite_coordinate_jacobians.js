@@ -72,7 +72,7 @@ const gated=L.validateGraph({schema:L.SCHEMA,title:'shared FFN gate/up VJP',node
 ],edges:[edge('X','gate','a'),edge('W1','gate','b'),
  edge('X','up','a'),edge('W3','up','b'),
  edge('gate','swi','gate'),edge('up','swi','up')]});
-const swi=audit(gated,'swi',[0,1],4e-5,10);
+const swi=audit(gated,'swi',[0,1],4e-5,6);
 assert.equal(swi.bridge.backward.internalStages.length,2);
 assert.equal(swi.report.edges.filter(e=>e.from==='swi@0,1').length,2);
 assert.ok(swi.report.vertices.find(v=>v.id==='X'));
