@@ -29,7 +29,8 @@ const demo=L.preset('stream_state_branches');
 assert.equal(demo.nodes.length,10);
 assert.equal(R.check(demo,{numeric:true}).executable,true);
 assert.deepEqual(L.evaluate(demo).steps.map(x=>x.shape),C.evaluate(demo).steps.map(x=>x.shape));
-assert.equal(L.KINDS.length,138+require('../block_extension_registry.js').kinds.length);
+assert.equal(L.KINDS.length,require('../block_catalog.js').KINDS.length+
+ require('../block_extension_registry.js').kinds.length);
 for(const k of S.kinds)assert.ok(L.KINDS.includes(k));
 const validated=L.validateGraph(graph),saved=JSON.stringify(graph);
 const concept=C.evaluate(validated),readiness=R.check(validated,{numeric:true}),numeric=L.evaluate(validated);
