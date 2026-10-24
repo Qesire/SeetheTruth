@@ -1,0 +1,54 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#081b2a"><title>SeetheTruth · 从数据到推理的工程实战</title>
+<style>
+:root{color-scheme:dark;--bg:#071723;--panel:#10293a;--border:#31586c;--text:#ebf7fd;--muted:#a9c5d3;--mint:#6fe0c9;--accent:#f1c78e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 60% -20%,#1f4f60,#071723 58%);color:var(--text);font:15px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+a{color:#93dff3;text-decoration:none}a:hover{text-decoration:underline}button,input,select{font:inherit}button{cursor:pointer}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #315265;padding:15px 22px}header strong{letter-spacing:.11em}header small{color:var(--muted)}nav{display:flex;gap:16px;flex-wrap:wrap}
+main{max-width:1460px;margin:auto;padding:25px 18px 55px}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.15em;color:var(--mint)}
+h1{margin:7px 0;font-size:clamp(26px,4vw,37px);line-height:1.25}h2{font-size:22px;line-height:1.35;margin:6px 0}h3{font-size:15px;margin:10px 0 5px}.intro{max-width:1000px;color:#c1dbe5}.badge{display:inline-block;border:1px solid #417967;border-radius:99px;padding:5px 12px;color:#95e8d6;font-size:11px}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr) 315px;gap:14px;align-items:start;margin-top:20px}
+.panel{background:#102838e8;border:1px solid var(--border);border-radius:14px;padding:18px;min-width:0}
+aside.panel{position:sticky;top:10px}#stages{display:grid;gap:7px;margin-top:13px}
+.stage{border:1px solid #315368;background:#112d3e;color:#d5e8ef;border-radius:9px;text-align:left;padding:9px 11px;min-height:48px}
+.stage[aria-current=step]{border-color:var(--mint);background:#205260;color:white}.stage:disabled{opacity:.44;cursor:not-allowed}
+.stage .num{color:var(--mint);font:11px ui-monospace,monospace;margin-right:9px}.stage .done{float:right;color:#93e3b5}
+.block{padding:13px 0;border-bottom:1px solid #294858}.block:last-child{border-bottom:0}
+.caption{font:700 11px ui-monospace,monospace;color:#93cbd1;letter-spacing:.06em}
+#goal,#operations,#principle,#pitfall,#question{line-height:1.7;margin:8px 0;color:#c9dce6}
+#source{white-space:pre-wrap;word-break:break-word;background:#091d2e;border:1px solid #2b5062;border-radius:9px;padding:14px;color:#abe7df;font:12px/1.8 ui-monospace,monospace}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.field{display:grid;gap:4px;min-width:94px;color:#b8d6e2;font-size:12px}.field input,.field select{background:#091d2d;color:white;border:1px solid #527287;border-radius:8px;padding:8px;min-height:41px;width:100%}
+button.btn{padding:10px 14px;border:1px solid #48738a;background:#1b4357;color:white;border-radius:9px;min-height:44px}
+button.primary{background:#1c7874;border-color:#68dbc9;font-weight:700}button:disabled{opacity:.44;cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f1c78e;outline-offset:2px}
+#result{white-space:pre-wrap;word-break:break-word;background:#0a2030;border:1px solid #38586b;border-radius:9px;padding:13px;font:12px/1.65 ui-monospace,monospace;min-height:120px}
+#result[data-status=pass]{border-color:#3b9984}#result[data-status=fail]{border-color:#b77b64}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.metric{border:1px solid #305268;border-radius:8px;padding:10px;background:#0b2030}.metric .value{font:700 15px ui-monospace,monospace;color:#c2f8e9;overflow-wrap:anywhere}.metric .name{font-size:10px;color:#a5c1d2}
+small.note{color:#aec9d8}#related{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}#related a{font-size:12px;border-bottom:1px dashed #7dcddd}
+#progress{height:7px;border-radius:5px;background:#234656;overflow:hidden;margin:12px 0}#progress div{height:100%;width:0;background:linear-gradient(90deg,#56d3bd,#e0c084)}
+@media(max-width:1100px){.layout{grid-template-columns:240px 1fr}.right{grid-column:2;position:static!important}}@media(max-width:730px){main{padding:18px 12px 36px}.layout{display:flex;flex-direction:column}aside.panel,.right{position:static;width:100%}#stages{grid-template-columns:repeat(2,minmax(0,1fr))}.stage{font-size:12px}.panel{padding:14px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body>
+<header><div><strong>SEE THE TRUTH</strong><div><small>ENGINEERING JOURNEY · CPU 数学微实验</small></div></div><nav><a href="teaching.html">教学中心</a><a href="learn.html?edition=teaching">积木工作台</a><a href="training.html">训练回路</a><a href="engineering_pipeline.html">进阶训练流水线</a><a href="cache.html">KV / Decode</a></nav></header>
+<main><div class="eyebrow">BUILD → TRAIN → EVALUATE → RESTORE → INFER</div>
+<h1>亲手走通一次模型开发的完整生命周期</h1><p class="intro">逐关检查环境、数据来源与隔离、Tokenizer、参数形状、Forward、CE、Backward、AdamW、验证集、检查点和 Decode。不是播放预设动画：每次实验都在本机 JavaScript 中执行真实的 8 词表 <strong>Bigram next-token 模型</strong>的数值运算，并将训练权重用于后续生成。它用于理解工程操作，不是 Transformer、LLM 权重或实际部署性能测试。</p>
+<span class="badge" id="scope">SYNTHETIC · Float64 · CPU · 无 GPU / 无网络 / 不产生文件</span>
+<div class="layout"><aside class="panel"><div class="eyebrow">12 CHECKPOINTS</div><h3>工程关卡</h3><div id="progress"><div id="progressFill"></div></div><small id="progressText">0 / 12 已验证</small><div id="stages"></div>
+<div class="block"><button class="btn" id="reset">重置训练与所有关卡</button><p><small class="note">离线教学：状态仅存内存，刷新后清空；Android 不提供代码或文件输出。</small></p></div></aside>
+<section class="panel"><div class="eyebrow" id="category">—</div><h2 id="title">—</h2><div class="block"><div class="caption">本关可检验目标</div><p id="goal"></p></div>
+<div class="block"><div class="caption">学员操作</div><p id="operations"></p><div id="configForm" class="row" style="margin:12px 0">
+<label class="field">初始化种子<input id="seed" type="number" min="1" max="2147483647" value="7"></label>
+<label class="field">学习率<input id="lr" type="number" min=".000001" max="1" step=".01" value=".08"></label>
+<label class="field">Batch 大小<input id="batchSize" type="number" min="1" max="64" value="8"></label>
+<label class="field">Weight Decay<input id="weightDecay" type="number" min="0" max=".2" step=".01" value=".01"></label></div>
+<div class="row" id="inferenceForm" style="margin:12px 0" hidden>
+<label class="field">温度<input id="temperature" type="number" min="0" max="3" step=".2" value="0"></label>
+<label class="field">Top-K<input id="topK" type="number" min="1" max="8" value="4"></label>
+<label class="field">采样种子<input id="decodeSeed" type="number" min="1" value="17"></label></div>
+<label class="field" for="answerSelect" style="margin:10px 0"><span id="question">机制判断</span><select id="answerSelect"><option value="">先作出判断…</option></select></label>
+<div class="row"><button id="run" class="btn primary">执行并验证本关</button><button id="example" class="btn">查看失败案例</button><button id="next" class="btn" disabled>下一关 →</button></div></div>
+<div class="block"><div class="caption">可复查的运行证据</div><pre id="result" aria-live="polite">选择答案后执行。具体数值不是预写文本。</pre></div>
+<div class="block"><div class="caption">对应数学 / 代码片段</div><pre id="source"></pre></div>
+<div class="block"><div class="caption">设计原因与工业实践</div><p id="principle"></p><div class="caption">常见错误 / 反例</div><p id="pitfall"></p><div id="related"></div></div></section>
+<aside class="panel right"><div class="eyebrow">LIVE STATE · MODEL MICRO TRACE</div><h3>模型与实验状态</h3><div class="metrics" id="metrics"></div><div class="block"><div class="caption">实验边界</div><p class="note">Bigram 输出只依赖前一个 Token，W∈R<sup>8×8</sup>；执行的是真实 CE、解析梯度和 AdamW，但没有 Attention、KV Cache、分布式训练、真实数据许可检查、Torch 导出或 HTTP 服务。</p></div><div class="block"><div class="caption">继续深入真实工程模块</div><div id="relatedGlobal"><a href="learn.html">构建 Transformer 图</a><p><a href="training.html">逐算子梯度与优化器</a></p><p><a href="cache.html">Prefill / Decode + KV Cache</a></p><p><a href="deepinfer_scheduler_lab.html">Serving 调度与资源竞争</a></p><p><a href="capabilities.html">导出能力审计</a></p></div></div></aside></div>
+</main><script src="engineering_journey_engine.js"></script><script src="engineering_journey_ui.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="engineering_journey"></script></body></html>
