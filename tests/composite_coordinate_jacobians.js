@@ -108,6 +108,36 @@ assert.equal(gate.bridge.backward.discreteConditional,true);
 assert.equal(gate.report.vertices.filter(v=>v.id==='indices').length,0);
 const raw=L.evaluate(route).steps.find(s=>s.id==='gates').values;
 assert.ok(raw.every(row=>Math.abs(row.reduce((a,b)=>a+b,0)-1)<1e-10));
+// A single expert's flattened weight row can receive two selected slots
+// in the SAME output; gradient contributions must add, not overwrite.
+const duplicate=L.validateGraph({schema:L.SCHEMA,title:'two routes share an expert row',nodes:[
+ node('x','parameter',params([[.2,.7],[.4,-.3],[.62,.1],[-.14,.6]])),
+ node('ids','parameter',params([[1,1],[2,1]])),
+ node('W','parameter',params([[.31,.12],[.23,-.2],[.48,.27],[.42,-.3],[.12,.35],[-.21,.18]])),
+ node('expert','expert_linear_bank'),node('gate','parameter',params([[.6,.4],[.3,.7]])),
+ node('combine','routed_weighted_reduce')
+],edges:[edge('x','expert','x'),edge('ids','expert','indices'),
+ edge('W','expert','weights'),edge('expert','combine','values'),
+ edge('gate','combine','gates')]});
+const repeated=audit(duplicate,'combine',[0,0],3e-5,6);
+const repeatedWeight=repeated.report.vertices.find(v=>v.key==='W@2,0');
+assert.ok(repeatedWeight&&Number.isFinite(repeatedWeight.sensitivity));
+assert.equal(repeated.report.edges.filter(e=>e.to==='W@2,0').length,2,
+ 'same expert weight must have two route contributions');
+assert.ok(Math.abs(repeatedWeight.sensitivity-(.6*.2+.4*.4))<1e-12);
+assert.equal(repeated.bridge.backward.discreteConditional,true);
+// The same selected score may appear in multiple slots. Their derivatives
+// are summed, including normalised sigmoid and softmax gates.
+for(const mode of ['identity','sigmoid','softmax'])for(const normalize of [false,true]){
+ const repeatedGate=L.validateGraph({schema:L.SCHEMA,title:mode+' repeated gate',nodes:[
+  node('scores','parameter',params([[.3,.62,.1]])),
+  node('indices','parameter',params([[1,1]])),
+  node('gate','router_gate_weights',{mode,normalize})
+ ],edges:[edge('scores','gate','scores'),edge('indices','gate','indices')]});
+ const verified=audit(repeatedGate,'gate',[0,0],4e-5,1);
+ assert.equal(verified.report.edges.filter(e=>e.to==='scores@0,1').length,2);
+ assert.ok(verified.bridge.backward.discreteConditional);
+}
 // Structural expert weight rows cannot be identified without a numerical
 // selected expert: explicit incomplete boundary, not an invented complete path.
 const noTrace=E.inspect(moe,{targetId:'expert_gate',outputIndex:[0,1]});
