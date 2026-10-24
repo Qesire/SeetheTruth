@@ -28,4 +28,4 @@ main{max-width:1240px;margin:auto;padding:18px;display:grid;gap:16px}.kicker{col
 <tr><td>第二轮投票</td><td>防止资源不足导致连续空 Prompt</td><td>多一次同步决策</td></tr>
 <tr><td>图片 Chunk 边界</td><td>保护多模态图片单位完整性</td><td>可能缩短本轮工作量</td></tr></tbody></table>
 <p><small>直接依据 <a href="https://github.com/deepseek-ai/DeepInfer/blob/main/csrc/engine/scheduler.hpp" target="_blank" rel="noopener noreferrer">DeepInfer scheduler.hpp 中 NORMAL vote、_schedule_prefill 和 _adjust_chunk_size</a>。图片标志使用符号化 TEXT / IMG / PAD / AUDIO；未复现真实 Token ID、图片 Embedding、GPU Memory、分布式 AllReduce 或物理时间。</small></p></section>
-</main><script src="deepinfer_prefill_policy.js"></script><script src="deepinfer_prefill_lab.js"></script></body></html>
+</main><script src="deepinfer_prefill_policy.js"></script><script src="deepinfer_prefill_lab.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="deepinfer_prefill"></script></body></html>
