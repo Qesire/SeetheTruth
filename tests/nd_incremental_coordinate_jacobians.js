@@ -123,7 +123,13 @@ assert.equal(allowed.edges.find(e=>e.from==='causal@0,0,2,0').localDerivative,1)
 const structural=E.inspect(cached,{targetId:'q_rope',outputIndex:[0,0,0,1]});
 assert.equal(structural.complete,true);
 assert.ok(structural.vertices.some(v=>v.id==='full_q'&&v.status==='source'));
-assert.equal(structural.vertices.find(v=>v.id==='full_q').sensitivity,null);
+// RoPE Jacobian depends only on fixed positions, so its structural-mode
+// coefficients remain exactly known, even though source VALUES are unknown.
+assert.ok(Math.abs(structural.vertices.find(v=>v.id==='full_q'&&v.index[3]===1).sensitivity-
+ Math.cos(2))<1e-12);
+assert.ok(Math.abs(structural.vertices.find(v=>v.id==='full_q'&&v.index[3]===0).sensitivity-
+ Math.sin(2))<1e-12);
+assert.equal(structural.vertices.find(v=>v.id==='full_q').value,null);
 const stale=structuredClone(cachedTrace);stale.steps.find(s=>s.id==='q_rope').values[0][0][0][0]+=1;
 assert.throws(()=>E.inspect(cached,{targetId:'context',outputIndex:[0,0,0,0],trace:stale}),/stale or altered/);
 console.log('ND_INCREMENTAL_COORDINATE_VJP_PASS: GQA/MQA complete paths, cached RoPE absolute offset, causal zero, prefix/segment routing and independent finite differences');
