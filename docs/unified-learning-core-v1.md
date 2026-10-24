@@ -94,3 +94,15 @@ PR #68 routes the actual existing PaperPatches LoRA/DoRA/online-attention arithm
 A scientific input constraint was also hardened: JavaScript JSON serialization ordinarily changes `NaN`/`Infinity` to `null`, which can change experiment behavior. The shared input copy now rejects non-finite numeric payloads before serialization. Independent source parity and negative contracts run in `tests/unified_specialist_contracts.js`, and desktop/phone integration in `tests/browser_unified_specialists.py`. Android asset/server manifests explicitly include the extracted modules.
 
 Three source/evidence domains remain identity-only: source atlas, recorded model provenance import and telemetry. They require provenance-aware data contracts rather than pretending to be numerical tensor engines. This incremental result does not yet unify undo/replay or evidence metadata across every such source.
+
+## Typed observational domains (2026-10-24, PR #69)
+
+All 17 specialist domains now have a **common typed entrypoint**, but not all are numeric. The 14 bounded numerical/analytical domains continue using `UnifiedCore.executeLab`. The final three *observational* domains use `UnifiedCore.inspectEvidence`, which always returns `kind=evidence_inspection`, `executed=false` and `independentlyReplayed=false`.
+
+- `source_atlas/project` calls the original AST-only source-level projector. It accepts only graphs with `meta.analysis=static-python-ast`, preserves the original node/source identity and `matches.has(id)` Set semantics, and exports `matchIds` for JSON transport. Matrix/tensor categories from AST never imply real tensor shapes or execution.
+- `real_model/validate_import` calls the existing immutable-revision, prompt hash, shape/RMS/L2 and bounded-sample validator. This yields `IMPORTED_MODEL_PROVENANCE_CLAIM_UNREPLAYED`, not independently confirmed checkpoint execution. The real-model page uses exactly this shared summary.
+- `telemetry/validate_import` calls the extracted, portable `telemetry_evidence.js` validator. Imported profiler-like aggregates remain `IMPORTED_TELEMETRY_UNATTESTED`; synthetic fixtures, including those uploaded as files, remain `SYNTHETIC_TELEMETRY_DEMO`. Its checks include bounded arrays, nonnegative timings, unique invocation keys and histogram/sample-count agreement.
+
+These wrappers deliberately separate observation validation from mathematical execution, while unifying source declarations, evidence severity and cross-platform/API behavior. A future genuine attestation pipeline can explicitly add a higher tier *only after* independent model revision, data and computational replay checks; it must not reuse a syntactic-validity status.
+
+Regression gates: `node tests/unified_evidence_contracts.js`, `python tests/browser_unified_evidence.py`, all original source/trace/telemetry tests, full PC/Android behavior and PyTorch CPU integration on the final SHA.
