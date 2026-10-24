@@ -25,7 +25,7 @@ A freely composed tensor program is a directed acyclic graph `G=(V,E,θ)` with t
 
 All 146 native/extension operators pass through the existing `operator_contracts.js` inventory; an operator being registered is not proof of all NumPy/Torch lowerings. `inspectGraph(graph,{numeric:false|true,targetId?})` calls the existing `GraphSession` and `GraphLearningPath`, preserving target slicing and unexecuted static status. `activateGraphLessons` registers the real HTML studio missions and installed pack recipes, then `openPreset` rejects an unregistered preset. The contract audits **59 guided mission graphs, one blank editable canvas and two independently registered pack recipes = 62 graph entries**.
 
-The eight PC/Android explanation tracks now project from the same `teaching_curriculum.js` into typed `curriculum` records. Every other shipped root HTML learning page has an explicit `specialized` contract via `specialized_learning_adapter.js`: 15 specialist modules, each with a concrete engine source file, domain kind and declared evidence boundary. Cross-platform lesson cards now consume the core inventory rather than a separate presentation-specific list.
+The ten PC/Android explanation tracks now project from the same `teaching_curriculum.js` into typed `curriculum` records. Every other shipped root HTML learning page has an explicit `specialized` contract via `specialized_learning_adapter.js`: 17 specialist modules, each with a concrete engine source file, domain kind and declared evidence boundary. Cross-platform lesson cards now consume the core inventory rather than a separate presentation-specific list.
 
 ## Execution maturity, not a false all-green capability flag
 
@@ -33,18 +33,18 @@ The eight PC/Android explanation tracks now project from the same `teaching_curr
 | --- | --- | --- | --- |
 | All 146 native/pack bricks | Yes | Yes: complete and selected-output graph inspection | Existing bounded LearningLab engine |
 | 59 guided graphs + blank + pack recipes | Yes | Yes: same graph engine | Real preset graphs; no template whitelist on free editing |
-| Eight shared curriculum tracks | Yes | Linked to graph or specialist domain | A description alone has **no** execution evidence |
+| Ten shared curriculum tracks | Yes | Linked to graph or specialist domain | A description alone has **no** execution evidence |
 | DeepInfer Prefill | Yes | `executeLab(vote/chunk)` | Source-derived deterministic decision mathematics |
 | DeepInfer Worker | Yes | `executeLab(simulate/compare)` | Event DAG with explicitly assumed abstract durations |
 | DeepInfer KV | Yes | `executeLab(replay)` | Physical-block ownership reference simulator |
 | DeepInfer Scheduler | Yes | `executeLab(simulate)` | Decode-only Scheduler/KV/Worker reference |
-| Remaining 11 specialized pages | Yes | Independent lab application only | Original calculators, source trace or analytical models; unified adapter has **no** automatic execution claim |
+| Remaining 13 specialized pages | Yes | Independent lab application only | Original calculators, source trace or analytical models; unified adapter has **no** automatic execution claim |
 
 The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_NUMERIC`, `ABSTRACT_TIMELINE`, and `SOURCE_DERIVED_DETERMINISTIC` must never be implicitly promoted into actual checkpoint execution or GPU performance. `inspectLab` intentionally returns `NOT_EXECUTED`; only `executeLab` calls a registered domain function and returns its real result.
 
 ## Stability checks
 
-- `node tests/unified_learning_core_contracts.js`: coverage of **every** registered brick, every HTML mission, installed recipes, eight shared courses, all non-entry standalone HTML routes, engine source existence, Android assets, server routes, static/numeric graph evidence, branch identity, and live parity against the original four domain engines.
+- `node tests/unified_learning_core_contracts.js`: coverage of **every** registered brick, every HTML mission, installed recipes, ten shared courses, all non-entry standalone HTML routes, engine source existence, Android assets, server routes, static/numeric graph evidence, branch identity, and live parity against the original four domain engines.
 - `node tests/graph_learning_path_contracts.js`: graph-route contract. The adjacent patch fixes a hidden target-slice defect where node parameters were previously retrieved by `index.ordered[i]` rather than node ID.
 - `python tests/browser_unified_learning_core.py`: Chromium learning studio graph count, Android-width shared curriculum, real source lab adapters and no browser exceptions.
 - Existing codegen, gradient, shape/axis, source-pinned, streaming and Android build tests are preserved.
@@ -62,3 +62,7 @@ The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_
 Pinned start: SeetheTruth main after PR #66, merged at `95ec58d955f4a59d91de75ca5ffb3321e7d39d4e`. Method: reconstruct the actual graph and the independent domain state machines; identify whether "unification" means equivalent arithmetic or merely a common data contract; derive the latter with explicit non-equivalence; discriminate with negative cases (unregistered modules, incomplete graphs, shape-preserving parameter changes and invalid domain actions). A single executable trace is stronger evidence than a label; an independent backend parity oracle is stronger than a same-engine duplicate computation.
 
 **Not yet done**: all specialized execution engines using one typed trace event schema, shared replay/undo across domains, a unified view of all specialist internal steps, broad schema migration tooling, and independent parity for each future adapter. Until then describe this as a stable **v1 integration seam candidate**, not completion of a universal end-to-end runtime.
+
+## Restored expert engineering curriculum
+
+PR #49 had independent tested 12-stage Bigram engineering introduction and 6-stage training pipeline; these were selectively transplanted as `engineering_journey_{engine,ui}.js` and `engineering_training_pipeline.js`/`engineering_pipeline_ui.js` together with the shared `state_microscope.js`. They now have typed identities `engineering_journey` and `engineering_pipeline`, the same PC/Android course inventory, explicit offline assets and original numerical/Chromium acceptance. These are *specialized training state machines*, not extra tensor operator kinds. Full-parity claims require their dedicated tests at the current final head.
