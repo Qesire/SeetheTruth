@@ -23,6 +23,11 @@ for(const name of presetNames){
 }
 function perKind(k){
  if(k.startsWith('nd_')){
+  if(k==='nd_layernorm_last'){
+    const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params},
+      x=ND.seedTensor([1,1,3,6],2),actual=B.execute(n,{x});
+    assert.deepEqual(C.analyze(n,{x:ND.shape(x)}).shape,actual.shape);return;
+  }
   if(k==='nd_wan_qk_rmsnorm'){
     const ND=require('../nd_tensor.js'),n={id:k,kind:k,params:L.defs[k].params},
       x=ND.seedTensor([1,1,3,6],5),weight=ND.seedTensor([1,1,1,6],7);
@@ -52,7 +57,7 @@ function perKind(k){
   else if(k==='nd_mse')inputs={prediction:sample([1,2,3,4],2),target:sample([1,2,3,4],3)};
   else if(k==='nd_reshape')inputs={x:sample([6,4],2)};
   else if(k==='nd_expand4d')inputs={x:sample([3,4],2)};
-  else if(k==='nd_broadcast_add')inputs={a:sample([1,2,3,4],2),b:sample([1,1,3,4],3)};
+  else if(k==='nd_broadcast_add'||k==='nd_broadcast_mul')inputs={a:sample([1,2,3,4],2),b:sample([1,1,3,4],3)};
   else if(k==='nd_batched_matmul')inputs={a:sample([1,2,3,4],2),b:sample([1,2,4,3],3)};
   const shapes=Object.fromEntries(Object.entries(inputs).map(([port,value])=>[port,ND.shape(value)]));
   const inferred=C.analyze(n,shapes),actual=B.execute(n,inputs);
