@@ -33,8 +33,8 @@ class SharedTeachingBrowser(unittest.TestCase):
         self.assertEqual(normal.goto(self.base+"/teaching.html").status,200)
         self.assertEqual(phone.goto(self.base+"/teaching.html?edition=teaching").status,200)
         for p in (normal,phone):
-            p.wait_for_function("window.SeetheTruthTeachingHub && window.SeetheTruthTeachingHub.lessons===8")
-            self.assertEqual(p.locator("#cards button.card").count(),8)
+            p.wait_for_function("window.SeetheTruthTeachingHub && window.SeetheTruthTeachingHub.lessons===10")
+            self.assertEqual(p.locator("#cards button.card").count(),10)
             p.locator("#voteCase").select_option("any")
             self.assertEqual(p.evaluate("window.SeetheTruthLastSharedVote.point"),"ANY")
             self.assertEqual(p.evaluate("window.SeetheTruthLastSharedVote.perRank"),["prompt","empty-prompt"])
