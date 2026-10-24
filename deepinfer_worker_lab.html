@@ -19,7 +19,7 @@ textarea{width:100%;height:135px;resize:vertical;background:#071a2b;color:#deeff
 code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{color:#ffc28f}.note{font-size:12px;color:#aec6d4;line-height:1.65}
 .row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#bdd4e0}.swatch{display:inline-block;height:9px;width:9px;border-radius:2px;margin-right:6px}
 @media(max-width:900px){.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}main{padding:14px}header{padding:14px}}
-</style></head><body>
+</style><link rel="stylesheet" href="state_microscope.css"></head><body>
 <header><div><strong>SEETHE<b>TRUTH</b></strong><div class="muted">INFERENCE SYSTEMS / DEEPINFER WORKER</div></div>
 <nav><a href="learn.html">← 返回积木工作台</a><a href="deepinfer_kv_lifecycle_lab.html">◈ KV Block 生命周期</a><a href="deepinfer_scheduler_lab.html">⇄ Scheduler 联合执行</a><a href="https://github.com/Qesire/SeetheTruth/blob/main/docs/deepinfer-worker-events.md" target="_blank">源码映射说明</a></nav></header>
 <main>
@@ -69,4 +69,4 @@ code{background:#183349;padding:2px 5px;border-radius:4px;color:#97e7e1}.warn{co
 <section class="panel"><div class="row"><h2>事件顺序与产出交付</h2><div class="legend"><span><i class="swatch" style="background:#67c9e3"></i>CPU</span><span><i class="swatch" style="background:#9d93ef"></i>GPU</span><span>点击任一时间线阶段查看依赖</span></div></div>
 <div style="overflow:auto"><table><thead><tr><th>Step</th><th>模式</th><th>请求</th><th>ZOS 输出交付</th><th>非 ZOS 输出交付</th></tr></thead><tbody id="results"></tbody></table></div></section>
 </main><script src="deepinfer_runtime_ops.js"></script><script src="deepinfer_zos_metadata.js"></script><script src="deepinfer_decode_metadata.js"></script><script src="deepinfer_worker_events.js"></script><script src="deepinfer_worker_lab.js"></script><script src="state_microscope.js"></script>
-<script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="deepinfer_worker"></script></body></html>
+<script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="deepinfer_worker"></script><script src="state_microscope_ui.js"></script><script src="unified_state_lab_ui.js"></script></body></html>
