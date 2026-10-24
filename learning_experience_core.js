@@ -84,10 +84,13 @@
   if(!bound())fail("graph registry unavailable");
   if(!Array.isArray(ids)||!ids.length||ids.length>256)fail("preset IDs must be a nonempty bounded list");
   const seen=new Set();
+  const fallback=JSON.stringify(deps.learning.preset("__unregistered_learning_preset__"));
   return Object.freeze(ids.map(id=>{
    if(!sourceName(id)||seen.has(id))fail("invalid or duplicate graph lesson ID "+id);
    seen.add(id);
    const graph=deps.learning.preset(id);
+   if(id!=="ffn"&&JSON.stringify(graph)===fallback)
+    fail("unknown guided-graph recipe "+id+" (LearningLab fallback is not a lesson)");
    const checked=deps.learning.validateGraph(graph);
    return Object.freeze({id,kind:"guided_graph",nodeCount:checked.nodes.length,
     operatorKinds:Object.freeze([...new Set(checked.nodes.map(n=>n.kind))]),
