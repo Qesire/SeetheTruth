@@ -22,6 +22,7 @@ Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: ac
 2. Add a small positive oracle and an adversarial negative contract. Check off-axis coupling, missing ports, invalid training state, stale traces, arbitrary graph choice and determinism as relevant.
 3. Verify unchanged `tests/unified_learning_core_contracts.js`, graph codegen/gradient tests, and source-driven learning surfaces. Register new standalone HTML in the exhaustive root-page coverage test, server routes and Android asset list.
 4. Render changed interactions in real Chromium at desktop and Android viewport; Android stays teaching-only. Preserve existing screenshots or add new acceptance when the UI changes.
-5. Keep success claims scoped to results from **the final commit SHA**. A queued Action, static registry entry or same-engine consistency check is not real CPU/GPU end-to-end evidence. Only merge validated changes.
+5. For an interactive specialist, replay the **actual last accepted controller input** and compare the result with the controller’s observed output before exposing a shared microscope; independent canned fixtures are not evidence of integration. Keep source-engine arithmetic separate from state/event presentation.
+6. Keep success claims scoped to results from **the final commit SHA**. A queued Action, static registry entry or same-engine consistency check is not real CPU/GPU end-to-end evidence. Only merge validated changes.
 
 See `docs/unified-learning-core-v1.md` for current coverage and remaining domain migrations.

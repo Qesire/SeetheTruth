@@ -38,13 +38,19 @@ The ten PC/Android explanation tracks now project from the same `teaching_curric
 | DeepInfer Worker | Yes | `executeLab(simulate/compare)` | Event DAG with explicitly assumed abstract durations |
 | DeepInfer KV | Yes | `executeLab(replay)` | Physical-block ownership reference simulator |
 | DeepInfer Scheduler | Yes | `executeLab(simulate)` | Decode-only Scheduler/KV/Worker reference |
-| Remaining 13 specialized pages | Yes | Independent lab application only | Original calculators, source trace or analytical models; unified adapter has **no** automatic execution claim |
+| Wan2.2 I2V FFN | Yes | `executeLab(trace)` + shared computation microscope | Pinned source topology, synthetic Float64 values; page uses common action |
+| Analytical cost models | Yes | `executeLab(gqa/moe/loop)` | Source module's exact algebraic estimates, not timing |
+| Mathematical KV Cache | Yes | `executeLab(replay_steps)` + state microscope | Deterministic small GQA/Cache snapshots |
+| Scalar analytic training | Yes | `executeLab(scalar)` + state microscope | Analytic gradients and optimizer state, not autograd |
+| Bigram engineering journey | Yes | `executeLab(train)` | Bounded synthetic Bigram training and checkpoint |
+| Training pipeline | Yes | `executeLab(train)` + state microscope | Optimizer steps, sampler and resumable state snapshots |
+| Remaining 7 specialized pages | Yes | Existing independent applications | Their underlying backend/evidence semantics require separate verified operation adapters |
 
 The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_NUMERIC`, `ABSTRACT_TIMELINE`, and `SOURCE_DERIVED_DETERMINISTIC` must never be implicitly promoted into actual checkpoint execution or GPU performance. `inspectLab` intentionally returns `NOT_EXECUTED`; only `executeLab` calls a registered domain function and returns its real result.
 
 ## Stability checks
 
-- `node tests/unified_learning_core_contracts.js`: coverage of **every** registered brick, every HTML mission, installed recipes, ten shared courses, all non-entry standalone HTML routes, engine source existence, Android assets, server routes, static/numeric graph evidence, branch identity, and live parity against the original four domain engines.
+- `node tests/unified_learning_core_contracts.js`: coverage of **every** registered brick, every HTML mission, installed recipes, ten shared courses, all non-entry standalone HTML routes, engine source existence, Android assets, server routes, static/numeric graph evidence, branch identity, and live parity against ten explicit domain engines/operation families.
 - `node tests/graph_learning_path_contracts.js`: graph-route contract. The adjacent patch fixes a hidden target-slice defect where node parameters were previously retrieved by `index.ordered[i]` rather than node ID.
 - `python tests/browser_unified_learning_core.py`: Chromium learning studio graph count, Android-width shared curriculum, real source lab adapters and no browser exceptions.
 - Existing codegen, gradient, shape/axis, source-pinned, streaming and Android build tests are preserved.
@@ -52,7 +58,13 @@ The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_
 
 ## Shared verified event/state microscope
 
-The new `executeLab` adapter directly invokes original source-derived Prefill/Worker/KV/Scheduler reference engines. Prefill exposes an explicit `inspect_pair` that independently evaluates vote and chunk (no invented order); the other three produce the same validated `stateTrace` event contract via `state_microscope.js`. A shared read-only interactive UI (`unified_state_lab_ui.js`) runs these adapters directly inside their specialist pages, showing state-before, state-after and proven causal links. Timings remain assumed abstract ticks, never measured GPU latency. Independent state-engine proofs remain in place.
+The new `executeLab` adapter directly invokes original source-derived Prefill/Worker/KV/Scheduler reference engines. Prefill exposes an explicit `inspect_pair` that independently evaluates vote and chunk (no invented order); the other three produce the same validated `stateTrace` event contract via `state_microscope.js`. A shared read-only interactive UI (`unified_state_lab_ui.js`) replays the **current page controller’s last accepted input** and compares the full result to its last displayed successful computation before showing state-before, state-after and proven causal links; no separately hardcoded demonstration fixtures are substituted. Timings remain assumed abstract ticks, never measured GPU latency. Independent state-engine proofs remain in place.
+
+## Shared specialist execution envelope
+
+`executeLab(id, operation, input)` dispatches only explicitly registered methods and returns `{schema,id,operation,runtime,engine,evidence,value,stateTrace,computationTrace}`. In addition to four DeepInfer modules, the audited adapters now cover Wan FFN, analytical GQA/MoE/Loop cost models, mathematical cache steps, scalar analytic training, the twelve-stage Bigram journey and six-stage training pipeline. `stateTrace` is present only when the existing verified state microscope supports the result; `computationTrace` represents Wan’s source-aligned small-tensor steps. `inspectLab` itself always reports `NOT_EXECUTED` rather than performing work or fabricating runtime evidence.
+
+Some routes remain identity-level specialists: Python source atlas, paper rewrite UI, micro-training demos, semantic tensor state demo, provenance-sensitive real-model import, capabilities audit and telemetry inspection. These are not generic state machines with interchangeable tensor arithmetic. Extending them requires exact source-level adapters and appropriate provenance tests; registry presence does not imply execution compatibility.
 
 ## Extension interface
 
