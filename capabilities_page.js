@@ -1,5 +1,5 @@
 (function(){"use strict";
-const A=window.SeetheTruthCapabilities.audit(),$=id=>document.getElementById(id);
+const A=window.SeetheTruthSpecializedLesson.execute("audit",{}).value,$=id=>document.getElementById(id);
 for(const [k,v] of Object.entries(A.counts))if($(k))$(k).textContent=v;
 for(const category of [...new Set(A.rows.map(r=>r.category))].sort()){
  const el=document.createElement("option");el.value=category;el.textContent=category;$("category").append(el);

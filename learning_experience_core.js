@@ -23,7 +23,12 @@
   cacheLab:require("./kv_cache_lab.js"),
   scalarTraining:require("./training_flow.js"),
   journey:require("./engineering_journey_engine.js"),
-  pipeline:require("./engineering_training_pipeline.js")
+  pipeline:require("./engineering_training_pipeline.js"),
+  paper:require("./paper_patches.js"),
+  paperRewrite:require("./paper_graph_rewrites.js"),
+  microScenarios:require("./micro_training_scenarios.js"),
+  semanticExamples:require("./semantic_state_examples.js"),
+  capabilities:require("./block_capabilities.js")
  }:{
   learning:root.SeetheTruthLearning,operators:root.SeetheTruthOperatorContracts,
   session:root.SeetheTruthGraphSession,path:root.SeetheTruthGraphLearningPath,
@@ -38,7 +43,12 @@
   cacheLab:root.SeetheTruthCacheLab,
   scalarTraining:root.SeetheTruthTraining,
   journey:root.SeetheTruthEngineeringEngine,
-  pipeline:root.SeetheTruthTrainingPipeline
+  pipeline:root.SeetheTruthTrainingPipeline,
+  paper:root.SeetheTruthPaperPatches,
+  paperRewrite:root.SeetheTruthPaperGraphRewrites,
+  microScenarios:root.SeetheTruthMicroScenarios,
+  semanticExamples:root.SeetheTruthSemanticExamples,
+  capabilities:root.SeetheTruthCapabilities
  };
  const api=factory(deps);
  if(isNode)module.exports=api;
@@ -53,11 +63,11 @@
   ["engineering_journey","engineering_journey.html","guided_training_workflow","engineering_journey_engine.js","SYNTHETIC_NUMERIC"],
   ["engineering_pipeline","engineering_pipeline.html","training_state_machine","engineering_training_pipeline.js","SYNTHETIC_NUMERIC"],
   ["tradeoffs","tradeoffs.html","analytical_cost","architecture_tradeoffs.js","ANALYTICAL_ESTIMATE"],
-  ["paper","paper_lab.html","graph_rewrite","paper_graph_rewrites.js","DECLARED_OR_SYNTHETIC"],
+  ["paper","paper_lab.html","graph_rewrite","paper_patches.js","DECLARED_OR_SYNTHETIC"],
   ["training","training.html","training_state","training_flow.js","SYNTHETIC_NUMERIC"],
-  ["micro_training","micro_training.html","training_state","micro_training_flows.js","SYNTHETIC_NUMERIC"],
+  ["micro_training","micro_training.html","training_state","micro_training_scenarios.js","SYNTHETIC_NUMERIC"],
   ["cache","cache.html","cache_state","kv_cache_lab.js","SYNTHETIC_NUMERIC"],
-  ["semantic_state","semantic_state.html","tensor_state","semantic_state_lab.js","SYNTHETIC_NUMERIC"],
+  ["semantic_state","semantic_state.html","tensor_state","semantic_state_examples.js","SYNTHETIC_NUMERIC"],
   ["wan_ffn","wan_ffn_lab.html","source_operator","wan_ffn_lab.js","PINNED_SOURCE_SYNTHETIC"],
   ["deepinfer_worker","deepinfer_worker_lab.html","event_dag","deepinfer_worker_events.js","ABSTRACT_TIMELINE"],
   ["deepinfer_kv","deepinfer_kv_lifecycle_lab.html","kv_state_machine","deepinfer_kv_lifecycle.js","SYNTHETIC_NUMERIC"],
@@ -181,7 +191,23 @@
     const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
     for(let i=0;i<x.steps;i++){model.train(1);snapshots.push(model.checkpoint());}
     return Object.freeze({snapshots,diagnostic:model.diagnostic(),source:m.SCHEMA});
-  }})})
+  }})}),
+  paper:Object.freeze({
+   lora:Object.freeze({module:"paper",method:"lora",run:(m,x)=>m.lora(x.x,x.w,x.a,x.b,x.alpha??1)}),
+   dora:Object.freeze({module:"paper",method:"dora",run:(m,x)=>m.dora(x.x,x.w,x.a,x.b,x.m,x.alpha??1)}),
+   online_attention:Object.freeze({module:"paper",method:"onlineAttention",run:(m,x)=>m.onlineAttention(x.q,x.k,x.v,x.chunk??2)}),
+   rewrite_lora:Object.freeze({module:"paperRewrite",method:"lora",run:(m,x)=>m.lora(x.graph,x.outputId,x.options||{})})
+  }),
+  micro_training:Object.freeze({
+   scenario:Object.freeze({module:"microScenarios",method:"execute",
+    run:(m,x)=>m.execute(x.name,x.parameters||{})})
+  }),
+  semantic_state:Object.freeze({
+   scenario:Object.freeze({module:"semanticExamples",method:"run",run:(m,x)=>m.run(x.name)})
+  }),
+  capabilities:Object.freeze({
+   audit:Object.freeze({module:"capabilities",method:"audit",run:m=>m.audit()})
+  })
  });
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];

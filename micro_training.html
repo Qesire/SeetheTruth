@@ -3,20 +3,52 @@
 <header><div class="tag">SEETHETRUTH / MICRO TRAINING FLOW / CPU-ONLY</div><h1>从张量值到梯度汇合 · MoE · PPO</h1><p>真实的有界 Float64 教学运算。矩阵、梯度及其统计量都来自计算，不是 GPU 性能测量或真实模型追踪。</p><a href="learn.html">返回 Scratch 学习台</a></header>
 <main><div class="tabs"><button data-case="shared" class="active">共享参数 · 反向传播</button><button data-case="moe">MoE · 专家路由</button><button data-case="ppo">RL · PPO Clipping</button></div>
 <div class="grid"><section class="panel"><h2 id="scenario"></h2><p id="explanation"></p><div id="controls"></div><button id="run">执行数值计算</button><p class="muted">每次修改参数都可重新计算，直接检查梯度、路由和统计量。所有示例均不依赖 GPU。</p></section><section class="panel"><h2>计算流证据</h2><div id="metrics"></div><h3>逐项数值与机制</h3><pre id="details"></pre></section></div></main>
-<script src="micro_training_flows.js"></script><script>
-const T=window.SeetheTruthMicroTrain,$=s=>document.querySelector(s);
+<script src="micro_training_flows.js"></script><script src="micro_training_scenarios.js"></script>
+<script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="micro_training"></script>
+<script>
+(()=>{"use strict";
+const Core=window.SeetheTruthSpecializedLesson,$=s=>document.querySelector(s);
 const cases={
 shared:{name:"同一 W 被两条路径复用",help:"xW + xW → MSE → 两条 VJP 汇聚到唯一参数 W；再次 backward 会继续累积，zero_grad 后恢复 None。",fields:[["x1","第一维输入",1],["x2","第二维输入",2],["w1","W 第一维",2],["w2","W 第二维",3],["target","目标",0]]},
 moe:{name:"Top-1 MoE 的稀疏路由和专家梯度",help:"逐 token Softmax → argmax 选择专家 → 专家线性计算 → MSE 反向；只有被选专家收到任务梯度，离散 router 路径在本演示中不反传。",fields:[["r","首 token 对专家 0 的 logit",5],["capacity","每专家容量 (1 或 2)",2]]},
 ppo:{name:"PPO clipped surrogate 的真实局部导数",help:"固定旧策略和优势估计，计算新旧策略的 action 概率比、裁剪目标及对新策略 logits 的梯度；不包含 rollout、value head、GRPO 或策略采样。",fields:[["logit","新策略 action 0 的 logit",0],["adv","优势 A",1],["eps","裁剪幅度",.2]]}
 };
+
 let active="shared";
-function show(){const c=cases[active];$("#scenario").textContent=c.name;$("#explanation").textContent=c.help;$("#controls").replaceChildren();for(const [id,name,value] of c.fields){const label=document.createElement("label");label.textContent=name;const inp=document.createElement("input");inp.type="number";inp.step="any";inp.id="val_"+id;inp.value=value;$("#controls").append(label,inp);}document.querySelectorAll("[data-case]").forEach(b=>b.classList.toggle("active",b.dataset.case===active));render();}
-function render(){try{const v=k=>{const n=Number($("#val_"+k).value);if(!Number.isFinite(n)||$("#val_"+k).value.trim()==="")throw Error("参数必须是有限实数");return n;};let result,summary={},lines=[];
-if(active==="shared"){const t=new T.Tape(),x=t.input([[v("x1"),v("x2")]],"x"),w=t.parameter("W",[[v("w1")],[v("w2")]]),a=t.matmul(x,w),b=t.matmul(x,t.parameter("W",[[v("w1")],[v("w2")]])),sum=t.add(a,b),loss=t.meanSquare(sum,[[v("target")]]);t.backward(loss);result={prediction:t.value(sum),loss:t.value(loss),gradients:t.gradients(),events:t.events};summary={loss:t.value(loss)[0][0],dW1:t.gradients().W[0][0],dW2:t.gradients().W[1][0],sharedParameters:t.parameters.size};lines=["前向：x → MatMul(W) 两次 → Add → MSE","反向：两个 MatMul 的 VJP 必须对同一 W 求和",JSON.stringify(result,null,2)];}
-else if(active==="moe"){const capacity=v("capacity");if(!Number.isSafeInteger(capacity)||capacity<1||capacity>2)throw Error("容量仅限 1 或 2");result=T.moeBackward([[1,2],[2,1]],[[[1],[0]],[[0],[1]]],[[v("r"),0],[0,5]],[[0],[0]],{capacity});summary={loss:result.loss,expert0:result.counts[0],expert1:result.counts[1],overflow:result.routed.filter(x=>!x.accepted).length};lines=["前向：router logits → Softmax → Top-1 dispatch → expert matmul","反向：每个专家局部 W 只接收实际 routed token 的梯度","router 梯度 = null，不能误称为零梯度",JSON.stringify(result,null,2)];}
-else{result=T.ppo([v("logit"),0],[0,0],0,v("adv"),v("eps"));summary={ratio:result.ratio,loss:result.loss,gradAction:result.gradLogits[0],clipped:!result.active};lines=["策略快照：old logits=[0,0]；action=0","L=-min(rA,clip(r,1-ε,1+ε)A)","仅在未裁剪分支保留 policy logits 梯度",JSON.stringify(result,null,2)];}
-$("#metrics").replaceChildren();Object.entries(summary).forEach(([k,value])=>{const card=document.createElement("div");card.className="metric";const caption=document.createElement("span");caption.textContent=k;const num=document.createElement("b");num.textContent=typeof value==="number"?Number(value.toPrecision(6)).toString():String(value);card.append(caption,num);$("#metrics").append(card);});$("#details").textContent=lines.join("\n\n");}
-catch(e){$("#metrics").replaceChildren();$("#details").textContent="计算失败："+e.message;}}
-document.querySelectorAll("[data-case]").forEach(b=>b.addEventListener("click",()=>{active=b.dataset.case;show();}));$("#run").addEventListener("click",render);show();
-</script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="micro_training"></script></body></html>
+function show(){
+ const c=cases[active];
+ $("#scenario").textContent=c.name;$("#explanation").textContent=c.help;$("#controls").replaceChildren();
+ for(const [id,name,value] of c.fields){
+  const label=document.createElement("label");label.textContent=name;
+  const input=document.createElement("input");input.type="number";input.step="any";input.id="val_"+id;input.value=value;
+  $("#controls").append(label,input);
+ }
+ document.querySelectorAll("[data-case]").forEach(b=>b.classList.toggle("active",b.dataset.case===active));
+ render();
+}
+function render(){
+ try{
+  const parameters={};
+  for(const [key] of cases[active].fields){
+   const input=$("#val_"+key);
+   if(!input.value.trim())throw Error("参数必须是有限实数");
+   const n=Number(input.value);if(!Number.isFinite(n))throw Error("参数必须是有限实数");
+   parameters[key]=n;
+  }
+  const record=Core.execute("scenario",{name:active,parameters});
+  const {summary,result,mechanism}=record.value;
+  $("#metrics").replaceChildren();
+  Object.entries(summary).forEach(([k,value])=>{
+   const el=document.createElement("div");el.className="metric";
+   const caption=document.createElement("span");caption.textContent=k;
+   const n=document.createElement("b");n.textContent=typeof value==="number"?Number(value.toPrecision(6)).toString():String(value);
+   el.append(caption,n);$("#metrics").append(el);
+  });
+  $("#details").textContent=[...mechanism,JSON.stringify(result,null,2)].join("\n\n");
+  window.SeetheTruthLastMicroRun=Object.freeze({scenario:active,parameters,record});
+ }catch(e){window.SeetheTruthLastMicroRun=null;$("#metrics").replaceChildren();$("#details").textContent="计算失败："+e.message;}
+}
+document.querySelectorAll("[data-case]").forEach(b=>b.addEventListener("click",()=>{active=b.dataset.case;show();}));
+$("#run").addEventListener("click",render);show();
+})();
+</script></body></html>
