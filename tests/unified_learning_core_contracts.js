@@ -18,7 +18,7 @@ assert.equal(all.counts.operators,L.KINDS.length);
 assert.equal(all.counts.graphLessons,ids.length);
 assert.equal(all.counts.courses,C.lessons.length);
 assert.equal(all.counts.labs,Core.labs.length);
-assert.equal(all.counts.graphLessons,59+X.recipes.length);
+assert.equal(all.counts.graphLessons,60+X.recipes.length); // 59 guided + blank canvas + extension recipes
 assert.ok(all.counts.operators>=146);
 for(const kind of L.KINDS)assert.ok(all.operators.operators[kind],
  'every native or separately installed brick needs the same operator contract: '+kind);
