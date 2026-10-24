@@ -300,6 +300,54 @@
   function preset(name){
     const recipe=Extensions.recipe(name);
     if(recipe)return validateGraph({schema:SCHEMA,...recipe});
+    if(name==="nd_wan_adaln_self_gated"){
+      // Extend the existing source-ordered trainable QKV lesson, not a
+      // duplicate Attention implementation. e0/e1/e2 are explicit upstream
+      // timestep/conditioning slices and M_i are shared trainable modulation.
+      const base=preset("nd_wan_qkv_fullwidth_attention");
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      const zero=sh=>ND.build(sh,()=>0);
+      const param=(id,seed,scale)=>({
+        id,kind:"nd_parameter",x:50,y:1930+Number(id.slice(-1))*140,
+        params:{values:ND.build([1,1,1,6],idx=>
+          ND.at(ND.seedTensor([1,1,1,6],seed),idx)*scale),
+          optimizer:{t:0,m:zero([1,1,1,6]),v:zero([1,1,1,6])}}
+      });
+      const added=[
+        {id:"norm1",kind:"nd_layernorm_last",x:270,y:-250,params:{epsilon:1e-6}},
+        ...[0,1,2].map(i=>({id:"e"+i,kind:"nd_input",x:40,y:1900+i*150,
+          params:{b:1,h:1,t:8,d:6,seed:31+i}})),
+        param("mod0",40,.11),param("mod1",41,.08),param("mod2",42,.16),
+        ...[0,1,2].map(i=>({id:"e"+i+"_sum",kind:"nd_broadcast_add",x:430,
+          y:1930+i*160,params:{}})),
+        {id:"norm_scale_product",kind:"nd_broadcast_mul",x:780,y:-250,params:{}},
+        {id:"norm_scaled",kind:"nd_broadcast_add",x:1120,y:-260,params:{}},
+        {id:"conditioned",kind:"nd_broadcast_add",x:1450,y:-260,params:{}},
+        {id:"gated_attention",kind:"nd_broadcast_mul",x:4650,y:70,params:{}},
+        {id:"after_self",kind:"nd_broadcast_add",x:4910,y:90,params:{}}
+      ];
+      const edges=base.edges.map(e=>({...e}));
+      for(const edge of edges){
+        if(["q_linear","k_linear","v_linear"].includes(edge.to)&&edge.from==="attention_input")
+          edge.from="conditioned";
+        if(edge.from==="out"&&edge.to==="loss"&&edge.port==="prediction")
+          edge.from="after_self";
+      }
+      const more=[
+        ["attention_input","norm1","x"],
+        ...[0,1,2].flatMap(i=>[["e"+i,"e"+i+"_sum","a"],["mod"+i,"e"+i+"_sum","b"]]),
+        ["norm1","norm_scale_product","a"],["e1_sum","norm_scale_product","b"],
+        ["norm1","norm_scaled","a"],["norm_scale_product","norm_scaled","b"],
+        ["norm_scaled","conditioned","a"],["e0_sum","conditioned","b"],
+        ["out","gated_attention","a"],["e2_sum","gated_attention","b"],
+        ["attention_input","after_self","a"],["gated_attention","after_self","b"]
+      ];
+      return validateGraph({...base,
+        title:"Wan2.2 pinned · norm1 / e0-e1 AdaLN → QKV/3D Attention → e2 gated residual + Loss",
+        nodes:[...base.nodes,...added],
+        edges:[...edges,...more.map(([from,to,port])=>({from,to,port}))]});
+    }
+
     if(name==="stream_state_branches"){
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
       const nodes=[
