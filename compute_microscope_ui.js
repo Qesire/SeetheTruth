@@ -131,7 +131,7 @@ function mount(rootElement,onSelect,onCoordinate){
   }
   // The same selected graph node and coordinate drive forward and backward
   // observations; nested substeps are not standalone graph nodes.
-  if(s===parent&&s.out.values!==null&&frame.evidenceTier===CORE.TIERS.MICRO&&typeof onCoordinate==='function'){
+  if(s===parent&&s.out.values!==null&&(frame.evidenceTier===CORE.TIERS.MICRO||frame.evidenceTier===CORE.TIERS.WAN)&&typeof onCoordinate==='function'){
    const vjp=el('div',undefined,'cmp-vjp'),action=el('button','追踪此坐标的局部 VJP / 梯度汇合','cmp-vjp-trigger');
    action.type='button';
    const detail=el('div','选择此输出坐标的反向贡献；不等于对整个训练损失求导。','cmp-vjp-result cmp-hint');
@@ -144,6 +144,9 @@ function mount(rootElement,onSelect,onCoordinate){
      if(report?.schema!=='seethetruth-coordinate-vjp-bridge-v1')throw Error('unregistered VJP observation');
      detail.replaceChildren();
      detail.append(el('strong','已绑定输出 '+report.selected.nodeId+' ['+report.selected.index.join(',')+'] · 值 '+report.selected.value.toPrecision(9)));
+     if(report.evidence==='PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64_NOT_MODEL_GRADIENT')
+      detail.append(el('p','WAN SOURCE-PINNED · '+report.source?.path+' @ '+
+       report.source?.revision?.slice(0,12)+'；这只是官方结构对齐的合成小张量局部 VJP，非官方权重/真实模型梯度。','cmp-hint'));
      detail.append(el('p',report.backward.nodeCount+' 个元素坐标、'+report.backward.edgeCount+' 条局部 VJP 边；'+
       (report.backward.complete?'已覆盖全部可验证路径':'存在规则边界或探索预算截断：仅展示已核验路径'),'cmp-hint'));
      const local=report.backward.localEdges.slice(0,12);
@@ -171,7 +174,9 @@ function mount(rootElement,onSelect,onCoordinate){
      for(const source of report.backward.sources.slice(0,24))
       detail.append(el('p',source.nodeId+' ['+source.index.join(',')+'] · ∂selected/∂source = '+
        (source.sensitivity===null?'未知，非零值未获证明':Number(source.sensitivity).toPrecision(9)),'cmp-hint'));
-     if(report.backward.sources.length>24)detail.append(el('p','仅展示前 24 个来源，VJP 汇总已按完整探索范围计算。','cmp-hint'));
+     if(report.backward.sources.length>24)detail.append(el('p','仅展示按绝对灵敏度排序的前 24 个来源，计算覆盖完整源坐标。','cmp-hint'));
+     if(report.backward.externalBoundary)
+      detail.append(el('p','计算边界：'+report.backward.externalBoundary,'cmp-hint'));
      const loss=report.loss;
      if(loss?.status==='VERIFIED_GRAPH_LOSS_VJP'){
       detail.append(el('div','TRAINING LOSS / 独立完整反向传播','cmp-label'));

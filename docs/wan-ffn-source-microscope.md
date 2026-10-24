@@ -31,3 +31,34 @@ Deleting one `v_h` coordinate before `W2` changes all output channels by `W2[c,h
 - `node tests/wan_ffn_microscope_contracts.js`: official source identifier/config and mathematical oracle, source-adapter consistency, forged evidence and corrupted-stage rejection.
 - `python tests/browser_wan_ffn.py`: real desktop/mobile Chromium, GEMM coordinate inspection, gate interventions, source links and shared microscope.
 - Existing universal microscope, full browser CI and offline Android asset acceptance must all pass; backend export and VJP coverage remain separate from source reconstruction.
+
+## Source-pinned nine-stage scalar VJP (2026-10-24)
+
+`wan_ffn_coordinate_vjp.js` implements the exact **selected-coordinate local
+reverse-mode** for the existing, source-pinned nine-stage Wan I2V FFN synthetic
+engine. The generic `compute_microscope_ui.js` is reused unchanged on PC and
+offline Android apart from permitting a PINNED_WAN frame to request a specialized
+source-aligned VJP. The actual accepted specialized controller input is replayed
+before every on-demand computation; its full trace and microscope frame must
+match the accepted result, and the pin/evidence tier are validated by the
+existing `ComputeMicroscope.wan` arithmetic checker.
+
+For selected `out[t,c]`, the reverse path is:
+`x_after_cross + delta` → `delta=GateMultiplier·e5·W2(GELU(W1(a)))`
+→ `a=LayerNorm(x)·(1+ScaleMultiplier·e4)+ShiftMultiplier·e3`
+→ `x=afterSelf+externalCrossDelta`, with
+`e_g=e0[t,g,c]+modulation[g,c]`. The LayerNorm Jacobian couples **all
+input channels within each token** via mean and variance (not RMSNorm);
+GELU uses the canonical tanh analytic derivative; W1/W2 and b1/b2
+weight contributions respect the actual `[out,in]` orientation. Shared
+per-channel modulation contributions are summed over token paths.
+The gate, scale and shift multipliers appear as **demo counterfactual
+controls**, not learned Wan weights.
+
+Evidence is deliberately
+`PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64_NOT_MODEL_GRADIENT`; no standalone
+MSE loss, real checkpoint weights, upstream cross-attention or GPU profiler
+trace are invented. Local per-stage terms and the largest source-coordinate
+sensitivities are visible in the same microscope already used by the free-form
+workbench. This is a source-specific rule under the common observation
+contract, not a second numerical graph runtime.

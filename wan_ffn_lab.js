@@ -1,12 +1,24 @@
 (function(){'use strict';
 const A=window.SeetheTruthWanFFNTrace;if(!A)throw Error('Wan FFN trace unavailable');
+const WanVJP=window.SeetheTruthWanFFNCoordinateVJP;
+if(!WanVJP)throw Error('Wan source-pinned VJP unavailable');
 const $=id=>document.getElementById(id);
 const names={shift:'e3 / FFN shift',scale:'e4 / FFN scale',gate:'e5 / output gate',afterSelf:'x after self-attn',crossDelta:'externally supplied cross-attn delta',crossInput:'cross-attn residual x',normalized:'norm2(x)',input:'GEMM input',weights:'nn.Linear weights, [out,in]',bias:'nn.Linear bias',preActivation:'Linear1 logits',ffn:'Linear2 output',delta:'FFN branch change'};
-const state={step:0,row:0,col:0,data:null,error:null};
+const state={step:0,row:0,col:0,data:null,error:null,acceptedOptions:null};
 const commonMicroscope=window.SeetheTruthComputeMicroscope;
 const sharedMicroscope=window.SeetheTruthMicroscopeUI.mount($('wanSharedMicroscope'),id=>{
  const at=state.data?.steps.findIndex(s=>s.id===id)??-1;
  if(at>=0){state.step=at;state.row=0;state.col=0;render();}
+},({stepId,coordinate,frame})=>{
+ if(!state.acceptedOptions||!state.data||frame!==commonFrame)
+  throw Error('no accepted pinned Wan controller state');
+ const replay=window.SeetheTruthSpecializedLesson.execute('trace',
+   {options:{...state.acceptedOptions}});
+ if(JSON.stringify(replay.value)!==JSON.stringify(state.data)||
+   JSON.stringify(replay.computationTrace)!==JSON.stringify(frame))
+  throw Error('source-pinned VJP rejected stale controller or microscope');
+ return WanVJP.inspect(state.data,frame,
+   {stepId,coordinate,options:{...state.acceptedOptions}});
 });
 let commonFrame=null,commonData=null;
 function options(){return Object.fromEntries(['tokens','dim','hidden','seed','gate','scale','shift'].map(id=>[id,Number($(id).value)]));}
@@ -134,7 +146,7 @@ function render(){
  flow();branches();breakdown();renderAblation();integrity();
 }
 function recompute(){
- try{const executed=window.SeetheTruthSpecializedLesson.execute("trace",{options:options()});state.data=executed.value;state.provenFrame=executed.computationTrace;state.error=null;state.row=0;state.col=0;render();}
+ try{const accepted=options(),executed=window.SeetheTruthSpecializedLesson.execute("trace",{options:accepted});state.data=executed.value;state.provenFrame=executed.computationTrace;state.acceptedOptions=accepted;state.error=null;state.row=0;state.col=0;render();}
  catch(e){state.error=e.message;$('numerics').textContent='拒绝不合法输入：'+e.message;}
 }
 $('ablate').addEventListener('click',renderAblation);

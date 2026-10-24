@@ -67,6 +67,7 @@ jobs:
           node tests/universal_microscope_contracts.js
           node tests/microscope_named_axes_pointwise_contracts.js
           node tests/wan_ffn_microscope_contracts.js
+          node tests/wan_ffn_coordinate_vjp_contracts.js
           node tests/native_rowwise_microscope_contracts.js
           node tests/native_portable_coordinate_proofs.js
           node tests/studio_graph_session_contracts.js
