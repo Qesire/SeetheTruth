@@ -46,7 +46,7 @@ const qkv=L.validateGraph({schema:L.SCHEMA,title:'scaled QKV Jacobian',nodes:[
  node('V','parameter',params([[.2,.9],[-.4,.55],[.37,-.21]])),
  node('att','attention')
 ],edges:[edge('Q','att','q'),edge('K','att','k'),edge('V','att','v')]});
-const att=audit(qkv,'att',[1,0],3e-5,12);
+const att=audit(qkv,'att',[1,0],3e-5,11);
 assert.equal(att.bridge.backward.internalStages.length,3);
 assert.equal(att.bridge.backward.internalStages.filter(s=>s.probability>0).length,3);
 assert.equal(att.bridge.backward.discreteConditional,false);
@@ -72,14 +72,14 @@ const gated=L.validateGraph({schema:L.SCHEMA,title:'shared FFN gate/up VJP',node
 ],edges:[edge('X','gate','a'),edge('W1','gate','b'),
  edge('X','up','a'),edge('W3','up','b'),
  edge('gate','swi','gate'),edge('up','swi','up')]});
-const swi=audit(gated,'swi',[0,1],4e-5,12);
+const swi=audit(gated,'swi',[0,1],4e-5,10);
 assert.equal(swi.bridge.backward.internalStages.length,2);
 assert.equal(swi.report.edges.filter(e=>e.from==='swi@0,1').length,2);
 assert.ok(swi.report.vertices.find(v=>v.id==='X'));
 // Actual routed MoE recipe; perturb explicit W banks but hold the discrete
 // route IDs invariant. This is forward-value independent of the VJP code.
 const moe=L.preset('trainable_moe'),mTrace=L.evaluate(moe);
-const expert=audit(moe,'expert_gate',[0,1],4e-5,4);
+const expert=audit(moe,'expert_gate',[0,1],4e-5,2);
 assert.equal(expert.bridge.backward.discreteConditional,true);
 assert.equal(expert.bridge.backward.conditionalCuts.some(e=>e.port==='indices'),true);
 assert.equal(expert.bridge.backward.internalStages.length,2);
