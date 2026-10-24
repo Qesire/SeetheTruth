@@ -60,6 +60,16 @@ for(const l of C.lessons){
  assert.equal(course.evidence,'PEDAGOGICAL_DESCRIPTION');
  assert.ok(course.target.id);
 }
+for(const [id,domain] of [["engineering_journey","guided_training_workflow"],["engineering_pipeline","training_state_machine"]]){
+ const lab=Core.inspectLab(id);
+ assert.equal(lab.runtime,domain);
+ const guide=Core.inspectCourse(id);
+ assert.equal(guide.target.id,id);
+ assert.equal(guide.href,lab.href);
+ assert.equal(guide.evidence,"PEDAGOGICAL_DESCRIPTION");
+ const html=read(lab.href);
+ assert.ok(html.includes('src="specialized_learning_adapter.js" data-experience="'+id+'"'));
+}
 const labIds=new Set(Core.labs.map(l=>l.id)),labHrefs=new Set(Core.labs.map(l=>l.href));
 assert.equal(labIds.size,Core.labs.length);
 assert.equal(labHrefs.size,Core.labs.length);
