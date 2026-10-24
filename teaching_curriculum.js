@@ -44,7 +44,7 @@
   {id:"engineering_journey",group:"09 · 工程实践",title:"从数据到推理 · 十二阶段工程学习",href:"engineering_journey.html",
    level:"基础 → 进阶",theory:"通过真正的小词表 Bigram 模型逐步完成训练集/验证集隔离、标签移位、参数维度、交叉熵、解析梯度、AdamW、Checkpoint 与自回归推理。",
    why:"完整工程实践不只包含模型计算图，也包含随机性、数据谱系、优化器状态和可恢复的推理接口；这些因果链必须可重放。",
-   check:"只保存模型参数并固定随机种子，可以完全恢复训练吗？",
+   check:"即使固定了初始化随机种子，如果中断训练时只保存模型参数，却丢失优化器状态和数据采样进度，可以完全恢复原来的训练轨迹吗？",
    answer:"不能。还需要优化器状态、数据采样顺序与游标、版本和待累积梯度等状态；具体内容取决于中断位置。"},
   {id:"engineering_pipeline",group:"10 · 工程实践",title:"进阶 · 六阶段训练流水线",href:"engineering_pipeline.html",
    level:"进阶 → 研究",theory:"执行 Epoch Shuffle、Microbatch 梯度积累、Clip、Warmup/Cosine、半累积状态 Checkpoint/Restore 和同一模型的推理续接。",
