@@ -80,6 +80,14 @@ const edited=structuredClone(native);
 edited.nodes.find(n=>n.id==='x').params.values[1][0]+=.1;
 assert.throws(()=>Bridge.inspect(edited,nativeRun,nativeFrame,{stepId:'project',coordinate:[1,1]}),
  /trace does not match current graph/);
+// Rank-five parent projections are valid selections even when a specialist
+// operator's internal VJP is not registered: never fake a gradient.
+const video=L.preset('extension_video_time_composition'),vr=L.evaluate(video);
+const vf=M.learning(video,vr,L);
+const vrpt=Bridge.inspect(video,vr,vf,{stepId:'join',coordinate:[0,2,1,0,1]});
+assert.deepEqual(vrpt.selected.index,[0,2,1,0,1]);
+assert.equal(vrpt.selected.value,ND.at(vr.steps.find(s=>s.id==='join').values,[0,2,1,0,1]));
+assert.equal(vrpt.codegen.wholeGraphExport,'NOT_VERIFIED');
 const unknown=L.validateGraph({schema:L.SCHEMA,title:'unsupported VJP boundary',nodes:[
  node('x','parameter',params([[.3,.7],[.4,-.3]])),
  node('y','parameter',params([[.1,.2],[.8,-.5]])),node('loss','mse')
