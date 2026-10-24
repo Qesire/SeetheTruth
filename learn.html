@@ -298,7 +298,7 @@ input[type="file"]{display:none}
   <div class="section" id="trainSummary" hidden aria-live="polite"></div>
   <div class="section"><div class="kicker">数学功能</div><div class="equation" id="formula">Y = F(X)</div><p id="purpose">选择一个积木，查看数学公式、设计意图和陷阱。</p></div>
   <section class="section" id="shapeIndexSection" aria-label="张量形状和索引的映射" hidden><div class="kicker">SHAPE & INDEX / 形状、坐标与梯度</div><div id="shapeIndexInspector" class="shape-index-detail"></div></section>
-  <section class="section" aria-label="可复用逐坐标计算显微镜"><div class="kicker">COMPUTE MICROSCOPE / 逐坐标计算核验</div><p class="hint">同一张自由计算图的原生/扩展算子共享证据合同；数值必须来自本次执行。逐坐标重建只适用于受支持的 GEMM 与精确索引变换。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
+  <section class="section" aria-label="可复用逐坐标计算显微镜"><div class="kicker">COMPUTE MICROSCOPE / 逐坐标计算核验</div><p class="hint">同一张自由计算图的原生/扩展算子共享证据合同；数值必须来自本次执行。逐坐标前向重建与按需单输出 VJP 共用当前执行图；部分算子存在显式边界。代码导出、完整训练梯度与运行时性能需分别验证。</p><div id="computeMicroscope" class="cmp-surface" aria-live="polite"></div></section>
   <section class="section" id="graphLineageSection" aria-label="跨积木的逐元素计算溯源" hidden><div class="kicker">ELEMENT LINEAGE / 跨积木来源与梯度</div><div id="graphLineageInspector" aria-live="polite"></div></section>
   <section class="knowledge-card" aria-label="积木深度讲解">
     <div class="kicker">BLOCK DEEP DIVE / 原理 · 实践 · 易错点</div>
@@ -369,6 +369,7 @@ input[type="file"]{display:none}
 <script src="state_microscope.js"></script>
 <script src="paper_patches.js"></script><script src="paper_graph_rewrites.js"></script><script src="learning_experience_core.js"></script>
 <script src="compute_microscope.js"></script>
+<script src="coordinate_vjp_bridge.js"></script>
 <script src="compute_microscope_ui.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="model_trace.js"></script>
@@ -396,6 +397,9 @@ const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicrosco
  if(!run)return;
  const idx=run.steps.findIndex(x=>x.id===id);
  if(idx>=0){selected=id;step=idx;render();}
+},({stepId,coordinate,frame})=>{
+ if(!run)throw Error("current numerical trace is missing");
+ return window.SeetheTruthCoordinateVJP.inspect(runGraph||graph,run,frame,{stepId,coordinate});
 });
 let microscopeCachedRun=null,microscopeCachedGraph=null,microscopeCachedFrame=null,microscopeCacheError=null;
 function syncMicroscope(){

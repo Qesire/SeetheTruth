@@ -67,10 +67,17 @@ assert.ok(Math.abs(finiteND-source.sensitivity)<3e-5,'4D graph gradient: '+finit
 const noTrace=E.inspect(attention,{targetId:'perm',outputIndex:[0,1,0,2]});
 assert.equal(noTrace.complete,true);
 assert.equal(noTrace.vertices.find(v=>v.id==='queries').sensitivity,null);
-const divergent=E.inspect(L.preset('ffn'),{targetId:'act',outputIndex:[0,1]});
-assert.equal(divergent.complete,false);assert.equal(divergent.frontiers.length,1);
-assert.equal(divergent.vertices.find(v=>v.id==='act').status,'computed');
-assert.equal(divergent.vertices.find(v=>v.id==='up').status,'boundary');
+const linearPath=E.inspect(L.preset('ffn'),{targetId:'act',outputIndex:[0,1]});
+assert.equal(linearPath.complete,true,'fixed Linear now has an input VJP rule');
+assert.equal(linearPath.frontiers.length,0);
+assert.equal(linearPath.vertices.find(v=>v.id==='up').status,'computed');
+const unsupported=L.validateGraph({schema:L.SCHEMA,title:'unsupported loss lineage',nodes:[
+ param(),node('target','input',{rows:2,width:2,seed:1}),node('loss','mse')
+],edges:[wire('x','loss','prediction'),wire('target','loss','target')]});
+const divergent=E.inspect(unsupported,{targetId:'loss',outputIndex:[0,0]});
+assert.equal(divergent.complete,false,'unsupported scalar loss must remain an explicit boundary');
+assert.equal(divergent.frontiers.length,1);
+assert.equal(divergent.vertices.find(v=>v.id==='loss').status,'boundary');
 const soft=L.preset('sampling');
 const y=E.inspect(soft,{targetId:'prob',outputIndex:[0,0],trace:L.evaluate(soft)});
 assert.equal(y.complete,true);

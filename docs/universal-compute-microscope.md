@@ -48,3 +48,22 @@ This is forward arithmetic reconstruction, **not** proof of a VJP, autograd grap
 The common arithmetic microscope now independently reconstructs bounded forward results of **Subtract/Divide**; **Scale/Bias/Square/ReLU/ReLU²/Sigmoid/Tanh/GELU(tanh)/Softplus**; and **Transpose2D/SliceRows/SliceCols/ConcatCols/RepeatRows**. These are three shared binary/unary/indexed proof families, not isolated educational pages. Native indexed proofs regenerate every source port and flat offset from operator-specific shape/params. Wrong mappings are rejected even when the source has duplicate values. The UI displays these individual operations without misidentifying them as GEMM terms.
 
 An adversarial mixed-graph regression, `node tests/native_portable_coordinate_proofs.js`, verifies numerical closure, falsified parameters/indices/operator identity and concept-only separation. This is synthetic bounded Float64 forward evidence, **not** gradient/VJP validation, codegen eligibility, real checkpoint capture or CUDA performance. Existing saved graphs and specialist adapters are unchanged.
+
+## 2026-10-24 · One selected coordinate, authenticated forward proof and seeded VJP
+
+`coordinate_vjp_bridge.js` is a thin cross-platform adapter over the existing
+`compute_microscope.js`, `element_lineage.js`, `learning_lab.js`, and source-driven
+`block_capabilities.js`. It authenticates the **whole graph's** microscope frame
+against its actual forward execution, then verifies the exact selected coordinate
+matches the seed of the scalar-lineage engine. On demand the same microscope shows
+forward point terms, first-hop partial derivatives, accumulated source sensitivities,
+boundary status, and independently classified per-operator NumPy/PyTorch eligibility.
+It never claims graph-level backend lowering or parameter-gradient eligibility.
+
+The Lineage core now supports native fixed-weight `linear` as
+`∂Y[t,h]/∂X[t,k]=W[h,k]`, using the deterministic teaching weight identity. It
+**does not claim trainable W**: learnable weight VJPs must travel through an
+explicit Parameter feeding MatMul. The shared-path source derivative is checked by
+independent central differences of the original small forward interpreter;
+stale trace, invalid coordinate, reordered graph, forged microscope and structural
+mode are refused. All numeric evidence remains bounded synthetic Float64.

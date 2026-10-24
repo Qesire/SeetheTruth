@@ -87,6 +87,7 @@ execution_ir.js
 graph_session.js
 graph_learning_path.js
 compute_microscope.js
+coordinate_vjp_bridge.js
 compute_microscope_ui.js
 compute_microscope.css
 training_session.js

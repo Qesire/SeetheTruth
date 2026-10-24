@@ -64,8 +64,8 @@ class ElementLineageBrowserAcceptance(unittest.TestCase):
             page.locator('#blocks [data-node="act"] .block-formula').click()
             page.locator("#traceGraphElement").click()
             out=page.locator("#graphLineageResult").inner_text()
-            self.assertIn("逐元素规则边界",out)
-            self.assertNotIn("已覆盖全部受支持路径",out)
+            self.assertIn("已覆盖全部受支持路径",out)
+            self.assertNotIn("逐元素规则边界",out)
             self.assertEqual(errors,[],"Page errors: "+str(errors))
         finally:
             page.close()
