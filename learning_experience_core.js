@@ -70,6 +70,7 @@
    graph:copy(selected),session,path,
    note:"SYNTHETIC_NUMERIC is a bounded JS teaching trace; never a checkpoint or GPU measurement."});
  }
+ let activeGraphIds=null;
  function presetIds(ids){
   if(!bound())fail("graph registry unavailable");
   if(!Array.isArray(ids)||!ids.length||ids.length>256)fail("preset IDs must be a nonempty bounded list");
@@ -84,8 +85,14 @@
     evidence:"STATIC_ONLY",href:"learn.html?mission="+encodeURIComponent(id)});
   }));
  }
+ function activateGraphLessons(ids){
+  const listed=presetIds(ids);
+  activeGraphIds=new Set(listed.map(item=>item.id));
+  return listed;
+ }
  function openPreset(id,options={}){
   if(!sourceName(id))fail("invalid preset name");
+  if(activeGraphIds&&!activeGraphIds.has(id))fail("unregistered guided-graph preset "+id);
   // The actual graph recipe is the *only* source of computational truth.
   return inspectGraph(deps.learning.preset(id),{...options,id});
  }
@@ -104,6 +111,7 @@
  function executeLab(id,operation,input){
   if(id!=="deepinfer_prefill"||operation!=="vote")fail("no registered executable adapter for "+id+"/"+operation);
   if(!deps.prefill||typeof deps.prefill.vote!=="function")fail("DeepInfer prefill source-derived engine unavailable");
+  if(!input||typeof input!=="object"||Array.isArray(input))fail("domain operation requires an input object");
   const value=deps.prefill.vote(copy(input));
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:"scheduler_decision",engine:"deepinfer_prefill_policy.js",
@@ -136,6 +144,6 @@
    labs,counts:Object.freeze({operators:registered?.count??null,graphLessons:graphLessons.length,
     courses:courses.length,labs:labs.length})});
  }
- return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,inspectLab,
+ return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
   executeLab,inspectCourse,inventory});
 });
