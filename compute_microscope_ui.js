@@ -152,6 +152,21 @@ function mount(rootElement,onSelect,onCoordinate){
       for(const edge of local)detail.append(el('p',edge.port+' → '+edge.source+
        '：'+(edge.localDerivative===null?'尚无数值':Number(edge.localDerivative).toPrecision(9)),'cmp-hint'));
      }
+     if(report.backward.internalStages?.length){
+      detail.append(el('div','算子内部计算 / FORWARD–JACOBIAN STAGES','cmp-label'));
+      for(const stage of report.backward.internalStages.slice(0,24)){
+       const fields=Object.entries(stage).map(([name,value])=>name+'='+
+        (value===null?'静态未求值':typeof value==='number'?Number(value).toPrecision(7):String(value)));
+       detail.append(el('p',fields.join(' · '),'cmp-hint'));
+      }
+      if(report.backward.internalStages.length>24)
+       detail.append(el('p','只展示前 24 项；完整的 bounded 逐项导数仍已计算。','cmp-hint'));
+     }
+     if(report.backward.discreteConditional)
+      detail.append(el('p','DISCRETE ROUTING / 固定离散选择：'+
+       report.backward.conditionalCuts.slice(0,8).map(c=>c.nodeId+'.'+c.port+
+       (c.selection===null?'':' → expert '+c.selection)).join('；')+
+       '。仅对这次运行所选择的连续分支求导；没有穿过 TopK / expert ID。','cmp-hint'));
      detail.append(el('div','源张量坐标的累计灵敏度（相同来源的多条路径已求和）','cmp-label'));
      for(const source of report.backward.sources.slice(0,24))
       detail.append(el('p',source.nodeId+' ['+source.index.join(',')+'] · ∂selected/∂source = '+
