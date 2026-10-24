@@ -44,7 +44,11 @@ The ten PC/Android explanation tracks now project from the same `teaching_curric
 | Scalar analytic training | Yes | `executeLab(scalar)` + state microscope | Analytic gradients and optimizer state, not autograd |
 | Bigram engineering journey | Yes | `executeLab(train)` | Bounded synthetic Bigram training and checkpoint |
 | Training pipeline | Yes | `executeLab(train)` + state microscope | Optimizer steps, sampler and resumable state snapshots |
-| Remaining 7 specialized pages | Yes | Existing independent applications | Their underlying backend/evidence semantics require separate verified operation adapters |
+| Paper transformations | Yes | LoRA, DoRA, tiled exact attention, graph-level LoRA rewrite | Original small numerical engines; actual rewrite composes executable graph operators |
+| Micro-training scenarios | Yes | Shared-parameter VJP, Top-1 MoE, PPO clipping | Portable CPU reference, not full policy rollout |
+| Semantic tensor/stream state | Yes | All four named-axis and temporal-state experiments | Actual immutable state transforms and explicit invalid-write rejection |
+| Capability audit | Yes | Source registry / exporter eligibility via common API | Static eligibility, not whole-graph codegen proof |
+| Remaining three evidence-oriented pages | Yes | Identity and evidence contract | Source atlas, real-model import, telemetry retain distinct data provenance |
 
 The labels `NOT_EXECUTED`, `STATIC_ONLY`, `PEDAGOGICAL_DESCRIPTION`, `SYNTHETIC_NUMERIC`, `ABSTRACT_TIMELINE`, and `SOURCE_DERIVED_DETERMINISTIC` must never be implicitly promoted into actual checkpoint execution or GPU performance. `inspectLab` intentionally returns `NOT_EXECUTED`; only `executeLab` calls a registered domain function and returns its real result.
 
@@ -64,7 +68,7 @@ The new `executeLab` adapter directly invokes original source-derived Prefill/Wo
 
 `executeLab(id, operation, input)` dispatches only explicitly registered methods and returns `{schema,id,operation,runtime,engine,evidence,value,stateTrace,computationTrace}`. In addition to four DeepInfer modules, the audited adapters now cover Wan FFN, analytical GQA/MoE/Loop cost models, mathematical cache steps, scalar analytic training, the twelve-stage Bigram journey and six-stage training pipeline. `stateTrace` is present only when the existing verified state microscope supports the result; `computationTrace` represents Wan’s source-aligned small-tensor steps. `inspectLab` itself always reports `NOT_EXECUTED` rather than performing work or fabricating runtime evidence.
 
-Some routes remain identity-level specialists: Python source atlas, paper rewrite UI, micro-training demos, semantic tensor state demo, provenance-sensitive real-model import, capabilities audit and telemetry inspection. These are not generic state machines with interchangeable tensor arithmetic. Extending them requires exact source-level adapters and appropriate provenance tests; registry presence does not imply execution compatibility.
+Some routes remain identity-level specialists: Python source atlas, provenance-sensitive real-model import and telemetry inspection. These are not generic state machines with interchangeable tensor arithmetic. Extending them requires exact source-level adapters and appropriate provenance tests; registry presence does not imply execution compatibility.
 
 ## Extension interface
 
@@ -82,3 +86,11 @@ Pinned start: SeetheTruth main after PR #66, merged at `95ec58d955f4a59d91de75ca
 ## Restored expert engineering curriculum
 
 PR #49 had independent tested 12-stage Bigram engineering introduction and 6-stage training pipeline; these were selectively transplanted as `engineering_journey_{engine,ui}.js` and `engineering_training_pipeline.js`/`engineering_pipeline_ui.js` together with the shared `state_microscope.js`. They now have typed identities `engineering_journey` and `engineering_pipeline`, the same PC/Android course inventory, explicit offline assets and original numerical/Chromium acceptance. These are *specialized training state machines*, not extra tensor operator kinds. Full-parity claims require their dedicated tests at the current final head.
+
+## 2026-10-24 AutoResearcher follow-on: portable specialist execution
+
+PR #68 routes the actual existing PaperPatches LoRA/DoRA/online-attention arithmetic and `paper_graph_rewrites.js` LoRA DAG rewrite through `executeLab`, preserving the editable graph, source link, zero-B parity and the independent VJP/optimizer/export validations. Structurally described Switch/activation-checkpoint patches remain non-executable rather than fabricating numeric output. The micro-training exercises (shared-parameter VJP sum, discrete MoE routing and PPO clipping) and four named-axis/streaming-state scenarios are now pure Node/browser modules; the HTML components only select and display real results. The capability matrix is computed by the same dispatch, without claiming every registered kind can compile an arbitrary full graph.
+
+A scientific input constraint was also hardened: JavaScript JSON serialization ordinarily changes `NaN`/`Infinity` to `null`, which can change experiment behavior. The shared input copy now rejects non-finite numeric payloads before serialization. Independent source parity and negative contracts run in `tests/unified_specialist_contracts.js`, and desktop/phone integration in `tests/browser_unified_specialists.py`. Android asset/server manifests explicitly include the extracted modules.
+
+Three source/evidence domains remain identity-only: source atlas, recorded model provenance import and telemetry. They require provenance-aware data contracts rather than pretending to be numerical tensor engines. This incremental result does not yet unify undo/replay or evidence metadata across every such source.
