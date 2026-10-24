@@ -19,7 +19,7 @@ assert.equal(all.counts.operators,L.KINDS.length);
 assert.equal(all.counts.graphLessons,ids.length);
 assert.equal(all.counts.courses,C.lessons.length);
 assert.equal(all.counts.labs,Core.labs.length);
-assert.equal(all.counts.graphLessons,61+X.recipes.length); // 59 guided + blank + hidden state shortcut + pack recipes
+assert.equal(all.counts.graphLessons,62+X.recipes.length); // includes source-pinned Wan video RoPE lesson + blank/hidden + pack recipes
 assert.ok(all.counts.operators>=146);
 for(const kind of L.KINDS)assert.ok(all.operators.operators[kind],
  'every native or separately installed brick needs the same operator contract: '+kind);
