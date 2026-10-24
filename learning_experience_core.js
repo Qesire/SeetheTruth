@@ -155,7 +155,7 @@
   if(lesson.href!=="learn.html"&&!domain)fail("course has no registered executable-domain destination "+lesson.href);
   const defaultPresets={building:"ffn",multimodal:"image_vit_patch"};
   return Object.freeze({schema:SCHEMA,id,kind:"curriculum",
-   title:lesson.title,href:lesson.href,
+   title:lesson.title,href:lesson.href,group:lesson.group,level:lesson.level,
    theory:lesson.theory,why:lesson.why,check:lesson.check,answer:lesson.answer,
    target:domain?Object.freeze({kind:"specialized",id:domain.id,href:domain.href}):
     Object.freeze({kind:"guided_graph",id:defaultPresets[id]||"ffn",href:"learn.html"}),
