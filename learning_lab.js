@@ -576,6 +576,27 @@
         N("lion","opt_lion",380,720,{lr:0.004,weightDecay:0.01})
       ];
       edges=nodes.slice(2).flatMap(n=>[["weights",n.id,"parameter"],["gradient",n.id,"gradient"]]);
+    }else if(name==="nd_wan_video_rope_attention"){
+      title="Wan2.2 固定源码 · 视频 F/H/W RoPE → 双头 Self-Attention 核心";
+      nodes=[
+        N("query","nd_input",30,35,{b:1,h:2,t:8,d:6,seed:3}),
+        N("key","nd_input",30,330,{b:1,h:2,t:8,d:6,seed:5}),
+        N("value","nd_input",30,640,{b:1,h:2,t:8,d:6,seed:7}),
+        N("q_video_rope","nd_wan_rope3d",390,40,{frames:2,height:2,width:2,base:10000}),
+        N("k_video_rope","nd_wan_rope3d",390,335,{frames:2,height:2,width:2,base:10000}),
+        N("key_transpose","nd_permute",730,335,{axis0:0,axis1:1,axis2:3,axis3:2}),
+        N("qk_scores","nd_batched_matmul",1070,130),
+        N("scaled_scores","nd_scale",1410,130,{factor:1/Math.sqrt(6)}),
+        N("probabilities","nd_softmax_last",1750,130),
+        N("context","nd_batched_matmul",2070,320)
+      ];
+      edges=[
+        ["query","q_video_rope","x"],["key","k_video_rope","x"],
+        ["k_video_rope","key_transpose","x"],
+        ["q_video_rope","qk_scores","a"],["key_transpose","qk_scores","b"],
+        ["qk_scores","scaled_scores","x"],["scaled_scores","probabilities","x"],
+        ["probabilities","context","a"],["value","context","b"]
+      ];
     }else if(name==="nd_cached_gqa_decode"){
       title="任务 31 · 四轴 RoPE + GQA KV Cache · Prefill → Decode";
       nodes=[
