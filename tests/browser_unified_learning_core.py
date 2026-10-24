@@ -74,6 +74,10 @@ class UnifiedLearningBrowser(unittest.TestCase):
      self.assertEqual(contract["runtime"],domain)
      self.assertEqual(contract["evidence"],"NOT_EXECUTED")
      self.assertTrue(contract["engine"].endswith(".js"))
+     if id in ("deepinfer_worker","deepinfer_kv","deepinfer_scheduler"):
+      page.locator("#runUnifiedState").click()
+      self.assertGreater(page.locator("#unifiedStateSteps .sm-step").count(),1)
+      self.assertIn("已核验",page.locator("#unifiedStateStatus").inner_text())
      self.assertEqual(errors,[])
     finally:
      page.close()
