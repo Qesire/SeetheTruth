@@ -228,3 +228,45 @@ coordinate central differences for three grid shapes/base values,
 full QK→Softmax→PV parity and sampled end-to-end context derivatives.
 Negative contracts reject mismatched F/H/W, odd/short D, wrong one-axis
 formula and stale graph observations.
+
+## Wan2.2 pinned weighted QK norm and fully wired QKV projection (2026-10-24)
+
+Pinned official source: [WanSelfAttention, WanRMSNorm, WanAttentionBlock](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L69-L259).
+
+In WanSelfAttention, `self.norm_q(self.q(x)).view(b,s,n,d)` and the
+corresponding K path mean the learned gamma and RMS denominator belong to
+the **entire channel dimension C=n*d**, not to individual attention heads.
+WanRMSNorm applies `x.float() * rsqrt(mean(x.float()**2)+eps)` and then
+per-feature `self.weight`. A headwise RMSNorm before view is in general
+**not equivalent**, and has a different cross-channel Jacobian.
+
+The portable native `nd_wan_qk_rmsnorm` accepts `[B,1,T,C]` and a
+learned `[1,1,1,C]` tensor (the singleton head dimension deliberately
+models the original unsplit `[B,T,C]`). For `r=sqrt(eps+Σ_j x_j²/C)`:
+
+`y_i=gamma_i*x_i/r`;
+`∂y_i/∂x_j=gamma_i*(delta_ij/r-x_i*x_j/(C*r³))`;
+`∂y_i/∂gamma_j=delta_ij*x_i/r`.
+
+Full-tensor VJP sums loss contributions to gamma across batch/tokens and
+uses the complete cross-channel Jacobian for input. Its coordinate lineage
+exposes all C source coordinates and the gamma leaf. The full rewirable
+`nd_wan_qkv_fullwidth_attention` graph uses existing `nd_parameter`,
+`nd_batched_matmul`, `nd_broadcast_add`, `nd_reshape`, `nd_permute`,
+`nd_wan_rope3d`, `nd_softmax_last` and `nd_mse` primitives.
+That trace is source-ordered: input already represents the upstream norm1
+and e0/e1 AdaLN-modulated attention input; independent Wq/Wk/Wv + bias;
+full-width learned RMSNorm on Q/K only; .view(B,T,H,D) followed by an
+**explicit** [B,H,T,D] permutation; full F/H/W RoPE on Q/K only; scaled
+QK→Softmax→PV; Wo+b_o, and an illustrative training MSE target.
+
+This lesson uses **one attention head** with C=D=6 so that the full
+F/H/W RoPE complex-frequency groups are all present while the bounded
+N-D CPU tensor limit is respected. The native primitives support freely
+rewired graphs with other compatible dimensions; the lesson makes no claim
+of real Wan 40-head parameter magnitudes or FlashAttention implementation.
+
+`tests/wan_qk_weighted_rmsnorm_contracts.js` independently reconstructs
+Wan normalization, verifies all X and gamma coordinates via central
+finite differences and the wrong per-head alternative, and checks full
+loss gradients through learned gamma and Q/K/V/O projection weights.
