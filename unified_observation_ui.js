@@ -20,6 +20,7 @@ function mount(options={}){
  const button=(id,label)=>{const b=tag('button',label);b.id=id;b.type='button';b.style.cssText='padding:8px 12px;border:1px solid #5e869a;background:#173e53;color:#f1faff;border-radius:7px;cursor:pointer';tools.append(b);return b;};
  const reload=button('unifiedObservationRefresh','核验当前执行'),pin=button('unifiedObservationPin','固定此执行为基线'),diff=button('unifiedObservationCompare','与基线比较'),clear=button('unifiedObservationClear','清除基线');
  const download=button('unifiedObservationExport','导出已核验快照');
+ const branchButton=button('unifiedObservationFork','将当前实验另存为分支');
  const importer=tag('input');importer.id='unifiedObservationImport';importer.type='file';
  importer.accept='.json,application/json';importer.setAttribute('aria-label','导入已保存的观测快照');
  importer.style.cssText='max-width:240px;color:#d5eef6;font-size:12px';
@@ -118,14 +119,35 @@ function mount(options={}){
   const portable=snapshots.create(core,baseline);
   return portable;
  }
- function exportSnapshot(){
-  const portable=createPortable(),body=JSON.stringify(portable,null,2);
-  const blob=new Blob([body],{type:'application/json'}),url=URL.createObjectURL(blob);
-  const a=tag('a');a.href=url;a.download='seethetruth-observation-'+portable.id+'.json';
+ function downloadFile(portable,suffix=""){
+  const body=JSON.stringify(portable,null,2),blob=new Blob([body],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=tag('a');
+  a.href=url;a.download='seethetruth-observation-'+portable.id+suffix+'.json';
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ function exportSnapshot(){
+  const portable=createPortable();
+  downloadFile(portable);
   setStatus('已导出可重放执行快照 · '+portable.evidence);
   return portable;
+ }
+ function forkSnapshot(){
+  if(!baseline)throw Error('请先固定或导入已核验基线');
+  const original=snapshots.create(core,baseline);
+  const live=readAccepted();if(!live)throw Error('当前页面无可执行分支');
+  core.replay(live);
+  const candidate=snapshots.fork(core,original,
+   live.kind==='graph'?live.graph:live.inputSnapshot,'experiment branch');
+  const reproduced=snapshots.restore(core,candidate);
+  const check=core.compareRecords(live,reproduced.record);
+  if(!check.replayVerified||check.inputEqual!==true||
+     (check.valueEqual!==true&&check.valueEqual!==null))
+   throw Error('分支结果与当前实验不一致');
+  downloadFile(candidate,'-branch');
+  comparison.textContent='分支快照已导出 · 父快照：'+candidate.parent+' · 原始数值引擎已验证。';
+  setStatus('已导出独立可重放实验分支 · '+candidate.evidence);
+  return candidate;
  }
  function importSnapshot(input){
   // A file is a replay recipe, never an authenticated execution artifact.
@@ -167,6 +189,7 @@ function mount(options={}){
  diff.addEventListener('click',()=>guard(compare));
  clear.addEventListener('click',()=>{baseline=null;foreignSnapshot=null;sourceLink.hidden=true;comparison.textContent='基线已清除';setStatus('已清除基线');});
  download.addEventListener('click',()=>guard(exportSnapshot));
+ branchButton.addEventListener('click',()=>guard(forkSnapshot));
  importer.addEventListener('change',async()=>{
   const file=importer.files?.[0];if(!file)return;
   try{if(file.size>snapshots.MAX_BYTES)throw Error('快照文件超过大小限制');
@@ -182,7 +205,7 @@ function mount(options={}){
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
  menu.hidden=true;check.disabled=true;restoreHandoff();
- return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,importSnapshot,
+ return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,importSnapshot,
   clear:()=>clear.click(),
   get observation(){return inventory;},get baseline(){return baseline;},get current(){return current;},host});
 }
