@@ -270,6 +270,35 @@ class MicroscopeBrowser(unittest.TestCase):
         'wan-'+target+'-scalar-vjp.png')),full_page=width==390,animations='disabled')
     self.assertEqual(errors,[])
    finally:p.close()
+ def test_wan_i2v_text_cross_attention_source_bound(self):
+  for width in [1450,390]:
+   page=self.browser.new_page(viewport={'width':width,'height':900},
+    is_mobile=width==390,has_touch=width==390)
+   errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+   try:
+    page.goto(self.base)
+    page.locator('[data-preset="nd_wan_i2v_self_cross"]').click()
+    page.locator('#studyMode').select_option('numeric')
+    page.locator('#run').click()
+    page.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===89')
+    for target,term in [('cross_k_norm','wan_qk_fullwidth_rmsnorm'),
+                        ('cross_norm3_ln','wan_norm1_lastchannel_layernorm')]:
+     for button in page.locator('#computeMicroscope .cmp-step').all():
+      button.click()
+      if page.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')==target:
+       break
+     self.assertEqual(page.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),target)
+     page.locator('#computeMicroscope .cmp-vjp-trigger').click()
+     report=page.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+     self.assertIn(term,report)
+     self.assertNotIn('反向路径拒绝',report)
+     if target=='cross_k_norm':
+      self.assertIn('weight → cross_k_gamma',report)
+      self.assertIn('已覆盖全部可验证路径',report)
+     page.screenshot(path=str(OUT/('wan-cross-'+target+('-mobile' if width==390 else '-desktop')+'.png')),
+      full_page=False,animations='disabled')
+    self.assertEqual(errors,[])
+   finally:page.close()
  def test_mobile_named_axis(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))

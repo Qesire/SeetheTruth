@@ -288,3 +288,20 @@ The exact computation of the bounded lesson is
 The original `SelfAttention(z)` contains learned Wq/Wk/Wv, Q/K full-width weighted RMSNorm, Head view, Wan 3D RoPE and output Wo/b. MSE is an explicitly *illustrative* training target to verify gradients, not a Wan diffusion loss.
 
 `tests/wan_adaln_self_gate_contracts.js` independently reimplements LN arithmetic and verifies all input and gate gradients through centered differences, checks the e0/e1/e2 wiring, tests selected whole-graph parameter FD, enforces zero-e2 cut of Attention parameter gradients while residual identity remains, checks that gate parameters remain sensitive at zero, and rejects stale numeric traces. Desktop/mobile Chromium screenshots follow the native `norm1` and broadcast gate stages in the shared microscope.
+
+## Wan2.2-I2V A14B: source-ordered text Cross-Attention after gated Self (2026-10-25)
+
+Pinned upstream [Wan-Video/Wan2.2 `1ea34ff` model.py:158–259](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/modules/model.py#L158-L259) and [I2V-A14B configuration](https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_i2v_A14B.py). An important distinction: `WanAttentionBlock.__init__` defaults `cross_attn_norm=False` but **WanModel.__init__ defaults True** and I2V-A14B **explicitly sets `cross_attn_norm=True`**. Therefore actual I2V cross input is `norm3(x)`, where `norm3` is an `elementwise_affine=True` **LayerNorm with learned gamma and beta**. Ignoring it is source-inaccurate.
+
+The 89-node guided `nd_wan_i2v_self_cross` extends `nd_wan_adaln_self_gated` *as a single rewirable graph* and joins:
+
+`r = x + self_attn(LN1(x)*(1+e1)+e0)*e2`;
+`q = WanRMSNorm(Wq * (LN3(r)*gamma3+beta3) + bq, gamma_q)`;
+`k = WanRMSNorm(Wk * text_context + bk, gamma_k)`;
+`v = Wv * text_context + bv`;
+`s = q kᵀ / sqrt(head_dim)`, `p=Softmax(s)`;
+`r_cross = r + Wo*(p v)+bo`.
+
+Both Q and K are full-channel RMS normalized before explicit head view; V is **not normalized**, unlike Q/K. Source `WanCrossAttention.forward` does not invoke `rope_apply` and uses text `k_lens=context_lens` rather than video-grid `seq_lens`. The lesson has one head (C=6) and **four valid unpadded text tokens**, so `context_lens=4` and its keys are all valid. No causal mask or implicit video RoPE is added to Cross.
+
+The general `nd_layernorm_last`, `nd_broadcast_mul`, `nd_broadcast_add`, `nd_batched_matmul`, `nd_wan_qk_rmsnorm` and tensor reshapes are reused; no additional pseudo-attention monolith. All scalar source dependencies and whole-loss VJPs remain tied to the actual evaluated graph. The static layout bound was raised from 80 to 128 nodes along with the numerical runtime; individual tensor size remains bounded to 512 Float64 values, graph microscope to 160 steps. The independent oracle reconstructs affine norm3, the separate Q/K/V sources, all 8×4 dot products, row softmax, learned Wo/b and residual; tests 14 finite-difference loss sensitivities including context input, norm3 gamma/beta and both attention branches. The numerical MSE is an illustrative teaching objective, *not* official Wan diffusion loss. Real padded context, distinct variable context_lens in a batch, multihead production dimensions, quantization and GPU flashattention remain outside this micro example.

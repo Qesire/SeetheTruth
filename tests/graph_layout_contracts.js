@@ -26,7 +26,7 @@ assert.deepEqual(laidLarge.nodes.map(n=>n.id),large.nodes.map(n=>n.id));
 assert.equal(G.metrics(laidLarge).overlap.length,0);
 assert.deepEqual(L.evaluate(laidLarge).steps.map(s=>s.values),
  L.evaluate(large).steps.map(s=>s.values));
-const tooLarge={nodes:Array.from({length:81},(_,i)=>({id:'n'+i,kind:'input',
+const tooLarge={nodes:Array.from({length:129},(_,i)=>({id:'n'+i,kind:'input',
  x:0,y:i*100,params:{rows:1,width:1,seed:1}})),edges:[]};
 assert.throws(()=>G.layout(tooLarge),/invalid graph layout size/);
 assert.throws(()=>G.layout({nodes:[{id:'a'},{id:'b'}],edges:[{from:'a',to:'b'},{from:'b',to:'a'}]}),/DAG/);

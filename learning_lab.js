@@ -14,7 +14,7 @@
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
   const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
-  const MAX_NODES=80,MAX_EDGES=176;
+  const MAX_NODES=128,MAX_EDGES=256;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
       formula:"X ∈ ℝ^{T×D}",why:"建立具有确定形状和数值的微型张量，作为后续计算的数据来源。",
@@ -87,7 +87,7 @@
     for(const n of raw.nodes){
       if(!n||typeof n!=="object"||typeof n.id!=="string"||!/^[A-Za-z0-9_-]{1,36}$/.test(n.id)||ids.has(n.id))fail("积木 ID 非法或重复");
       if(!Object.hasOwn(defs,n.kind))fail("未知积木类型",n.id);
-      if(!finite(n.x)||!finite(n.y)||Math.abs(n.x)>10000||Math.abs(n.y)>10000)fail("积木坐标必须有限",n.id);
+      if(!finite(n.x)||!finite(n.y)||Math.abs(n.x)>50000||Math.abs(n.y)>50000)fail("积木坐标必须有限",n.id);
       const p=n.params||{}, type=n.kind;
       if(!p||typeof p!=="object"||Array.isArray(p))fail("无效参数",n.id);
       const params={...defs[type].params};
@@ -300,6 +300,88 @@
   function preset(name){
     const recipe=Extensions.recipe(name);
     if(recipe)return validateGraph({schema:SCHEMA,...recipe});
+    if(name==="nd_wan_i2v_self_cross"){
+      // Source: Wan-Video/Wan2.2@1ea34ff model.py 158-180, 203-259.
+      // I2V A14B config sets cross_attn_norm=true. The norm3 affine
+      // applies to x AFTER the e2 self-attention residual, not to context.
+      const base=preset("nd_wan_adaln_self_gated");
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const param=(id,shape,seed,scale=0.23,offset=0)=>{
+        const baseValues=ND.seedTensor(shape,seed),
+          values=ND.build(shape,idx=>offset+scale*ND.at(baseValues,idx)),
+          zeros=ND.build(shape,()=>0);
+        return N(id,"nd_parameter",200,2800+seed*55,
+          {values,optimizer:{t:0,m:zeros,v:ND.build(shape,()=>0)}});
+      };
+      const weights=["q","k","v","o"].map((kind,i)=>
+        param("cw_"+kind,[1,1,6,6],61+i));
+      const bias=["q","k","v","o"].map((kind,i)=>
+        N("cb_"+kind,"nd_input",30,3100+i*175,{b:1,h:1,t:1,d:6,seed:71+i}));
+      const added=[
+        N("text_context","nd_input",25,2700,{b:1,h:1,t:4,d:6,seed:60}),
+        param("cross_norm3_gamma",[1,1,1,6],51,0.17,1),
+        param("cross_norm3_beta",[1,1,1,6],52,0.08),
+        N("cross_norm3_ln","nd_layernorm_last",5150,80,{epsilon:1e-6}),
+        N("cross_norm3_mul","nd_broadcast_mul",5380,80),
+        N("cross_norm3","nd_broadcast_add",5650,80),
+        ...weights,...bias,
+        N("cross_q_proj","nd_batched_matmul",5960,100),
+        N("cross_k_proj","nd_batched_matmul",5960,460),
+        N("cross_v_proj","nd_batched_matmul",5960,800),
+        N("cross_q_bias","nd_broadcast_add",6280,100),
+        N("cross_k_bias","nd_broadcast_add",6280,460),
+        N("cross_v_bias","nd_broadcast_add",6280,800),
+        param("cross_q_gamma",[1,1,1,6],53,0.12,1),
+        param("cross_k_gamma",[1,1,1,6],54,0.12,1),
+        N("cross_q_norm","nd_wan_qk_rmsnorm",6590,100,{epsilon:1e-6}),
+        N("cross_k_norm","nd_wan_qk_rmsnorm",6590,460,{epsilon:1e-6}),
+        N("cross_q_view","nd_reshape",6880,100,{b:1,h:8,t:1,d:6}),
+        N("cross_k_view","nd_reshape",6880,460,{b:1,h:4,t:1,d:6}),
+        N("cross_v_view","nd_reshape",6880,800,{b:1,h:4,t:1,d:6}),
+        N("cross_q_heads","nd_permute",7200,100,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("cross_k_heads","nd_permute",7200,460,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("cross_v_heads","nd_permute",7200,800,{axis0:0,axis1:2,axis2:1,axis3:3}),
+        N("cross_k_transpose","nd_permute",7510,460,{axis0:0,axis1:1,axis2:3,axis3:2}),
+        N("cross_scores","nd_batched_matmul",7790,100),
+        N("cross_scaled","nd_scale",8100,100,{factor:1/Math.sqrt(6)}),
+        N("cross_probabilities","nd_softmax_last",8420,100),
+        N("cross_context","nd_batched_matmul",8730,250),
+        N("cross_out_proj","nd_batched_matmul",9050,220),
+        N("cross_out_bias","nd_broadcast_add",9360,220),
+        N("after_cross","nd_broadcast_add",9630,220)
+      ];
+      const edges=base.edges.map(e=>e.from==="after_self"&&e.to==="loss"&&
+        e.port==="prediction"?{...e,from:"after_cross"}:{...e});
+      const links=[
+        ["after_self","cross_norm3_ln","x"],
+        ["cross_norm3_ln","cross_norm3_mul","a"],
+        ["cross_norm3_gamma","cross_norm3_mul","b"],
+        ["cross_norm3_mul","cross_norm3","a"],["cross_norm3_beta","cross_norm3","b"],
+        ["cross_norm3","cross_q_proj","a"],["cw_q","cross_q_proj","b"],
+        ["text_context","cross_k_proj","a"],["cw_k","cross_k_proj","b"],
+        ["text_context","cross_v_proj","a"],["cw_v","cross_v_proj","b"],
+        ...["q","k","v"].flatMap(x=>[
+          ["cross_"+x+"_proj","cross_"+x+"_bias","a"],["cb_"+x,"cross_"+x+"_bias","b"]]),
+        ["cross_q_bias","cross_q_norm","x"],["cross_q_gamma","cross_q_norm","weight"],
+        ["cross_k_bias","cross_k_norm","x"],["cross_k_gamma","cross_k_norm","weight"],
+        ["cross_q_norm","cross_q_view","x"],["cross_k_norm","cross_k_view","x"],
+        ["cross_v_bias","cross_v_view","x"],
+        ...["q","k","v"].map(x=>["cross_"+x+"_view","cross_"+x+"_heads","x"]),
+        ["cross_k_heads","cross_k_transpose","x"],
+        ["cross_q_heads","cross_scores","a"],["cross_k_transpose","cross_scores","b"],
+        ["cross_scores","cross_scaled","x"],["cross_scaled","cross_probabilities","x"],
+        ["cross_probabilities","cross_context","a"],["cross_v_heads","cross_context","b"],
+        ["cross_context","cross_out_proj","a"],["cw_o","cross_out_proj","b"],
+        ["cross_out_proj","cross_out_bias","a"],["cb_o","cross_out_bias","b"],
+        ["after_self","after_cross","a"],["cross_out_bias","after_cross","b"]
+      ];
+      return validateGraph({...base,
+        title:"Wan2.2 I2V A14B pinned · self e0/e1/e2 → norm3 affine → text Cross-Attention residual",
+        nodes:[...base.nodes,...added],
+        edges:[...edges,...links.map(([from,to,port])=>({from,to,port}))]});
+    }
+
     if(name==="nd_wan_adaln_self_gated"){
       // Extend the existing source-ordered trainable QKV lesson, not a
       // duplicate Attention implementation. e0/e1/e2 are explicit upstream
