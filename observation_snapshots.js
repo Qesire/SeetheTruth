@@ -155,6 +155,54 @@ function resumeKV(core,source){
   resumedTimeline:Object.freeze(suffix),
   continuedFromPrefix:true,finalReplayed:true});
 }
+// Resume actual CPU Bigram training, including partially accumulated gradients,
+// optimizer moments, dataset order and LR progression. No shadow optimizer math.
+function resumeTraining(core,source){
+ const s=validate(source),replayed=restore(core,s),cursor=s.cursor;
+ if(s.kind!=="specialized_execution"||s.id!=="engineering_pipeline"||
+    s.operation!=="timeline"||!cursor||!plain(s.input)||
+    !Array.isArray(s.input.actions))
+  fail("training continuation requires a verified native timeline cursor");
+ const P=typeof module==="object"&&module.exports
+  ?require("./engineering_training_pipeline.js")
+  :typeof window!=="undefined"?window.SeetheTruthTrainingPipeline:null;
+ if(!P||typeof P.create!=="function")fail("native training engine unavailable");
+ const native=replayed.record.value.snapshots;
+ if(!Array.isArray(native)||native.length!==s.input.actions.length+1||
+    cursor.index>=native.length)fail("training source timeline incomplete");
+ const prefix=cursor.index===0?null:core.executeLab("engineering_pipeline","timeline",{
+  config:s.input.config,actions:s.input.actions.slice(0,cursor.index)});
+ if(prefix){
+  core.replay(prefix);
+  if(JSON.stringify(prefix.value.snapshots)!==
+     JSON.stringify(native.slice(0,cursor.index+1))||
+     JSON.stringify(prefix.stateTrace.steps.at(-1)?.after)!==
+     JSON.stringify(replayed.checkpoint.detail.after))
+   fail("training prefix diverged from native full replay");
+ }
+ const engine=P.create(s.input.config||{});
+ engine.restore(clone(native[cursor.index]));
+ if(JSON.stringify(engine.checkpoint())!==JSON.stringify(native[cursor.index]))
+  fail("native optimizer/sampler checkpoint restore mismatch");
+ const resumed=[],actions=s.input.actions.slice(cursor.index);
+ for(let i=0;i<actions.length;i++){
+  if(actions[i]==="micro")engine.microStep();
+  else if(actions[i]==="optimizer")engine.optimizerStep();
+  else fail("unrecognized native training transition");
+  const actual=engine.checkpoint();
+  if(JSON.stringify(actual)!==JSON.stringify(native[cursor.index+i+1]))
+   fail("training continuation diverged at "+(cursor.index+i+1));
+  resumed.push(actual);
+ }
+ if(JSON.stringify(engine.checkpoint())!==JSON.stringify(native.at(-1)))
+  fail("native training final state diverged");
+ return Object.freeze({schema:SCHEMA,kind:"local_training_continuation",
+  index:cursor.index,stepId:cursor.stepId,evidence:replayed.evidence,
+  checkpoint:replayed.checkpoint,
+  restoredCheckpoint:clone(native[cursor.index]),
+  remainingActions:clone(actions),resumedTimeline:Object.freeze(resumed),
+  continuedFromCheckpoint:true,finalReplayed:true});
+}
 function fork(core,original,nextInput,label=""){
  const base=validate(original);
  const confirmed=restore(core,base);
@@ -215,5 +263,5 @@ function describe(core,snapshot){
   label:s.label,evidence:s.evidence,cursor:s.cursor||null,sourceHref:route(core,s),
   replayVerified:false,imported:true});
 }
-return Object.freeze({SCHEMA,MAX_BYTES,create,fork,at,resumeKV,validate,restore,describe,route});
+return Object.freeze({SCHEMA,MAX_BYTES,create,fork,at,resumeKV,resumeTraining,validate,restore,describe,route});
 });

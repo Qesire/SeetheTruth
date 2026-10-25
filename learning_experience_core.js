@@ -199,13 +199,30 @@
     return Object.freeze({initial,training,checkpoint:model.checkpoint(),
      validation:model.evaluate("validation"),source:m.SCHEMA});
   }})}),
-  engineering_pipeline:Object.freeze({train:Object.freeze({module:"pipeline",method:"create",
-   run:(m,x)=>{
-    if(!Number.isSafeInteger(x.steps)||x.steps<1||x.steps>12)fail("pipeline optimizer steps must be 1..12");
-    const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
-    for(let i=0;i<x.steps;i++){model.train(1);snapshots.push(model.checkpoint());}
-    return Object.freeze({snapshots,diagnostic:model.diagnostic(),source:m.SCHEMA});
-  }})}),
+  engineering_pipeline:Object.freeze({
+   train:Object.freeze({module:"pipeline",method:"create",
+    run:(m,x)=>{
+     if(!Number.isSafeInteger(x.steps)||x.steps<1||x.steps>12)fail("pipeline optimizer steps must be 1..12");
+     const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
+     for(let i=0;i<x.steps;i++){model.train(1);snapshots.push(model.checkpoint());}
+     return Object.freeze({snapshots,diagnostic:model.diagnostic(),source:m.SCHEMA});
+    }}),
+   timeline:Object.freeze({module:"pipeline",method:"create",
+    run:(m,x)=>{
+     if(!Array.isArray(x.actions)||x.actions.length<1||x.actions.length>24||
+        x.actions.some(action=>!["micro","optimizer"].includes(action)))
+      fail("pipeline timeline requires 1..24 explicit micro/optimizer actions");
+     const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
+     const events=[];
+     for(const action of x.actions){
+      const value=action==="micro"?model.microStep():model.optimizerStep();
+      events.push({action,optimizerStep:model.modelStep,pendingMicroSteps:model.pendingMicroSteps,
+       result:value});
+      snapshots.push(model.checkpoint());
+     }
+     return Object.freeze({snapshots,events,diagnostic:model.diagnostic(),source:m.SCHEMA});
+    }})
+  }),
   paper:Object.freeze({
    lora:Object.freeze({module:"paper",method:"lora",run:(m,x)=>m.lora(x.x,x.w,x.a,x.b,x.alpha??1)}),
    dora:Object.freeze({module:"paper",method:"dora",run:(m,x)=>m.dora(x.x,x.w,x.a,x.b,x.m,x.alpha??1)}),
@@ -402,7 +419,8 @@
    "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv),
    "training/scalar":()=>deps.state.scalar(value),
    "cache/replay_steps":()=>deps.state.cache(value.snapshots,deps.cacheLab),
-   "engineering_pipeline/train":()=>deps.state.training(value.snapshots)
+   "engineering_pipeline/train":()=>deps.state.training(value.snapshots),
+   "engineering_pipeline/timeline":()=>deps.state.training(value.snapshots)
   };
   const eventKey=id+"/"+operation;
   if(eventAdapters[eventKey]&&!deps.state)

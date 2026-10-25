@@ -23,6 +23,7 @@ function mount(options={}){
  const branchButton=button('unifiedObservationFork','将当前实验另存为分支');
  const checkpointButton=button('unifiedObservationCheckpoint','导出当前状态步骤');
  const resumeButton=button('unifiedObservationResumeKV','核验 KV 前缀续接');resumeButton.disabled=true;
+ const trainingButton=button('unifiedObservationResumeTraining','核验训练状态续接');trainingButton.disabled=true;
  const importer=tag('input');importer.id='unifiedObservationImport';importer.type='file';
  importer.accept='.json,application/json';importer.setAttribute('aria-label','导入已保存的观测快照');
  importer.style.cssText='max-width:240px;color:#d5eef6;font-size:12px';
@@ -82,7 +83,7 @@ function mount(options={}){
   core.replay(record);
   const frame=core.observe(record);
   current=freezeClone(record);inventory=frame;sourceIndex=0;stepIndex=0;
-  checkpointSource=null;resumeButton.disabled=true;
+  checkpointSource=null;resumeButton.disabled=true;trainingButton.disabled=true;
   renderSources();comparison.textContent='';
   setStatus('已核验 '+(record.id||'execution')+' · '+frame.evidence+' · '+frame.sources.reduce((n,s)=>n+s.steps.length,0)+' 个原生步骤'+(baseline?' · 已固定基线':''));
   return frame;
@@ -160,6 +161,7 @@ function mount(options={}){
   const portable=snapshots.at(core,snapshots.create(core,current),selected.point.id);
   const confirmed=snapshots.restore(core,portable);
   checkpointSource=portable;resumeButton.disabled=portable.id!=="deepinfer_kv";
+  trainingButton.disabled=portable.id!=="engineering_pipeline"||portable.operation!=="timeline";
   if(!confirmed.checkpoint?.replayVerified)throw Error("状态步骤未通过原引擎恢复");
   downloadFile(portable,'-checkpoint');
   setStatus('已导出只读状态步骤 · '+selected.point.id+' · '+confirmed.evidence);
@@ -176,6 +178,7 @@ function mount(options={}){
    baseline=freezeClone(restored.record);
    if(restored.checkpoint){
     checkpointSource=parsed;resumeButton.disabled=parsed.id!=="deepinfer_kv";
+    trainingButton.disabled=parsed.id!=="engineering_pipeline"||parsed.operation!=="timeline";
     // A verified cursor restores the *educational view*; no claim of
     // in-memory GPU checkpoint, scheduler mutation or external side effects.
     current=freezeClone(restored.record);inventory=restored.observation;
@@ -216,6 +219,21 @@ function mount(options={}){
   setStatus("已核验 KV 原始操作前缀与后续操作 · "+continued.stepId);
   return continued;
  }
+ function verifyTrainingContinuation(){
+  if(!checkpointSource||checkpointSource.id!=="engineering_pipeline"||
+     checkpointSource.operation!=="timeline")throw Error('当前没有原生训练检查点');
+  const continued=snapshots.resumeTraining(core,checkpointSource);
+  detail.textContent=JSON.stringify({kind:continued.kind,
+   stepId:continued.stepId,evidence:continued.evidence,
+   optimizerStep:continued.restoredCheckpoint.model.step,
+   pendingMicroSteps:continued.restoredCheckpoint.pending.microSteps,
+   sampler:continued.restoredCheckpoint.sampler,
+   verifiedSuffixStates:continued.resumedTimeline.length,
+   continuedFromCheckpoint:continued.continuedFromCheckpoint,
+   finalReplayed:continued.finalReplayed},null,2);
+  setStatus('训练原生状态和后续微批次均已核验 · '+continued.stepId);
+  return continued;
+ }
  function sessionStore(){
   try{return window.sessionStorage||null;}catch(_){return null;}
  }
@@ -241,11 +259,12 @@ function mount(options={}){
  check.addEventListener('click',()=>guard(inspect));
  pin.addEventListener('click',()=>guard(pinBaseline));
  diff.addEventListener('click',()=>guard(compare));
- clear.addEventListener('click',()=>{baseline=null;foreignSnapshot=null;checkpointSource=null;resumeButton.disabled=true;sourceLink.hidden=true;comparison.textContent='基线已清除';setStatus('已清除基线');});
+ clear.addEventListener('click',()=>{baseline=null;foreignSnapshot=null;checkpointSource=null;resumeButton.disabled=true;trainingButton.disabled=true;sourceLink.hidden=true;comparison.textContent='基线已清除';setStatus('已清除基线');});
  download.addEventListener('click',()=>guard(exportSnapshot));
  branchButton.addEventListener('click',()=>guard(forkSnapshot));
  checkpointButton.addEventListener('click',()=>guard(exportCheckpoint));
  resumeButton.addEventListener('click',()=>guard(verifyKVContinuation));
+ trainingButton.addEventListener('click',()=>guard(verifyTrainingContinuation));
  importer.addEventListener('change',async()=>{
   const file=importer.files?.[0];if(!file)return;
   try{if(file.size>snapshots.MAX_BYTES)throw Error('快照文件超过大小限制');
@@ -262,7 +281,7 @@ function mount(options={}){
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
  menu.hidden=true;check.disabled=true;restoreHandoff();
- return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,exportCheckpoint,verifyKVContinuation,importSnapshot,
+ return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,exportCheckpoint,verifyKVContinuation,verifyTrainingContinuation,importSnapshot,
   clear:()=>clear.click(),
   get observation(){return inventory;},get baseline(){return baseline;},get current(){return current;},host});
 }

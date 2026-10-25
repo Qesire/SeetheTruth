@@ -25,6 +25,8 @@ jobs:
         run: python tests/browser_element_lineage.py
       - name: Verify graph-derived learning route in Chromium
         run: python tests/browser_learning_path.py
+      - name: Verify native training timeline and portable optimizer state in Chromium
+        run: python tests/browser_native_training_timeline.py
       - name: Verify unified observation UI on PC and phone
         run: python tests/browser_unified_observation_ui.py
       - name: Verify unified learning graph and specialist adapters on PC/Android
