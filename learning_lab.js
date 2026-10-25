@@ -87,7 +87,7 @@
     for(const n of raw.nodes){
       if(!n||typeof n!=="object"||typeof n.id!=="string"||!/^[A-Za-z0-9_-]{1,36}$/.test(n.id)||ids.has(n.id))fail("积木 ID 非法或重复");
       if(!Object.hasOwn(defs,n.kind))fail("未知积木类型",n.id);
-      if(!finite(n.x)||!finite(n.y)||Math.abs(n.x)>10000||Math.abs(n.y)>10000)fail("积木坐标必须有限",n.id);
+      if(!finite(n.x)||!finite(n.y)||Math.abs(n.x)>50000||Math.abs(n.y)>50000)fail("积木坐标必须有限",n.id);
       const p=n.params||{}, type=n.kind;
       if(!p||typeof p!=="object"||Array.isArray(p))fail("无效参数",n.id);
       const params={...defs[type].params};
