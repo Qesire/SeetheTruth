@@ -1,7 +1,7 @@
 {
   "schema": "seethetruth-executed-operator-case-certificates-v1",
   "evidence": "EXECUTED_PINNED_PYTORCH_CPU_GRAPH_CASE",
-  "sourceDigest": "cf9fd7bcdffcf2d46d36d45d49a60be49eda919b1945ecd1049b3b4f5449f67a",
+  "sourceDigest": "8ad05d71d059ec0803198fc9faa9abca36f59f5af31ecf8c325fa0ddbcc1cfb0",
   "sourceFiles": {
     "block_catalog.js": "3e60cf5259be0f845b0c95d4c6d186c3a7c34c87f312da70ede781ea1a370e56",
     "graph_autodiff.js": "799022d88f7ef37b42b528ab1de077c7a6a7bf149e65c0fc8bb9cdb108cfd4be",
@@ -10,7 +10,7 @@
     "training_objective.js": "0a9f9116702838692765bc3fd2c7a3f8249fe4e7811b7d2084de4b46dd180bb1",
     "training_coordinate_proof.js": "658bb0e974ea26dd983ed0656a647f08ef4c9d2cbdf99b7f36ee34206dbbd117",
     "tests/fixtures/coordinate_training_graph.js": "3ba03dc174453f5bf0a440e6ab627d826d1ba8c95c7d808d70103fae0a51d6be",
-    "tests/torch_operator_certificate_ledger.js": "63d9e7d231b75860be8b285de8bc26e4c53ce60d2c7bcab1bee0e6e056232792"
+    "tests/torch_operator_certificate_ledger.js": "ac19388ad46e81e94e77abaea668d41810b1f9c55eaa672891a52527e89e7c8d"
   },
   "environment": {
     "torch": "2.6.0+cpu",
@@ -124,8 +124,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "w",
@@ -136,8 +136,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "target",
@@ -148,8 +148,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 0,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "project",
@@ -160,8 +160,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "scaled",
@@ -172,8 +172,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "sum",
@@ -184,8 +184,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "out",
@@ -196,8 +196,8 @@
       ],
       "forwardCoordinates": 4,
       "wholeLossAdjointCoordinates": 4,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     },
     {
       "id": "loss",
@@ -208,8 +208,8 @@
       ],
       "forwardCoordinates": 1,
       "wholeLossAdjointCoordinates": 1,
-      "maxForwardError": 0,
-      "maxBackwardError": 0
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
     }
   ]
 }
