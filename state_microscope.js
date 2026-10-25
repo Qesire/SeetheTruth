@@ -39,6 +39,31 @@ function validate(frame){
   if(e.timing){need(finite(e.timing.start)&&finite(e.timing.end)&&e.timing.start>=0&&e.timing.end>=e.timing.start,'invalid simulated timestamp');}
   ids.add(e.id);prev=e.index;
  }
+ if(frame.evidenceTier===TIERS.GRAPH){
+  const links=frame.graphLinks;
+  need(plain(links)&&Object.keys(links).length>0&&Object.keys(links).length<=70,
+   'missing original graph node/phase lineage');
+  const byId=new Map(frame.steps.map(step=>[step.id,step]));
+  const used=new Set();
+  for(const [nodeId,link] of Object.entries(links)){
+   need(plain(link)&&Object.keys(link).sort().join(',')==='backward,forward,optimizer,updated',
+    'invalid graph node phase map');
+   for(const phase of ['forward','backward','optimizer','updated']){
+    const eventId=link[phase];
+    need(eventId===null||(typeof eventId==='string'&&byId.has(eventId)),
+     'graph phase references an unknown event');
+    if(eventId===null){
+     need(phase==='backward'||phase==='optimizer','required native graph phase missing');
+     continue;
+    }
+    const native=byId.get(eventId);
+    need(native.after.nodeId===nodeId&&native.after.phase===phase&&
+     !used.has(eventId),'graph event identity/phase mismatch');
+    used.add(eventId);
+   }
+  }
+  need(used.size===frame.steps.length,'orphaned native graph training event');
+ }
  return frame;
 }
 function kv(replay,KV){
@@ -216,7 +241,7 @@ function graphTraining(run){
    consumers.get(e.from).push(node.id);
   }
  }
- const steps=[],links={},push=(id,title,why,dependencies,before,after)=>{
+ const steps=[],links=Object.create(null),push=(id,title,why,dependencies,before,after)=>{
   need(steps.length<250,'too many graph training phases');
   const unique=[...new Set(dependencies)];
   const step={id,index:steps.length,title,why,dependencies:unique,before,after,
