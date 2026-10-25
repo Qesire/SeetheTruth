@@ -6,7 +6,6 @@ android_teaching_mode.js
 architecture_tradeoffs.js
 architecture_why.js
 operator_certificates_data.js
-operator_certificates_data.json
 operator_certificate_registry.js
 block_capabilities.js
 block_catalog.js
