@@ -24,6 +24,8 @@ assert.deepEqual(restored.checkpoint.detail.after,kv.stateTrace.steps[3].after);
 assert.deepEqual(restored.checkpoint.detail.dependencies,kv.stateTrace.steps[3].dependencies);
 const continuation=Snap.resumeKV(Core,cursor);
 assert.equal(continuation.finalReplayed,true);
+assert.equal(continuation.continuedFromPrefix,true);
+assert.deepEqual(continuation.resumedTimeline,kv.value.timeline.slice(4));
 assert.equal(continuation.index,3);
 assert.equal(continuation.prefix.timeline.length,4);
 assert.deepEqual(continuation.prefix.state,kv.value.timeline[3]);
