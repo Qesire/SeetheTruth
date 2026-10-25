@@ -13,6 +13,18 @@ assert.equal(run.stateTrace.evidenceTier,'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMU
 const independent=P.create(config),original=[independent.checkpoint()];
 for(const a of actions){if(a==='micro')independent.microStep();else independent.optimizerStep();original.push(independent.checkpoint());}
 assert.deepEqual(run.value.snapshots,original);
+const nativeMicro=run.stateTrace.steps[2].after;
+assert.equal(nativeMicro.optimizerStep,0);
+assert.equal(nativeMicro.pendingMicroSteps,2);
+assert.equal(nativeMicro.pendingIndices.length,4);
+assert.equal(typeof nativeMicro.pendingGradientChecksum,'number');
+assert.equal(nativeMicro.firstMomentChecksum,0);
+assert.equal(nativeMicro.secondMomentChecksum,0);
+const nativeOptimizer=run.stateTrace.steps[5].after;
+assert.equal(nativeOptimizer.optimizerStep,1);
+assert.equal(nativeOptimizer.pendingMicroSteps,0);
+assert.notEqual(nativeOptimizer.firstMomentChecksum,0);
+assert.notEqual(nativeOptimizer.secondMomentChecksum,0);
 const originalSnap=Snap.create(Core,run,'exact microbatch reference');
 assert.equal(Snap.restore(Core,originalSnap).record.operation,'timeline');
 for(const idx of [0,2,4,5,6,10]){
