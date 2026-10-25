@@ -14,7 +14,7 @@
   const BlockCatalog=(typeof module==="object"&&module.exports)?require("./block_catalog.js"):globalThis.SeetheTruthBlockCatalog;
   const StreamGraph=(typeof module==="object"&&module.exports)?require("./stream_graph_blocks.js"):globalThis.SeetheTruthStreamGraph;
   const Extensions=(typeof module==="object"&&module.exports)?require("./block_extension_registry.js"):globalThis.SeetheTruthBlockExtensions;
-  const MAX_NODES=80,MAX_EDGES=176;
+  const MAX_NODES=128,MAX_EDGES=256;
   const defs=Object.freeze({
     input:{title:"输入张量",en:"Input",category:"data",ports:[],params:{rows:3,width:4,seed:1},
       formula:"X ∈ ℝ^{T×D}",why:"建立具有确定形状和数值的微型张量，作为后续计算的数据来源。",
