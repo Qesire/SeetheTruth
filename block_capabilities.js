@@ -33,5 +33,32 @@ function audit(){
    torchMissing:rows.filter(r=>!r.torchEligible).length}),
   rows:Object.freeze(rows)});
 }
-return Object.freeze({audit});
+// Explicit capability states: a backend allowlist is not an independent run.
+function matrix(){
+ const existing=audit();
+ const rows=existing.rows.map(row=>{
+  const statuses={
+   registered:{availability:"available",verification:"registration_checked"},
+   staticShape:{availability:"requires_valid_graph",verification:"not_executed"},
+   boundedForward:{availability:"requires_valid_graph",verification:"not_executed"},
+   coordinateTrace:{availability:"requires_numeric_trace",verification:"not_executed"},
+   localVjp:{availability:"requires_per_graph_oracle",verification:"not_attested"},
+   numpyExport:{availability:row.numpyEligible?"eligible":"unsupported",verification:"not_attested"},
+   torchExport:{availability:row.torchEligible?"eligible":"unsupported",verification:"not_attested"},
+   modelParity:{availability:"not_claimed",verification:"not_attested"},
+   gpuKernel:{availability:"not_claimed",verification:"not_attested"}
+  };
+  return Object.freeze({kind:row.kind,title:row.title,
+   capability:Object.freeze(Object.fromEntries(Object.entries(statuses).map(([key,v])=>[key,Object.freeze(v)])))});
+ });
+ return Object.freeze({schema:"seethetruth-operator-capability-matrix-v1",
+  source:existing.schema,evidence:"DECLARATIVE_NOT_EXECUTED",
+  counts:existing.counts,rows:Object.freeze(rows)});
+}
+function describe(kind){
+ const row=matrix().rows.find(x=>x.kind===kind);
+ if(!row)throw Error("unknown operator capability kind "+kind);
+ return row;
+}
+return Object.freeze({audit,matrix,describe});
 });
