@@ -33,8 +33,9 @@ class GraphTrainingLineageBrowser(unittest.TestCase):
      self.assertNotIn('训练未提交',page.locator('#status').inner_text())
      page.locator('#graphTrainingObservationMode').select_option('training')
      page.locator('#unifiedObservationRefresh').click()
-     self.assertIn('EXECUTABLE_BOUNDED_GRAPH_VJP_OPTIMIZER_STATE',
-                   page.locator('#unifiedObservationStatus').inner_text())
+     self.assertIn('已核验 training',page.locator('#unifiedObservationStatus').inner_text())
+     self.assertEqual(page.evaluate('window.SeetheTruthObservationPanel.current.stateTrace.evidenceTier'),
+                      'EXECUTABLE_BOUNDED_GRAPH_VJP_OPTIMIZER_STATE')
      result=page.evaluate("""()=>{
       const record=window.SeetheTruthObservationPanel.current;
       return {kind:record.kind,id:record.id,op:record.operation,
