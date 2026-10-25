@@ -125,6 +125,7 @@ const notes={
  relu_squared:["ReLU² 对正输入取平方，导数为 2x，负输入与负区导数均严格为零。","平方整流已作为多种神经网络激活候选被讨论，与 ReLU 的线性正半轴不同。","零点按常见选择记导数 0；大量零值不表示 GPU 自动跳过计算。","检查 x=-2、0、2 的输出和导数，比较 ReLU。","activation_study"],
  mish:["Mish = x·tanh(softplus(x))，负半轴可非单调，导数为 tanh(sp)+xσ(x)(1−tanh(sp)²)。","Mish 通过 Softplus 和 Tanh 构成平滑的自门控激活，不等于 SiLU。","该函数并非所有开源大模型的默认选项；训练有效性需要真实实验。","与 SiLU、GELU 在负值上做实际数值比较。","mish_paper,activation_study"],
  leaky_relu:["Leaky ReLU 的负半轴具有显式 slope，正半轴为恒等；导数分别为 slope 与 1。","Leaky ReLU 缓解硬 ReLU 负半轴完全为零的现象，但不会自动解决所有梯度消失。","在零点不可微，教学约定导数 1；调节 slope 不会改变输出张量形状。","比较相同矩阵输入的 ReLU、Leaky ReLU 与 ReLU²。","activation_study"],
+ nd_gelu_tanh:["逐元素四轴 GELU tanh 近似；遵循 Wan2.2 FFN 在 Linear1 后的激活顺序。","近似正态 CDF，以 tanh(x+0.044715x³) 而非 erf 计算。","不等同精确 GELU，更不意味着激活天然稀疏执行。","比较 tanh 与 erf 输出及有限差分导数。","gelu_paper"],
  nd_gelu_erf:["逐元素对任意四轴张量执行 erf-CDF GELU，保存 B/H/T/D 轴和各 Head 的差异。","同 GELU 原始论文的标量函数，四轴实现仅改变布局而不改变数学公式。","属于真正浮点计算和逐元素 VJP，不是只显示形状的积木。","连接可训练四轴 Parameter、激活、ND-MSE，验证全元素的数值梯度。","gelu_paper"],
  nd_silu:["四轴 SiLU=f(x)=xσ(x)，导数 σ(x)+xσ(x)(1−σ(x))。","SiLU/Swish 类激活常见于现代门控 FFN，完整 SwiGLU 仍需独立 Gate/Up 线性投影。","本积木只含逐元素非线性，不能被误当作完整 FFN。","在四轴 Parameter 到 Loss 的中间插入 SiLU，比较数值与梯度。","activation_study,glu"],
  nd_relu_squared:["四轴逐元素 ReLU²，输出维与输入完全一致，梯度为 2max(x,0) 对正输入有效。","该形式可作为 FFN 非线性候选，具体是否提高模型质量需对照实验。","即便形状可执行，输出大幅稀疏可能改变模型质量，不能视作等价重写。","比较各 Head 的激活零比例和梯度范数。","activation_study"],

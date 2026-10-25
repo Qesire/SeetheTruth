@@ -10,7 +10,7 @@ const accum=(g,a)=>ND.broadcastBinary(g,a,(x,y)=>x+y);
 function vjp(kind,input,params,upstream,output){
  const dshape=ND.shape(upstream),source=k=>input[k],A=source("a"),B=source("b"),X=source("x"),result={};
  if(!eq(dshape,ND.shape(output)))throw Error("N-D VJP upstream gradient shape mismatch");
- if(["nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish","nd_elu","nd_hardswish"].includes(kind)){
+ if(["nd_gelu_tanh","nd_gelu_erf","nd_silu","nd_relu_squared","nd_mish","nd_elu","nd_hardswish"].includes(kind)){
    const sh=ND.shape(X);result.x=ND.build(sh,idx=>ND.at(upstream,idx)*Act.derivative(kind.slice(3),ND.at(X,idx),params));return result;
  }
  if(kind==="nd_input")return result;

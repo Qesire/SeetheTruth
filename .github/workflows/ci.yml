@@ -58,6 +58,7 @@ jobs:
           node tests/wan_qk_weighted_rmsnorm_contracts.js
           node tests/wan_adaln_self_gate_contracts.js
           node tests/wan_i2v_cross_attention_contracts.js
+          node tests/wan_complete_block_contracts.js
           node tests/shared_lowering_plan_contracts.js
           node tests/execution_ir_contracts.js
           node tests/graph_session_contracts.js
