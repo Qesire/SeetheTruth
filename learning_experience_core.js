@@ -23,6 +23,7 @@
   cacheLab:require("./kv_cache_lab.js"),
   scalarTraining:require("./training_flow.js"),
   graphTraining:require("./training_session.js"),
+  trainingCoordinate:require("./training_coordinate_proof.js"),
   nodeTimeline:require("./node_timeline.js"),
   journey:require("./engineering_journey_engine.js"),
   pipeline:require("./engineering_training_pipeline.js"),
@@ -46,6 +47,7 @@
   cacheLab:root.SeetheTruthCacheLab,
   scalarTraining:root.SeetheTruthTraining,
   graphTraining:root.SeetheTruthTrainingSession,
+  trainingCoordinate:root.SeetheTruthTrainingCoordinateProof,
   nodeTimeline:root.SeetheTruthNodeTimeline,
   journey:root.SeetheTruthEngineeringEngine,
   pipeline:root.SeetheTruthTrainingPipeline,
@@ -194,6 +196,8 @@
   training:Object.freeze({
    scalar:Object.freeze({module:"scalarTraining",method:"build",
     run:(m,x)=>m.build(x.config||{},"scalar"),observeState:v=>deps.state.scalar(v)}),
+   coordinate_proof:Object.freeze({module:"trainingCoordinate",method:"inspect",
+    run:(m,x)=>m.inspect(x.graph,x.options,x.selection)}),
    graph_step:Object.freeze({module:"graphTraining",method:"step",
     run:(m,x)=>{
      if(!x.graph||!x.options||typeof x.options!=="object"||Array.isArray(x.options))
