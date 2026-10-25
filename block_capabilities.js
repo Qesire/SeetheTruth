@@ -54,9 +54,9 @@ function matrix(){
    modelParity:{availability:"not_claimed",verification:"not_attested"},
    gpuKernel:{availability:"not_claimed",verification:"not_attested"}
   };
-  const nativeCase=certificates.forKind(row.kind);
+  const nativeCases=certificates.forKind(row.kind);
   return Object.freeze({kind:row.kind,title:row.title,
-   certifiedCases:nativeCase?Object.freeze([nativeCase]):Object.freeze([]),
+   certifiedCases:nativeCases,
    capability:Object.freeze(Object.fromEntries(Object.entries(statuses).map(([key,v])=>[key,Object.freeze(v)])))});
  });
  return Object.freeze({schema:"seethetruth-operator-capability-matrix-v1",
