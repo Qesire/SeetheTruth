@@ -4,7 +4,7 @@
  */
 (function(root,factory){const api=factory();if(typeof module==="object"&&module.exports)module.exports=api;root.SeetheTruthGraphLayout=api;})(typeof window!=="undefined"?window:{},function(){"use strict";
 function layout(raw,options={}){
- if(!raw||!Array.isArray(raw.nodes)||!Array.isArray(raw.edges)||!raw.nodes.length||raw.nodes.length>80)throw Error("invalid graph layout size");
+ if(!raw||!Array.isArray(raw.nodes)||!Array.isArray(raw.edges)||!raw.nodes.length||raw.nodes.length>128)throw Error("invalid graph layout size");
  const rowGap=Number.isFinite(options.rowGap)?options.rowGap:218;
  const colGap=Number.isFinite(options.colGap)?options.colGap:286;
  const perCol=Number.isInteger(options.perCol)?options.perCol:5;
