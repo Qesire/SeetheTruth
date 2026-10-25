@@ -223,6 +223,48 @@
    audit:Object.freeze({module:"capabilities",method:"audit",run:m=>m.audit()})
   })
  });
+ // Domain-neutral *observation*, not a second numerical executor.
+ // A record points back to a source trace rather than fabricating tensors/events.
+ const OBS_SCHEMA="seethetruth-observation-v1";
+ function observeExecution(execution){
+  if(!execution||execution.schema!==SCHEMA||execution.kind!=="specialized_execution")
+   fail("observation requires an accepted specialist execution");
+  const sources=[];
+  if(execution.stateTrace){
+   const t=execution.stateTrace;
+   if(!Array.isArray(t.steps))fail("invalid state observation steps");
+   sources.push(Object.freeze({kind:"state_transition",schema:t.schema,
+    evidence:t.evidenceTier,steps:Object.freeze(t.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"state_transition",
+     dependencies:Object.freeze((step.dependencies||[]).slice()),
+     source:"stateTrace.steps["+index+"]"})))}));
+  }
+  if(execution.computationTrace){
+   const t=execution.computationTrace;
+   if(!Array.isArray(t.steps))fail("invalid computation observation steps");
+   sources.push(Object.freeze({kind:"tensor_computation",schema:t.schema,
+    evidence:t.evidenceTier,steps:Object.freeze(t.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"tensor_computation",
+     dependencies:Object.freeze([]),source:"computationTrace.steps["+index+"]"})))}));
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:execution.id,operation:execution.operation,
+   evidence:execution.evidence,sourceEngine:execution.engine,
+   numericalReinterpretation:false,traceAvailable:sources.length>0,
+   sources:Object.freeze(sources)});
+ }
+ function replayLab(accepted){
+  if(!accepted||accepted.schema!==SCHEMA||accepted.kind!=="specialized_execution"||
+    !Object.hasOwn(accepted,"inputSnapshot"))
+   fail("replay requires an accepted execution with its original input");
+  const repeated=executeLab(accepted.id,accepted.operation,accepted.inputSnapshot);
+  // Exact parity is required: changing a value without changing its shape is also stale.
+  for(const key of ["value","stateTrace","computationTrace"]){
+   if(JSON.stringify(repeated[key])!==JSON.stringify(accepted[key]))
+    fail("replay mismatch: "+key);
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:accepted.operation,
+   reproduced:true,evidence:accepted.evidence,observation:observeExecution(repeated)});
+ }
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];
   if(!lab||!runner)fail("no registered executable adapter for "+id+"/"+operation);
@@ -249,7 +291,7 @@
   const computationTrace=id==="wan_ffn"?deps.compute.wan(value):null;
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:lab.domain,engine:lab.engine,
-   evidence:lab.evidence,value,stateTrace,computationTrace,
+   evidence:lab.evidence,value,stateTrace,computationTrace,inputSnapshot:copy(input),
    note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
  function inspectEvidence(id,operation,input={}){
@@ -285,5 +327,5 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,inspectEvidence,inspectCourse,inventory});
+  executeLab,replayLab,observeExecution,inspectEvidence,inspectCourse,inventory});
 });
