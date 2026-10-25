@@ -12,10 +12,11 @@ This is an audit of **actual source, observable behavior, declared capabilities 
 | --- | ---: | --- |
 | Registered graph operators | **150** | Distinct kinds, graph metadata and bounded teaching execution |
 | Independent installed extension kinds | **8** in **2 packs** | Generic registry/shape/numeric extension path exists; installed packs are chosen at build time |
-| Reachable guided graph entries | **67** | Real recipe identity checked in `Core.activateGraphLessons`; not evidence every generated backend works |
+| Reachable studio graph entries | **67** | Includes guided recipes, blank canvas and shortcut; not 67 separately executed backend proofs |
 | Shared PC/Android curriculum | **10** tracks | Single `teaching_curriculum.js` source |
 | Registered specialist domains | **17** | Real source-labelled identity and route |
 | Registered specialist execution actions | **23** | Derived from actual dispatch, *not* 23 GPU implementations |
+| Specialist actions with native microscope trace | **9/23** (**8 state + 1 computation**) | The remaining **14** actions must not fabricate state or tensor trajectories |
 | Shared observation UI pages | **7** | Learning Studio, Wan FFN, four DeepInfer labs and independent training timeline |
 | NumPy export-eligible operator kinds | **121/150** | Eligibility, not universal executable graph parity |
 | PyTorch export-eligible operator kinds | **115/150** | Eligibility, not universal executable graph parity |
@@ -58,7 +59,7 @@ The underlying mathematical objects remain separate: a tensor DAG with typed por
 | Operator semantics and extensible bricks | **Established, statically extensible**: `block_extension_registry.createRegistry` validates arbitrary candidate packs with independent numerical/shape semantics | The active `LearningLab` loads **two built-in packs statically**; independently created third-pack registries do not automatically install into the active graph runtime |
 | Capability model | **Partial**: registered/knowledge, NumPy/Torch eligibility distinguished | `graphAutodiff` is `requires_graph_test` for every kind, `modelParity` is `not_claimed`; backend coverage is not homogeneous |
 | Specialist identity / execution | **Improved in PR #86**: 17 lab identities and 23 actions exposed from the same real dispatch object as trace adapters | An action registration or declared native trace alone is not a successful per-scenario runtime test; each new action needs at least one native oracle |
-| Computation and state microscope | **Established for supported frames**: actual coordinate proof or genuine event before/after with causal edges | Not all 23 operations or 17 domains have native trace frames; some evidence-oriented routes are intentionally observational |
+| Computation and state microscope | **Established for supported frames**: actual coordinate proof or genuine event before/after with causal edges | Only 9 of 23 specialist actions declare native trace frames; some evidence-oriented routes are intentionally observational |
 | Replay and checkpoints | **Strong within supported CPU reference engines**: exact input replay, branch lineage, selected state cursors, KV and Bigram native continuation | Checksum is non-cryptographic; no universal external process/GPU checkpoint semantics or cross-backend state conversion |
 | Web / Android | **Verified subset**: common curriculum, shared observation UI, offline asset list, Chromium phone/desktop testing | `<script>` dependency order, static HTTP route and offline asset lists remain explicit bootstrap maintenance points; adding a JS module requires coordinating them |
 | Actual-code fidelity | **Partial**: JS numeric oracles with NumPy/PyTorch parity tests for selected operator families | 150 registered operator kinds **does not mean** 150 PyTorch lowering/gradient implementations or industrial-kernel parity |
