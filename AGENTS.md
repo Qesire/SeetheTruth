@@ -16,6 +16,10 @@ Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: ac
 - **Observability**: emit a vetted `state_microscope.js` frame for stateful engines; use actual events, causal edges, state revisions and declared evidence labels. Assume no GPU timing unless real profiler proof exists. A descriptive card is not a successful execution.
 - **Curriculum**: teach computation, mathematical mechanism, design tradeoff, failure counterexample and a meaningful experiment. Course cards on PC and Android come from `teaching_curriculum.js` via the unified core; engineering journey and training pipeline retain their verified numerical engines.
 
+## Shared observation and replay
+
+When adding graph or specialist computation, use the existing `SeetheTruthUnifiedCore.observe/replay/inspectObservationStep/compareRecords` contract instead of inventing a second trace envelope. Preserve native `stateTrace` or `computationTrace` and verified causality; replay the exact accepted input before coordinate inspection. Static-only routes must report no numeric trace. See [unified observation protocol](docs/unified-observation-v1.md).
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.

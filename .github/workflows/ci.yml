@@ -64,6 +64,7 @@ jobs:
           node tests/unified_pack_registry_contracts.js
           node tests/graph_learning_path_contracts.js
           node tests/unified_learning_core_contracts.js
+          node tests/unified_observation_contracts.js
           node tests/unified_specialist_contracts.js
           node tests/unified_evidence_contracts.js
           node tests/engineering_journey_contracts.js

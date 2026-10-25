@@ -223,6 +223,169 @@
    audit:Object.freeze({module:"capabilities",method:"audit",run:m=>m.audit()})
   })
  });
+ // Domain-neutral *observation*, not a second numerical executor.
+ // A record points back to a source trace rather than fabricating tensors/events.
+ const OBS_SCHEMA="seethetruth-observation-v1";
+
+ function observationSources(stateTrace,computationTrace){
+  const sources=[];
+  if(stateTrace){
+   if(!deps.state||typeof deps.state.validate!=="function")fail("state validator unavailable");
+   deps.state.validate(stateTrace);
+   sources.push(Object.freeze({kind:"state_transition",schema:stateTrace.schema,
+    evidence:stateTrace.evidenceTier,steps:Object.freeze(stateTrace.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"state_transition",
+     dependencies:Object.freeze(step.dependencies.map(from=>Object.freeze({from,port:null}))),
+     source:"stateTrace.steps["+index+"]"})))}));
+  }
+  if(computationTrace){
+   if(!deps.compute||typeof deps.compute.validate!=="function")fail("computation validator unavailable");
+   deps.compute.validate(computationTrace);
+   sources.push(Object.freeze({kind:"tensor_computation",schema:computationTrace.schema,
+    evidence:computationTrace.evidenceTier,steps:Object.freeze(computationTrace.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"tensor_computation",
+     dependencies:Object.freeze(step.dependencies.map(dep=>Object.freeze({from:dep.from,port:dep.port}))),
+     shape:Object.freeze(step.out.shape.slice()),
+     hasNumericValues:step.out.values!==null,
+     source:"computationTrace.steps["+index+"]"})))}));
+  }
+  return Object.freeze(sources);
+ }
+ function observeExecution(execution){
+  if(!execution||execution.schema!==SCHEMA||execution.kind!=="specialized_execution")
+   fail("observation requires an accepted specialist execution");
+  const lab=byId.get(execution.id);
+  if(!lab||execution.engine!==lab.engine||execution.evidence!==lab.evidence)
+   fail("observation engine/evidence identity mismatch");
+  const sources=observationSources(execution.stateTrace,execution.computationTrace);
+  return Object.freeze({schema:OBS_SCHEMA,id:execution.id,operation:execution.operation,
+   evidence:execution.evidence,sourceEngine:execution.engine,
+   numericalReinterpretation:false,traceAvailable:sources.length>0,sources});
+ }
+ function replayLab(accepted){
+  if(!accepted||accepted.schema!==SCHEMA||accepted.kind!=="specialized_execution"||
+    !Object.hasOwn(accepted,"inputSnapshot"))
+   fail("replay requires an accepted execution with its original input");
+  const repeated=executeLab(accepted.id,accepted.operation,accepted.inputSnapshot);
+  // Evidence, source and full input identity are as important as raw values.
+  for(const key of ["engine","runtime","evidence","inputSnapshot","value","stateTrace","computationTrace"]){
+   if(JSON.stringify(repeated[key])!==JSON.stringify(accepted[key]))
+    fail("replay mismatch: "+key);
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:accepted.operation,
+   reproduced:true,evidence:repeated.evidence,observation:observeExecution(repeated)});
+ }
+
+ function replayGraph(accepted){
+  if(!accepted||accepted.schema!==SCHEMA||accepted.kind!=="graph")
+   fail("graph replay requires a shared inspected graph");
+  // Re-evaluate exactly the accepted graph, preserving the original static/numeric boundary.
+  const repeated=inspectGraph(accepted.graph,{id:accepted.id,numeric:accepted.numericOk===true});
+  for(const key of ["id","evidence","executable","numericOk","graph","path"]){
+   if(JSON.stringify(repeated[key])!==JSON.stringify(accepted[key]))
+    fail("graph replay mismatch: "+key);
+  }
+  if(JSON.stringify(repeated.session?.trace)!==JSON.stringify(accepted.session?.trace))
+   fail("graph replay mismatch: trace");
+  const frame=repeated.numericOk?deps.compute.learning(repeated.graph,repeated.session.trace,deps.learning):null;
+  return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,kind:"graph",reproduced:true,
+   numericExecuted:repeated.numericOk,evidence:repeated.evidence,
+   observation:Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:"inspectGraph",
+    evidence:repeated.evidence,sourceEngine:"learning_lab.js",
+    numericalReinterpretation:false,traceAvailable:!!frame,
+    sources:observationSources(null,frame)})});
+ }
+ function observeGraph(accepted){return replayGraph(accepted).observation;}
+ function observe(record){
+  return record?.kind==="graph"?observeGraph(record):observeExecution(record);
+ }
+ function replay(record){
+  return record?.kind==="graph"?replayGraph(record):replayLab(record);
+ }
+ function inspectObservationStep(accepted,options={}){
+  // Re-run first: never inspect a stale controller state under a valid source label.
+  const isGraph=accepted?.kind==="graph";
+  if(isGraph)replayGraph(accepted);else replayLab(accepted);
+  const kind=options.kind,stepId=options.stepId;
+  if(!["state_transition","tensor_computation"].includes(kind)||
+     typeof stepId!=="string"||!stepId)fail("observation requires kind and stepId");
+  const frame=isGraph
+   ?kind==="tensor_computation"&&accepted.numericOk
+    ?deps.compute.learning(accepted.graph,accepted.session.trace,deps.learning):null
+   :kind==="state_transition"?accepted.stateTrace:accepted.computationTrace;
+  if(!frame)fail("requested observation trace unavailable");
+  const step=frame.steps.find(x=>x.id===stepId);
+  if(!step)fail("unknown observation step "+stepId);
+  if(kind==="state_transition"){
+   if(options.coordinate!==undefined)fail("state transitions do not have tensor coordinates");
+   return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:isGraph?"inspectGraph":accepted.operation,
+    stepId,evidence:frame.evidenceTier,replayVerified:true,
+    detail:copy({title:step.title,why:step.why,before:step.before,after:step.after,
+     changes:step.changes,dependencies:step.dependencies,timing:step.timing??null})});
+  }
+  const coordinate=options.coordinate;
+  if(!Array.isArray(coordinate)||coordinate.length!==step.out.shape.length||
+     !coordinate.every((n,i)=>Number.isSafeInteger(n)&&n>=0&&n<step.out.shape[i]))
+   fail("coordinate must exactly match bounded output shape");
+  const rank=coordinate.length,row=rank===1?0:coordinate[rank-2],
+   col=coordinate[rank-1],prefix=coordinate.slice(0,Math.max(0,rank-2));
+  const detail=deps.compute.dot(frame,stepId,row,col,prefix);
+  return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:isGraph?"inspectGraph":accepted.operation,
+   stepId,evidence:frame.evidenceTier,replayVerified:true,
+   coordinate:Object.freeze(coordinate.slice()),detail:copy(detail)});
+ }
+ function compareExecutions(left,right){
+  if(!left||!right||left.id!==right.id||left.operation!==right.operation)
+   fail("comparison requires the same engine and operation");
+  replayLab(left);replayLab(right);
+  const changes=[];
+  for(const [kind,key] of [["state_transition","stateTrace"],["tensor_computation","computationTrace"]]){
+   const l=new Map((left[key]?.steps||[]).map(s=>[s.id,s])),
+    r=new Map((right[key]?.steps||[]).map(s=>[s.id,s]));
+   for(const id of new Set([...l.keys(),...r.keys()])){
+    if(JSON.stringify(l.get(id))!==JSON.stringify(r.get(id)))
+     changes.push(Object.freeze({kind,stepId:id,change:
+      !l.has(id)?"added":!r.has(id)?"removed":"changed"}));
+   }
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:left.id,operation:left.operation,
+   evidence:left.evidence,replayVerified:true,
+   inputEqual:JSON.stringify(left.inputSnapshot)===JSON.stringify(right.inputSnapshot),
+   valueEqual:JSON.stringify(left.value)===JSON.stringify(right.value),
+   stateTraceEqual:JSON.stringify(left.stateTrace)===JSON.stringify(right.stateTrace),
+   computationTraceEqual:JSON.stringify(left.computationTrace)===JSON.stringify(right.computationTrace),
+   changedSteps:Object.freeze(changes)});
+ }
+
+ function compareRecords(left,right){
+  if(left?.kind!=="graph"||right?.kind!=="graph"){
+   if(left?.kind==="graph"||right?.kind==="graph")
+    fail("comparison requires matching observational domains");
+   return compareExecutions(left,right);
+  }
+  const a=replayGraph(left),b=replayGraph(right);
+  const l=left.numericOk
+   ?deps.compute.learning(left.graph,left.session.trace,deps.learning):null;
+  const r=right.numericOk
+   ?deps.compute.learning(right.graph,right.session.trace,deps.learning):null;
+  const before=new Map((l?.steps||[]).map(x=>[x.id,x])),
+   after=new Map((r?.steps||[]).map(x=>[x.id,x]));
+  const changedSteps=[];
+  for(const stepId of new Set([...before.keys(),...after.keys()])){
+   if(JSON.stringify(before.get(stepId))!==JSON.stringify(after.get(stepId)))
+    changedSteps.push(Object.freeze({kind:"tensor_computation",stepId,change:
+     !before.has(stepId)?"added":!after.has(stepId)?"removed":"changed"}));
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:left.id,operation:"inspectGraph",
+   evidence:left.evidence===right.evidence?left.evidence:null,
+   evidencePair:Object.freeze([a.evidence,b.evidence]),
+   replayVerified:true,
+   inputEqual:JSON.stringify(left.graph)===JSON.stringify(right.graph),
+   numericCompared:!!(l&&r),
+   valueEqual:l&&r?JSON.stringify(left.session.trace)===JSON.stringify(right.session.trace):null,
+   stateTraceEqual:null,computationTraceEqual:l&&r?JSON.stringify(l)===JSON.stringify(r):null,
+   changedSteps:Object.freeze(changedSteps)});
+ }
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];
   if(!lab||!runner)fail("no registered executable adapter for "+id+"/"+operation);
@@ -249,7 +412,7 @@
   const computationTrace=id==="wan_ffn"?deps.compute.wan(value):null;
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:lab.domain,engine:lab.engine,
-   evidence:lab.evidence,value,stateTrace,computationTrace,
+   evidence:lab.evidence,value,stateTrace,computationTrace,inputSnapshot:copy(input),
    note:"Observed deterministic domain engine output; does not imply GPU performance, model execution or cross-domain equivalence."});
  }
  function inspectEvidence(id,operation,input={}){
@@ -285,5 +448,6 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,inspectEvidence,inspectCourse,inventory});
+  executeLab,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
+  inspectObservationStep,compareExecutions,compareRecords,inspectEvidence,inspectCourse,inventory});
 });

@@ -12,6 +12,10 @@
  root.SeetheTruthSpecializedLesson=Object.freeze({
   ...contract,
   execute:(operation,input)=>core.executeLab(id,operation,input),
-  inspect:()=>core.inspectLab(id)
+  inspect:()=>core.inspectLab(id),
+  observe:execution=>core.observeExecution(execution),
+  replay:execution=>core.replayLab(execution),
+  inspectStep:(execution,options)=>core.inspectObservationStep(execution,options),
+  compare:(left,right)=>core.compareRecords(left,right)
  });
 })(typeof window!=="undefined"?window:{});
