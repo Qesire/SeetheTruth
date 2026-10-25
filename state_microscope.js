@@ -159,6 +159,14 @@ function training(snapshots){
  const steps=snapshots.map((snap,i)=>{
   need(snap?.schema==='seethetruth-training-pipeline-v1'&&snap.dataFingerprint&&snap.model&&snap.sampler&&snap.pending,'invalid checkpoint schema');
   need(Array.isArray(snap.model.weights)&&snap.model.weights.length===64&&snap.model.weights.every(finite),'invalid Bigram checkpoint weights');
+  need(Array.isArray(snap.model.firstMoment)&&snap.model.firstMoment.length===64&&
+   snap.model.firstMoment.every(finite)&&Array.isArray(snap.model.secondMoment)&&
+   snap.model.secondMoment.length===64&&snap.model.secondMoment.every(finite),
+   'invalid native optimizer moment arrays');
+  need(Array.isArray(snap.pending.gradientSum)&&snap.pending.gradientSum.length===64&&
+   snap.pending.gradientSum.every(finite)&&Array.isArray(snap.pending.indices)&&
+   snap.pending.indices.length<=64&&snap.pending.indices.every(Number.isSafeInteger),
+   'invalid native pending gradient provenance');
   need(Number.isSafeInteger(snap.model.step)&&snap.model.step>=0&&snap.model.step<=1e6,'invalid optimizer step');
   need(Number.isSafeInteger(snap.sampler.epoch)&&snap.sampler.epoch>=0&&Number.isSafeInteger(snap.sampler.cursor)&&snap.sampler.cursor>=0,'invalid sampler position');
   need(Number.isSafeInteger(snap.pending.microSteps)&&snap.pending.microSteps>=0&&Number.isSafeInteger(snap.pending.samples)&&snap.pending.samples>=0&&finite(snap.pending.lossSum),'invalid pending gradients');
@@ -167,7 +175,11 @@ function training(snapshots){
   if(previous)need(snap.model.step>=previous.model.step,'optimizer step went backwards');
   const x={optimizerStep:snap.model.step,epoch:snap.sampler.epoch,cursor:snap.sampler.cursor,
    pendingMicroSteps:snap.pending.microSteps,pendingSamples:snap.pending.samples,
-   pendingLossSum:snap.pending.lossSum,weightsChecksum:snap.model.weights.reduce((acc,v,j)=>acc+(j+1)*v,0)};
+   pendingLossSum:snap.pending.lossSum,pendingIndices:snap.pending.indices.slice(),
+   weightsChecksum:snap.model.weights.reduce((acc,v,j)=>acc+(j+1)*v,0),
+   firstMomentChecksum:snap.model.firstMoment.reduce((acc,v,j)=>acc+(j+1)*v,0),
+   secondMomentChecksum:snap.model.secondMoment.reduce((acc,v,j)=>acc+(j+1)*v,0),
+   pendingGradientChecksum:snap.pending.gradientSum.reduce((acc,v,j)=>acc+(j+1)*v,0)};
   const before=params||x,after=x;
   const evt={id:'train:'+i,index:i,title:'检查点阶段 '+(i+1)+' · optimizer.step='+x.optimizerStep,
    why:'比较真实 Bigram 教学训练引擎生成的 W/Step、Sampler 和梯度缓冲状态；不是 PyTorch/GPU 模型权重或训练时间。',
