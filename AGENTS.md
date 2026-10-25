@@ -16,6 +16,12 @@ Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: ac
 - **Observability**: emit a vetted `state_microscope.js` frame for stateful engines; use actual events, causal edges, state revisions and declared evidence labels. Assume no GPU timing unless real profiler proof exists. A descriptive card is not a successful execution.
 - **Curriculum**: teach computation, mathematical mechanism, design tradeoff, failure counterexample and a meaningful experiment. Course cards on PC and Android come from `teaching_curriculum.js` via the unified core; engineering journey and training pipeline retain their verified numerical engines.
 
+## One registration per specialist action
+
+Every specialist action belongs in the existing `learning_experience_core.js` `domainRunners` map with actual `module/method/run`. Declare a real `observeState` or `observeCompute` **on that same action** if the source engine emits a validated state/computation trace. Otherwise the action explicitly has `observation:'none'`. `Core.describeActions(id)` and `Core.inspectLab(id).operations` derive their source and observational capabilities from these actual runners; do not rebuild a disconnected `eventAdapters` dictionary or independent action list. A declared action is `NOT_EXECUTED` until run.
+
+Maintain `tests/architecture_extension_spine_contracts.js` and consult [the foundation audit](docs/foundation-architecture-audit-20261025.md) when adding installed packs, browser/Android modules or new state substrates. Distinguish *static pack installation* from dynamic runtime plugin loading, and *backend eligibility* from proven runnable numeric/gradient/codegen parity.
+
 ## Shared observation and replay
 
 When adding graph or specialist computation, use the existing `SeetheTruthUnifiedCore.observe/replay/inspectObservationStep/compareRecords` contract instead of inventing a second trace envelope. Preserve native `stateTrace` or `computationTrace` and verified causality; replay the exact accepted input before coordinate inspection. Static-only routes must report no numeric trace. See [unified observation protocol](docs/unified-observation-v1.md).
