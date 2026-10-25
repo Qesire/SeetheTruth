@@ -92,4 +92,10 @@ assert.throws(()=>Core.compareRecords(gi,w),/matching observational domains/);
 assert.deepEqual(Core.compareRecords(w,w2).changedSteps,diff.changedSteps);
 assert.deepEqual(go.sources[0].steps.find(s=>s.id==='sum').dependencies,
  [{from:'x',port:'a'},{from:'act',port:'b'}]);
+
+// Browser-level dependency order: core captures the real computation microscope.
+const html=require('node:fs').readFileSync(require('node:path').join(__dirname,'../learn.html'),'utf8');
+assert.ok(html.indexOf('src="compute_microscope.js"')>=0 &&
+ html.indexOf('src="compute_microscope.js"')<html.indexOf('src="learning_experience_core.js"'),
+ 'Learning Studio must load computation microscope before unified core');
 console.log('UNIFIED_OBSERVATION_PASS: typed state/computation refs, exact input replay, tamper detection, no invented trace');
