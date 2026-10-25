@@ -47,6 +47,7 @@ class RealTraceBrowserAcceptance(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w",suffix=".json",encoding="utf8") as f:
             json.dump(payload,f,allow_nan=False);f.flush()
             self.p.locator("#traceUpload").set_input_files(f.name)
+            self.p.wait_for_function("document.querySelector('#traceUpload').value === ''",timeout=10000)
     def test_no_false_proof_and_structural_view(self):
         p=self.p
         self.assertIn("尚未导入",p.locator("#status").inner_text())

@@ -35,6 +35,7 @@ on:
       - 'tests/torch_operator_certificate_ledger.js'
       - 'tests/operator_certificate_registry_contracts.js'
       - 'tests/fixtures/coordinate_training_graph.js'
+      - 'tests/fixtures/operator_coverage_graphs.js'
       - 'operator_certificates_data.json'
       - 'operator_certificates_data.js'
       - 'operator_certificate_registry.js'
