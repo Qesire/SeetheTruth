@@ -356,6 +356,36 @@
    computationTraceEqual:JSON.stringify(left.computationTrace)===JSON.stringify(right.computationTrace),
    changedSteps:Object.freeze(changes)});
  }
+
+ function compareRecords(left,right){
+  if(left?.kind!=="graph"||right?.kind!=="graph"){
+   if(left?.kind==="graph"||right?.kind==="graph")
+    fail("comparison requires matching observational domains");
+   return compareExecutions(left,right);
+  }
+  const a=replayGraph(left),b=replayGraph(right);
+  const l=left.numericOk
+   ?deps.compute.learning(left.graph,left.session.trace,deps.learning):null;
+  const r=right.numericOk
+   ?deps.compute.learning(right.graph,right.session.trace,deps.learning):null;
+  const before=new Map((l?.steps||[]).map(x=>[x.id,x])),
+   after=new Map((r?.steps||[]).map(x=>[x.id,x]));
+  const changedSteps=[];
+  for(const stepId of new Set([...before.keys(),...after.keys()])){
+   if(JSON.stringify(before.get(stepId))!==JSON.stringify(after.get(stepId)))
+    changedSteps.push(Object.freeze({kind:"tensor_computation",stepId,change:
+     !before.has(stepId)?"added":!after.has(stepId)?"removed":"changed"}));
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:left.id,operation:"inspectGraph",
+   evidence:left.evidence===right.evidence?left.evidence:null,
+   evidencePair:Object.freeze([a.evidence,b.evidence]),
+   replayVerified:true,
+   inputEqual:JSON.stringify(left.graph)===JSON.stringify(right.graph),
+   numericCompared:!!(l&&r),
+   valueEqual:l&&r?JSON.stringify(left.session.trace)===JSON.stringify(right.session.trace):null,
+   stateTraceEqual:null,computationTraceEqual:l&&r?JSON.stringify(l)===JSON.stringify(r):null,
+   changedSteps:Object.freeze(changedSteps)});
+ }
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];
   if(!lab||!runner)fail("no registered executable adapter for "+id+"/"+operation);
@@ -419,5 +449,5 @@
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
   executeLab,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
-  inspectObservationStep,compareExecutions,inspectEvidence,inspectCourse,inventory});
+  inspectObservationStep,compareExecutions,compareRecords,inspectEvidence,inspectCourse,inventory});
 });
