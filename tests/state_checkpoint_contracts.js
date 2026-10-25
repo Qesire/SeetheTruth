@@ -67,4 +67,14 @@ const prefill=Core.executeLab('deepinfer_prefill','inspect_pair',{
 const p=Snap.at(Core,Snap.create(Core,prefill),'prefill:chunk');
 assert.equal(Snap.restore(Core,p).checkpoint.detail.after.decision.q,2);
 assert.deepEqual(Snap.restore(Core,p).checkpoint.detail.dependencies,[]);
+const training=Core.executeLab('training','scalar',{config:{theta:.4,optimizer:'adamw',steps:2}});
+assert.equal(training.stateTrace.evidenceTier,'EXECUTABLE_SCALAR_ANALYTIC_TRAINING');
+const trainingStep=training.stateTrace.steps.find(x=>x.changes.length>0);
+assert.ok(trainingStep,'training source should contain a nontrivial state transition');
+const trainingCursor=Snap.at(Core,Snap.create(Core,training),trainingStep.id);
+const trainingRestored=Snap.restore(Core,trainingCursor);
+assert.equal(trainingRestored.checkpoint.replayVerified,true);
+assert.deepEqual(trainingRestored.checkpoint.detail.after,trainingStep.after);
+assert.equal(trainingRestored.checkpoint.detail.changes.length,trainingStep.changes.length);
+assert.throws(()=>Snap.resumeKV(Core,trainingCursor),/requires a verified KV cursor/);
 console.log('STATE_CHECKPOINT_PASS: source replay, verified step view, KV prefix, worker and independent Prefill, tampering');
