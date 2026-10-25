@@ -248,8 +248,8 @@ function graphTraining(run){
  }
  for(const node of nodes){
   if(!node.optimizer)continue;
-  need(backward.has(node.id)&&node.optimizerState&&
-   node.optimizer.id===undefined,'parameter optimizer update lacks native VJP/state');
+  need(backward.has(node.id)&&node.optimizerState&&node.optimizer.id===node.id,
+   'parameter optimizer update lacks native VJP/state');
   const id='graph:optimizer:'+updates.size,o=node.optimizerState;
   const base={nodeId:node.id,phase:'optimizer',optimizer:o.kind,shape:node.forwardShape};
   const before={...base,step:o.stepBefore,moments:o.accumulators.map(a=>({slot:a.slot,stats:a.before}))};
