@@ -32,6 +32,10 @@ Build new experiment snapshots through `observation_snapshots.js` (`create / res
 
 For stateful lessons, preserve the original validated `stateTrace`. Use `Snapshots.at(Core,snapshot,stepId)` to represent an exact teaching-state cursor; `Snapshots.restore` must verify the full source run and selected step before either microscope selects it. For KV local CPU semantics only, `Snapshots.resumeKV` replays a prefix of original operations and checks its state against the complete accepted run. Other domains may add prefix-state semantics only with an actual source engine replay oracle, never by assigning an arbitrary `after` dictionary as mutable device state.
 
+## Native training continuation
+
+Training-state restoration uses the original optimizer/backend checkpoint API, not reconstructed weights from observation summary fields. `engineering_pipeline/timeline` emits checkpoints per native `microStep/optimizerStep`. `Snapshots.resumeTraining` restores the original Bigram checkpoint (parameters, moments, Sampler, pending gradients) and executes/compares **each** remaining transition. The independent timeline panel in `engineering_pipeline.html` is intentionally a separate user-driven run, not a fabricated mirror of the guided lesson controller. Add numerical and desktop/phone browser contracts for any new training-state backend.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
