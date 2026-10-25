@@ -139,6 +139,15 @@ class UnifiedObservationBrowser(unittest.TestCase):
    self.assertTrue(restored['restored'])
    page.locator('#unifiedObservationCompare').click()
    self.assertIn('"valueEqual": true',page.locator('#unifiedObservationDiff').inner_text())
+   with page.expect_download() as info:
+    page.locator('#unifiedObservationExport').click()
+   self.assertIn('seethetruth-observation-',info.value.suggested_filename)
+   page.locator('[data-preset="attention"]').click()
+   page.locator('#run').click()
+   with page.expect_download() as branch_download:
+    page.locator('#unifiedObservationFork').click()
+   self.assertIn('-branch.json',branch_download.value.suggested_filename)
+   self.assertIn('父快照',page.locator('#unifiedObservationDiff').inner_text())
    self.assertEqual(errors,[])
   finally:page.close()
  def test_worker_state_no_fabricated_coordinates(self):
