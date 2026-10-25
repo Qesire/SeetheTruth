@@ -296,7 +296,7 @@ class MicroscopeBrowser(unittest.TestCase):
       self.assertIn('weight → cross_k_gamma',report)
       self.assertIn('已覆盖全部可验证路径',report)
      page.screenshot(path=str(OUT/('wan-cross-'+target+('-mobile' if width==390 else '-desktop')+'.png')),
-      full_page=width==390,animations='disabled')
+      full_page=False,animations='disabled')
     self.assertEqual(errors,[])
    finally:page.close()
  def test_mobile_named_axis(self):
