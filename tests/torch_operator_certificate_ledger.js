@@ -40,6 +40,8 @@ assert.match(independent.torch,/^2\.6\.0\+cpu$/,'must run the pinned independent
 assert.equal(independent.dtype,'torch.float64');
 const flatten=x=>Array.isArray(x)?x.flat(Infinity):[x];
 const tolerance={forward:2e-10,backward:2e-9,finiteDifference:3e-6};
+const upperBound=(observed,limit)=>observed<=1e-12?1e-12:
+ observed<=1e-10?1e-10:limit; // coarse *proved upper bound*, not raw rounding-sensitive observed error
 const byKind=new Map(),nodeMeta=[];
 for(const step of forward.steps){
  const pt=independent.forward[step.id],expected=flatten(step.values),actual=flatten(pt);
@@ -63,7 +65,8 @@ for(const step of forward.steps){
  }
  nodeMeta.push({id:step.id,kind:step.kind,shape:step.shape,
   forwardCoordinates:expected.length,wholeLossAdjointCoordinates:grad?local.length:0,
-  maxForwardError:max,maxBackwardError:maxBackward});
+  maxForwardErrorUpperBound:upperBound(max,tolerance.forward),
+  maxBackwardErrorUpperBound:upperBound(maxBackward,tolerance.backward)});
  const record=byKind.get(step.kind)||{kind:step.kind,caseIds:[],
   forwardCoordinates:0,wholeLossAdjointCoordinates:0};
  record.caseIds.push(step.id);
