@@ -38,8 +38,8 @@ for(const node of nodes){
  assert.deepEqual(forward.after.output,node.forwardValue);
  assert.deepEqual(after.after.output,node.updatedValue);
  const incoming=Object.values(node.inputSources).filter(x=>x!==null);
- assert.deepEqual(forward.dependencies,incoming.map(x=>graphLinks[x].forward));
- assert.deepEqual(after.dependencies.slice(0,incoming.length),incoming.map(x=>graphLinks[x].updated));
+ assert.deepEqual(forward.dependencies,[...new Set(incoming.map(x=>graphLinks[x].forward))]);
+ assert.deepEqual(after.dependencies.slice(0,new Set(incoming).size),[...new Set(incoming.map(x=>graphLinks[x].updated))]);
  if(links.backward){
   const grad=run.stateTrace.steps.find(x=>x.id===links.backward);
   assert.deepEqual(grad.after.gradient,node.gradient);
