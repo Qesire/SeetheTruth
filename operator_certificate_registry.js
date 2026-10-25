@@ -48,10 +48,10 @@
       !n.shape.every(v=>Number.isSafeInteger(v)&&v>0&&v<=16)||
       !num(n.forwardCoordinates)||n.forwardCoordinates===0||
       !num(n.wholeLossAdjointCoordinates)||n.wholeLossAdjointCoordinates>n.forwardCoordinates||
-      !Number.isFinite(n.maxForwardError)||n.maxForwardError<0||
-      n.maxForwardError>raw.tolerance.forward||
-      !Number.isFinite(n.maxBackwardError)||n.maxBackwardError<0||
-      n.maxBackwardError>raw.tolerance.backward||nodeMap.has(n.id))
+      !Number.isFinite(n.maxForwardErrorUpperBound)||n.maxForwardErrorUpperBound<0||
+      n.maxForwardErrorUpperBound>raw.tolerance.forward||
+      !Number.isFinite(n.maxBackwardErrorUpperBound)||n.maxBackwardErrorUpperBound<0||
+      n.maxBackwardErrorUpperBound>raw.tolerance.backward||nodeMap.has(n.id))
     fail('invalid independent operator node witness');
    const size=n.shape.reduce((v,w)=>v*w,1);
    if(size!==n.forwardCoordinates)fail('node shape/coordinate count mismatch');
