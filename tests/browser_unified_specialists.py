@@ -54,6 +54,12 @@ class UnifiedSpecialists(unittest.TestCase):
        actual=page.evaluate("document.querySelectorAll('#rows tr').length")
        self.assertEqual(actual,page.evaluate(
         "window.SeetheTruthSpecializedLesson.execute('audit',{}).value.rows.length"))
+       page.locator('#rows .capabilityInspect').first.click()
+       detail=page.locator('#capabilityDetail').inner_text()
+       self.assertIn('not_attested',detail)
+       self.assertIn('not_executed',detail)
+       self.assertIn('modelParity',detail)
+       self.assertIn('gpuKernel',detail)
       self.assertEqual(errors,[])
      finally:
       page.close()
