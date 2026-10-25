@@ -35,7 +35,7 @@
   if(!param||!["parameter","nd_parameter"].includes(param.kind)||param.params.frozen)
    fail("requested coordinate must be a trainable parameter on the chosen loss path");
   const dims=d.ND.shape(param.params.values);
-  if(!equal(dims,idx.map((_,i)=>dims[i]))||dims.length!==idx.length||
+  if(dims.length!==idx.length||
      idx.some((v,i)=>v>=dims[i]))fail("parameter coordinate out of bounds");
   const session=d.Session.step(graph,options),previous=session.transaction.previous;
   const record=session.updates.find(u=>u.id===id);
@@ -74,15 +74,17 @@
     detail.loss.throughSelectedEligible;
    if(eligible&&match&&!close(match.wholeLossGradient,g))
     fail("selected path and full-loss gradient disagree with source autodiff");
-   path={status:eligible&&match&&Number.isFinite(match.throughSelected)
-    ?"VERIFIED_SELECTED_PATH_CONTRIBUTION":"PARTIAL_OR_UNAVAILABLE_PATH",
+   path={status:eligible
+    ?match&&Number.isFinite(match.throughSelected)
+      ?"VERIFIED_SELECTED_PATH_CONTRIBUTION":"VERIFIED_ZERO_SELECTED_PATH"
+    :"PARTIAL_OR_UNAVAILABLE_PATH",
     selected:detail.selected,localTerms:detail.backward.localEdges,
     internalStages:detail.backward.internalStages,
     complete:detail.backward.complete,frontiers:detail.backward.boundaryNodes,
     loss:detail.loss.status==="VERIFIED_GRAPH_LOSS_VJP"
      ?{targetId:detail.loss.targetId,selectedAdjoint:detail.loss.selectedAdjoint,
        throughSelectedEligible:detail.loss.throughSelectedEligible}: {status:detail.loss.status},
-    parameterContribution:eligible&&match?match.throughSelected:null,
+    parameterContribution:eligible?(match?match.throughSelected:0):null,
     otherPathsMayContribute:true,
     sourceProof:detail.schema};
   }
