@@ -99,7 +99,18 @@ function mount(options={}){
    ...(coordinate?{coordinate}:{})});
   const text=JSON.stringify(checked,null,2);
   detail.textContent=text.length<=15000?text:text.slice(0,15000)+'\n… 仅截断显示，原始执行结果未修改。';
+  if(typeof options.onInspect==="function")options.onInspect(checked,current);
   return checked;
+ }
+ function focusStep(kind,stepId){
+  if(!inventory||!current)refresh();
+  const groupIndex=inventory.sources.findIndex(group=>group.kind===kind&&
+   group.steps.some(point=>point.id===stepId));
+  if(groupIndex<0)throw Error("当前原始观测中不存在所选步骤 "+stepId);
+  sourceIndex=groupIndex;
+  stepIndex=inventory.sources[groupIndex].steps.findIndex(point=>point.id===stepId);
+  renderSources();
+  return inspect();
  }
  function pinBaseline(){
   if(!current)refresh();core.replay(current);baseline=freezeClone(current);
@@ -281,7 +292,7 @@ function mount(options={}){
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
  menu.hidden=true;check.disabled=true;restoreHandoff();
- return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,exportCheckpoint,verifyKVContinuation,verifyTrainingContinuation,importSnapshot,
+ return Object.freeze({refresh,inspect,focusStep,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,exportCheckpoint,verifyKVContinuation,verifyTrainingContinuation,importSnapshot,
   clear:()=>clear.click(),
   get observation(){return inventory;},get baseline(){return baseline;},get current(){return current;},host});
 }
