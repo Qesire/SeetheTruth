@@ -32,7 +32,7 @@ function witness(record){
 function validate(input){
  if(!plain(input))fail("expected plain JSON object");
  const raw=safeJSON(input),s=JSON.parse(raw);
- const allowed=["schema","kind","id","operation","engine","evidence","numeric","input","checksum","label"];
+ const allowed=["schema","kind","id","operation","engine","evidence","numeric","input","checksum","label","parent"];
  if(Object.keys(s).some(key=>!allowed.includes(key)))fail("unexpected envelope field");
  if(s.schema!==SCHEMA||!["graph","specialized_execution"].includes(s.kind))fail("invalid schema/domain");
  if(typeof s.id!=="string"||s.id.length<1||s.id.length>100||!/^[a-zA-Z0-9_.:-]+$/.test(s.id))
@@ -45,6 +45,9 @@ function validate(input){
    !/^[A-Za-z0-9_]+$/.test(s.evidence))fail("invalid evidence");
  if(typeof s.numeric!=="boolean")fail("missing numeric mode");
  if(typeof s.label!=="string"||s.label.length>80)fail("invalid snapshot label");
+ if(s.parent!==undefined&&s.parent!==null&&
+    (typeof s.parent!=="string"||!/^fnv1a32:[a-f0-9]{8}:[0-9]{1,9}$/.test(s.parent)))
+  fail("invalid parent snapshot reference");
  if(typeof s.checksum!=="string"||!/^fnv1a32:[a-f0-9]{8}:[0-9]{1,9}$/.test(s.checksum))
   fail("invalid diagnostic checksum");
  if(!plain(s.input)||s.kind==="specialized_execution"&&s.numeric)fail("invalid source input");
@@ -68,9 +71,26 @@ function create(core,record,label=""){
   evidence:observation.evidence,
   numeric:isGraph?record.numericOk===true:false,
   input:clone(isGraph?record.graph:record.inputSnapshot),
-  checksum:checksum(witness(record)),label:String(label)
+  checksum:checksum(witness(record)),label:String(label),parent:null
  };
  return validate(entry);
+}
+function fork(core,original,nextInput,label=""){
+ const base=validate(original);
+ const confirmed=restore(core,base);
+ if(!plain(nextInput))fail("fork requires a complete source input object");
+ const input=clone(nextInput);
+ if(JSON.stringify(input)===JSON.stringify(base.input))
+  fail("fork needs a changed source input");
+ const candidate=base.kind==="graph"
+  ?core.inspectGraph(input,{numeric:base.numeric,id:base.id})
+  :core.executeLab(base.id,base.operation,input);
+ const diff=core.compareRecords(confirmed.record,candidate);
+ if(!diff.replayVerified)fail("branch did not pass source replay");
+ const next=create(core,candidate,label);
+ if(next.engine!==base.engine||next.evidence!==base.evidence||next.operation!==base.operation)
+  fail("branch changed source domain/evidence");
+ return validate({...next,parent:base.checksum});
 }
 function route(core,snapshot){
  const s=validate(snapshot);
@@ -103,5 +123,5 @@ function describe(core,snapshot){
   label:s.label,evidence:s.evidence,sourceHref:route(core,s),
   replayVerified:false,imported:true});
 }
-return Object.freeze({SCHEMA,MAX_BYTES,create,validate,restore,describe,route});
+return Object.freeze({SCHEMA,MAX_BYTES,create,fork,validate,restore,describe,route});
 });
