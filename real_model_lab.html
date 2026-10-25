@@ -52,9 +52,12 @@ function stats(info,title){
  metric("max",info.max)+metric("L2",info.l2)+metric("zero fraction",info.zeroFraction)+'</div>'+
  plot(info.sample,"前 "+info.sample.length+" / "+info.count+" 个元素（非完整矩阵）");
 }
-async function load(file){
+let importSequence=0;
+async function load(file,sequence){
  if(!file||file.size>256*1024)throw Error("请选择不超过 256 KiB 的合法采集 JSON");
- const value=JSON.parse(await file.text()),summary=window.SeetheTruthUnifiedCore.inspectEvidence("real_model","validate_import",{trace:value}).data.summary,p=value.provenance;
+ const value=JSON.parse(await file.text());
+ if(sequence!==importSequence)return;
+ const summary=window.SeetheTruthUnifiedCore.inspectEvidence("real_model","validate_import",{trace:value}).data.summary,p=value.provenance;
  $("#modelName").textContent=summary.source;
  $("#metadata").innerHTML='<div class="metric-grid">'+
  '<div class="metric"><label>模块身份</label><strong>'+esc(summary.module)+'</strong></div>'+
@@ -68,9 +71,10 @@ async function load(file){
  $("#status").textContent="JSON 内部合同有效 · 来源声明已记录 · 仍需按 revision 独立复跑才可标记为已验证 REAL_CAPTURE。";
 }
 $("#traceUpload").addEventListener("change",async e=>{
- try{await load(e.target.files?.[0]);}
- catch(err){$("#capture").hidden=true;$("#status").classList.add("error");$("#status").textContent="采集数据未通过验证："+err.message;}
- finally{e.target.value="";}
+ const sequence=++importSequence;
+ try{await load(e.target.files?.[0],sequence);}
+ catch(err){if(sequence!==importSequence)return;$("#capture").hidden=true;$("#status").classList.add("error");$("#status").textContent="采集数据未通过验证："+err.message;}
+ finally{if(sequence===importSequence)e.target.value="";}
 });
 })();
 </script></body></html>
