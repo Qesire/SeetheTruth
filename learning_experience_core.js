@@ -275,19 +275,50 @@
   return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:accepted.operation,
    reproduced:true,evidence:repeated.evidence,observation:observeExecution(repeated)});
  }
+
+ function replayGraph(accepted){
+  if(!accepted||accepted.schema!==SCHEMA||accepted.kind!=="graph")
+   fail("graph replay requires a shared inspected graph");
+  // Re-evaluate exactly the accepted graph, preserving the original static/numeric boundary.
+  const repeated=inspectGraph(accepted.graph,{id:accepted.id,numeric:accepted.numericOk===true});
+  for(const key of ["id","evidence","executable","numericOk","graph","path"]){
+   if(JSON.stringify(repeated[key])!==JSON.stringify(accepted[key]))
+    fail("graph replay mismatch: "+key);
+  }
+  if(JSON.stringify(repeated.session?.trace)!==JSON.stringify(accepted.session?.trace))
+   fail("graph replay mismatch: trace");
+  const frame=repeated.numericOk?deps.compute.learning(repeated.graph,repeated.session.trace,deps.learning):null;
+  return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,kind:"graph",reproduced:true,
+   numericExecuted:repeated.numericOk,evidence:repeated.evidence,
+   observation:Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:"inspectGraph",
+    evidence:repeated.evidence,sourceEngine:"learning_lab.js",
+    numericalReinterpretation:false,traceAvailable:!!frame,
+    sources:observationSources(null,frame)})});
+ }
+ function observeGraph(accepted){return replayGraph(accepted).observation;}
+ function observe(record){
+  return record?.kind==="graph"?observeGraph(record):observeExecution(record);
+ }
+ function replay(record){
+  return record?.kind==="graph"?replayGraph(record):replayLab(record);
+ }
  function inspectObservationStep(accepted,options={}){
   // Re-run first: never inspect a stale controller state under a valid source label.
-  replayLab(accepted);
+  const isGraph=accepted?.kind==="graph";
+  if(isGraph)replayGraph(accepted);else replayLab(accepted);
   const kind=options.kind,stepId=options.stepId;
   if(!["state_transition","tensor_computation"].includes(kind)||
      typeof stepId!=="string"||!stepId)fail("observation requires kind and stepId");
-  const frame=kind==="state_transition"?accepted.stateTrace:accepted.computationTrace;
+  const frame=isGraph
+   ?kind==="tensor_computation"&&accepted.numericOk
+    ?deps.compute.learning(accepted.graph,accepted.session.trace,deps.learning):null
+   :kind==="state_transition"?accepted.stateTrace:accepted.computationTrace;
   if(!frame)fail("requested observation trace unavailable");
   const step=frame.steps.find(x=>x.id===stepId);
   if(!step)fail("unknown observation step "+stepId);
   if(kind==="state_transition"){
    if(options.coordinate!==undefined)fail("state transitions do not have tensor coordinates");
-   return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:accepted.operation,
+   return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:isGraph?"inspectGraph":accepted.operation,
     stepId,evidence:frame.evidenceTier,replayVerified:true,
     detail:copy({title:step.title,why:step.why,before:step.before,after:step.after,
      changes:step.changes,dependencies:step.dependencies,timing:step.timing??null})});
@@ -299,7 +330,7 @@
   const rank=coordinate.length,row=rank===1?0:coordinate[rank-2],
    col=coordinate[rank-1],prefix=coordinate.slice(0,Math.max(0,rank-2));
   const detail=deps.compute.dot(frame,stepId,row,col,prefix);
-  return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:accepted.operation,
+  return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:isGraph?"inspectGraph":accepted.operation,
    stepId,evidence:frame.evidenceTier,replayVerified:true,
    coordinate:Object.freeze(coordinate.slice()),detail:copy(detail)});
  }
@@ -387,5 +418,6 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,replayLab,observeExecution,inspectObservationStep,compareExecutions,inspectEvidence,inspectCourse,inventory});
+  executeLab,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
+  inspectObservationStep,compareExecutions,inspectEvidence,inspectCourse,inventory});
 });
