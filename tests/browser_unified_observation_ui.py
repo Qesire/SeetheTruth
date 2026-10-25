@@ -31,6 +31,10 @@ class UnifiedObservationBrowser(unittest.TestCase):
      page.locator('#unifiedObservationRefresh').click()
      self.assertIn('STATIC_ONLY',page.locator('#unifiedObservationStatus').inner_text())
      self.assertIn('无已执行原生轨迹',page.locator('#unifiedObservationDetail').inner_text())
+     page.locator('#run').click()  # conceptual traversal is not numeric evidence
+     page.locator('#unifiedObservationRefresh').click()
+     self.assertIn('STATIC_ONLY',page.locator('#unifiedObservationStatus').inner_text())
+     self.assertEqual(page.locator('#unifiedObservationCoordinates input').count(),0)
      page.locator('[data-preset="residual"]').click()
      page.locator('#studyMode').select_option('numeric')
      page.locator('#run').click()
