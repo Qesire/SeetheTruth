@@ -167,18 +167,23 @@ function mount(options={}){
   setStatus('跨页面快照已解析（尚未重放核验） · '+about.evidence);
   return about;
  }
+ function sessionStore(){
+  try{return window.sessionStorage||null;}catch(_){return null;}
+ }
  function restoreHandoff(){
+  const store=sessionStore();
+  if(!store)return; // Offline WebViews may disable session storage.
   try{
-   const text=sessionStorage.getItem(HANDOFF_KEY);
+   const text=store.getItem(HANDOFF_KEY);
    if(!text)return;
    const parsed=snapshots.validate(JSON.parse(text));
    const about=snapshots.describe(core,parsed);
    if((location.pathname.split('/').at(-1)||'index.html')!==about.sourceHref)return;
    const restored=importSnapshot(parsed);
-   sessionStorage.removeItem(HANDOFF_KEY);
+   store.removeItem(HANDOFF_KEY);
    return restored;
   }catch(error){
-   sessionStorage.removeItem(HANDOFF_KEY);
+   try{store.removeItem(HANDOFF_KEY);}catch(_){}
    setStatus('跨页面快照恢复被拒绝：'+error.message,true);
   }
  }
@@ -199,7 +204,8 @@ function mount(options={}){
  });
  sourceLink.addEventListener('click',event=>{
   if(!foreignSnapshot){event.preventDefault();return;}
-  try{sessionStorage.setItem(HANDOFF_KEY,JSON.stringify(foreignSnapshot));}
+  try{const store=sessionStore();if(!store)throw Error('当前 WebView 不支持会话存储');
+   store.setItem(HANDOFF_KEY,JSON.stringify(foreignSnapshot));}
   catch(error){event.preventDefault();setStatus('跨页面交接失败：'+error.message,true);}
  });
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
