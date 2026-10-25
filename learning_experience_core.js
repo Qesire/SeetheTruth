@@ -22,6 +22,8 @@
   tradeoffs:require("./architecture_tradeoffs.js"),
   cacheLab:require("./kv_cache_lab.js"),
   scalarTraining:require("./training_flow.js"),
+  graphTraining:require("./training_session.js"),
+  nodeTimeline:require("./node_timeline.js"),
   journey:require("./engineering_journey_engine.js"),
   pipeline:require("./engineering_training_pipeline.js"),
   paper:require("./paper_patches.js"),
@@ -43,6 +45,8 @@
   tradeoffs:root.SeetheTruthTradeoffs,
   cacheLab:root.SeetheTruthCacheLab,
   scalarTraining:root.SeetheTruthTraining,
+  graphTraining:root.SeetheTruthTrainingSession,
+  nodeTimeline:root.SeetheTruthNodeTimeline,
   journey:root.SeetheTruthEngineeringEngine,
   pipeline:root.SeetheTruthTrainingPipeline,
   paper:root.SeetheTruthPaperPatches,
@@ -187,9 +191,21 @@
    observeCompute:v=>deps.compute.wan(v)})}),
   tradeoffs:Object.freeze(Object.fromEntries(["gqa","moe","loop"].map(name=>
    [name,Object.freeze({module:"tradeoffs",method:name,run:(m,x)=>m[name](x)})]))),
-  training:Object.freeze({scalar:Object.freeze({module:"scalarTraining",method:"build",
-   run:(m,x)=>m.build(x.config||{},"scalar"),
-   observeState:v=>deps.state.scalar(v)})}),
+  training:Object.freeze({
+   scalar:Object.freeze({module:"scalarTraining",method:"build",
+    run:(m,x)=>m.build(x.config||{},"scalar"),observeState:v=>deps.state.scalar(v)}),
+   graph_step:Object.freeze({module:"graphTraining",method:"step",
+    run:(m,x)=>{
+     if(!x.graph||!x.options||typeof x.options!=="object"||Array.isArray(x.options))
+      fail("graph training requires a real graph and optimizer options");
+     const session=m.step(x.graph,x.options);
+     if(!deps.nodeTimeline||typeof deps.nodeTimeline.fromSession!=="function")
+      fail("source node timeline unavailable");
+     const timeline=deps.nodeTimeline.fromSession(x.graph,session,x.options);
+     return Object.freeze({session,timeline});
+    },
+    observeState:v=>deps.state.graphTraining(v)})
+  }),
   cache:Object.freeze({replay_steps:Object.freeze({module:"cacheLab",method:"Session",run:(m,x)=>{
    const session=m.Session(x.config||{});
    const count=x.steps===undefined?session.config.decode+1:x.steps;

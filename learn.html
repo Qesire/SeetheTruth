@@ -373,7 +373,6 @@ input[type="file"]{display:none}
 <script src="deepinfer_scheduler_workflow.js"></script>
 <script src="state_microscope.js"></script>
 <script src="paper_patches.js"></script><script src="paper_graph_rewrites.js"></script><script src="compute_microscope.js"></script>
-<script src="learning_experience_core.js"></script>
 <script src="compute_microscope_ui.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="model_trace.js"></script>
@@ -393,6 +392,7 @@ input[type="file"]{display:none}
 <script src="training_session.js"></script>
 <script src="gradient_inspection.js"></script>
 <script src="node_timeline.js"></script>
+<script src="learning_experience_core.js"></script>
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
@@ -1191,6 +1191,26 @@ window.SeetheTruthUnifiedWorkbench=Object.freeze({
   if(numeric&&JSON.stringify(accepted.session?.trace)!==JSON.stringify(run))
    throw Error("当前显示的工作台执行与统一图引擎数值不一致");
   return accepted;
+ },
+ inspectTrainingStep:(index=timelineStepIndex)=>{
+  if(!trainStatus||!Number.isSafeInteger(index)||index<0||index>=trainStatus.sessions.length)
+   throw Error("当前没有已执行的有界自由图训练步骤");
+  const input=index?trainStatus.sessions[index-1].graph:trainStatus.sourceGraph;
+  const opts={...trainStatus.options};delete opts.count;
+  const record=UnifiedCore.executeLab("training","graph_step",{graph:input,options:opts});
+  const shown=trainStatus.timelines[index];
+  if(JSON.stringify(record.value.timeline.nodes)!==JSON.stringify(shown.nodes)||
+     JSON.stringify(record.value.session.graph)!==JSON.stringify(trainStatus.sessions[index].graph))
+   throw Error("统一图训练观测与工作台已执行训练步骤不一致");
+  return record;
+ },
+ get selectedNode(){return selected;},
+ focusNode:id=>{
+  if(!graph.nodes.some(n=>n.id===id))throw Error("图中不存在观测对应的积木 "+id);
+  selected=id;render();
+  const element=document.querySelector('#blocks [data-node="'+CSS.escape(id)+'"]');
+  element?.scrollIntoView({block:"nearest",inline:"nearest"});
+  return id;
  }
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
@@ -1288,7 +1308,7 @@ $("#trainStep").onclick=()=>{try{
  timelineStepIndex=timelines.length-1;timelinePhase="backward";
  undo.push(previous);if(undo.length>40)undo.shift();redo=[];
  graph=result.graph;run=result.next;runGraph=Branch.slice(graph,options.targetId);runScope=options.targetId;backwardTrace=null;step=run.steps.length-1;selected=result.history.at(-1).records[0].id;
- trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options,timelines};
+ trainStatus={id:result.history.at(-1).records.map(r=>r.id).join(", "),t:result.history.at(-1).records[0].optimizerStep,before:result.firstLoss,after:result.finalLoss,history:result.history,options,timelines,sourceGraph:previous,sessions:result.sessions};
  render();say("已提交 "+result.history.length+" 步 "+options.optimizer+"：Loss "+result.firstLoss.toFixed(7)+" → "+result.finalLoss.toFixed(7)+"；已保存各参数矩阵及优化器状态。");
  }catch(err){say("训练未提交："+err.message,true);}};
 $("#backward").onclick=()=>{try{if(!run||run.mode==="concept")throw Error("先切换到小矩阵数值模式并运行计算图");const target=runGraph||graph;backwardTrace=target.nodes.some(n=>n.kind==="masked_grpo_objective")?Reverse.backward(target,run):GeneralReverse.backward(target,run);step=run.steps.length-1;selected=run.steps[step].id;render();say("✓ 已完成有界积木反向传播：可逐步选择节点查看梯度、共享分支与停止梯度位置；没有更新模型参数。");}catch(e){backwardTrace=null;say("反向分析不可用："+e.message,true);render();}};
@@ -1389,9 +1409,45 @@ renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.i
 })();
 </script><script src="teaching_edition.js"></script>
 <script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
-<script>window.SeetheTruthObservationPanel=window.SeetheTruthUnifiedObservationUI.mount({
+<script>
+(function(){
+const control=document.createElement("div");control.id="graphTrainingObservationControls";
+control.style.cssText="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px auto 6px;max-width:1180px;padding:0 12px";
+const label=document.createElement("label");label.textContent="统一观测来源 ";
+const mode=document.createElement("select");mode.id="graphTrainingObservationMode";
+for(const [value,text] of [["graph","当前计算图"],["training","已执行的训练步骤"]]){
+ const option=document.createElement("option");option.value=value;option.textContent=text;mode.append(option);
+}
+mode.style.cssText="min-height:36px;padding:7px;background:#14344a;color:white;border:1px solid #66879a";
+label.append(mode);control.append(label);
+const locate=document.createElement("button");locate.id="graphTrainingLocateNode";
+locate.textContent="定位所选积木的训练轨迹";locate.type="button";
+locate.style.cssText="padding:7px 11px;background:#173e53;color:white;border:1px solid #66879a;border-radius:7px";
+control.append(locate);
+const result=document.createElement("span");result.id="graphTrainingLocateStatus";result.setAttribute("aria-live","polite");control.append(result);
+document.body.append(control);
+const workbench=window.SeetheTruthUnifiedWorkbench;
+const panel=window.SeetheTruthUnifiedObservationUI.mount({
  core:window.SeetheTruthUnifiedCore,
  snapshots:window.SeetheTruthObservationSnapshots,
- readAccepted:()=>window.SeetheTruthUnifiedWorkbench.inspectAccepted(),
- title:"统一积木观测 · 图执行 / 坐标 / 差异"
-});</script></body></html>
+ readAccepted:()=>mode.value==="training"?workbench.inspectTrainingStep():workbench.inspectAccepted(),
+ onInspect:(proof,record)=>{
+  if(record.id!=="training"||record.operation!=="graph_step")return;
+  const nodeId=proof.detail?.after?.nodeId;
+  if(nodeId)workbench.focusNode(nodeId);
+ },
+ title:"统一积木观测 · 图计算 / VJP / Optimizer / 状态"
+});
+window.SeetheTruthObservationPanel=panel;
+mode.addEventListener("change",()=>{try{panel.refresh();result.textContent="";}catch(e){result.textContent=e.message;}});
+locate.addEventListener("click",()=>{try{
+ if(mode.value!=="training"){mode.value="training";panel.refresh();}
+ const record=panel.current;
+ const links=record?.stateTrace?.graphLinks?.[workbench.selectedNode];
+ if(!links)throw Error("所选积木在当前训练轨迹中不存在");
+ const target=links.optimizer||links.backward||links.forward;
+ panel.focusStep("state_transition",target);
+ result.textContent="已定位 "+workbench.selectedNode+" · "+target;
+}catch(e){result.textContent=e.message;}});
+})();
+</script></body></html>

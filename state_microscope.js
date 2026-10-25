@@ -3,7 +3,7 @@
  * engines, never from a fabricated tensor/GPU telemetry stream. */
 (function(root,make){'use strict';const api=make();if(typeof module==='object'&&module.exports)module.exports=api;root.SeetheTruthStateMicroscope=api;})(typeof window!=='undefined'?window:{},function(){'use strict';
 const SCHEMA='seethetruth-state-microscope-v1';
-const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',PREFILL:'SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',CACHE:'EXECUTED_KV_GQA_MICRO_NUMERIC_CACHE',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING'});
+const TIERS=Object.freeze({KV:'SOURCE_GROUNDED_KV_CPU_STATE_SIMULATION',WORKER:'SOURCE_GROUNDED_WORKER_ASSUMED_DURATIONS',SCHEDULER:'SOURCE_GROUNDED_DECODE_SCHEDULER_CPU_REPLAY',PREFILL:'SOURCE_GROUNDED_PREFILL_DECISION_CPU_REFERENCE',CACHE:'EXECUTED_KV_GQA_MICRO_NUMERIC_CACHE',TRAIN:'EXECUTABLE_BIGRAM_OPTIMIZER_STATE_SIMULATION',SCALAR:'EXECUTABLE_SCALAR_ANALYTIC_TRAINING',GRAPH:'EXECUTABLE_BOUNDED_GRAPH_VJP_OPTIMIZER_STATE'});
 const fail=m=>{throw Error('state microscope: '+m);};
 const need=(cond,m)=>{if(!cond)fail(m);};
 const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -38,6 +38,31 @@ function validate(frame){
   need(Array.isArray(e.dependencies)&&e.dependencies.every(id=>typeof id==='string'&&ids.has(id)),'invalid causal dependencies');
   if(e.timing){need(finite(e.timing.start)&&finite(e.timing.end)&&e.timing.start>=0&&e.timing.end>=e.timing.start,'invalid simulated timestamp');}
   ids.add(e.id);prev=e.index;
+ }
+ if(frame.evidenceTier===TIERS.GRAPH){
+  const links=frame.graphLinks;
+  need(plain(links)&&Object.keys(links).length>0&&Object.keys(links).length<=70,
+   'missing original graph node/phase lineage');
+  const byId=new Map(frame.steps.map(step=>[step.id,step]));
+  const used=new Set();
+  for(const [nodeId,link] of Object.entries(links)){
+   need(plain(link)&&Object.keys(link).sort().join(',')==='backward,forward,optimizer,updated',
+    'invalid graph node phase map');
+   for(const phase of ['forward','backward','optimizer','updated']){
+    const eventId=link[phase];
+    need(eventId===null||(typeof eventId==='string'&&byId.has(eventId)),
+     'graph phase references an unknown event');
+    if(eventId===null){
+     need(phase==='backward'||phase==='optimizer','required native graph phase missing');
+     continue;
+    }
+    const native=byId.get(eventId);
+    need(native.after.nodeId===nodeId&&native.after.phase===phase&&
+     !used.has(eventId),'graph event identity/phase mismatch');
+    used.add(eventId);
+   }
+  }
+  need(used.size===frame.steps.length,'orphaned native graph training event');
  }
  return frame;
 }
@@ -189,6 +214,95 @@ function training(snapshots){
  return validate({schema:SCHEMA,title:'Bigram · 训练/续训状态转换',evidenceTier:TIERS.TRAIN,steps,
   disclaimer:'Deterministic small Bigram checkpoints with optimizer/sampler pending state; NOT a large-model training trace'});
 }
+// Source-derived DAG training phases. This is a read-only projection of the
+// already-executed TrainingSession + NodeTimeline, not a second optimizer.
+function graphTraining(run){
+ const session=run?.session,timeline=run?.timeline;
+ need(session?.schema==='seethetruth-training-session-v1'&&
+  timeline?.schema==='seethetruth-node-timeline-v1'&&
+  Array.isArray(timeline.nodes)&&timeline.nodes.length>=1&&timeline.nodes.length<=70,
+  'graph training requires a bounded native graph transaction');
+ need(session.beforeIR?.nodes?.length===timeline.nodes.length&&
+  session.afterIR?.nodes?.length===timeline.nodes.length&&
+  JSON.stringify(timeline.graph)===JSON.stringify(session.graph)&&
+  timeline.targetId===session.targetId&&
+  timeline.beforeLoss===session.beforeLoss&&timeline.afterLoss===session.afterLoss,
+  'graph timeline/source transaction identity mismatch');
+ const nodes=timeline.nodes,ids=new Set(nodes.map(n=>n.id));
+ need(ids.size===nodes.length,'duplicate graph node identity');
+ const byId=new Map(nodes.map(n=>[n.id,n])),sources=new Map(),consumers=new Map();
+ for(const node of nodes){
+  const incoming=Object.entries(node.inputSources||{}).filter(([,from])=>from!==null).map(([port,from])=>({port,from}));
+  need(incoming.every(e=>typeof e.from==='string'&&ids.has(e.from)&&
+   /^[A-Za-z0-9_-]{1,72}$/.test(e.port)),'invalid original graph port dependency');
+  sources.set(node.id,incoming);
+  for(const e of incoming){
+   if(!consumers.has(e.from))consumers.set(e.from,[]);
+   consumers.get(e.from).push(node.id);
+  }
+ }
+ const steps=[],links=Object.create(null),push=(id,title,why,dependencies,before,after)=>{
+  need(steps.length<250,'too many graph training phases');
+  const unique=[...new Set(dependencies)];
+  const step={id,index:steps.length,title,why,dependencies:unique,before,after,
+   changes:delta(before,after),timing:null};
+  steps.push(step);return id;
+ };
+ const forward=new Map(),backward=new Map(),updates=new Map(),afterForward=new Map();
+ for(const [index,node] of nodes.entries()){
+  const id='graph:forward:'+index;
+  const incoming=sources.get(node.id);
+  const before={nodeId:node.id,phase:'forward',kind:node.kind,shape:node.forwardShape};
+  const after={...before,inputSources:node.inputSources||{},output:node.forwardValue};
+  push(id,'Forward · '+node.id,
+   '原始图执行的张量形状、实际输入端口和前向输出统计。不是重新估计的张量。',
+   incoming.map(e=>forward.get(e.from)),before,after);
+  forward.set(node.id,id);links[node.id]={forward:id,backward:null,optimizer:null,updated:null};
+ }
+ for(const node of [...nodes].reverse()){
+  if(!node.onLossPath)continue;
+  const id='graph:backward:'+backward.size,fromChildren=(consumers.get(node.id)||[])
+   .filter(k=>backward.has(k)).map(k=>backward.get(k));
+  const before={nodeId:node.id,phase:'backward',forwardShape:node.forwardShape,
+   onLossPath:true};
+  const after={...before,gradient:node.gradient,hasLocalRule:node.localRule!==null};
+  push(id,'VJP · '+node.id,
+   '原始 GraphAutodiff 反向依赖：仅记录真实 Loss Path 上的梯度和局部 VJP 证据。',
+   [forward.get(node.id),...fromChildren],before,after);
+  backward.set(node.id,id);links[node.id].backward=id;
+ }
+ for(const node of nodes){
+  if(!node.optimizer)continue;
+  need(backward.has(node.id)&&node.optimizerState&&node.optimizer.id===node.id,
+   'parameter optimizer update lacks native VJP/state');
+  const id='graph:optimizer:'+updates.size,o=node.optimizerState;
+  const base={nodeId:node.id,phase:'optimizer',optimizer:o.kind,shape:node.forwardShape};
+  const before={...base,step:o.stepBefore,moments:o.accumulators.map(a=>({slot:a.slot,stats:a.before}))};
+  const after={...base,step:o.stepAfter,moments:o.accumulators.map(a=>({slot:a.slot,stats:a.after})),
+   gradientNorm:node.optimizer.gradientNorm,updateNorm:node.optimizer.updateNorm};
+  push(id,'Optimizer.step · '+node.id,
+   '使用真实 train_state 原子更新结果；一阶/二阶状态与参数图中的持久化值对应。',
+   [backward.get(node.id)],before,after);
+  updates.set(node.id,id);links[node.id].optimizer=id;
+ }
+ for(const [index,node] of nodes.entries()){
+  const id='graph:updated:'+index,incoming=sources.get(node.id);
+  const dependencies=incoming.map(e=>afterForward.get(e.from));
+  if(updates.has(node.id))dependencies.push(updates.get(node.id));
+  const before={nodeId:node.id,phase:'updated',kind:node.kind,shape:node.updatedShape};
+  const after={...before,output:node.updatedValue,inputSources:node.inputSources||{}};
+  push(id,'Updated Forward · '+node.id,
+   '参数更新后再次沿原计算图执行前向，用原引擎计算结果对应实际拓扑。',
+   dependencies,before,after);
+  afterForward.set(node.id,id);links[node.id].updated=id;
+ }
+ need(steps.length<=250,'graph training exceeds native state microscopy bound');
+ const frame={schema:SCHEMA,title:'自由计算图 · Forward / VJP / Optimizer / Updated Forward',
+  evidenceTier:TIERS.GRAPH,steps,
+  disclaimer:'True bounded source graph execution, local VJP and persisted CPU optimizer; not production model or GPU execution',
+  graphLinks:links};
+ return validate(frame);
+}
 function scalar(run){
  need(run&&run.mode==='scalar'&&run.evidence==='deterministic_scalar_analytic_oracle_not_autograd'&&
   Array.isArray(run.events)&&run.events.length>=1&&run.events.length<=250,'scalar training requires executed analytic reference events');
@@ -204,5 +318,5 @@ function scalar(run){
  return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,cache,training,scalar,delta});
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,cache,training,scalar,graphTraining,delta});
 });

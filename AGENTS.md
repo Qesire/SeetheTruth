@@ -44,6 +44,10 @@ Build new experiment snapshots through `observation_snapshots.js` (`create / res
 
 For stateful lessons, preserve the original validated `stateTrace`. Use `Snapshots.at(Core,snapshot,stepId)` to represent an exact teaching-state cursor; `Snapshots.restore` must verify the full source run and selected step before either microscope selects it. For KV local CPU semantics only, `Snapshots.resumeKV` replays a prefix of original operations and checks its state against the complete accepted run. Other domains may add prefix-state semantics only with an actual source engine replay oracle, never by assigning an arbitrary `after` dictionary as mutable device state.
 
+## Real graph-training phase lineage
+
+For freely composed graph training, use the existing `training_session.step`, `node_timeline.fromSession` and `state_microscope.graphTraining` through `Core.executeLab('training','graph_step',{graph,options})`. Do not duplicate VJP/optimizer arithmetic. The unified state frame must preserve original `ExecutionIR.inputSources` port edges, the source-reported Loss Path, real parameter updates and updated-forward values. Shared state steps use `graphLinks[nodeId]` to navigate to graph nodes and back, and must be replay-verified before a result is accepted. Learning Studio loads TrainingSession/NodeTimeline before UnifiedCore to make the actual source engine available. See [graph training lineage](docs/graph-training-state-lineage-v1.md).
+
 ## Native training continuation
 
 Training-state restoration uses the original optimizer/backend checkpoint API, not reconstructed weights from observation summary fields. `engineering_pipeline/timeline` emits checkpoints per native `microStep/optimizerStep`. `Snapshots.resumeTraining` restores the original Bigram checkpoint (parameters, moments, Sampler, pending gradients) and executes/compares **each** remaining transition. The independent timeline panel in `engineering_pipeline.html` is intentionally a separate user-driven run, not a fabricated mirror of the guided lesson controller. Add numerical and desktop/phone browser contracts for any new training-state backend.

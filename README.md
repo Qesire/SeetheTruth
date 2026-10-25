@@ -4,6 +4,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+**2026-10-25 图训练状态统一：** [原生 Forward/VJP/Optimizer/更新后 Forward 因果图](docs/graph-training-state-lineage-v1.md) 将自由组合积木的实际训练事务接入统一状态显微镜与快照回放；状态步骤和计算节点可互相定位，所有梯度与参数更新沿用原 CPU 教学训练引擎。本能力仅覆盖被原始训练算子真正支持的有界图。
+
 **2026-10-25 扩展安装协议：** [可信积木安装和能力矩阵](docs/trusted-block-pack-installation-v1.md) 将已批准扩展包的身份、Node/浏览器入口统一到 `installed_block_packs.js`，新增 `node scripts/sync_installed_block_packs.js --write/--check` 自动维护 Web/HTTP/Android 安装资源；算子能力还分别记录导出候选与真实执行证据，防止误将登记或白名单视为已验证计算。
 
 **2026-10-25 全局基础审计：** [完整架构与可扩展性评估](docs/foundation-architecture-audit-20261025.md) 已从真实注册表验证 **150 种算子、67 个引导图入口、10 门共享课程、17 个专项域、23 个专项执行操作**。已有图执行、扩展包、专项状态、统一观测/回放和可移植快照基础，但尚不是全部算子和专项引擎都具备独立 PyTorch/NumPy/Autograd/代码导出验证的动态插件框架。新增 `Core.describeActions(id)`，执行方法与原生轨迹类型由同一个注册项声明，配合跨浏览器、Android 的架构合同审计。下方 2026-10-24 计数保留为当日历史记录。
