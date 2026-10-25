@@ -43,4 +43,16 @@ function sharedWeight(){
   e('target','loss','target')
  ]});
 }
-module.exports={rectangularRelu,sharedWeight};
+function reluKink(){
+ return L.validateGraph({schema:L.SCHEMA,title:'ReLU kink: exact zero with PyTorch zero subgradient, no finite differences at kink',
+ nodes:[
+  n('x','parameter',p([[-.2,0],[.3,.5]])),
+  n('gate','relu'),
+  n('target','parameter',p([[.12,-.4],[.09,-.2]],true)),
+  n('loss','mse')
+ ],edges:[
+  e('x','gate','x'),e('gate','loss','prediction'),
+  e('target','loss','target')
+ ]});
+}
+module.exports={rectangularRelu,sharedWeight,reluKink};
