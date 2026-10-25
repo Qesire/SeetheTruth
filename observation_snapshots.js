@@ -109,7 +109,7 @@ function at(core,source,stepId){
  return validate({...parent,cursor});
 }
 function resumeKV(core,source){
- const replayed=restore(core,source),s=validate(source),cursor=replayed.cursor;
+ const replayed=restore(core,source),s=validate(source),cursor=s.cursor;
  if(s.id!=="deepinfer_kv"||s.operation!=="replay"||!cursor||
     !plain(s.input)||!Array.isArray(s.input.operations))
   fail("KV continuation requires a verified KV cursor");
