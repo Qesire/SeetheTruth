@@ -226,44 +226,104 @@
  // Domain-neutral *observation*, not a second numerical executor.
  // A record points back to a source trace rather than fabricating tensors/events.
  const OBS_SCHEMA="seethetruth-observation-v1";
+
+ function observationSources(stateTrace,computationTrace){
+  const sources=[];
+  if(stateTrace){
+   if(!deps.state||typeof deps.state.validate!=="function")fail("state validator unavailable");
+   deps.state.validate(stateTrace);
+   sources.push(Object.freeze({kind:"state_transition",schema:stateTrace.schema,
+    evidence:stateTrace.evidenceTier,steps:Object.freeze(stateTrace.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"state_transition",
+     dependencies:Object.freeze(step.dependencies.map(from=>Object.freeze({from,port:null}))),
+     source:"stateTrace.steps["+index+"]"})))}));
+  }
+  if(computationTrace){
+   if(!deps.compute||typeof deps.compute.validate!=="function")fail("computation validator unavailable");
+   deps.compute.validate(computationTrace);
+   sources.push(Object.freeze({kind:"tensor_computation",schema:computationTrace.schema,
+    evidence:computationTrace.evidenceTier,steps:Object.freeze(computationTrace.steps.map((step,index)=>Object.freeze({
+     id:step.id,index,kind:"tensor_computation",
+     dependencies:Object.freeze(step.dependencies.map(dep=>Object.freeze({from:dep.from,port:dep.port}))),
+     shape:Object.freeze(step.out.shape.slice()),
+     hasNumericValues:step.out.values!==null,
+     source:"computationTrace.steps["+index+"]"})))}));
+  }
+  return Object.freeze(sources);
+ }
  function observeExecution(execution){
   if(!execution||execution.schema!==SCHEMA||execution.kind!=="specialized_execution")
    fail("observation requires an accepted specialist execution");
-  const sources=[];
-  if(execution.stateTrace){
-   const t=execution.stateTrace;
-   if(!Array.isArray(t.steps))fail("invalid state observation steps");
-   sources.push(Object.freeze({kind:"state_transition",schema:t.schema,
-    evidence:t.evidenceTier,steps:Object.freeze(t.steps.map((step,index)=>Object.freeze({
-     id:step.id,index,kind:"state_transition",
-     dependencies:Object.freeze((step.dependencies||[]).slice()),
-     source:"stateTrace.steps["+index+"]"})))}));
-  }
-  if(execution.computationTrace){
-   const t=execution.computationTrace;
-   if(!Array.isArray(t.steps))fail("invalid computation observation steps");
-   sources.push(Object.freeze({kind:"tensor_computation",schema:t.schema,
-    evidence:t.evidenceTier,steps:Object.freeze(t.steps.map((step,index)=>Object.freeze({
-     id:step.id,index,kind:"tensor_computation",
-     dependencies:Object.freeze([]),source:"computationTrace.steps["+index+"]"})))}));
-  }
+  const lab=byId.get(execution.id);
+  if(!lab||execution.engine!==lab.engine||execution.evidence!==lab.evidence)
+   fail("observation engine/evidence identity mismatch");
+  const sources=observationSources(execution.stateTrace,execution.computationTrace);
   return Object.freeze({schema:OBS_SCHEMA,id:execution.id,operation:execution.operation,
    evidence:execution.evidence,sourceEngine:execution.engine,
-   numericalReinterpretation:false,traceAvailable:sources.length>0,
-   sources:Object.freeze(sources)});
+   numericalReinterpretation:false,traceAvailable:sources.length>0,sources});
  }
  function replayLab(accepted){
   if(!accepted||accepted.schema!==SCHEMA||accepted.kind!=="specialized_execution"||
     !Object.hasOwn(accepted,"inputSnapshot"))
    fail("replay requires an accepted execution with its original input");
   const repeated=executeLab(accepted.id,accepted.operation,accepted.inputSnapshot);
-  // Exact parity is required: changing a value without changing its shape is also stale.
-  for(const key of ["value","stateTrace","computationTrace"]){
+  // Evidence, source and full input identity are as important as raw values.
+  for(const key of ["engine","runtime","evidence","inputSnapshot","value","stateTrace","computationTrace"]){
    if(JSON.stringify(repeated[key])!==JSON.stringify(accepted[key]))
     fail("replay mismatch: "+key);
   }
   return Object.freeze({schema:OBS_SCHEMA,id:accepted.id,operation:accepted.operation,
-   reproduced:true,evidence:accepted.evidence,observation:observeExecution(repeated)});
+   reproduced:true,evidence:repeated.evidence,observation:observeExecution(repeated)});
+ }
+ function inspectObservationStep(accepted,options={}){
+  // Re-run first: never inspect a stale controller state under a valid source label.
+  replayLab(accepted);
+  const kind=options.kind,stepId=options.stepId;
+  if(!["state_transition","tensor_computation"].includes(kind)||
+     typeof stepId!=="string"||!stepId)fail("observation requires kind and stepId");
+  const frame=kind==="state_transition"?accepted.stateTrace:accepted.computationTrace;
+  if(!frame)fail("requested observation trace unavailable");
+  const step=frame.steps.find(x=>x.id===stepId);
+  if(!step)fail("unknown observation step "+stepId);
+  if(kind==="state_transition"){
+   if(options.coordinate!==undefined)fail("state transitions do not have tensor coordinates");
+   return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:accepted.operation,
+    stepId,evidence:frame.evidenceTier,replayVerified:true,
+    detail:copy({title:step.title,why:step.why,before:step.before,after:step.after,
+     changes:step.changes,dependencies:step.dependencies,timing:step.timing??null})});
+  }
+  const coordinate=options.coordinate;
+  if(!Array.isArray(coordinate)||coordinate.length!==step.out.shape.length||
+     !coordinate.every((n,i)=>Number.isSafeInteger(n)&&n>=0&&n<step.out.shape[i]))
+   fail("coordinate must exactly match bounded output shape");
+  const rank=coordinate.length,row=rank===1?0:coordinate[rank-2],
+   col=coordinate[rank-1],prefix=coordinate.slice(0,Math.max(0,rank-2));
+  const detail=deps.compute.dot(frame,stepId,row,col,prefix);
+  return Object.freeze({schema:OBS_SCHEMA,kind,id:accepted.id,operation:accepted.operation,
+   stepId,evidence:frame.evidenceTier,replayVerified:true,
+   coordinate:Object.freeze(coordinate.slice()),detail:copy(detail)});
+ }
+ function compareExecutions(left,right){
+  if(!left||!right||left.id!==right.id||left.operation!==right.operation)
+   fail("comparison requires the same engine and operation");
+  replayLab(left);replayLab(right);
+  const changes=[];
+  for(const [kind,key] of [["state_transition","stateTrace"],["tensor_computation","computationTrace"]]){
+   const l=new Map((left[key]?.steps||[]).map(s=>[s.id,s])),
+    r=new Map((right[key]?.steps||[]).map(s=>[s.id,s]));
+   for(const id of new Set([...l.keys(),...r.keys()])){
+    if(JSON.stringify(l.get(id))!==JSON.stringify(r.get(id)))
+     changes.push(Object.freeze({kind,stepId:id,change:
+      !l.has(id)?"added":!r.has(id)?"removed":"changed"}));
+   }
+  }
+  return Object.freeze({schema:OBS_SCHEMA,id:left.id,operation:left.operation,
+   evidence:left.evidence,replayVerified:true,
+   inputEqual:JSON.stringify(left.inputSnapshot)===JSON.stringify(right.inputSnapshot),
+   valueEqual:JSON.stringify(left.value)===JSON.stringify(right.value),
+   stateTraceEqual:JSON.stringify(left.stateTrace)===JSON.stringify(right.stateTrace),
+   computationTraceEqual:JSON.stringify(left.computationTrace)===JSON.stringify(right.computationTrace),
+   changedSteps:Object.freeze(changes)});
  }
  function executeLab(id,operation,input){
   const lab=byId.get(id),runner=domainRunners[id]?.[operation];
@@ -327,5 +387,5 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,replayLab,observeExecution,inspectEvidence,inspectCourse,inventory});
+  executeLab,replayLab,observeExecution,inspectObservationStep,compareExecutions,inspectEvidence,inspectCourse,inventory});
 });
