@@ -28,6 +28,10 @@ For a new browser microscope or specialist controller, reuse `unified_observatio
 
 Build new experiment snapshots through `observation_snapshots.js` (`create / restore / describe / fork`). A branch is a **complete alternate engine input**, checked through the same source and evidence identity; the parent checksum is descriptive lineage, never proof of external attestation or reversible side effects. Use the common observation UI for download/import and explicitly verify source engine output before marking a transported record as accepted. Browser handoffs use opt-in per-tab session storage and a registered lab route, not duplicate numerical fixtures.
 
+## Native state cursors and local replay
+
+For stateful lessons, preserve the original validated `stateTrace`. Use `Snapshots.at(Core,snapshot,stepId)` to represent an exact teaching-state cursor; `Snapshots.restore` must verify the full source run and selected step before either microscope selects it. For KV local CPU semantics only, `Snapshots.resumeKV` replays a prefix of original operations and checks its state against the complete accepted run. Other domains may add prefix-state semantics only with an actual source engine replay oracle, never by assigning an arbitrary `after` dictionary as mutable device state.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
