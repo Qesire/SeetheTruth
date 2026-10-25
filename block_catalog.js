@@ -100,6 +100,9 @@
     "x>0?x:α(expm1(x))","逐元素指数线性单元，负半轴渐近 -α；保持任意四轴形状。","在四轴 GQA 参数与 MSE 间自由插入并检查梯度。","x=0 处 α≠1 不可微，采用左支次导数。"),
   nd_hardswish:block("四轴 HardSwish","N-D HardSwish","activate",["x"],{},
     "x·ReLU6(x+3)/6","轻量分段门控激活，含 -3 与 3 的不可微转折。","观察 HardSwish 与连续 SiLU 的量化友好近似关系。","在边界采用指定分段次导数，不能据此断言性能提升。"),
+  nd_gelu_tanh:block("四轴 GELU · tanh 近似","N-D GELU tanh","activate",["x"],{},
+    "0.5x(1+tanh(√(2/π)(x+0.044715x³)))","Wan FFN Linear1 后逐坐标激活。",
+    "对照 erf GELU 并观察负值和导数。","与 PyTorch approximate='tanh' 对齐。"),
   nd_gelu_erf:block("四轴 GELU · erf CDF","N-D GELU Erf","activate",["x"],{},
     "y = 0.5x(1+erf(x/√2))","逐元素精确高斯 CDF 形式的 GELU；区别于 tanh 近似。",
     "同一张四轴张量并联 GELU、SiLU、Mish，比较负值和梯度。","数值 erf 使用高精度求积；不模拟 GPU 的特殊函数指令。"),
@@ -502,7 +505,7 @@
      else if(kind==='nd_cache_read')value=ND.cacheRead4(inputs.x,params.start,params.length);
      else if(kind==='nd_cache_append')value=ND.cacheAppend4(inputs.cache,inputs.segment);
      else if(kind==='nd_mse')value=ND.meanSquaredError(inputs.prediction,inputs.target);
-     else if(['nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish','nd_elu','nd_hardswish'].includes(kind)){
+     else if(['nd_gelu_tanh','nd_gelu_erf','nd_silu','nd_relu_squared','nd_mish','nd_elu','nd_hardswish'].includes(kind)){
        const Act=typeof module==='object'&&module.exports?require('./activation_math.js'):globalThis.SeetheTruthActivations;
        const tensor=inputs.x;value=ND.build(ND.shape(tensor),idx=>Act.value(kind.slice(3),ND.at(tensor,idx),params));
      }
