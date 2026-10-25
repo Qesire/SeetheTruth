@@ -300,6 +300,61 @@
   function preset(name){
     const recipe=Extensions.recipe(name);
     if(recipe)return validateGraph({schema:SCHEMA,...recipe});
+    if(name==="nd_wan_i2v_complete_block"){
+      // Pinned Wan2.2 WanAttentionBlock: norm2(x) * (1+e4) + e3,
+      // Linear(C,H) -> GELU(tanh) -> Linear(H,C), x + e5*y.
+      // The FFN consumes exactly the Cross residual, not after_self.
+      const base=preset("nd_wan_i2v_self_cross");
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const Z=shape=>ND.build(shape,()=>0);
+      const P=(id,shape,seed,scale=.15)=>N(id,"nd_parameter",9700,2300+seed*30,
+        {values:ND.build(shape,idx=>scale*ND.at(ND.seedTensor(shape,seed),idx)),
+        optimizer:{t:0,m:Z(shape),v:Z(shape)}});
+      const added=[
+        N("ffn_norm2","nd_layernorm_last",10000,150,{epsilon:1e-6}),
+        ...[3,4,5].map(i=>N("e"+i,"nd_input",9700,2600+(i-3)*180,
+          {b:1,h:1,t:8,d:6,seed:80+i})),
+        ...[3,4,5].map(i=>P("mod"+i,[1,1,1,6],90+i,.1)),
+        ...[3,4,5].map(i=>N("e"+i+"_sum","nd_broadcast_add",10200,2500+(i-3)*200)),
+        N("ffn_norm_scale_product","nd_broadcast_mul",10400,150),
+        N("ffn_norm_scaled","nd_broadcast_add",10700,150),
+        N("ffn_conditioned","nd_broadcast_add",11000,150),
+        P("ffn_w1",[1,1,6,8],111,.18),
+        P("ffn_b1",[1,1,1,8],112,.08),
+        N("ffn_linear1_matmul","nd_batched_matmul",11300,150),
+        N("ffn_linear1","nd_broadcast_add",11600,150),
+        N("ffn_gelu","nd_gelu_tanh",11900,150),
+        P("ffn_w2",[1,1,8,6],113,.13),
+        P("ffn_b2",[1,1,1,6],114,.08),
+        N("ffn_linear2_matmul","nd_batched_matmul",12200,150),
+        N("ffn_linear2","nd_broadcast_add",12500,150),
+        N("ffn_gated","nd_broadcast_mul",12800,150),
+        N("after_ffn","nd_broadcast_add",13100,150)
+      ];
+      const links=[
+        ["after_cross","ffn_norm2","x"],
+        ...[3,4,5].flatMap(i=>[["e"+i,"e"+i+"_sum","a"],["mod"+i,"e"+i+"_sum","b"]]),
+        ["ffn_norm2","ffn_norm_scale_product","a"],
+        ["e4_sum","ffn_norm_scale_product","b"],
+        ["ffn_norm2","ffn_norm_scaled","a"],
+        ["ffn_norm_scale_product","ffn_norm_scaled","b"],
+        ["ffn_norm_scaled","ffn_conditioned","a"],
+        ["e3_sum","ffn_conditioned","b"],
+        ["ffn_conditioned","ffn_linear1_matmul","a"],["ffn_w1","ffn_linear1_matmul","b"],
+        ["ffn_linear1_matmul","ffn_linear1","a"],["ffn_b1","ffn_linear1","b"],
+        ["ffn_linear1","ffn_gelu","x"],
+        ["ffn_gelu","ffn_linear2_matmul","a"],["ffn_w2","ffn_linear2_matmul","b"],
+        ["ffn_linear2_matmul","ffn_linear2","a"],["ffn_b2","ffn_linear2","b"],
+        ["ffn_linear2","ffn_gated","a"],["e5_sum","ffn_gated","b"],
+        ["after_cross","after_ffn","a"],["ffn_gated","after_ffn","b"]
+      ];
+      const edges=base.edges.map(e=>e.from==="after_cross"&&e.to==="loss"&&e.port==="prediction"
+        ?{...e,from:"after_ffn"}:{...e});
+      return validateGraph({...base,
+        title:"Wan2.2 I2V A14B · complete connected Self/Cross/FFN block",
+        nodes:[...base.nodes,...added],edges:[...edges,...links.map(([from,to,port])=>({from,to,port}))]});
+    }
     if(name==="nd_wan_i2v_self_cross"){
       // Source: Wan-Video/Wan2.2@1ea34ff model.py 158-180, 203-259.
       // I2V A14B config sets cross_attn_norm=true. The norm3 affine
