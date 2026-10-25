@@ -3,10 +3,12 @@
 const isNode=typeof module==="object"&&module.exports;
 const api=factory(isNode?{
  learning:require("./learning_lab.js"),numpy:require("./python_codegen.js"),
- torch:require("./torch_codegen.js"),knowledge:require("./block_knowledge.js")
+ torch:require("./torch_codegen.js"),knowledge:require("./block_knowledge.js"),
+ certificates:require("./operator_certificate_registry.js")
 }:{
  learning:root.SeetheTruthLearning,numpy:root.SeetheTruthPythonExport,
- torch:root.SeetheTruthTorchExport,knowledge:root.SeetheTruthBlockKnowledge
+ torch:root.SeetheTruthTorchExport,knowledge:root.SeetheTruthBlockKnowledge,
+ certificates:root.SeetheTruthOperatorCertificates
 });
 if(isNode)module.exports=api;if(root)root.SeetheTruthCapabilities=api;
 })(typeof window!=="undefined"?window:null,function(s){"use strict";
@@ -36,6 +38,9 @@ function audit(){
 // Explicit capability states: a backend allowlist is not an independent run.
 function matrix(){
  const existing=audit();
+ if(!s.certificates||typeof s.certificates.forKind!=="function")
+  throw Error("missing source-pinned independent certificate registry");
+ const summary=s.certificates.summary();
  const rows=existing.rows.map(row=>{
   const statuses={
    registered:{availability:"available",verification:"registration_checked"},
@@ -48,11 +53,15 @@ function matrix(){
    modelParity:{availability:"not_claimed",verification:"not_attested"},
    gpuKernel:{availability:"not_claimed",verification:"not_attested"}
   };
+  const nativeCase=s.certificates.forKind(row.kind);
   return Object.freeze({kind:row.kind,title:row.title,
+   certifiedCases:nativeCase?Object.freeze([nativeCase]):Object.freeze([]),
    capability:Object.freeze(Object.fromEntries(Object.entries(statuses).map(([key,v])=>[key,Object.freeze(v)])))});
  });
  return Object.freeze({schema:"seethetruth-operator-capability-matrix-v1",
   source:existing.schema,evidence:"DECLARATIVE_NOT_EXECUTED",
+  certificateEvidence:summary.evidence,
+  certificateSummary:summary,
   counts:existing.counts,rows:Object.freeze(rows)});
 }
 function describe(kind){
