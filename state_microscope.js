@@ -207,7 +207,7 @@ function graphTraining(run){
  need(ids.size===nodes.length,'duplicate graph node identity');
  const byId=new Map(nodes.map(n=>[n.id,n])),sources=new Map(),consumers=new Map();
  for(const node of nodes){
-  const incoming=Object.entries(node.inputSources||{}).map(([port,from])=>({port,from}));
+  const incoming=Object.entries(node.inputSources||{}).filter(([,from])=>from!==null).map(([port,from])=>({port,from}));
   need(incoming.every(e=>typeof e.from==='string'&&ids.has(e.from)&&
    /^[A-Za-z0-9_-]{1,72}$/.test(e.port)),'invalid original graph port dependency');
   sources.set(node.id,incoming);
