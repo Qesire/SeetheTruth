@@ -19,7 +19,7 @@
   for(const e of items){
    if(!e||typeof e!=='object'||Array.isArray(e)||Object.keys(e).sort().join(',')!=='global,id,module'||
       typeof e.id!=='string'||!/^[a-z][a-z0-9_]{1,35}$/.test(e.id)||
-      typeof e.module!=='string'||!/^[a-z][a-z0-9_]*\.js$/.test(e.module)||
+      typeof e.module!=='string'||!/^[a-z][a-z0-9_]*_block_pack\.js$/.test(e.module)||
       typeof e.global!=='string'||!/^SeetheTruth[A-Za-z0-9]+$/.test(e.global))
     fail('invalid trusted pack entry');
    if(ids.has(e.id)||paths.has(e.module)||globals.has(e.global))
