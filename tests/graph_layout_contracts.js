@@ -18,6 +18,17 @@ for(const kind of ['ffn','residual','gqa','mla_lite','moe_route','grpo_signals']
  assert.deepEqual(after.steps.map(s=>s.shape),concept.steps.map(s=>s.shape),'concept changed '+kind);
  assert.ok(metrics.width>0&&metrics.height>0);
 }
+// Studio layout must accept every graph the numeric runtime accepts.
+const large=L.preset('nd_wan_adaln_self_gated'),laidLarge=G.layout(large);
+assert.equal(large.nodes.length,51);
+assert.deepEqual(laidLarge.edges,large.edges);
+assert.deepEqual(laidLarge.nodes.map(n=>n.id),large.nodes.map(n=>n.id));
+assert.equal(G.metrics(laidLarge).overlap.length,0);
+assert.deepEqual(L.evaluate(laidLarge).steps.map(s=>s.values),
+ L.evaluate(large).steps.map(s=>s.values));
+const tooLarge={nodes:Array.from({length:81},(_,i)=>({id:'n'+i,kind:'input',
+ x:0,y:i*100,params:{rows:1,width:1,seed:1}})),edges:[]};
+assert.throws(()=>G.layout(tooLarge),/invalid graph layout size/);
 assert.throws(()=>G.layout({nodes:[{id:'a'},{id:'b'}],edges:[{from:'a',to:'b'},{from:'b',to:'a'}]}),/DAG/);
 assert.throws(()=>G.layout({nodes:[{id:'a'}],edges:[{from:'a',to:'unknown'}]}),/edges/);
 console.log('Graph layout: six complete numerical/qualitative comparisons, ID/edge preservation, nonoverlap and cycle checks PASS');

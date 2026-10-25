@@ -30,7 +30,7 @@ class UnifiedLearningBrowser(unittest.TestCase):
    page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
    counts=page.evaluate("window.SeetheTruthUnifiedWorkbench.counts")
    self.assertGreaterEqual(counts["operators"],146)
-   self.assertEqual(counts["graphLessons"],65)  # 60 guided including source-pinned Wan video RoPE + blank + 2 pack recipes + state shortcut
+   self.assertEqual(counts["graphLessons"],66)  # 60 guided including source-pinned Wan video RoPE + blank + 2 pack recipes + state shortcut
    self.assertEqual(counts["courses"],10)
    self.assertEqual(counts["labs"],17)
    evidence=page.evaluate("window.SeetheTruthUnifiedWorkbench.inspect().evidence")

@@ -244,6 +244,32 @@ class MicroscopeBrowser(unittest.TestCase):
      else 'desktop-wan-qkv-gamma-fullwidth.png')),full_page=width==390,animations='disabled')
     self.assertEqual(errors,[])
    finally:p.close()
+ def test_wan_adaln_norm1_conditioned_self_gate(self):
+  for width in [1450,390]:
+   p=self.browser.new_page(viewport={'width':width,'height':900},
+    is_mobile=width==390,has_touch=width==390)
+   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+   try:
+    p.goto(self.base)
+    p.locator('[data-preset="nd_wan_adaln_self_gated"]').click()
+    p.locator('#studyMode').select_option('numeric');p.locator('#run').click()
+    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===51')
+    for target,keyword in [('norm1','wan_norm1_lastchannel_layernorm'),
+                           ('norm_scale_product','broadcast_gate')]:
+     for btn in p.locator('#computeMicroscope .cmp-step').all():
+      btn.click()
+      if p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode')==target:
+       break
+     self.assertEqual(p.evaluate('window.SeetheTruthMicroscopeWorkbench.visibleNode'),target)
+     p.locator('#computeMicroscope .cmp-vjp-trigger').click()
+     content=p.locator('#computeMicroscope .cmp-vjp-result').inner_text()
+     self.assertIn(keyword,content)
+     self.assertIn('已覆盖全部可验证路径',content)
+     self.assertNotIn('反向路径拒绝',content)
+     p.screenshot(path=str(OUT/(('mobile-' if width==390 else 'desktop-')+
+        'wan-'+target+'-scalar-vjp.png')),full_page=width==390,animations='disabled')
+    self.assertEqual(errors,[])
+   finally:p.close()
  def test_mobile_named_axis(self):
   p=self.browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))

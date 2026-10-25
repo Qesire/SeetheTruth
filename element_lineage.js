@@ -179,6 +179,37 @@ function inspect(raw,options={}){
    return {rule:"矩阵乘法按 K 维求和；每项使用一对 A/B 元素",
     links:result,gradientRule:"乘以相应另一输入元素，并对所有 K 维贡献求和"};
   }
+  if(kind==="nd_layernorm_last"){
+    const sh=inputs.x,C=shape[3],eps=p.epsilon,[b,h,t,c]=coordinate;
+    if(sh.length!==4||!same(sh,shape))throw Error("N-D LayerNorm requires four axes");
+    const vals=Array.from({length:C},(_,j)=>read("x",[b,h,t,j]));
+    const full=vals.every(v=>v!==null),mean=full?vals.reduce((a,b)=>a+b,0)/C:null,
+       variance=full?vals.reduce((a,b)=>a+(b-mean)**2,0)/C:null,
+       inv=full?1/Math.sqrt(variance+eps):null;
+    for(let j=0;j<C;j++){
+      const factor=full?inv*((j===c?1:0)-1/C-
+        (vals[c]-mean)*(vals[j]-mean)*inv*inv/C):null;
+      add("x",[b,h,t,j],"LayerNorm full-channel centering+variance Jacobian",factor,
+       "sourceChannel="+j);
+    }
+    stages.push({stage:"wan_norm1_lastchannel_layernorm",mean,variance,invStd:inv,
+      channel:c,normalized:full?(vals[c]-mean)*inv:null});
+    return {rule:"non-affine last-channel LayerNorm (Wan norm1/norm2): full C-wide local Jacobian",
+      links:result,stages,gradientRule:"(delta−1/C)/sigma−(xi−mu)(xj−mu)/(C sigma³)"};
+  }
+  if(kind==="nd_broadcast_mul"){
+    const A=inputs.a,B=inputs.b,idxA=coordinate.map((v,i)=>A[i]===1?0:v),
+       idxB=coordinate.map((v,i)=>B[i]===1?0:v);
+    if(A.length!==4||B.length!==4||A.some((v,i)=>v!==B[i]&&v!==1&&B[i]!==1))
+      throw Error("N-D broadcast multiply incompatible");
+    const av=read("a",idxA),bv=read("b",idxB);
+    add("a",idxA,"∂(A·B)/∂A=B",bv);
+    add("b",idxB,"∂(A·B)/∂B=A",av);
+    stages.push({stage:"broadcast_gate",sourceA:idxA,sourceB:idxB,a:av,b:bv,
+      product:av===null||bv===null?null:av*bv});
+    return {rule:"explicit N-D singleton broadcast multiply",
+      links:result,stages,gradientRule:"each broadcast coordinate accumulates contributions across reused tokens/channels"};
+  }
   if(kind==="nd_wan_qk_rmsnorm"){
    const X=inputs.x,W=inputs.weight,C=shape[3],eps=p.epsilon;
    if(shape.length!==4||X.length!==4||!same(X,shape)||

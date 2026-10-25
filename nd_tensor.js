@@ -167,6 +167,21 @@ function wanVideoRoPE3D4(x,frames,height,width,base=10000){
  * x is [B,1,T,C], representing actual [B,T,C] BEFORE .view(B,T,H,D).
  * Weight is [1,1,1,C]. Do not normalize each head independently.
  */
+/* Generic source-compatible non-affine LayerNorm on the last axis.
+ * WanLayerNorm uses float() and eps=1e-6 in the pinned source; the
+ * bounded Float64 educational interpretation keeps all channel coupling.
+ */
+function layerNormLast4(x,epsilon=1e-6){
+ const sh=shape(x);
+ if(sh.length!==4||typeof epsilon!=="number"||!Number.isFinite(epsilon)||epsilon<=0||epsilon>1)
+   fail("N-D LayerNorm requires rank four and positive epsilon");
+ const C=sh[3];
+ return build(sh,([b,h,t,c])=>{
+  let mean=0;for(let j=0;j<C;j++)mean+=x[b][h][t][j]/C;
+  let variance=0;for(let j=0;j<C;j++)variance+=(x[b][h][t][j]-mean)**2/C;
+  return (x[b][h][t][c]-mean)/Math.sqrt(variance+epsilon);
+ });
+}
 function wanQKWeightedRMSNorm4(x,weight,epsilon=1e-6){
  const sh=shape(x),wh=shape(weight);
  if(sh.length!==4||sh[1]!==1||wh.length!==4||
@@ -201,5 +216,5 @@ function seedTensor(sh,seed=1){
  dims(sh);if(!Number.isSafeInteger(seed)||Math.abs(seed)>10000)fail("N-D seed must be bounded integer");
  return build(sh,index=>Math.sin(index.reduce((a,i,j)=>a+(i+1)*(j+2)*0.43,seed*.37))*.8);
 }
-return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,wanQKWeightedRMSNorm4,wanVideoRoPE3DCoordinate,wanVideoRoPE3D4,cacheRead4,cacheAppend4});
+return Object.freeze({MAX_ELEMENTS,shape,dims,product,flatten,build,at,indices,reshape,permute,broadcastShape,broadcastBinary,reduceSum,matmul4,seedTensor,scale,softmaxLast,causalMask4,repeatKVHeads,meanSquaredError,rope4,layerNormLast4,wanQKWeightedRMSNorm4,wanVideoRoPE3DCoordinate,wanVideoRoPE3D4,cacheRead4,cacheAppend4});
 });
