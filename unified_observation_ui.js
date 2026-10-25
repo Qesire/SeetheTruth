@@ -21,6 +21,7 @@ function mount(options={}){
  const reload=button('unifiedObservationRefresh','核验当前执行'),pin=button('unifiedObservationPin','固定此执行为基线'),diff=button('unifiedObservationCompare','与基线比较'),clear=button('unifiedObservationClear','清除基线');
  const download=button('unifiedObservationExport','导出已核验快照');
  const branchButton=button('unifiedObservationFork','将当前实验另存为分支');
+ const checkpointButton=button('unifiedObservationCheckpoint','导出当前状态步骤');
  const importer=tag('input');importer.id='unifiedObservationImport';importer.type='file';
  importer.accept='.json,application/json';importer.setAttribute('aria-label','导入已保存的观测快照');
  importer.style.cssText='max-width:240px;color:#d5eef6;font-size:12px';
@@ -149,6 +150,18 @@ function mount(options={}){
   setStatus('已导出独立可重放实验分支 · '+candidate.evidence);
   return candidate;
  }
+ function exportCheckpoint(){
+  if(!current||!inventory)refresh();
+  const selected=chosen();
+  if(!selected||selected.group.kind!=="state_transition")
+   throw Error("仅原生状态转换步骤支持状态检查点");
+  const portable=snapshots.at(core,snapshots.create(core,current),selected.point.id);
+  const confirmed=snapshots.restore(core,portable);
+  if(!confirmed.checkpoint?.replayVerified)throw Error("状态步骤未通过原引擎恢复");
+  downloadFile(portable,'-checkpoint');
+  setStatus('已导出只读状态步骤 · '+selected.point.id+' · '+confirmed.evidence);
+  return portable;
+ }
  function importSnapshot(input){
   // A file is a replay recipe, never an authenticated execution artifact.
   const parsed=snapshots.validate(input),about=snapshots.describe(core,parsed);
@@ -157,8 +170,24 @@ function mount(options={}){
   if(local){
    const restored=snapshots.restore(core,parsed);
    baseline=freezeClone(restored.record);
-   setStatus('已恢复并重放验证 '+about.id+' · '+about.evidence);
-   comparison.textContent='导入快照已核验，可以与当前实验比较。';
+   if(restored.checkpoint){
+    // A verified cursor restores the *educational view*; no claim of
+    // in-memory GPU checkpoint, scheduler mutation or external side effects.
+    current=freezeClone(restored.record);inventory=restored.observation;
+    sourceIndex=inventory.sources.findIndex(x=>x.kind==="state_transition");
+    if(sourceIndex<0)throw Error("状态检查点缺少原生状态轨迹");
+    stepIndex=restored.checkpoint.index;
+    renderSources();
+    const shown=inspect();
+    if(!shown?.replayVerified)throw Error("恢复的教学状态步骤未经检验");
+    if(typeof options.onCheckpoint==="function")
+     options.onCheckpoint(restored);
+   }
+   setStatus('已恢复并重放验证 '+about.id+' · '+about.evidence+
+    (restored.checkpoint?' · 步骤 '+restored.checkpoint.stepId:''));
+   comparison.textContent=restored.checkpoint
+    ?'已回到原生状态步骤 '+restored.checkpoint.stepId+'；仅恢复教学视图，不修改设备或外部系统。'
+    :'导入快照已核验，可以与当前实验比较。';
    return restored;
   }
   foreignSnapshot=parsed;
@@ -195,6 +224,7 @@ function mount(options={}){
  clear.addEventListener('click',()=>{baseline=null;foreignSnapshot=null;sourceLink.hidden=true;comparison.textContent='基线已清除';setStatus('已清除基线');});
  download.addEventListener('click',()=>guard(exportSnapshot));
  branchButton.addEventListener('click',()=>guard(forkSnapshot));
+ checkpointButton.addEventListener('click',()=>guard(exportCheckpoint));
  importer.addEventListener('change',async()=>{
   const file=importer.files?.[0];if(!file)return;
   try{if(file.size>snapshots.MAX_BYTES)throw Error('快照文件超过大小限制');
@@ -211,7 +241,7 @@ function mount(options={}){
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
  menu.hidden=true;check.disabled=true;restoreHandoff();
- return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,importSnapshot,
+ return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,forkSnapshot,exportCheckpoint,importSnapshot,
   clear:()=>clear.click(),
   get observation(){return inventory;},get baseline(){return baseline;},get current(){return current;},host});
 }
