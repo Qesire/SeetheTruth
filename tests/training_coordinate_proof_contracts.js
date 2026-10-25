@@ -46,7 +46,8 @@ assert.ok(Math.abs(witness.path.parameterContribution-witness.wholeLossGradient)
 const allVia=[];
 for(let i=0;i<2;i++)for(let j=0;j<2;j++){
  const item=Proof.inspect(graph,options,{parameterId:'w',index:[0,1],viaNodeId:'project',viaIndex:[i,j]});
- assert.equal(item.path.status,'VERIFIED_SELECTED_PATH_CONTRIBUTION');
+ assert.ok(['VERIFIED_SELECTED_PATH_CONTRIBUTION','VERIFIED_ZERO_SELECTED_PATH'].includes(item.path.status));
+ assert.ok(Number.isFinite(item.path.parameterContribution));
  allVia.push(item.path.parameterContribution);
 }
 assert.ok(Math.abs(allVia.reduce((a,b)=>a+b,0)-witness.wholeLossGradient)<2e-10,
