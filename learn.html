@@ -1184,7 +1184,13 @@ const coreInventory=UnifiedCore.inventory(coreLessons.map(x=>x.id));
 window.SeetheTruthUnifiedWorkbench=Object.freeze({
  schema:UnifiedCore.SCHEMA,counts:coreInventory.counts,
  inspect:()=>UnifiedCore.inspectGraph(graph,{numeric:false}),
- inspectAccepted:()=>UnifiedCore.inspectGraph(runGraph||graph,{numeric:!!run,id:"learning_studio"})
+ inspectAccepted:()=>{
+  const numeric=!!run&&run.evidence==="deterministic_browser_teaching_simulation_not_model_execution";
+  const accepted=UnifiedCore.inspectGraph(runGraph||graph,{numeric,id:"learning_studio"});
+  if(numeric&&JSON.stringify(accepted.session?.trace)!==JSON.stringify(run))
+   throw Error("当前显示的工作台执行与统一图引擎数值不一致");
+  return accepted;
+ }
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
