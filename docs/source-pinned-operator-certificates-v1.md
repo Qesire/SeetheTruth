@@ -1,3 +1,5 @@
+> **2026-10-25 v2 evolution:** [Multi-fixture coverage and ReLU kink policy](operator-multifixture-coverage-v2.md) extends the first one-graph proof below into four source-digested independent fixtures. The six-kind/29-forward/25-backward figures below are retained as historical **v1-only** results; the current source of truth is the v2 executed certificate ledger.
+
 # Source-pinned operator case certificates — v1
 
 ## Objective and truth boundary
