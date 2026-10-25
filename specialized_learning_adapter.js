@@ -16,6 +16,6 @@
   observe:execution=>core.observeExecution(execution),
   replay:execution=>core.replayLab(execution),
   inspectStep:(execution,options)=>core.inspectObservationStep(execution,options),
-  compare:(left,right)=>core.compareExecutions(left,right)
+  compare:(left,right)=>core.compareRecords(left,right)
  });
 })(typeof window!=="undefined"?window:{});
