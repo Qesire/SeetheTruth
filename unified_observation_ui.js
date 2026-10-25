@@ -5,10 +5,10 @@
 const tag=(name,value)=>{const n=document.createElement(name);if(value!==undefined)n.textContent=String(value);return n;};
 const freezeClone=value=>JSON.parse(JSON.stringify(value));
 function mount(options={}){
- const core=options.core,readAccepted=options.readAccepted;
+ const core=options.core,readAccepted=options.readAccepted,snapshots=options.snapshots;
  if(!core||typeof core.observe!=='function'||typeof core.replay!=='function'||
     typeof core.inspectObservationStep!=='function'||typeof core.compareRecords!=='function'||
-    typeof readAccepted!=='function')throw Error('unified observation needs core and accepted-record provider');
+    typeof readAccepted!=='function'||!snapshots||typeof snapshots.create!=='function'||typeof snapshots.restore!=='function')throw Error('unified observation needs core, snapshot codec and accepted-record provider');
  const host=options.host||document.createElement('section');
  if(!options.host)document.body.append(host);
  host.id=host.id||'unifiedObservationPanel';
@@ -19,6 +19,13 @@ function mount(options={}){
  const tools=tag('div');tools.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
  const button=(id,label)=>{const b=tag('button',label);b.id=id;b.type='button';b.style.cssText='padding:8px 12px;border:1px solid #5e869a;background:#173e53;color:#f1faff;border-radius:7px;cursor:pointer';tools.append(b);return b;};
  const reload=button('unifiedObservationRefresh','核验当前执行'),pin=button('unifiedObservationPin','固定此执行为基线'),diff=button('unifiedObservationCompare','与基线比较'),clear=button('unifiedObservationClear','清除基线');
+ const download=button('unifiedObservationExport','导出已核验快照');
+ const importer=tag('input');importer.id='unifiedObservationImport';importer.type='file';
+ importer.accept='.json,application/json';importer.setAttribute('aria-label','导入已保存的观测快照');
+ importer.style.cssText='max-width:240px;color:#d5eef6;font-size:12px';
+ const sourceLink=tag('a','前往原实验室验证快照');
+ sourceLink.id='unifiedObservationOpenSource';sourceLink.hidden=true;
+ sourceLink.style.cssText='color:#a5e9d9;text-decoration:underline';
  const status=tag('p','尚未核验执行记录');status.id='unifiedObservationStatus';status.setAttribute('aria-live','polite');
  const menu=tag('div');menu.style.cssText='display:flex;flex-wrap:wrap;gap:10px;align-items:center';
  const source=tag('select');source.id='unifiedObservationSource';const step=tag('select');step.id='unifiedObservationStep';
@@ -30,8 +37,9 @@ function mount(options={}){
  detail.style.cssText='white-space:pre-wrap;word-break:break-word;padding:12px;border:1px solid #36566a;border-radius:8px;max-height:440px;overflow:auto';
  const comparison=tag('pre');comparison.id='unifiedObservationDiff';
  comparison.style.cssText=detail.style.cssText;
- host.replaceChildren(h,hint,tools,status,menu,coords,check,detail,comparison);
- let current=null,inventory=null,baseline=null,sourceIndex=0,stepIndex=0;
+ host.replaceChildren(h,hint,tools,importer,sourceLink,status,menu,coords,check,detail,comparison);
+ let current=null,inventory=null,baseline=null,foreignSnapshot=null,sourceIndex=0,stepIndex=0;
+ const HANDOFF_KEY='SeetheTruthObservationHandoffV1';
  function setStatus(message,failed=false){status.textContent=message;status.style.color=failed?'#ffb1a7':'#a5e9d9';}
  function chosen(){
   const group=inventory?.sources[sourceIndex],point=group?.steps[stepIndex];
@@ -104,16 +112,78 @@ function mount(options={}){
   },null,2);
   return result;
  }
+
+ function createPortable(){
+  if(!baseline)pinBaseline();
+  const portable=snapshots.create(core,baseline);
+  return portable;
+ }
+ function exportSnapshot(){
+  const portable=createPortable(),body=JSON.stringify(portable,null,2);
+  const blob=new Blob([body],{type:'application/json'}),url=URL.createObjectURL(blob);
+  const a=tag('a');a.href=url;a.download='seethetruth-observation-'+portable.id+'.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setStatus('已导出可重放执行快照 · '+portable.evidence);
+  return portable;
+ }
+ function importSnapshot(input){
+  // A file is a replay recipe, never an authenticated execution artifact.
+  const parsed=snapshots.validate(input),about=snapshots.describe(core,parsed);
+  const local=(location.pathname.split('/').at(-1)||'index.html')===about.sourceHref;
+  foreignSnapshot=null;sourceLink.hidden=true;
+  if(local){
+   const restored=snapshots.restore(core,parsed);
+   baseline=freezeClone(restored.record);
+   setStatus('已恢复并重放验证 '+about.id+' · '+about.evidence);
+   comparison.textContent='导入快照已核验，可以与当前实验比较。';
+   return restored;
+  }
+  foreignSnapshot=parsed;
+  sourceLink.href=about.sourceHref;sourceLink.hidden=false;
+  comparison.textContent='来自 '+about.id+' / '+about.operation+' 的快照已读取，但当前页面未运行其原始引擎。请前往原实验室验证。';
+  setStatus('跨页面快照已解析（尚未重放核验） · '+about.evidence);
+  return about;
+ }
+ function restoreHandoff(){
+  try{
+   const text=sessionStorage.getItem(HANDOFF_KEY);
+   if(!text)return;
+   const parsed=snapshots.validate(JSON.parse(text));
+   const about=snapshots.describe(core,parsed);
+   if((location.pathname.split('/').at(-1)||'index.html')!==about.sourceHref)return;
+   const restored=importSnapshot(parsed);
+   sessionStorage.removeItem(HANDOFF_KEY);
+   return restored;
+  }catch(error){
+   sessionStorage.removeItem(HANDOFF_KEY);
+   setStatus('跨页面快照恢复被拒绝：'+error.message,true);
+  }
+ }
  function guard(fn){try{return fn();}catch(error){setStatus('观测拒绝：'+error.message,true);detail.textContent=error.message;return null;}}
  reload.addEventListener('click',()=>guard(refresh));
  check.addEventListener('click',()=>guard(inspect));
  pin.addEventListener('click',()=>guard(pinBaseline));
  diff.addEventListener('click',()=>guard(compare));
- clear.addEventListener('click',()=>{baseline=null;comparison.textContent='基线已清除';setStatus('已清除基线');});
+ clear.addEventListener('click',()=>{baseline=null;foreignSnapshot=null;sourceLink.hidden=true;comparison.textContent='基线已清除';setStatus('已清除基线');});
+ download.addEventListener('click',()=>guard(exportSnapshot));
+ importer.addEventListener('change',async()=>{
+  const file=importer.files?.[0];if(!file)return;
+  try{if(file.size>snapshots.MAX_BYTES)throw Error('快照文件超过大小限制');
+   importSnapshot(JSON.parse(await file.text()));
+  }catch(error){setStatus('快照导入被拒绝：'+error.message,true);}
+  finally{importer.value='';}
+ });
+ sourceLink.addEventListener('click',event=>{
+  if(!foreignSnapshot){event.preventDefault();return;}
+  try{sessionStorage.setItem(HANDOFF_KEY,JSON.stringify(foreignSnapshot));}
+  catch(error){event.preventDefault();setStatus('跨页面交接失败：'+error.message,true);}
+ });
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
- menu.hidden=true;check.disabled=true;
- return Object.freeze({refresh,inspect,pin:pinBaseline,compare,clear:()=>clear.click(),
+ menu.hidden=true;check.disabled=true;restoreHandoff();
+ return Object.freeze({refresh,inspect,pin:pinBaseline,compare,exportSnapshot,importSnapshot,
+  clear:()=>clear.click(),
   get observation(){return inventory;},get baseline(){return baseline;},get current(){return current;},host});
 }
 return Object.freeze({mount});
