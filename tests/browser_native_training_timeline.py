@@ -50,7 +50,7 @@ class NativeTrainingTimelineBrowser(unittest.TestCase):
      self.assertTrue(info['finalReplayed'])
      self.assertTrue(info['continuedFromCheckpoint'])
      snapshot=page.evaluate("""()=> {
-      const ui=window.SeetheTruthObservationPanel;
+      const ui=window.SeetheTruthNativeTrainingTimeline.panel;
       const core=window.SeetheTruthUnifiedCore;
       return window.SeetheTruthObservationSnapshots.at(
        core,window.SeetheTruthObservationSnapshots.create(core,ui.current),'train:2');
