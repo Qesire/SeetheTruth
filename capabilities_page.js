@@ -1,8 +1,25 @@
 (function(){"use strict";
-const A=window.SeetheTruthSpecializedLesson.execute("audit",{}).value,$=id=>document.getElementById(id);
+const A=window.SeetheTruthSpecializedLesson.execute("audit",{}).value,
+ M=window.SeetheTruthCapabilities.matrix(),$=id=>document.getElementById(id);
 for(const [k,v] of Object.entries(A.counts))if($(k))$(k).textContent=v;
 for(const category of [...new Set(A.rows.map(r=>r.category))].sort()){
  const el=document.createElement("option");el.value=category;el.textContent=category;$("category").append(el);
+}
+function inspect(kind){
+ const r=M.rows.find(row=>row.kind===kind);
+ if(!r)throw Error('未注册算子能力 '+kind);
+ const summary=document.createElement('h2');summary.textContent=r.kind+' · '+r.title;
+ const evidence=document.createElement('p');
+ evidence.textContent='静态能力清单：'+M.evidence+'。可导出仅代表白名单资格；数值、VJP、模型一致性仍需实际测试。';
+ const values=document.createElement('dl');
+ for(const [name,proof] of Object.entries(r.capability)){
+  const key=document.createElement('dt');key.textContent=name;
+  const value=document.createElement('dd');
+  value.textContent=proof.availability+' · '+proof.verification;
+  values.append(key,value);
+ }
+ $('capabilityDetail').replaceChildren(summary,evidence,values);
+ return r;
 }
 function render(){
  const q=$("search").value.trim().toLocaleLowerCase(),c=$("category").value,m=$("filter").value;
@@ -11,8 +28,14 @@ function render(){
   (m==="no-numpy"&&!r.numpyEligible)||(m==="no-torch"&&!r.torchEligible)));
  const frag=document.createDocumentFragment();
  for(const r of rows){const tr=document.createElement("tr");
-  for(const value of [r.kind,r.title,r.category,r.numpyEligible?"候选":"不支持",r.torchEligible?"候选":"不支持","需图级测试"]){
-   const td=document.createElement("td");td.textContent=value;tr.append(td);
+  for(const [i,value] of [r.kind,r.title,r.category,r.numpyEligible?"候选":"不支持",r.torchEligible?"候选":"不支持","需图级测试"].entries()){
+   const td=document.createElement("td");
+   if(i===0){const button=document.createElement("button");button.type="button";
+    button.textContent=value;button.className="capabilityInspect";
+    button.setAttribute("aria-label","查看 "+value+" 的能力证据");
+    button.addEventListener("click",()=>inspect(r.kind));td.append(button);}
+   else td.textContent=value;
+   tr.append(td);
   }frag.append(tr);
  }
  $("rows").replaceChildren(frag);$("count").textContent=rows.length+" / "+A.rows.length;
