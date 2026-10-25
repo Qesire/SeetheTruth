@@ -153,6 +153,44 @@ class UnifiedObservationBrowser(unittest.TestCase):
    self.assertIn('父快照',page.locator('#unifiedObservationDiff').inner_text())
    self.assertEqual(errors,[])
   finally:page.close()
+ def test_kv_selected_checkpoint_replays_and_restores_native_step_view(self):
+  for width in (1366,390):
+   with self.subTest(width=width):
+    page,errors=self.visit('deepinfer_kv_lifecycle_lab.html',width)
+    try:
+     page.locator('#unifiedObservationRefresh').click()
+     page.locator('#unifiedObservationStep').select_option(label='4. kv:3')
+     with page.expect_download() as download:
+      page.locator('#unifiedObservationCheckpoint').click()
+     self.assertIn('-checkpoint.json',download.value.suggested_filename)
+     snapshot=page.evaluate("""() => {
+      const ui=window.SeetheTruthObservationPanel,core=window.SeetheTruthUnifiedCore;
+      return window.SeetheTruthObservationSnapshots.at(
+       core,window.SeetheTruthObservationSnapshots.create(core,ui.current),'kv:3');
+     }""")
+     self.assertEqual(snapshot['cursor']['index'],3)
+     self.assertEqual(snapshot['cursor']['stepId'],'kv:3')
+     page.locator('#scenario').select_option('preempt')
+     page.locator('#unifiedObservationImport').set_input_files({
+      'name':'kv-checkpoint.json','mimeType':'application/json',
+      'buffer':json.dumps(snapshot).encode('utf8')
+     })
+     page.wait_for_function("document.querySelector('#unifiedObservationStatus')?.textContent.includes('kv:3')")
+     self.assertEqual(page.locator('#unifiedObservationStep').input_value(),'3')
+     self.assertIn('"stepId": "kv:3"',page.locator('#unifiedObservationDetail').inner_text())
+     self.assertEqual(page.locator('#unifiedStateSteps .sm-step[aria-current="step"]').count(),1)
+     self.assertIn('4.',page.locator('#unifiedStateSteps .sm-step[aria-current="step"]').inner_text())
+     self.assertIn('只读视图',page.locator('#unifiedStateStatus').inner_text())
+     self.assertEqual(errors,[])
+    finally:page.close()
+ def test_checkpoint_rejects_tensor_and_corrupted_step_identity(self):
+  page,errors=self.visit('wan_ffn_lab.html',1366)
+  try:
+   page.locator('#unifiedObservationRefresh').click()
+   page.locator('#unifiedObservationCheckpoint').click()
+   self.assertIn('仅原生状态转换',page.locator('#unifiedObservationStatus').inner_text())
+   self.assertEqual(errors,[])
+  finally:page.close()
  def test_worker_state_no_fabricated_coordinates(self):
   for width in (1366,390):
    with self.subTest(width=width):
