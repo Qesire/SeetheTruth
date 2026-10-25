@@ -208,6 +208,7 @@ input[type="file"]{display:none}
   <button class="mission" data-preset="nd_mqa_attention"><span class="num">28</span><span>MQA · 4Q / 1KV Head</span><span class="desc">一组 KV Head 服务所有 Query Head，检查梯度汇合</span></button>
   <button class="mission" data-preset="nd_trainable_gqa"><span class="num">29</span><span>GQA · 四轴参数训练</span><span class="desc">四维 Q/K/V · Forward → VJP → AdamW → Forward</span></button>
   <button class="mission" data-preset="nd_trainable_mqa"><span class="num">30</span><span>MQA · 四轴参数训练</span><span class="desc">单 KV Head 更新、动量与梯度共享验证</span></button>
+  <button class="mission" data-preset="nd_wan_i2v_complete_block"><span class="num">W++++</span><span>Wan2.2 I2V · 完整 Transformer Block<span class="desc">Self → Cross → norm2/e3/e4 → Linear1 → GELU(tanh) → Linear2 → e5 门控残差，可执行逐坐标追踪</span></span></button>
   <button class="mission" data-preset="nd_wan_i2v_self_cross"><span class="num">W+++</span><span>Wan2.2 I2V · Self + 文本 Cross-Attention<span class="desc">e2 残差后，带权仿射 norm3；独立文本 Key/Value、8×4 非因果 Attention 和残差</span></span></button>
   <button class="mission" data-preset="nd_wan_adaln_self_gated"><span class="num">W++</span><span>Wan2.2 · e0/e1 AdaLN 与 e2 门控残差<span class="desc">六分块中 Self-Attention 三个条件分量，完整 LN、动态仿射、可训练 QKV、RoPE 与残差 VJP</span></span></button>
   <button class="mission" data-preset="nd_wan_qkv_fullwidth_attention"><span class="num">W+</span><span>Wan2.2 · QKV 仿射投影与完整通道 Q/K Norm<span class="desc">Wq/Wk/Wv、带可学习 gamma 的归一化、Head View、F/H/W RoPE、输出投影和真实 Loss</span></span></button>
