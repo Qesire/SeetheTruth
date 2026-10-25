@@ -24,6 +24,10 @@ When adding graph or specialist computation, use the existing `SeetheTruthUnifie
 
 For a new browser microscope or specialist controller, reuse `unified_observation_ui.js` with a callback to the **last accepted engine record**. The consumer calls `SeetheTruthUnifiedCore.observe/replay/inspectObservationStep/compareRecords`; it must not have its own numerical execution path. Keep existing rich teaching UIs and coordinate/VJP witnesses, and test desktop + Android viewport behavior. Re-register server route and Android offline assets for any shared JS additions.
 
+## Portable experiments and branch lineage
+
+Build new experiment snapshots through `observation_snapshots.js` (`create / restore / describe / fork`). A branch is a **complete alternate engine input**, checked through the same source and evidence identity; the parent checksum is descriptive lineage, never proof of external attestation or reversible side effects. Use the common observation UI for download/import and explicitly verify source engine output before marking a transported record as accepted. Browser handoffs use opt-in per-tab session storage and a registered lab route, not duplicate numerical fixtures.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
