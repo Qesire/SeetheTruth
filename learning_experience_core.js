@@ -152,6 +152,7 @@
   return Object.freeze({schema:SCHEMA,id,kind:"specialized",
    runtime:lab.domain,engine:lab.engine,href:lab.href,
    declaredEvidence:lab.evidence,evidence:"NOT_EXECUTED",
+   operations:describeActions(id),
    executable:null,numericOk:false,
    note:"Use the lab's declared domain engine. This contract alone is not execution evidence."});
  }
@@ -161,28 +162,34 @@
   deepinfer_prefill:Object.freeze({
    vote:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>m.vote(x)}),
    chunk:Object.freeze({module:"prefill",method:"chunk",run:(m,x)=>m.chunk(x)}),
-   inspect_pair:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>({vote:m.vote(x.voteInput),chunk:m.chunk(x.chunkInput)})})
+   inspect_pair:Object.freeze({module:"prefill",method:"vote",run:(m,x)=>({vote:m.vote(x.voteInput),chunk:m.chunk(x.chunkInput)}),
+    observeState:(v,x)=>deps.state.prefill({voteInput:x.voteInput,chunkInput:x.chunkInput,voteResult:v.vote,chunkResult:v.chunk},deps.prefill)})
   }),
   deepinfer_worker:Object.freeze({
    simulate:Object.freeze({module:"worker",method:"simulate",
-    run:(m,x)=>m.simulate(x.steps,x.options||{zeroOverhead:true})}),
+    run:(m,x)=>m.simulate(x.steps,x.options||{zeroOverhead:true}),
+    observeState:v=>deps.state.worker(v)}),
    compare:Object.freeze({module:"worker",method:"compare",
     run:(m,x)=>m.compare(x.steps,x.durations)})
   }),
   deepinfer_kv:Object.freeze({
    replay:Object.freeze({module:"kv",method:"replay",
-    run:(m,x)=>m.replay(x.config,x.operations)})
+    run:(m,x)=>m.replay(x.config,x.operations),
+    observeState:v=>deps.state.kv(v,deps.kv)})
   }),
   deepinfer_scheduler:Object.freeze({
    simulate:Object.freeze({module:"scheduler",method:"simulate",
-    run:(m,x)=>m.simulate(x.spec,x.options||{})})
+    run:(m,x)=>m.simulate(x.spec,x.options||{}),
+    observeState:v=>deps.state.scheduler(v,deps.kv)})
   }),
   wan_ffn:Object.freeze({trace:Object.freeze({module:"wan",method:"trace",
-   run:(m,x)=>m.trace(x.options||{})})}),
+   run:(m,x)=>m.trace(x.options||{}),
+   observeCompute:v=>deps.compute.wan(v)})}),
   tradeoffs:Object.freeze(Object.fromEntries(["gqa","moe","loop"].map(name=>
    [name,Object.freeze({module:"tradeoffs",method:name,run:(m,x)=>m[name](x)})]))),
   training:Object.freeze({scalar:Object.freeze({module:"scalarTraining",method:"build",
-   run:(m,x)=>m.build(x.config||{},"scalar")})}),
+   run:(m,x)=>m.build(x.config||{},"scalar"),
+   observeState:v=>deps.state.scalar(v)})}),
   cache:Object.freeze({replay_steps:Object.freeze({module:"cacheLab",method:"Session",run:(m,x)=>{
    const session=m.Session(x.config||{});
    const count=x.steps===undefined?session.config.decode+1:x.steps;
@@ -191,7 +198,7 @@
    const snapshots=[session.snapshot()];
    for(let i=0;i<count;i++)snapshots.push(session.advance());
    return Object.freeze({config:session.config,snapshots});
-  }})}),
+  },observeState:v=>deps.state.cache(v.snapshots,deps.cacheLab)})}),
   engineering_journey:Object.freeze({train:Object.freeze({module:"journey",method:"create",
    run:(m,x)=>{
     if(!Number.isSafeInteger(x.steps)||x.steps<1||x.steps>120)fail("guided Bigram steps must be 1..120");
@@ -206,7 +213,7 @@
      const model=m.create(x.config||{}),snapshots=[model.checkpoint()];
      for(let i=0;i<x.steps;i++){model.train(1);snapshots.push(model.checkpoint());}
      return Object.freeze({snapshots,diagnostic:model.diagnostic(),source:m.SCHEMA});
-    }}),
+    },observeState:v=>deps.state.training(v.snapshots)}),
    timeline:Object.freeze({module:"pipeline",method:"create",
     run:(m,x)=>{
      if(!Array.isArray(x.actions)||x.actions.length<1||x.actions.length>24||
@@ -221,7 +228,7 @@
       snapshots.push(model.checkpoint());
      }
      return Object.freeze({snapshots,events,diagnostic:model.diagnostic(),source:m.SCHEMA});
-    }})
+    },observeState:v=>deps.state.training(v.snapshots)})
   }),
   paper:Object.freeze({
    lora:Object.freeze({module:"paper",method:"lora",run:(m,x)=>m.lora(x.x,x.w,x.a,x.b,x.alpha??1)}),
@@ -240,6 +247,20 @@
    audit:Object.freeze({module:"capabilities",method:"audit",run:m=>m.audit()})
   })
  });
+ // One source of truth for operation dispatch + native observation eligibility.
+ // A listed method is a *declared* capability, not evidence of any execution.
+ function describeActions(id){
+  if(!byId.has(id))fail("unknown specialized adapter "+id);
+  return Object.freeze(Object.entries(domainRunners[id]||{}).map(([name,runner])=>{
+   if(!runner||typeof runner.run!=="function"||typeof runner.module!=="string"||
+      typeof runner.method!=="string"||
+      (runner.observeState&&runner.observeCompute))
+    fail("invalid source/trace registration "+id+"/"+name);
+   return Object.freeze({name,sourceModule:runner.module,sourceMethod:runner.method,
+    observation:runner.observeState?"state_transition":runner.observeCompute?"tensor_computation":"none",
+    evidence:"NOT_EXECUTED"});
+  }));
+ }
  // Domain-neutral *observation*, not a second numerical executor.
  // A record points back to a source trace rather than fabricating tensors/events.
  const OBS_SCHEMA="seethetruth-observation-v1";
@@ -412,22 +433,10 @@
   if(!engine||typeof engine[runner.method]!=="function")
    fail("domain source engine unavailable: "+lab.engine);
   const value=runner.run(engine,copy(input));
-  const eventAdapters={
-   "deepinfer_prefill/inspect_pair":()=>deps.state.prefill({voteInput:input.voteInput,chunkInput:input.chunkInput,voteResult:value.vote,chunkResult:value.chunk},deps.prefill),
-   "deepinfer_worker/simulate":()=>deps.state.worker(value),
-   "deepinfer_kv/replay":()=>deps.state.kv(value,deps.kv),
-   "deepinfer_scheduler/simulate":()=>deps.state.scheduler(value,deps.kv),
-   "training/scalar":()=>deps.state.scalar(value),
-   "cache/replay_steps":()=>deps.state.cache(value.snapshots,deps.cacheLab),
-   "engineering_pipeline/train":()=>deps.state.training(value.snapshots),
-   "engineering_pipeline/timeline":()=>deps.state.training(value.snapshots)
-  };
-  const eventKey=id+"/"+operation;
-  if(eventAdapters[eventKey]&&!deps.state)
-   fail("state microscope dependency unavailable for "+eventKey);
-  const stateTrace=eventAdapters[eventKey]?eventAdapters[eventKey]():null;
-  if(id==="wan_ffn"&&!deps.compute)fail("shared computation microscope unavailable");
-  const computationTrace=id==="wan_ffn"?deps.compute.wan(value):null;
+  if(runner.observeState&&!deps.state)fail("state microscope unavailable for "+id+"/"+operation);
+  if(runner.observeCompute&&!deps.compute)fail("computation microscope unavailable for "+id+"/"+operation);
+  const stateTrace=runner.observeState?runner.observeState(value,input):null;
+  const computationTrace=runner.observeCompute?runner.observeCompute(value,input):null;
   return Object.freeze({schema:SCHEMA,kind:"specialized_execution",
    id,operation,runtime:lab.domain,engine:lab.engine,
    evidence:lab.evidence,value,stateTrace,computationTrace,inputSnapshot:copy(input),
@@ -466,6 +475,6 @@
     courses:courses.length,labs:labs.length})});
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
-  executeLab,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
+  executeLab,describeActions,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
   inspectObservationStep,compareExecutions,compareRecords,inspectEvidence,inspectCourse,inventory});
 });
