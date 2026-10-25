@@ -92,6 +92,7 @@ coordinate_vjp_bridge.js
 compute_microscope_ui.js
 compute_microscope.css
 training_session.js
+training_coordinate_proof.js
 gradient_inspection.js
 node_timeline.js
 graph_lowering_plan.js
