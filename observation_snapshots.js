@@ -128,13 +128,32 @@ function resumeKV(core,source){
     JSON.stringify(prefixValue.timeline.at(-1))!==
     JSON.stringify(replayed.record.value.timeline[cursor.index]))
   fail("KV prefix state diverged from imported native replay");
- // The original operations after the cursor are replayed by the same engine.
- // The previous full-run source checksum is verified in restore().
+ // Resume from the actual validated prefix state by using the same native
+ // BlockManager.advance() implementation as replay(). Never hand-build refs.
+ const kv=typeof module==="object"&&module.exports
+  ?require("./deepinfer_kv_lifecycle.js")
+  :typeof window!=="undefined"?window.SeetheTruthKVLifecycle:null;
+ if(!kv||typeof kv.advance!=="function"||typeof kv.verify!=="function")
+  fail("native KV transition engine unavailable");
+ let state=clone(prefixValue.state);
+ const suffix=[];
+ const operations=s.input.operations.slice(cursor.index);
+ for(let i=0;i<operations.length;i++){
+  state=kv.advance(state,clone(operations[i]));
+  kv.verify(state);
+  if(JSON.stringify(state)!==
+     JSON.stringify(replayed.record.value.timeline[cursor.index+i+1]))
+   fail("KV resumed transition diverged at "+(cursor.index+i+1));
+  suffix.push(clone(state));
+ }
+ if(JSON.stringify(state)!==JSON.stringify(replayed.record.value.state))
+  fail("KV resumed final state diverged");
  return Object.freeze({schema:SCHEMA,kind:"local_kv_continuation",
   index:cursor.index,stepId:cursor.stepId,evidence:replayed.evidence,
   checkpoint:replayed.checkpoint,prefix:prefixValue,
-  remainingOperations:clone(s.input.operations.slice(cursor.index)),
-  finalReplayed:true});
+  remainingOperations:clone(operations),
+  resumedTimeline:Object.freeze(suffix),
+  continuedFromPrefix:true,finalReplayed:true});
 }
 function fork(core,original,nextInput,label=""){
  const base=validate(original);
