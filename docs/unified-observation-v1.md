@@ -53,3 +53,16 @@ Run `node tests/unified_observation_contracts.js` plus `node tests/unified_learn
 ## Remaining migration
 
 The v1 bridge supports graph microscope coordinates and those specialists that already have verified native frames. The next improvements are: UI-level shared coordinate selection across Graph/State/Wan, stable version IDs for long workflows, explicit state checkpoints for reversible **local** simulations, and reliable independent backend parity for new adapters. Do not model these as completed merely because an observation record can be constructed.
+
+## Shared browser consumer (PR #82)
+
+`unified_observation_ui.js` provides one **read-only DOM consumer** of these APIs. A host page supplies only its existing accepted execution via `readAccepted()`. The panel never mutates parameters, issues its own independent numerical approximation, or upgrades an evidence tier. It presents:
+
+- A replay-verified current execution and trace/source inventory, using the source engine and evidence carried by the accepted record.
+- Real state-transition dependencies or real compute-graph `{from,port}` dependencies (no guessed edges), with full-rank tensor coordinate selection delegated to `inspectObservationStep`.
+- An immutable JSON snapshot of an explicitly pinned baseline and a `compareRecords` delta across the same domain, with static-only null numerical parity.
+- Visible rejection of stale, malformed or absent accepted source records.
+
+The PC Learning Studio, Wan FFN source microscope, and DeepInfer Worker are the initial UI consumers. Existing specialized visualization remains in place; the common panel is not a replacement for element lineage, local VJP, or Worker timeline. Registered HTTP and Android offline teaching assets include the same UI source.
+
+Browser acceptance: `python tests/browser_unified_observation_ui.py` must exercise 1366px and 390px viewports, numeric graph coordinates, static/no-execution status, Wan gate-change comparison, Worker state inspection and original-source evidence without page errors. A future lab must provide a validated accepted-record provider rather than a canned alternate fixture.

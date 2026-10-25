@@ -4,7 +4,7 @@ const WanVJP=window.SeetheTruthWanFFNCoordinateVJP;
 if(!WanVJP)throw Error('Wan source-pinned VJP unavailable');
 const $=id=>document.getElementById(id);
 const names={shift:'e3 / FFN shift',scale:'e4 / FFN scale',gate:'e5 / output gate',afterSelf:'x after self-attn',crossDelta:'externally supplied cross-attn delta',crossInput:'cross-attn residual x',normalized:'norm2(x)',input:'GEMM input',weights:'nn.Linear weights, [out,in]',bias:'nn.Linear bias',preActivation:'Linear1 logits',ffn:'Linear2 output',delta:'FFN branch change'};
-const state={step:0,row:0,col:0,data:null,error:null,acceptedOptions:null};
+const state={step:0,row:0,col:0,data:null,error:null,acceptedOptions:null,acceptedRecord:null};
 const commonMicroscope=window.SeetheTruthComputeMicroscope;
 const sharedMicroscope=window.SeetheTruthMicroscopeUI.mount($('wanSharedMicroscope'),id=>{
  const at=state.data?.steps.findIndex(s=>s.id===id)??-1;
@@ -146,7 +146,7 @@ function render(){
  flow();branches();breakdown();renderAblation();integrity();
 }
 function recompute(){
- try{const accepted=options(),executed=window.SeetheTruthSpecializedLesson.execute("trace",{options:accepted});state.data=executed.value;state.provenFrame=executed.computationTrace;state.acceptedOptions=accepted;state.error=null;state.row=0;state.col=0;render();}
+ try{const accepted=options(),executed=window.SeetheTruthSpecializedLesson.execute("trace",{options:accepted});state.data=executed.value;state.provenFrame=executed.computationTrace;state.acceptedRecord=executed;state.acceptedOptions=accepted;state.error=null;state.row=0;state.col=0;render();}
  catch(e){state.error=e.message;$('numerics').textContent='拒绝不合法输入：'+e.message;}
 }
 $('ablate').addEventListener('click',renderAblation);
@@ -156,5 +156,5 @@ $('reset').addEventListener('click',()=>{for(const [key,value] of Object.entries
 $('prev').addEventListener('click',()=>{state.step=Math.max(0,state.step-1);state.row=0;state.col=0;render();});
 $('next').addEventListener('click',()=>{state.step=Math.min(A.STEPS.length-1,state.step+1);state.row=0;state.col=0;render();});
 recompute();
-window.SeetheTruthWanFFNLearning={get current(){return state.step;},get stages(){return A.STEPS.length;},get evidence(){return state.data?.evidence;},get lastError(){return state.error;},get lastOutput(){return state.data?.final.values.slice();}};
+window.SeetheTruthWanFFNLearning={get current(){return state.step;},get stages(){return A.STEPS.length;},get evidence(){return state.data?.evidence;},get lastError(){return state.error;},get lastOutput(){return state.data?.final.values.slice();},get acceptedRecord(){return state.acceptedRecord;}};
 })();

@@ -53,6 +53,23 @@
   }
  }
  button.addEventListener("click",()=>{try{run()}catch(_){}});
+ // All DeepInfer state laboratories use the same observation UI and the
+ // exact accepted controller snapshot; no per-page replica of this adapter.
+ if(root.SeetheTruthUnifiedObservationUI){
+  root.SeetheTruthObservationPanel=root.SeetheTruthUnifiedObservationUI.mount({
+   core:root.SeetheTruthUnifiedCore,
+   readAccepted:()=>{
+    const current=root.SeetheTruthCurrentDomainRun;
+    if(!current||current.id!==lab.id||!current.input||!current.observed)
+     throw Error("当前页面没有可核验的成功执行记录");
+    const result=lab.execute(current.operation,current.input);
+    if(JSON.stringify(result.value)!==JSON.stringify(current.observed))
+     throw Error("当前页面结果与原生执行不一致");
+    return result;
+   },
+   title:"统一状态观测 · "+lab.id+" / 事件 / 回放差异"
+  });
+ }
  root.SeetheTruthUnifiedStateLab=Object.freeze({
   run,
   get frame(){return view.frame;},

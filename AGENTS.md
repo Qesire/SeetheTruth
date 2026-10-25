@@ -20,6 +20,10 @@ Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: ac
 
 When adding graph or specialist computation, use the existing `SeetheTruthUnifiedCore.observe/replay/inspectObservationStep/compareRecords` contract instead of inventing a second trace envelope. Preserve native `stateTrace` or `computationTrace` and verified causality; replay the exact accepted input before coordinate inspection. Static-only routes must report no numeric trace. See [unified observation protocol](docs/unified-observation-v1.md).
 
+## Shared browser observation consumer
+
+For a new browser microscope or specialist controller, reuse `unified_observation_ui.js` with a callback to the **last accepted engine record**. The consumer calls `SeetheTruthUnifiedCore.observe/replay/inspectObservationStep/compareRecords`; it must not have its own numerical execution path. Keep existing rich teaching UIs and coordinate/VJP witnesses, and test desktop + Android viewport behavior. Re-register server route and Android offline assets for any shared JS additions.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
