@@ -113,20 +113,26 @@ function resumeKV(core,source){
  if(s.id!=="deepinfer_kv"||s.operation!=="replay"||!cursor||
     !plain(s.input)||!Array.isArray(s.input.operations))
   fail("KV continuation requires a verified KV cursor");
- const prefix=core.executeLab("deepinfer_kv","replay",{
+ // The existing state-microscope requires >=2 timeline snapshots. At
+ // cursor zero, use the already independently replayed native initial state.
+ const prefix=cursor.index===0?null:core.executeLab("deepinfer_kv","replay",{
   config:s.input.config,operations:s.input.operations.slice(0,cursor.index)});
- core.replay(prefix);
- if(prefix.stateTrace.steps.length!==cursor.index+1||
-    JSON.stringify(prefix.stateTrace.steps.at(-1)?.after)!==
-    JSON.stringify(replayed.checkpoint.detail.after)||
-    JSON.stringify(prefix.value.timeline.at(-1))!==
+ if(prefix)core.replay(prefix);
+ const prefixValue=prefix?prefix.value:{
+  state:clone(replayed.record.value.timeline[0]),
+  timeline:[clone(replayed.record.value.timeline[0])]
+ };
+ if((prefix&&prefix.stateTrace.steps.length!==cursor.index+1)||
+    (prefix&&JSON.stringify(prefix.stateTrace.steps.at(-1)?.after)!==
+     JSON.stringify(replayed.checkpoint.detail.after))||
+    JSON.stringify(prefixValue.timeline.at(-1))!==
     JSON.stringify(replayed.record.value.timeline[cursor.index]))
   fail("KV prefix state diverged from imported native replay");
  // The original operations after the cursor are replayed by the same engine.
  // The previous full-run source checksum is verified in restore().
  return Object.freeze({schema:SCHEMA,kind:"local_kv_continuation",
   index:cursor.index,stepId:cursor.stepId,evidence:replayed.evidence,
-  checkpoint:replayed.checkpoint,prefix:prefix.value,
+  checkpoint:replayed.checkpoint,prefix:prefixValue,
   remainingOperations:clone(s.input.operations.slice(cursor.index)),
   finalReplayed:true});
 }
