@@ -13,7 +13,11 @@ function safeJSON(value){
   if(typeof v==="bigint"||typeof v==="function"||typeof v==="symbol")fail("unsupported value type");
   return v;
  });
- if(typeof json!=="string"||json.length>MAX_BYTES)fail("snapshot exceeds bounded JSON size");
+ if(typeof json!=="string")fail("snapshot exceeds bounded JSON size");
+ let bytes=0;
+ for(const character of json){const v=character.codePointAt(0);bytes+=v<=127?1:v<=2047?2:v<=65535?3:4;
+  if(bytes>MAX_BYTES)fail("snapshot exceeds bounded JSON size");
+ }
  return json;
 }
 // Deterministic integrity diagnostic, not a cryptographic seal.
