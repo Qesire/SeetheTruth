@@ -1464,7 +1464,7 @@ const panel=window.SeetheTruthUnifiedObservationUI.mount({
 window.SeetheTruthObservationPanel=panel;
 const parseCoordinate=value=>{
  const numbers=value.split(",").map(x=>x.trim());
- if(!numbers.length||numbers.some(x=>!/^\\d+$/.test(x)))throw Error("坐标必须是非负整数，以逗号分隔");
+ if(!numbers.length||numbers.some(x=>!/^[0-9]+$/.test(x)))throw Error("坐标必须是非负整数，以逗号分隔");
  return numbers.map(Number);
 };
 runProof.addEventListener("click",()=>{
