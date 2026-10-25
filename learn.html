@@ -1387,9 +1387,10 @@ $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
 renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script>
-<script src="unified_observation_ui.js"></script>
+<script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
 <script>window.SeetheTruthObservationPanel=window.SeetheTruthUnifiedObservationUI.mount({
  core:window.SeetheTruthUnifiedCore,
+ snapshots:window.SeetheTruthObservationSnapshots,
  readAccepted:()=>window.SeetheTruthUnifiedWorkbench.inspectAccepted(),
  title:"统一积木观测 · 图执行 / 坐标 / 差异"
 });</script></body></html>

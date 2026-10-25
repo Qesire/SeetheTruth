@@ -1,5 +1,5 @@
 """Shared observation UI consumes accepted graph/Wan/Worker records in real Chromium."""
-import sys,threading,unittest
+import sys,threading,unittest,json
 from pathlib import Path
 from http.server import ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
@@ -91,6 +91,68 @@ class UnifiedObservationBrowser(unittest.TestCase):
       self.assertIn('"valueEqual": true',page.locator('#unifiedObservationDiff').inner_text())
       self.assertEqual(errors,[])
      finally:page.close()
+ def test_portable_snapshot_cross_page_handoff_and_corruption(self):
+  page,errors=self.visit("wan_ffn_lab.html",1366)
+  try:
+   page.locator('#unifiedObservationRefresh').click()
+   baseline=page.evaluate("""() => {
+    const core=window.SeetheTruthUnifiedCore;
+    const ui=window.SeetheTruthObservationPanel;
+    return window.SeetheTruthObservationSnapshots.create(core,ui.current,"Wan portable");
+   }""")
+   self.assertEqual(baseline['kind'],'specialized_execution')
+   self.assertEqual(baseline['label'],'Wan portable')
+   page.goto(self.base+'/deepinfer_worker_lab.html')
+   page.wait_for_function('!!window.SeetheTruthObservationPanel')
+   page.locator('#unifiedObservationImport').set_input_files({
+    'name':'wan-observation.json','mimeType':'application/json',
+    'buffer':json.dumps(baseline).encode('utf8')
+   })
+   page.wait_for_function("document.querySelector('#unifiedObservationOpenSource')?.hidden===false")
+   self.assertTrue(page.locator('#unifiedObservationOpenSource').is_visible())
+   self.assertIn('尚未重放核验',page.locator('#unifiedObservationStatus').inner_text())
+   page.locator('#unifiedObservationOpenSource').click()
+   page.wait_for_url('**/wan_ffn_lab.html')
+   page.wait_for_function('!!window.SeetheTruthObservationPanel')
+   self.assertIn('已恢复并重放验证',page.locator('#unifiedObservationStatus').inner_text())
+   page.locator('#unifiedObservationCompare').click()
+   self.assertIn('"valueEqual": true',page.locator('#unifiedObservationDiff').inner_text())
+   corrupt=dict(baseline)
+   corrupt['checksum']='fnv1a32:deadbeef:123'
+   outcome=page.evaluate("""(snap)=>{
+    try{window.SeetheTruthObservationPanel.importSnapshot(snap);return 'accepted'}
+    catch(e){return e.message;}
+   }""",corrupt)
+   self.assertIn('replayed source result differs',outcome)
+   self.assertEqual(errors,[])
+  finally:page.close()
+ def test_graph_snapshot_roundtrip_static_and_numeric(self):
+  page,errors=self.visit("learn.html",390)
+  try:
+   page.locator('[data-preset="residual"]').click()
+   page.locator('#studyMode').select_option('numeric')
+   page.locator('#run').click()
+   page.locator('#unifiedObservationRefresh').click()
+   snapshot=page.evaluate("""() => {
+    const ui=window.SeetheTruthObservationPanel;
+    return window.SeetheTruthObservationSnapshots.create(window.SeetheTruthUnifiedCore,ui.current);
+   }""")
+   self.assertTrue(snapshot['numeric'])
+   restored=page.evaluate('(snap)=>window.SeetheTruthObservationPanel.importSnapshot(snap)',snapshot)
+   self.assertTrue(restored['restored'])
+   page.locator('#unifiedObservationCompare').click()
+   self.assertIn('"valueEqual": true',page.locator('#unifiedObservationDiff').inner_text())
+   with page.expect_download() as info:
+    page.locator('#unifiedObservationExport').click()
+   self.assertIn('seethetruth-observation-',info.value.suggested_filename)
+   page.locator('[data-preset="attention"]').click()
+   page.locator('#run').click()
+   with page.expect_download() as branch_download:
+    page.locator('#unifiedObservationFork').click()
+   self.assertIn('-branch.json',branch_download.value.suggested_filename)
+   self.assertIn('父快照',page.locator('#unifiedObservationDiff').inner_text())
+   self.assertEqual(errors,[])
+  finally:page.close()
  def test_worker_state_no_fabricated_coordinates(self):
   for width in (1366,390):
    with self.subTest(width=width):
