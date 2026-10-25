@@ -94,7 +94,7 @@ const probe={
  defs:{contract_probe_source:{title:'Probe',en:'Probe',category:'data',ports:[],
   params:{length:2},formula:'out[i] = i + 1',
   why:'Exercise generalized shape and value routing',lesson:'Inspect exact indices',
-  caution:'Synthetic diagnostic values',source:'https://example.com/protocol'}},
+  caution:'Synthetic diagnostic values',source:'https://docs.pytorch.org/docs/stable/generated/torch.arange.html'}},
  validate:(_kind,p)=>{if(!Number.isSafeInteger(p.length)||p.length<1||p.length>8)
   throw Error('probe length out of bounds')},
  infer:(_kind,p)=>[p.length],
@@ -106,9 +106,12 @@ assert.deepEqual(installed.execute(node,{}).values,[1,2,3]);
 assert.throws(()=>installed.execute({kind:node.kind,params:{length:9}},{}),/probe length/);
 assert.throws(()=>X.createRegistry([probe,probe]),/duplicate pack/);
 assert.ok(!L.KINDS.includes('contract_probe_source'),'registry-only fixture cannot secretly mutate active graph runtime');
-const count=Core.labs.reduce((n,lab)=>n+Core.describeActions(lab.id).length,0);
+const actions=Core.labs.flatMap(lab=>Core.describeActions(lab.id));
+const traced=actions.filter(action=>action.observation!=='none').length;
+assert.ok(traced>0&&traced<actions.length,'traces must be explicit, not universal defaults');
 console.log('ARCHITECTURE_EXTENSION_SPINE_PASS '+JSON.stringify({
  operators:L.KINDS.length,extensionKinds:X.kinds.length,courses:C.lessons.length,
- specialists:Core.labs.length,actions:count,sharedObservationPages:consumed.length,
+ specialists:Core.labs.length,actions:actions.length,tracedActions:traced,
+ untracedActions:actions.length-traced,sharedObservationPages:consumed.length,
  numpyEligible:capacity.counts.numpyEligible,torchEligible:capacity.counts.torchEligible
 }));
