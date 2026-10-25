@@ -36,7 +36,7 @@ function witness(record){
 function validate(input){
  if(!plain(input))fail("expected plain JSON object");
  const raw=safeJSON(input),s=JSON.parse(raw);
- const allowed=["schema","kind","id","operation","engine","evidence","numeric","input","checksum","label","parent"];
+ const allowed=["schema","kind","id","operation","engine","evidence","numeric","input","checksum","label","parent","cursor"];
  if(Object.keys(s).some(key=>!allowed.includes(key)))fail("unexpected envelope field");
  if(s.schema!==SCHEMA||!["graph","specialized_execution"].includes(s.kind))fail("invalid schema/domain");
  if(typeof s.id!=="string"||s.id.length<1||s.id.length>100||!/^[a-zA-Z0-9_.:-]+$/.test(s.id))
@@ -52,6 +52,18 @@ function validate(input){
  if(s.parent!==undefined&&s.parent!==null&&
     (typeof s.parent!=="string"||!/^fnv1a32:[a-f0-9]{8}:[0-9]{1,9}$/.test(s.parent)))
   fail("invalid parent snapshot reference");
+ if(s.cursor!==undefined&&s.cursor!==null){
+  const c=s.cursor;
+  if(s.kind!=="specialized_execution"||!plain(c)||
+    Object.keys(c).some(k=>!["kind","stepId","index","evidence","stateDigest"].includes(k))||
+    c.kind!=="state_transition"||typeof c.stepId!=="string"||
+    !/^[a-zA-Z0-9_:-]{1,80}$/.test(c.stepId)||
+    !Number.isSafeInteger(c.index)||c.index<0||c.index>249||
+    typeof c.evidence!=="string"||!/^[A-Z0-9_]{1,120}$/.test(c.evidence)||
+    typeof c.stateDigest!=="string"||
+    !/^fnv1a32:[a-f0-9]{8}:[0-9]{1,9}$/.test(c.stateDigest))
+   fail("invalid state checkpoint cursor");
+ }
  if(typeof s.checksum!=="string"||!/^fnv1a32:[a-f0-9]{8}:[0-9]{1,9}$/.test(s.checksum))
   fail("invalid diagnostic checksum");
  if(!plain(s.input)||s.kind==="specialized_execution"&&s.numeric)fail("invalid source input");
@@ -78,6 +90,45 @@ function create(core,record,label=""){
   checksum:checksum(witness(record)),label:String(label),parent:null
  };
  return validate(entry);
+}
+// Checkpoint selection is a view cursor over a verified *native* state frame,
+// not serialized mutable runtime memory or an unearned device checkpoint.
+function at(core,source,stepId){
+ const parent=validate(source),replayed=restore(core,parent),record=replayed.record;
+ if(parent.kind!=="specialized_execution"||!record.stateTrace)
+  fail("state cursor requires a state-transition source");
+ if(typeof stepId!=="string")fail("state stepId required");
+ const index=record.stateTrace.steps.findIndex(s=>s.id===stepId);
+ if(index<0)fail("state step does not exist in original trace");
+ const proof=core.inspectObservationStep(record,{kind:"state_transition",stepId});
+ if(!proof.replayVerified||proof.evidence!==record.stateTrace.evidenceTier)
+  fail("state cursor could not be revalidated");
+ const cursor={kind:"state_transition",stepId,index,
+  evidence:proof.evidence,
+  stateDigest:checksum({stepId,index,evidence:proof.evidence,detail:proof.detail})};
+ return validate({...parent,cursor});
+}
+function resumeKV(core,source){
+ const replayed=restore(core,source),s=validate(source),cursor=replayed.cursor;
+ if(s.id!=="deepinfer_kv"||s.operation!=="replay"||!cursor||
+    !plain(s.input)||!Array.isArray(s.input.operations))
+  fail("KV continuation requires a verified KV cursor");
+ const prefix=core.executeLab("deepinfer_kv","replay",{
+  config:s.input.config,operations:s.input.operations.slice(0,cursor.index)});
+ core.replay(prefix);
+ if(prefix.stateTrace.steps.length!==cursor.index+1||
+    JSON.stringify(prefix.stateTrace.steps.at(-1)?.after)!==
+    JSON.stringify(replayed.checkpoint.detail.after)||
+    JSON.stringify(prefix.value.timeline.at(-1))!==
+    JSON.stringify(replayed.record.value.timeline[cursor.index]))
+  fail("KV prefix state diverged from imported native replay");
+ // The original operations after the cursor are replayed by the same engine.
+ // The previous full-run source checksum is verified in restore().
+ return Object.freeze({schema:SCHEMA,kind:"local_kv_continuation",
+  index:cursor.index,stepId:cursor.stepId,evidence:replayed.evidence,
+  checkpoint:replayed.checkpoint,prefix:prefix.value,
+  remainingOperations:clone(s.input.operations.slice(cursor.index)),
+  finalReplayed:true});
 }
 function fork(core,original,nextInput,label=""){
  const base=validate(original);
@@ -118,14 +169,26 @@ function restore(core,snapshot){
   fail("source evidence changed");
  if(checksum(witness(record))!==s.checksum)
   fail("replayed source result differs from exported snapshot");
+ let checkpoint=null;
+ if(s.cursor){
+  if(!record.stateTrace||record.stateTrace.evidenceTier!==s.cursor.evidence||
+     record.stateTrace.steps[s.cursor.index]?.id!==s.cursor.stepId)
+   fail("state cursor no longer matches the source trace");
+  const proof=core.inspectObservationStep(record,{kind:"state_transition",stepId:s.cursor.stepId});
+  const digest=checksum({stepId:s.cursor.stepId,index:s.cursor.index,
+   evidence:proof.evidence,detail:proof.detail});
+  if(!proof.replayVerified||digest!==s.cursor.stateDigest)
+   fail("state cursor replay differs from exported snapshot");
+  checkpoint=Object.freeze({...proof,index:s.cursor.index});
+ }
  return Object.freeze({schema:SCHEMA,restored:true,evidence:s.evidence,
-  record,observation:observed,sourceHref:route(core,s)});
+  record,observation:observed,checkpoint,sourceHref:route(core,s)});
 }
 function describe(core,snapshot){
  const s=validate(snapshot);
  return Object.freeze({schema:SCHEMA,kind:s.kind,id:s.id,operation:s.operation,
-  label:s.label,evidence:s.evidence,sourceHref:route(core,s),
+  label:s.label,evidence:s.evidence,cursor:s.cursor||null,sourceHref:route(core,s),
   replayVerified:false,imported:true});
 }
-return Object.freeze({SCHEMA,MAX_BYTES,create,fork,validate,restore,describe,route});
+return Object.freeze({SCHEMA,MAX_BYTES,create,fork,at,resumeKV,validate,restore,describe,route});
 });
