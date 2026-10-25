@@ -16,6 +16,12 @@ Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: ac
 - **Observability**: emit a vetted `state_microscope.js` frame for stateful engines; use actual events, causal edges, state revisions and declared evidence labels. Assume no GPU timing unless real profiler proof exists. A descriptive card is not a successful execution.
 - **Curriculum**: teach computation, mathematical mechanism, design tradeoff, failure counterexample and a meaningful experiment. Course cards on PC and Android come from `teaching_curriculum.js` via the unified core; engineering journey and training pipeline retain their verified numerical engines.
 
+## Trusted block pack installation and per-kind capability truth
+
+Installed graph packs have **one reviewed build-time manifest**, `installed_block_packs.js`. Write new `*_block_pack.js` contracts with `defs/validate/infer/execute`, add the ordered trusted entry, then run `node scripts/sync_installed_block_packs.js --write`. CI enforces `--check` across Learning Studio, capability explorer, static HTTP routes and Android assets. Do not add additional hardcoded installed-pack lists in `block_extension_registry.js`. A new isolated `createRegistry` fixture proves a pack is extensible but does not automatically register it into the active graph.
+
+Use `SeetheTruthCapabilities.matrix()/describe(kind)` to distinguish registered contracts, shape/numeric prerequisites, NumPy/PyTorch **eligibility**, and independent gradient/actual-model/GPU execution **evidence**. Registration and backend allowlisting must not be promoted to `verified`. See [trusted pack installation](docs/trusted-block-pack-installation-v1.md).
+
 ## One registration per specialist action
 
 Every specialist action belongs in the existing `learning_experience_core.js` `domainRunners` map with actual `module/method/run`. Declare a real `observeState` or `observeCompute` **on that same action** if the source engine emits a validated state/computation trace. Otherwise the action explicitly has `observation:'none'`. `Core.describeActions(id)` and `Core.inspectLab(id).operations` derive their source and observational capabilities from these actual runners; do not rebuild a disconnected `eventAdapters` dictionary or independent action list. A declared action is `NOT_EXECUTED` until run.
