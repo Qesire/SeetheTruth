@@ -1,5 +1,7 @@
 # SeetheTruth unified learning core v1 — 2026-10-24
 
+> **Living update (2026-10-25):** This document records the 2026-10-24 integration milestone. The measured current inventory is **150 operators / 67 graph entries / 10 courses / 17 specialists / 23 action bindings**, with **121 NumPy-eligible** and **115 PyTorch-eligible** kinds. The later [foundation architecture audit](foundation-architecture-audit-20261025.md) distinguishes actual extensibility from static registration and gives the updated gaps; the historical values below remain as dated evidence.
+
 ## Architectural result
 
 A single **typed learning contract**, `learning_experience_core.js`, now sits above the already shared graph interpreter and above specialized domain engines. This is integration and interface stabilization, **not** a wholesale replacement of each specialist numerical implementation.
