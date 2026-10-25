@@ -39,7 +39,7 @@ for(const row of m.rows){
   'codegen eligibility alone is not per-shape verification');
 }
 const tamper=fn=>{const v=structuredClone(data);fn(v);assert.throws(()=>R.validate(v),/operator certificates:/);};
-tamper(v=>{v.nodes[0].maxForwardError=0.5;});
+tamper(v=>{v.nodes[0].maxForwardErrorUpperBound=0.5;});
 tamper(v=>{v.cases[0].caseIds.push('missing');});
 tamper(v=>{v.cases[0].notGeneralized=false;});
 tamper(v=>{v.nodes[0].shape=[2,3];});
