@@ -32,6 +32,14 @@ on:
       - 'graph_autodiff.js'
       - 'learn.html'
       - 'atlas_server.py'
+      - 'tests/torch_operator_certificate_ledger.js'
+      - 'tests/operator_certificate_registry_contracts.js'
+      - 'tests/fixtures/coordinate_training_graph.js'
+      - 'operator_certificates_data.json'
+      - 'operator_certificates_data.js'
+      - 'operator_certificate_registry.js'
+      - 'block_capabilities.js'
+      - 'capabilities_page.js'
       - 'tests/torch_codegen_contracts.js'
       - 'tests/torch_codegen_extensions_contracts.js'
       - 'tests/moe_executable_codegen_contracts.js'
@@ -56,6 +64,11 @@ on:
     branches: [main]
     paths:
       - 'torch_codegen.js'
+      - 'learning_lab.js'
+      - 'graph_autodiff.js'
+      - 'operator_certificates_data.json'
+      - 'operator_certificates_data.js'
+      - 'tests/torch_operator_certificate_ledger.js'
       - 'tests/torch_codegen_contracts.js'
       - '.github/workflows/torch-export.yml'
 jobs:
@@ -87,5 +100,5 @@ jobs:
       - run: node tests/adaptive_token_depth_contracts.js
       - run: node tests/torch_stream_autograd_contracts.js
       - run: node tests/torch_training_coordinate_parity.js
-      - run: node tests/torch_operator_certificate_ledger.js --emit
+      - run: node tests/torch_operator_certificate_ledger.js --check
       - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js && node tests/token_embedding_ce_codegen_contracts.js && node tests/causal_transformer_codegen_contracts.js && node tests/industrial_gqa_tied_codegen_contracts.js && node tests/loop_transformer_codegen_contracts.js && node tests/loop_depth_supervision_contracts.js && node tests/loop_consistency_tradeoffs_contracts.js && node tests/loop_residual_scaling_contracts.js
