@@ -48,7 +48,7 @@ assert.throws(()=>Snap.restore(Core,drift),/replayed source result differs/);
 const fabricated=structuredClone(wanSnap);fabricated.engine='not-real.js';
 assert.throws(()=>Snap.describe(Core,fabricated),/unregistered source engine/);
 const worker=Core.executeLab('deepinfer_worker','simulate',{
- steps:[{mode:'prompt',sequenceIds:['A']},{mode:'decode',sequenceIds:[1]}],
+ steps:[{mode:'prompt',sequenceIds:['A']},{mode:'decode',sequenceIds:['A']}],
  options:{zeroOverhead:true}});
 const workerSnap=Snap.create(Core,worker);
 assert.equal(Snap.restore(Core,workerSnap).record.stateTrace.schema,worker.stateTrace.schema);
