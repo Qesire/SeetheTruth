@@ -42,6 +42,7 @@ kv_cache_lab.js
 learn.html
 semantic_block_pack.js
 axis_block_pack.js
+installed_block_packs.js
 block_extension_registry.js
 learning_lab.js
 loop_consistency.js

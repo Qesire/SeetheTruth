@@ -2,10 +2,11 @@
  * contracts, symbolic shapes, actual numerical execution and optional source-derived
  * operator substeps. Extension dispatch is kind-independent; no per-kind core switch. */
 (function(root,factory){'use strict';
- const deps=typeof module==='object'&&module.exports
-  ?[require('./semantic_block_pack.js'),require('./axis_block_pack.js')]
-  :[root.SeetheTruthSemanticBlockPack,root.SeetheTruthAxisBlockPack];
- const api=factory(deps);
+ const manifest=typeof module==='object'&&module.exports
+  ?require('./installed_block_packs.js'):root.SeetheTruthInstalledBlockPacks;
+ if(!manifest||typeof manifest.load!=='function')
+  throw Error('block extension: trusted installation manifest unavailable');
+ const api=factory(manifest.load());
  if(typeof module==='object'&&module.exports)module.exports=api;
  root.SeetheTruthBlockExtensions=api;
 })(typeof window!=='undefined'?window:{},function(installed){'use strict';
