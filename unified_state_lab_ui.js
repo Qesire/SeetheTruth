@@ -58,6 +58,7 @@
  if(root.SeetheTruthUnifiedObservationUI){
   root.SeetheTruthObservationPanel=root.SeetheTruthUnifiedObservationUI.mount({
    core:root.SeetheTruthUnifiedCore,
+   snapshots:root.SeetheTruthObservationSnapshots,
    readAccepted:()=>{
     const current=root.SeetheTruthCurrentDomainRun;
     if(!current||current.id!==lab.id||!current.input||!current.observed)
