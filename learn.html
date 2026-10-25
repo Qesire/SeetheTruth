@@ -1183,7 +1183,8 @@ const coreLessons=UnifiedCore.activateGraphLessons(
 const coreInventory=UnifiedCore.inventory(coreLessons.map(x=>x.id));
 window.SeetheTruthUnifiedWorkbench=Object.freeze({
  schema:UnifiedCore.SCHEMA,counts:coreInventory.counts,
- inspect:()=>UnifiedCore.inspectGraph(graph,{numeric:false})
+ inspect:()=>UnifiedCore.inspectGraph(graph,{numeric:false}),
+ inspectAccepted:()=>UnifiedCore.inspectGraph(runGraph||graph,{numeric:!!run,id:"learning_studio"})
 });
 document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>setPreset(b.dataset.preset));
 $("#applyLoRA").onclick=()=>{
@@ -1379,4 +1380,10 @@ $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();
 $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
 renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
-</script><script src="teaching_edition.js"></script></body></html>
+</script><script src="teaching_edition.js"></script>
+<script src="unified_observation_ui.js"></script>
+<script>window.SeetheTruthObservationPanel=window.SeetheTruthUnifiedObservationUI.mount({
+ core:window.SeetheTruthUnifiedCore,
+ readAccepted:()=>window.SeetheTruthUnifiedWorkbench.inspectAccepted(),
+ title:"统一积木观测 · 图执行 / 坐标 / 差异"
+});</script></body></html>
