@@ -48,8 +48,7 @@ class GraphTrainingLineageBrowser(unittest.TestCase):
      self.assertTrue(result['links']['shared_weight']['optimizer'])
      self.assertEqual(set(result['nodes']),set(result['links']))
      page.locator('#unifiedObservationStep').select_option(
-      label=next('','') if False else
-      page.evaluate("""()=>{
+      label=page.evaluate("""()=>{
         const select=document.querySelector('#unifiedObservationStep');
         return [...select.options].find(o=>o.textContent.includes('graph:optimizer:'))?.textContent;
       }"""))
