@@ -126,6 +126,8 @@ assert.equal(selected.backward.internalStages[0].stage,'wan_qk_fullwidth_rmsnorm
 const laid=Layout.layout(graph);
 assert.deepEqual(laid.edges,graph.edges);
 assert.equal(Layout.metrics(laid).overlap.length,0);
+assert.ok(Math.max(...laid.nodes.map(n=>n.x))>10000,'large graph must exercise the expanded coordinate limit');
+assert.ok(Math.max(...laid.nodes.map(n=>n.x))<50000,'large graph must remain within a finite placement bound');
 eq(L.evaluate(laid).steps.find(s=>s.id==='after_cross').values,residual,1e-12);
 const stale=structuredClone(run);
 stale.steps.find(s=>s.id==='cross_k_norm').values[0][0][0][1]+=.15;
