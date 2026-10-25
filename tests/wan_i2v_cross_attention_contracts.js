@@ -116,7 +116,7 @@ const normWitness=E.inspect(graph,{targetId:'cross_norm3_ln',outputIndex:[0,0,1,
  trace:run,maxVertices:8192,maxEdges:32768});
 assert.equal(normWitness.vertices.find(v=>v.id==='cross_norm3_ln').stages[0].stage,
  'wan_norm1_lastchannel_layernorm');
-assert.equal(normWitness.vertices.find(v=>v.id==='cross_norm3_ln').status,'expanded');
+assert.equal(normWitness.vertices.find(v=>v.id==='cross_norm3_ln').status,'computed');
 const microscope=M.learning(graph,run,L);
 assert.equal(microscope.steps.length,89);
 const selected=B.inspect(graph,run,microscope,{stepId:'cross_k_norm',coordinate:[0,0,0,1]});
