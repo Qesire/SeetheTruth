@@ -184,6 +184,7 @@ class UnifiedObservationBrowser(unittest.TestCase):
      self.assertTrue(page.locator('#unifiedObservationResumeKV').is_enabled())
      page.locator('#unifiedObservationResumeKV').click()
      self.assertIn('"finalReplayed": true',page.locator('#unifiedObservationDetail').inner_text())
+     self.assertIn('"continuedFromPrefix": true',page.locator('#unifiedObservationDetail').inner_text())
      self.assertIn('"prefixOperations": 3',page.locator('#unifiedObservationDetail').inner_text())
      self.assertEqual(errors,[])
     finally:page.close()
