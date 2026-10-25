@@ -14,7 +14,7 @@ A static operator kind declaration, a successful code-generation allowlist entry
 
 The test checks each participating forward and reverse element numerically, rejects missing/nonfinite PyTorch gradients and rejects errors above tolerances. It then emits exactly six scoped kind records (add, matmul, mse, parameter, scale, square) covering eight graph nodes, **29 forward tensor coordinates and 25 loss-adjoint coordinates**, plus eight finite-difference parameter coordinates. The fixture also contains a frozen target parameter: it is Forward-checked but does not receive a fictitious trainable gradient.
 
-Each certificate specifies only `fixtureId`, `caseIds`, observed coordinate counts, shape at each node, actual pinned backend, error bounds and `notGeneralized:true`. A passing MatMul on a 2×2 input does not certify arbitrary batch shapes, higher-dimensional broadcasting, non-smooth branches, all optimizers or GPU kernels.
+Numerical error fields are reproducible **proved upper-bound buckets** (e.g. \`≤1e-12\`), not raw bitwise-exact observed maxima; PyTorch/JS differences of a few 1e-17 do not invalidate a successful independent oracle on another CPU runner. A true error above the tolerance still fails the generator before it emits any artifact.\n\nEach certificate specifies only `fixtureId`, `caseIds`, observed coordinate counts, shape at each node, actual pinned backend, error bounds and `notGeneralized:true`. A passing MatMul on a 2×2 input does not certify arbitrary batch shapes, higher-dimensional broadcasting, non-smooth branches, all optimizers or GPU kernels.
 
 ## Reproducibility and invalidation
 
