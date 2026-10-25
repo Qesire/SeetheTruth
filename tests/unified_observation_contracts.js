@@ -75,4 +75,21 @@ assert.equal(Core.replay(gs).numericExecuted,false);
 assert.throws(()=>Core.inspectObservationStep(gs,{kind:'tensor_computation',stepId:first.id,coordinate:index}),/requested observation trace unavailable/);
 const tamperedGraph=structuredClone(gi);tamperedGraph.session.trace.steps[0].values[0][0]+=.25;
 assert.throws(()=>Core.replayGraph(tamperedGraph),/graph replay mismatch: trace/);
+
+const edited=structuredClone(graph);edited.nodes.find(n=>n.id==='x').params.seed=4;
+const changedGraph=Core.inspectGraph(edited,{numeric:true,id:'free_residual'});
+const graphDiff=Core.compareRecords(gi,changedGraph);
+assert.equal(graphDiff.replayVerified,true);
+assert.equal(graphDiff.numericCompared,true);
+assert.equal(graphDiff.inputEqual,false);
+assert.equal(graphDiff.valueEqual,false);
+assert.ok(graphDiff.changedSteps.some(s=>s.stepId==='sum'));
+assert.deepEqual(Core.compareRecords(gi,gi).changedSteps,[]);
+const staticDiff=Core.compareRecords(gs,gs);
+assert.equal(staticDiff.numericCompared,false);
+assert.equal(staticDiff.valueEqual,null);
+assert.throws(()=>Core.compareRecords(gi,w),/matching observational domains/);
+assert.deepEqual(Core.compareRecords(w,w2).changedSteps,diff.changedSteps);
+assert.deepEqual(go.sources[0].steps.find(s=>s.id==='sum').dependencies,
+ [{from:'x',port:'a'},{from:'act',port:'b'}]);
 console.log('UNIFIED_OBSERVATION_PASS: typed state/computation refs, exact input replay, tamper detection, no invented trace');
