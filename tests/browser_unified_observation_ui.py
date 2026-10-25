@@ -181,6 +181,10 @@ class UnifiedObservationBrowser(unittest.TestCase):
      self.assertEqual(page.locator('#unifiedStateSteps .sm-step[aria-current="step"]').count(),1)
      self.assertIn('4.',page.locator('#unifiedStateSteps .sm-step[aria-current="step"]').inner_text())
      self.assertIn('只读视图',page.locator('#unifiedStateStatus').inner_text())
+     self.assertTrue(page.locator('#unifiedObservationResumeKV').is_enabled())
+     page.locator('#unifiedObservationResumeKV').click()
+     self.assertIn('"finalReplayed": true',page.locator('#unifiedObservationDetail').inner_text())
+     self.assertIn('"prefixOperations": 3',page.locator('#unifiedObservationDetail').inner_text())
      self.assertEqual(errors,[])
     finally:page.close()
  def test_checkpoint_rejects_tensor_and_corrupted_step_identity(self):
