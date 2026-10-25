@@ -65,6 +65,28 @@ class UnifiedObservationBrowser(unittest.TestCase):
      self.assertIn('"valueEqual": false',page.locator('#unifiedObservationDiff').inner_text())
      self.assertEqual(errors,[])
     finally:page.close()
+ def test_shared_state_adapter_mounts_across_deepinfer_domains(self):
+  cases=[('deepinfer_prefill_lab.html','deepinfer_prefill'),
+         ('deepinfer_kv_lifecycle_lab.html','deepinfer_kv'),
+         ('deepinfer_scheduler_lab.html','deepinfer_scheduler')]
+  for width in (1366,390):
+   for route,lab in cases:
+    with self.subTest(width=width,lab=lab):
+     page,errors=self.visit(route,width)
+     try:
+      page.wait_for_function("!!window.SeetheTruthCurrentDomainRun")
+      self.assertEqual(page.evaluate('window.SeetheTruthSpecializedLesson.id'),lab)
+      page.locator('#unifiedObservationRefresh').click()
+      self.assertIn('已核验',page.locator('#unifiedObservationStatus').inner_text())
+      self.assertGreater(page.locator('#unifiedObservationStep option').count(),0)
+      self.assertEqual(page.locator('#unifiedObservationCoordinates input').count(),0)
+      page.locator('#unifiedObservationInspect').click()
+      self.assertIn('"replayVerified": true',page.locator('#unifiedObservationDetail').inner_text())
+      page.locator('#unifiedObservationPin').click()
+      page.locator('#unifiedObservationCompare').click()
+      self.assertIn('"valueEqual": true',page.locator('#unifiedObservationDiff').inner_text())
+      self.assertEqual(errors,[])
+     finally:page.close()
  def test_worker_state_no_fabricated_coordinates(self):
   for width in (1366,390):
    with self.subTest(width=width):
