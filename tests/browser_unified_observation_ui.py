@@ -1,5 +1,5 @@
 """Shared observation UI consumes accepted graph/Wan/Worker records in real Chromium."""
-import sys,threading,unittest
+import sys,threading,unittest,json
 from pathlib import Path
 from http.server import ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
@@ -104,8 +104,11 @@ class UnifiedObservationBrowser(unittest.TestCase):
    self.assertEqual(baseline['label'],'Wan portable')
    page.goto(self.base+'/deepinfer_worker_lab.html')
    page.wait_for_function('!!window.SeetheTruthObservationPanel')
-   about=page.evaluate('(snap)=>window.SeetheTruthObservationPanel.importSnapshot(snap)',baseline)
-   self.assertFalse(about['replayVerified'])
+   page.locator('#unifiedObservationImport').set_input_files({
+    'name':'wan-observation.json','mimeType':'application/json',
+    'buffer':json.dumps(baseline).encode('utf8')
+   })
+   page.wait_for_function("document.querySelector('#unifiedObservationOpenSource')?.hidden===false")
    self.assertTrue(page.locator('#unifiedObservationOpenSource').is_visible())
    self.assertIn('尚未重放核验',page.locator('#unifiedObservationStatus').inner_text())
    page.locator('#unifiedObservationOpenSource').click()
