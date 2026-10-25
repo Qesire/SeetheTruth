@@ -59,6 +59,17 @@
   root.SeetheTruthObservationPanel=root.SeetheTruthUnifiedObservationUI.mount({
    core:root.SeetheTruthUnifiedCore,
    snapshots:root.SeetheTruthObservationSnapshots,
+   onCheckpoint:restored=>{
+    // Match the existing state microscope's native frame, without
+    // changing the controller, live allocations or any external state.
+    view.show(restored.record.stateTrace,restored.checkpoint.index);
+    acceptedSnapshot=Object.freeze({id:restored.record.id,
+     operation:restored.record.operation,
+     input:JSON.parse(JSON.stringify(restored.record.inputSnapshot)),
+     evidence:restored.record.evidence});
+    output.textContent="快照原生重放验证 · 教学状态步骤 "+
+     restored.checkpoint.stepId+" · 仅恢复只读视图";
+   },
    readAccepted:()=>{
     const current=root.SeetheTruthCurrentDomainRun;
     if(!current||current.id!==lab.id||!current.input||!current.observed)
