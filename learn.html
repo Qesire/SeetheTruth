@@ -392,7 +392,7 @@ input[type="file"]{display:none}
 <script src="training_session.js"></script>
 <script src="gradient_inspection.js"></script>
 <script src="node_timeline.js"></script>
-<script src="learning_experience_core.js"></script>
+<script src="training_coordinate_proof.js"></script>\n<script src="learning_experience_core.js"></script>
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
@@ -1426,6 +1426,29 @@ locate.style.cssText="padding:7px 11px;background:#173e53;color:white;border:1px
 control.append(locate);
 const result=document.createElement("span");result.id="graphTrainingLocateStatus";result.setAttribute("aria-live","polite");control.append(result);
 document.body.append(control);
+const coordinate=document.createElement("section");coordinate.id="trainingCoordinateProof";
+coordinate.style.cssText="max-width:1180px;margin:8px auto 16px;padding:14px;background:#132d42;border:1px solid #52718c;border-radius:10px";
+const coordinateTitle=document.createElement("h3");coordinateTitle.textContent="参数坐标 → VJP 局部项 → Optimizer";
+const coordinateInfo=document.createElement("p");coordinateInfo.textContent="明确参数元素与中间输出坐标；单路径贡献不等于整个 Loss 的梯度。使用本次训练相同的真实小矩阵引擎重放检验。";
+coordinate.append(coordinateTitle,coordinateInfo);
+const fields=document.createElement("div");fields.style.cssText="display:flex;gap:10px;flex-wrap:wrap;align-items:center";
+function field(id,title,placeholder){
+ const lab=document.createElement("label");lab.textContent=title+" ";
+ const inp=document.createElement("input");inp.id=id;inp.type="text";inp.placeholder=placeholder;
+ inp.style.cssText="width:132px;min-height:34px;color:#e7f7ff;background:#071c2f;border:1px solid #53728a;padding:6px";
+ lab.append(inp);fields.append(lab);return inp;
+}
+const parameter=field("trainingProofParameter","参数节点","shared_weight");
+const index=field("trainingProofIndex","参数坐标","0,0");
+const via=field("trainingProofVia","经过的输出节点","project");
+const viaIndex=field("trainingProofViaIndex","输出坐标","0,0");
+const runProof=document.createElement("button");runProof.id="trainingProofExecute";runProof.type="button";
+runProof.textContent="验证该参数更新坐标";runProof.className="btn";fields.append(runProof);
+coordinate.append(fields);
+const coordinateStatus=document.createElement("p");coordinateStatus.id="trainingProofStatus";coordinateStatus.setAttribute("aria-live","polite");coordinate.append(coordinateStatus);
+const coordinateDetail=document.createElement("pre");coordinateDetail.id="trainingProofDetail";
+coordinateDetail.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;max-height:390px;overflow:auto;background:#091e30;padding:10px";
+coordinate.append(coordinateDetail);document.body.append(coordinate);
 const workbench=window.SeetheTruthUnifiedWorkbench;
 const panel=window.SeetheTruthUnifiedObservationUI.mount({
  core:window.SeetheTruthUnifiedCore,
@@ -1439,6 +1462,40 @@ const panel=window.SeetheTruthUnifiedObservationUI.mount({
  title:"统一积木观测 · 图计算 / VJP / Optimizer / 状态"
 });
 window.SeetheTruthObservationPanel=panel;
+const parseCoordinate=value=>{
+ const numbers=value.split(",").map(x=>x.trim());
+ if(!numbers.length||numbers.some(x=>!/^[0-9]+$/.test(x)))throw Error("坐标必须是非负整数，以逗号分隔");
+ return numbers.map(Number);
+};
+runProof.addEventListener("click",()=>{
+ try{
+  if(mode.value!=="training"){mode.value="training";panel.refresh();}
+  const accepted=workbench.inspectTrainingStep();
+  const input=accepted.inputSnapshot;
+  const selectedId=parameter.value.trim()||
+   input.graph.nodes.find(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&!n.params.frozen)?.id;
+  if(!selectedId)throw Error("请先选择可训练参数");
+  const chosenVia=via.value.trim()||
+   accepted.value.timeline.nodes.find(n=>n.kind==="matmul")?.id||selectedId;
+  const proof=window.SeetheTruthUnifiedCore.executeLab("training","coordinate_proof",{
+   graph:input.graph,options:input.options,
+   selection:{parameterId:selectedId,index:parseCoordinate(index.value||"0,0"),
+    viaNodeId:chosenVia,viaIndex:parseCoordinate(viaIndex.value||"0,0")}
+  });
+  window.SeetheTruthUnifiedCore.replay(proof);
+  const v=proof.value;
+  coordinateStatus.textContent="已核验参数 "+selectedId+" 的总梯度和原生优化器变化 · 路径 "+v.path.status;
+  coordinateDetail.textContent=JSON.stringify({
+    parameterId:v.parameterId,index:v.index,
+    wholeLossGradient:v.wholeLossGradient,
+    parameter:v.parameter,optimizer:v.optimizer,
+    selectedVia:v.path.selected,selectedOutputContribution:v.path.parameterContribution,
+    localVJPTerms:v.path.localTerms,loss:v.path.loss,
+    note:v.note,evidence:v.evidence
+  },null,2);
+  workbench.focusNode(selectedId);
+ }catch(err){coordinateStatus.textContent="坐标验证未完成："+err.message;coordinateDetail.textContent="";}
+});
 mode.addEventListener("change",()=>{try{panel.refresh();result.textContent="";}catch(e){result.textContent=e.message;}});
 locate.addEventListener("click",()=>{try{
  if(mode.value!=="training"){mode.value="training";panel.refresh();}
