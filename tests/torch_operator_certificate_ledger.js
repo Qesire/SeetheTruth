@@ -107,11 +107,11 @@ const ledger={
 const text=JSON.stringify(ledger,null,2)+'\n';
 const output=path.join(root,'operator_certificates_data.json');
 const browser=path.join(root,'operator_certificates_data.js');
-const wrapper='/* Generated from real standalone PyTorch CPU; do not hand edit. */\\n'+
- '(function(root){"use strict";\\nconst data='+JSON.stringify(ledger)+';\\n'+
- 'if(typeof module==="object"&&module.exports)module.exports=data;\\n'+
- 'if(root)root.SeetheTruthOperatorCertificateData=data;\\n'+
- '})(typeof window!=="undefined"?window:null);\\n';
+const wrapper='/* Generated from real standalone PyTorch CPU; do not hand edit. */\n'+
+ '(function(root){"use strict";\nconst data='+JSON.stringify(ledger)+';\n'+
+ 'if(typeof module==="object"&&module.exports)module.exports=data;\n'+
+ 'if(root)root.SeetheTruthOperatorCertificateData=data;\n'+
+ '})(typeof window!=="undefined"?window:null);\n';
 if(process.argv.includes('--check')){
  assert(fs.existsSync(output)&&fs.existsSync(browser),'certificate data absent');
  assert.equal(fs.readFileSync(output,'utf8'),text,'re-executed independent PyTorch certificate differs from published source-pinned JSON');
