@@ -210,6 +210,8 @@ function mount(options={}){
    prefixOperations:continued.index,
    verifiedPrefixTimeline:continued.prefix.timeline.length,
    remainingOperations:continued.remainingOperations.length,
+   continuedFromPrefix:continued.continuedFromPrefix,
+   verifiedSuffixStates:continued.resumedTimeline.length,
    finalReplayed:continued.finalReplayed,checkpoint:continued.checkpoint.detail.after},null,2);
   setStatus("已核验 KV 原始操作前缀与后续操作 · "+continued.stepId);
   return continued;
