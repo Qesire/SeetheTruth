@@ -6,7 +6,7 @@
 <p>导出许可来自 kind 白名单，具体计算图仍会接受形状、参数、状态和执行检查；可微路径需单独通过梯度实验。这里不宣称真实模型、GPU 内核或速度等价。</p>
 <div class="controls"><input id="search" type="search" placeholder="搜索 ID / 名称" aria-label="搜索积木">
 <select id="category" aria-label="类别筛选"><option value="">所有类别</option></select>
-<select id="filter" aria-label="导出筛选"><option value="all">全部</option><option value="numpy">NumPy 候选</option><option value="torch">PyTorch 候选</option><option value="no-numpy">NumPy 不支持</option><option value="no-torch">PyTorch 不支持</option></select></div>
+<select id="filter" aria-label="导出筛选"><option value="all">全部</option><option value="numpy">NumPy 候选</option><option value="torch">PyTorch 候选</option><option value="no-numpy">NumPy 不支持</option><option value="no-torch">PyTorch 不支持</option><option value="executed-case">已独立执行测试案例</option></select></div>
 <p aria-live="polite" id="count"></p><div class="table-scroll"><table><thead><tr><th>积木 ID</th><th>标题</th><th>类别</th><th>NumPy</th><th>PyTorch</th><th>反向传播</th></tr></thead><tbody id="rows"></tbody></table></div>
 <section id="capabilityDetail" aria-live="polite" aria-label="算子能力明细"><h2>能力明细</h2><p>选择算子 ID 查看每项能力的声明与验证状态。</p></section>
 <footer>Android 仅提供教学查看，不提供导出控制。数值解释基于受限 CPU 教学合同，而非生产 GPU 实测。</footer></main>
@@ -20,4 +20,4 @@
 <script src="normalization_rules.js"></script>
 <script src="shape_index_rules.js"></script><script src="training_objective.js"></script><script src="numpy_stream_lowering.js"></script>
 <script src="python_codegen.js"></script><script src="torch_stream_lowering.js"></script>
-<script src="torch_codegen.js"></script><script src="block_knowledge.js"></script><script src="block_capabilities.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="capabilities"></script><script src="capabilities_page.js"></script></body></html>
+<script src="torch_codegen.js"></script><script src="block_knowledge.js"></script><script src="operator_certificates_data.js"></script><script src="operator_certificate_registry.js"></script><script src="block_capabilities.js"></script><script src="learning_experience_core.js"></script><script src="specialized_learning_adapter.js" data-experience="capabilities"></script><script src="capabilities_page.js"></script></body></html>

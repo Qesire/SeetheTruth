@@ -18,14 +18,31 @@ function inspect(kind){
   value.textContent=proof.availability+' · '+proof.verification;
   values.append(key,value);
  }
- $('capabilityDetail').replaceChildren(summary,evidence,values);
+ const cert=document.createElement('section');
+ const kindCase=r.certifiedCases[0];
+ const caseTitle=document.createElement('h3');
+ caseTitle.textContent=kindCase?'已实际执行的限定测试案例':'尚无独立执行案例证书';
+ const caseNote=document.createElement('p');
+ if(kindCase){
+  caseNote.textContent='固定图 '+kindCase.fixtureId+' · PyTorch 2.6.0 CPU / float64'+
+   ' · 前向 '+kindCase.forwardCoordinates+' 坐标'+
+   ' · Loss 反向 '+kindCase.wholeLossAdjointCoordinates+' 坐标'+
+   ' · 本案例前向 '+kindCase.forward+
+   ' / 反向 '+kindCase.backward+
+   '。证据仅覆盖该图的这些坐标，不是此算子的全部形状、上下文或 GPU 认证。'+
+   ' 源码摘要 '+M.certificateSummary.sourceDigest.slice(0,16)+'…';
+ }else{
+  caseNote.textContent='没有可展示的限定案例通过记录。登记或代码生成白名单不等于已经执行验证。';
+ }
+ cert.append(caseTitle,caseNote);
+ $('capabilityDetail').replaceChildren(summary,evidence,values,cert);
  return r;
 }
 function render(){
  const q=$("search").value.trim().toLocaleLowerCase(),c=$("category").value,m=$("filter").value;
  const rows=A.rows.filter(r=>(!q||[r.kind,r.title,r.category].join(" ").toLocaleLowerCase().includes(q))&&
   (!c||r.category===c)&&(m==="all"||(m==="numpy"&&r.numpyEligible)||(m==="torch"&&r.torchEligible)||
-  (m==="no-numpy"&&!r.numpyEligible)||(m==="no-torch"&&!r.torchEligible)));
+  (m==="no-numpy"&&!r.numpyEligible)||(m==="no-torch"&&!r.torchEligible)||(m==="executed-case"&&M.rows.some(x=>x.kind===r.kind&&x.certifiedCases.length>0))));
  const frag=document.createDocumentFragment();
  for(const r of rows){const tr=document.createElement("tr");
   for(const [i,value] of [r.kind,r.title,r.category,r.numpyEligible?"候选":"不支持",r.torchEligible?"候选":"不支持","需图级测试"].entries()){
