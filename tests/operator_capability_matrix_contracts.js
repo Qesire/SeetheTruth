@@ -13,7 +13,7 @@ const byKind=new Map(matrix.rows.map(x=>[x.kind,x]));
 assert.equal(byKind.size,L.KINDS.length);
 for(const kind of L.KINDS){
  const r=C.describe(kind),available=base.rows.find(x=>x.kind===kind);
- assert.equal(r,byKind.get(kind),'describe projects canonical matrix');
+ assert.deepEqual(r,byKind.get(kind),'describe projects canonical matrix');
  assert.deepEqual(Object.keys(r.capability).sort(),[
   'registered','staticShape','boundedForward','coordinateTrace',
   'localVjp','numpyExport','torchExport','modelParity','gpuKernel'].sort());
