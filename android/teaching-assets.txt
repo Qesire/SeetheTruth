@@ -15,6 +15,7 @@ cache.html
 capabilities.html
 capabilities_page.js
 composite_atlas.js
+command_deck.css
 compute_microscope.css
 compute_microscope.js
 compute_microscope_ui.js
