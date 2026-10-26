@@ -8,9 +8,31 @@ button{display:block;margin:10px 0;width:100%;padding:13px;border-radius:10px;bo
 button[aria-pressed=true]{background:#206873;border-color:#8cf4db}button:focus-visible,a:focus-visible{outline:3px solid #f7c47c;outline-offset:2px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#061724;border:1px solid #35566b;border-radius:9px;padding:15px;font:12px/1.6 ui-monospace,Consolas,monospace;max-height:520px;overflow:auto}
 #status{color:#8df0cb;font-weight:700}p,li{font-size:14px}.small{font-size:12px;color:#b3c8d6}
-@media(max-width:730px){.grid{grid-template-columns:1fr}.card{padding:16px}}</style></head><body><main>
+@media(max-width:730px){.grid{grid-template-columns:1fr}.card{padding:16px}}
+:root{--panel:#102a3b;--line:#355d72;--accent:#72e6d3;--subtle:#a4c8d8}
+nav{display:flex;flex-wrap:wrap;gap:14px;align-items:center}nav a{font-size:13px}
+.hero{padding:18px 0 3px}.eyebrow{font:700 11px ui-monospace,monospace;letter-spacing:.16em;color:var(--accent)}
+.card{box-shadow:0 12px 36px #0002}.card h2{letter-spacing:.02em}
+button{transition:background .15s ease,border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+button:hover{border-color:#9cebe8;background:#1b4c5c;transform:translateX(2px)}
+button:active{transform:translateX(0)}button[aria-pressed=true]{box-shadow:inset 3px 0 0 #8cf4db}
+.step{font:600 11px ui-monospace,monospace;color:var(--accent);letter-spacing:.12em;margin:0 0 10px}
+.comparison{margin-top:16px}.comparison-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.ab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ab-case{min-width:0;background:#091e2d;border:1px solid var(--line);border-radius:12px;padding:15px}
+.ab-case strong{color:#e9fbff;font-size:16px}.ab-case p{color:#bad6e2;margin:7px 0}
+.ab-case pre{min-height:86px;max-height:220px;margin:12px 0 0}
+.ab-label{font:700 11px ui-monospace,monospace;letter-spacing:.14em;color:#8be5da}
+#difference{border-left:3px solid var(--accent);padding:9px 13px;background:#123345;color:#d6f2f3;margin-top:12px}
+.lesson-link{display:inline-flex;min-height:42px;align-items:center;padding:8px 15px;border:1px solid #74cfd2;background:#165466;color:#f2ffff;border-radius:9px;text-decoration:none;font-weight:650}
+.lesson-link:hover{background:#1a6872;text-decoration:none}
+.learning-next{margin-top:16px;display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.learning-next p{max-width:590px}
+@media(max-width:730px){.ab-grid{grid-template-columns:1fr}.learning-next{align-items:stretch}.lesson-link{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){button{transition:none}button:hover{transform:none}}
+</style></head><body><main>
 <nav><a href="teaching.html?edition=teaching">← 共享教学中心</a>　<a href="capabilities.html">积木能力表</a></nav>
-<h1>张量轴与状态实验室</h1>
+<div class="hero"><div class="eyebrow">STATE MICROSCOPE / EXPERIMENT → GRAPH → LESSON</div><h1>张量轴与状态实验室</h1></div>
 <p class="lead">形状一致不等于计算语义一致。通过真实的微型 Float64 数值，区分张量轴的身份、时间位置、物化内存与不可变的状态转移。</p>
 <div class="grid"><section class="card" aria-label="选择实验"><h2>机制对照</h2>
 <button type="button" data-scenario="stream" aria-pressed="true">01 · KV 前缀读写与分叉</button>
@@ -18,9 +40,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#061724;border:1px so
 <button type="button" data-scenario="axis" aria-pressed="false">03 · 具名轴广播与拒绝错误轴</button>
 <button type="button" data-scenario="reject" aria-pressed="false">04 · 拒绝过期位置写入</button>
 <p class="small">这里执行真实数值，没有 GPU KV 分页、真实模型权重或显存性能测量。核心合同来自仓库的 tensor_ir.js 与 semantic_state.js。</p></section>
-<section class="card"><h2 id="caseTitle">—</h2><p id="explanation">—</p>
+<section class="card"><div class="step">02 / OBSERVE THE INVARIANT</div><h2 id="caseTitle">—</h2><p id="explanation">—</p>
 <p><strong>可证伪条件：</strong><span id="prediction">—</span></p><p id="status" role="status" aria-live="polite">—</p>
-<pre id="trace" aria-label="数值证明"></pre></section></div>
+<details><summary>展开原始数值证据</summary><pre id="trace" aria-label="数值证明"></pre></details></section></div>
+<section class="card comparison" aria-label="状态实验 A/B 对照"><div class="step">03 / COMPARE TWO EXECUTION OUTCOMES</div><div class="comparison-head"><h2>状态实验 · A/B 对照</h2><span class="small">同一案例的真实输出投影</span></div>
+<div class="ab-grid"><article class="ab-case"><div class="ab-label">A / REFERENCE</div><strong id="aTitle">—</strong><p id="aDescription">—</p><pre id="aValues"></pre></article>
+<article class="ab-case"><div class="ab-label">B / INTERVENTION</div><strong id="bTitle">—</strong><p id="bDescription">—</p><pre id="bValues"></pre></article></div>
+<p id="difference" role="status" aria-live="polite">—</p>
+<div class="learning-next"><div><div class="step">04 / OPEN THE COMPUTATION GRAPH</div><h2 id="lessonTitle">从数值证据进入积木课程</h2><p id="lessonReason">—</p></div><a id="lessonLink" class="lesson-link" href="learn.html?edition=teaching">在积木工作台追踪计算 →</a></div></section>
 <section class="card" style="margin-top:15px"><h2>工业设计动机与适用边界</h2>
 <p>显式轴名避免将视频的时间 T 误解释成音频频率 F、Attention Key 的 Tk 或 Feature D；流状态的写入位置和只增版本使推理缓存与循环网络的时间依赖变成可检查的计算合同。可以将多个独立模块在边界处进行数值等价检查。</p>
 <p>这些张量都是独立物化的 CPU 数组，既不声称零拷贝 View，也不模拟真实推理引擎物理 KV 页、引用计数、设备流、梯度或 GPU Kernel。进一步参见 <a href="https://pytorch.org/docs/stable/tensor_view.html" target="_blank" rel="noopener noreferrer">PyTorch Tensor Views</a> 与 <a href="https://pytorch.org/docs/stable/notes/broadcasting.html" target="_blank" rel="noopener noreferrer">PyTorch 广播规则</a>：本实验在通用广播规则之上额外要求精确的具名轴对应。</p>
