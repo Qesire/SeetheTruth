@@ -1549,7 +1549,7 @@ locate.addEventListener("click",()=>{try{
      instruction:"选中 down，观察 x、up、down 的实际形状，然后迁移到 Attention。",action:"定位下投影",node:"down"}
   ]);
   let step=0,open=true;
-  const isFFN=()=>!!document.querySelector('[data-preset="ffn"].active');
+  const isFFN=()=>!!document.querySelector('[data-preset=ffn].active');
   function numeric(){
     if(!isFFN()||el("studyMode").value!=="numeric")return null;
     try{
@@ -1591,7 +1591,7 @@ locate.addEventListener("click",()=>{try{
     open=yes;el("learnerGuide").hidden=!yes;el("guideShow").hidden=yes;if(yes)paint();
   }
   function perform(){
-    if(!isFFN())document.querySelector('[data-preset="ffn"]').click();
+    if(!isFFN())document.querySelector('[data-preset=ffn]').click();
     if(step===1){
       const mode=el("studyMode");
       if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
@@ -1604,7 +1604,7 @@ locate.addEventListener("click",()=>{try{
   el("guideNext").addEventListener("click",()=>{
     if(!isVerified())return;
     if(step===3){
-      document.querySelector('[data-preset="attention"]').click();
+      document.querySelector('[data-preset=attention]').click();
       reveal(false);el("guideShow").textContent="重开 FFN 引导";return;
     }
     step++;paint();
