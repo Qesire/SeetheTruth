@@ -285,6 +285,8 @@
    button.type="button";button.id=id;button.textContent=label;controls.append(button);
  };
  ctl(capture,"stateContrastCapture","固定基线 A");
+ const intervene=document.createElement("button");
+ ctl(intervene,"stateContrastIntervene","执行一个原生变量干预");
  ctl(compare,"stateContrastCompare","比较当前场景 B");
  ctl(reset,"stateContrastReset","重置对照");
  contrast.append(contrastHeading,contrastPrompt,controls,contrastStatus,contrastResults);
@@ -309,6 +311,7 @@
     clearResults();
    contrastStatus.textContent=baselineLabel()+
     (contrastResult?" · B 已重放校验，差异详情见下。":" · 接下来在上方原生控件修改场景。");
+   intervene.disabled=!contrastBase;
    compare.disabled=!contrastBase;
    reset.disabled=!contrastBase;
  }
@@ -321,6 +324,43 @@
  reset.addEventListener("click",()=>{
    contrastBase=null;clearResults();renderContrast();
  });
+
+ // Native one-control interventions keep the original laboratory as the sole
+ // source of execution. The JSON editor route is validated by its own Apply.
+ intervene.addEventListener("click",()=>{
+   if(!contrastBase)return;
+   try{
+     const before=signature(root.SeetheTruthCurrentDomainRun);
+     if(lab.id==="deepinfer_kv"){
+       const current=root.SeetheTruthCurrentDomainRun;
+       const config={...current.input.config};
+       if(config.numBlocks>=64)throw Error("物理块数量已达到教学上限");
+       config.numBlocks++;
+       const editor=document.getElementById("operations");
+       editor.value=JSON.stringify({config,ops:current.input.operations},null,2);
+       document.getElementById("apply").click();
+     }else if(lab.id==="deepinfer_scheduler"){
+       const toggle=document.getElementById("stopPreempted");
+       toggle.checked=!toggle.checked;
+       toggle.dispatchEvent(new Event("change",{bubbles:true}));
+     }else if(lab.id==="deepinfer_worker"){
+       const slider=document.getElementById("forwardTime");
+       const next=Math.min(Number(slider.max),Number(slider.value)+2);
+       if(next===Number(slider.value))throw Error("Forward 假设时长已达到上限");
+       slider.value=String(next);
+       slider.dispatchEvent(new Event("input",{bubbles:true}));
+     }
+     const b=currentProgram();
+     if(signature(root.SeetheTruthCurrentDomainRun)===before)
+      throw Error("原生控制器未接受新的输入");
+     clearResults();
+     contrastStatus.textContent="B 已由原生控件执行："+(
+       lab.id==="deepinfer_kv"?"物理块池容量 +1":
+       lab.id==="deepinfer_scheduler"?"切换抢占处置策略":
+       "Forward 假设时长 +2")+"。点击「比较当前场景 B」查看改变的状态。";
+   }catch(error){contrastStatus.textContent="干预未生效："+error.message;}
+ });
+
  compare.addEventListener("click",()=>{
    if(!contrastBase)return;
    try{
