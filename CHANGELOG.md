@@ -10,4 +10,4 @@ This file tracks **merged development milestones**. It does not imply a publishe
 - [PR #96](https://github.com/Qesire/SeetheTruth/pull/96): shared canonical ExecutionIR for graph observation and backend lowering.
 - [PR #95](https://github.com/Qesire/SeetheTruth/pull/95): separate fast source-math and independent NumPy/PyTorch numerical proof gates.
 
-The next candidate is \`v0.1.0-alpha\`, pending licensing, exact-release-SHA CI and new-user smoke testing. See [release readiness](docs/release-readiness.md).
+The next candidate is `v0.1.0-alpha`, pending licensing, exact-release-SHA CI and new-user smoke testing. See [release readiness](docs/release-readiness.md).
