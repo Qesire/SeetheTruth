@@ -8,14 +8,18 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {execFileSync}=require('node:child_process');
 const L=require('../learning_lab.js'),Torch=require('../torch_codegen.js');
 const GraphAutodiff=require('../graph_autodiff.js');
+const ND=require('../nd_tensor.js');
 const first=require('./fixtures/coordinate_training_graph.js');
 const more=require('./fixtures/operator_coverage_graphs.js');
+const ndCases=require('./fixtures/nd_broadcast_reduction_graphs.js');
 const root=path.resolve(__dirname,'..');
 const sourceFiles=[
  'block_catalog.js','graph_autodiff.js','learning_lab.js','torch_codegen.js',
  'training_objective.js','training_coordinate_proof.js',
+ 'nd_tensor.js','nd_autodiff.js','portable_operator_rules.js','python_codegen.js',
  'tests/fixtures/coordinate_training_graph.js',
  'tests/fixtures/operator_coverage_graphs.js',
+ 'tests/fixtures/nd_broadcast_reduction_graphs.js',
  'tests/torch_operator_certificate_ledger.js'
 ];
 const sha256=x=>crypto.createHash('sha256').update(x).digest('hex');
@@ -37,6 +41,13 @@ const specs=[
   source:'tests/fixtures/operator_coverage_graphs.js',
   tags:['nondifferentiable','relu_kink_zero','torch_zero_subgradient'],
   skipFD:[{nodeId:'x',index:[0,1],reason:'ReLU at x=0 has no two-sided derivative; compare declared PyTorch zero-subgradient, not centered difference'}]}
+ ,{id:'nd_token_reduce_head_broadcast',make:()=>ndCases.create('nd_token_reduce_head_broadcast'),
+  source:'tests/fixtures/nd_broadcast_reduction_graphs.js',
+  tags:['four_axis','head_token_broadcast','keepdim_reduce','channel_gradient_aggregation'],skipFD:[]}
+ ,{id:'nd_batch_reduce_channel_broadcast',make:()=>ndCases.create('nd_batch_reduce_channel_broadcast'),
+  source:'tests/fixtures/nd_broadcast_reduction_graphs.js',
+  tags:['four_axis','batch_broadcast','keepdim_reduce','channel_gradient_aggregation'],skipFD:[]}
+
 ];
 const fixtures=[],nodes=[],cases=[];
 let torchVersion=null,totalFD=0;
@@ -102,26 +113,24 @@ for(const spec of specs){
  const explicitSkips=new Set(spec.skipFD.map(x=>x.nodeId+'['+x.index.join(',')+']'));
  for(const node of graph.nodes){
   if(!['parameter','nd_parameter'].includes(node.kind)||node.params.frozen)continue;
-  const old=flatten(node.params.values),grad=flatten(back.gradients[node.id]);
-  assert.equal(old.length,grad.length,spec.id+' trainable parameter adjoint count');
-  // These bounded fixtures use rank-2 parameters. General ND strides belong
-  // to the exporter/autograd contract, not to this narrow v2 fixture suite.
-  assert(Array.isArray(node.params.values)&&Array.isArray(node.params.values[0]));
-  const dims=[node.params.values.length,node.params.values[0].length];
-  for(let k=0;k<old.length;k++){
-   const idx=[Math.floor(k/dims[1]),k%dims[1]];
-   if(explicitSkips.has(node.id+'['+idx.join(',')+']'))continue;
+  const values=node.params.values,sh=ND.shape(values),sourceGradient=back.gradients[node.id];
+  assert.deepEqual(ND.shape(sourceGradient),sh,spec.id+' trainable N-D gradient shape');
+  ND.indices(sh,idx=>{
+   if(explicitSkips.has(node.id+'['+idx.join(',')+']'))return;
+   const raw=ND.at(sourceGradient,idx);
    const value=sign=>{
     const copy=structuredClone(graph);
-    copy.nodes.find(n=>n.id===node.id).params.values[idx[0]][idx[1]]+=sign*1e-6;
+    let tensor=copy.nodes.find(n=>n.id===node.id).params.values;
+    for(let axis=0;axis<idx.length-1;axis++)tensor=tensor[idx[axis]];
+    tensor[idx.at(-1)]+=sign*1e-6;
     const out=L.evaluate(copy).steps.find(x=>x.id==='loss');
     return out.values[0][0];
    };
    const derivative=(value(1)-value(-1))/(2e-6);
-   assert(Number.isFinite(derivative)&&Math.abs(derivative-grad[k])<=tol.finiteDifference,
-    spec.id+'/'+node.id+' finite difference['+idx.join(',')+'] '+derivative+' vs '+grad[k]);
+   assert(Number.isFinite(derivative)&&Math.abs(derivative-raw)<=tol.finiteDifference,
+    spec.id+'/'+node.id+' finite difference['+idx.join(',')+'] '+derivative+' vs '+raw);
    fdCount++;
-  }
+  });
  }
  if(spec.id==='relu_exact_zero'){
   const xgrad=back.gradients.x[0][1];

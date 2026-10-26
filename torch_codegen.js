@@ -17,7 +17,7 @@ const Norm=isNode?require("./normalization_rules.js"):root.SeetheTruthNormalizat
 const Shape=isNode?require("./shape_index_rules.js"):root.SeetheTruthShapeIndexRules;
 const SUPPORTED=new Set([
  ...StreamTorch.kinds,"input","parameter","nd_input","nd_parameter","deepinfer_mtp_confidence_schedule","deepinfer_yoco_swa_mask","deepinfer_yoco_swa_compact","inference_topk","inference_sparse_attention","inference_paged_kv_read","inference_greedy_verify","video_causal_conv3d","vision_conv2d","audio_mel_filterbank","diffusion_ddim_step","vision_patchify","video_tubelet","audio_stft_power","audio_log_power","linear","matmul","nd_batched_matmul",
- "add","mul","subtract","divide","nd_broadcast_add","transpose2d",
+ "add","mul","subtract","divide","nd_broadcast_add","nd_broadcast_mul","transpose2d",
  "rmsnorm","layernorm","softmax","attention","mse","nd_mse",
  "silu","relu","gelu_tanh","gelu_erf","sigmoid","tanh","softplus",
  "scale","nd_scale","bias","square","swiglu","geglu","relu_squared",

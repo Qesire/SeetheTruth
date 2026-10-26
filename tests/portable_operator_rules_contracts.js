@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const Rules=require('../portable_operator_rules.js');
 const NP=require('../python_codegen.js'),Torch=require('../torch_codegen.js');
-const expected=['matmul','nd_batched_matmul','add','mul','subtract','divide','nd_broadcast_add',
+const expected=['matmul','nd_batched_matmul','add','mul','subtract','divide','nd_broadcast_add','nd_broadcast_mul',
  'scale','nd_scale','residual_scale','bias','square','temperature','low_rank_project',
  'row_bias_add','weighted_sum','slice_cols','slice_rows','nd_cache_read','diffusion_ddim_step'];
 assert.deepEqual(Rules.kinds,[...expected].sort());

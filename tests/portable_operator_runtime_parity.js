@@ -5,7 +5,7 @@ const L=require('../learning_lab.js'),NP=require('../python_codegen.js'),Torch=r
 const G=require('../graph_autodiff.js'),Rules=require('../portable_operator_rules.js');
 const N=(id,kind,params={},x=50,y=50)=>({id,kind,params,x,y});
 const E=(from,to,port)=>({from,to,port});
-const special4=new Set(['nd_batched_matmul','nd_broadcast_add','nd_scale','nd_cache_read']);
+const special4=new Set(['nd_batched_matmul','nd_broadcast_add','nd_broadcast_mul','nd_scale','nd_cache_read']);
 function make(kind){
  const inputs=[],edges=[],params={
   scale:{factor:0.25},residual_scale:{factor:-0.4},bias:{bias:0.14},
@@ -40,6 +40,7 @@ for(const kind of Rules.kinds){
 const cached=L.preset('nd_cached_gqa_decode'),attention=L.preset('nd_attention_lesson');
 cases.push({name:'nd_batched_matmul',graph:attention,target:'batch_scores'});
 cases.push({name:'nd_broadcast_add',graph:attention,target:'biased'});
+cases.push({name:'nd_broadcast_mul',graph:require('./fixtures/nd_broadcast_reduction_graphs.js').create('nd_token_reduce_head_broadcast'),target:'gated'});
 cases.push({name:'nd_scale',graph:cached,target:'scaled'});
 cases.push({name:'nd_cache_read',graph:cached,target:'k_prefix'});
 assert.deepEqual([...new Set(cases.map(x=>x.name))].sort(),Rules.kinds);

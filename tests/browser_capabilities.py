@@ -45,8 +45,18 @@ class CapabilityPageAcceptance(unittest.TestCase):
             stream_native=page.evaluate("window.SeetheTruthStreamGraph.kinds.length")
             self.assertEqual(counts["registered"],11+core_native+stream_native+extension_count)
             self.assertEqual(counts["knowledgeCards"],counts["registered"])
-            self.assertEqual(counts["numpyEligible"],121)
-            self.assertEqual(counts["torchEligible"],115)
+            backend=page.evaluate("""()=>{
+                const kinds=new Set(window.SeetheTruthLearning.KINDS);
+                const numpy=window.SeetheTruthPythonExport.supportedKinds;
+                const torch=window.SeetheTruthTorchExport.supportedKinds;
+                return {numpy:numpy.filter(k=>kinds.has(k)).length,
+                        torch:torch.filter(k=>kinds.has(k)).length,
+                        ndMulNumPy:numpy.includes('nd_broadcast_mul'),
+                        ndMulTorch:torch.includes('nd_broadcast_mul')};
+            }""")
+            self.assertEqual(counts["numpyEligible"],backend["numpy"])
+            self.assertEqual(counts["torchEligible"],backend["torch"])
+            self.assertTrue(backend["ndMulNumPy"] and backend["ndMulTorch"])
             self.assertEqual(page.locator("#registered").inner_text(),str(counts["registered"]))
             self.assertEqual(page.locator("#rows tr").count(),counts["registered"])
             page.locator("#filter").select_option("no-numpy")

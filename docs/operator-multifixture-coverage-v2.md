@@ -1,5 +1,8 @@
 # Independent operator-case coverage v2 — 2026-10-25
 
+> **2026-10-26 extension:** Two N-D broadcast / token-keepdim reduction fixtures are now independently executed, source-pinned and included in the same v2 ledger. The current six-fixture inventory has **13 observed operator kinds, 33 per-fixture cases, 46 source nodes, 222 forward coordinates, 196 full-loss adjoint coordinates and 75 parameter finite differences**. See [4D broadcast/reduction oracle](nd-broadcast-reduction-oracles-v1.md). The four rows below describe the *original* v2 cases; the new N-D tests are additive.
+
+
 ## Purpose
 
 Turn the source-pinned independent PyTorch CPU certificate into an **extensible matrix of discriminating graph fixtures**, rather than accumulating a misleading count of globally certified operator kinds. A kind may have multiple independently executed source graphs. Every proof is attached to `(fixtureId, kind, nodeId, concrete shape, sourceDigest)`, not a universal rule for all instances of that kind.

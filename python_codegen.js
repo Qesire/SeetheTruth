@@ -21,7 +21,7 @@ const SUPPORTED=new Set([
  "rmsnorm","layernorm","softmax","attention","mse","silu","relu","gelu_tanh","gelu_erf",
  "sigmoid","tanh","softplus","scale","bias","square","swiglu","geglu",
  "relu_squared","mish","leaky_relu","elu","hardswish",
- "nd_permute","nd_reshape","nd_flatten","nd_expand4d","nd_broadcast_add",
+ "nd_permute","nd_reshape","nd_flatten","nd_expand4d","nd_broadcast_add","nd_broadcast_mul",
  "nd_reduce_sum","nd_batched_matmul","nd_scale","nd_softmax_last","nd_causal_mask",
  "nd_repeat_kv","nd_mse","nd_rope","nd_cache_read","nd_cache_append",
  "nd_silu","nd_relu_squared","nd_mish","nd_gelu_erf","nd_elu","nd_hardswish",
