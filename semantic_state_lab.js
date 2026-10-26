@@ -4,10 +4,10 @@ const Core=window.SeetheTruthUnifiedCore;
 if(!Core)throw Error("unified semantic-state core unavailable");
 const $=id=>document.getElementById(id);
 const lessons=Object.freeze({
- stream:{title:"状态分叉 → KV Cache 与时间依赖",reason:"在计算图课程中追踪相同前缀如何流入两条后续路径；比较 append 与 fork 的输出来源。",href:"learn.html?edition=teaching"},
- video:{title:"时间分块 → 五维张量计算图",reason:"沿 B/T/H/W/C 轴观察 slice 和 concat 的数据依赖，再把分块操作放进模型计算流。",href:"learn.html?edition=teaching"},
- axis:{title:"具名轴 → 广播与形状检查",reason:"把特征偏置的广播与不相容 Tk 轴放回积木连接过程，理解语义与形状校验。",href:"learn.html?edition=teaching"},
- reject:{title:"状态版本 → 流式计算依赖",reason:"在流状态积木课程里追踪 append 所要求的 nextPosition，理解为什么时间顺序是执行前提。",href:"learn.html?edition=teaching"}
+ stream:{title:"状态分叉 → KV Cache 与时间依赖",reason:"在计算图课程中追踪相同前缀如何流入两条后续路径；比较 append 与 fork 的输出来源。",href:"learn.html?edition=teaching&state_case=stream"},
+ video:{title:"时间分块 → 五维张量计算图",reason:"沿 B/T/H/W/C 轴观察 slice 和 concat 的数据依赖，再把分块操作放进模型计算流。",href:"learn.html?edition=teaching&state_case=video"},
+ axis:{title:"具名轴 → 广播与形状检查",reason:"把特征偏置的广播与不相容 Tk 轴放回积木连接过程，理解语义与形状校验。",href:"learn.html?edition=teaching&state_case=axis"},
+ reject:{title:"状态版本 → 流式计算依赖",reason:"在流状态积木课程里追踪 append 所要求的 nextPosition，理解为什么时间顺序是执行前提。",href:"learn.html?edition=teaching&state_case=reject"}
 });
 function comparison(name,r){
  const v=r.values;
@@ -43,6 +43,7 @@ function run(name){
 }
 for(const b of document.querySelectorAll("[data-scenario]"))
  b.addEventListener("click",()=>run(b.dataset.scenario));
-run("stream");
+const requested=new URLSearchParams(window.location.search).get("state_case");
+run(Object.prototype.hasOwnProperty.call(lessons,requested)?requested:"stream");
 window.SeetheTruthStateLab=Object.freeze({run,cases:window.SeetheTruthSemanticExamples.names,comparison});
 })();
