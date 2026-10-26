@@ -30,7 +30,16 @@ class UnifiedLearningBrowser(unittest.TestCase):
    page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
    counts=page.evaluate("window.SeetheTruthUnifiedWorkbench.counts")
    self.assertGreaterEqual(counts["operators"],146)
-   self.assertEqual(counts["graphLessons"],67)  # 60 guided including source-pinned Wan video RoPE + blank + 2 pack recipes + state shortcut
+   # Match the real source-declared Studio presets, installed pack recipes
+   # and the intentionally hidden standalone stream-state shortcut.
+   registered=page.evaluate("""() => {
+     const visible=[...document.querySelectorAll('[data-preset]')].map(e=>e.dataset.preset);
+     const packs=window.SeetheTruthBlockExtensions.recipes.map(r=>r.id);
+     const all=[...visible,...packs,'stream_state_branches'];
+     if(new Set(all).size!==all.length)throw Error('duplicate guided graph identity');
+     return all.length;
+   }""")
+   self.assertEqual(counts["graphLessons"],registered)
    self.assertEqual(counts["courses"],10)
    self.assertEqual(counts["labs"],17)
    evidence=page.evaluate("window.SeetheTruthUnifiedWorkbench.inspect().evidence")
