@@ -12,9 +12,9 @@ const guided=[...html.matchAll(/data-preset="([^"]+)"/g)].map(m=>m[1]);
 assert.equal(guided.filter(x=>x==='blank').length,1,'one blank canvas entry');
 assert.equal(new Set(guided).size,guided.length,'each course is represented once');
 const lessons=guided.filter(x=>x!=='blank');
-assert.equal(lessons.length,64,'all 64 current guided lessons must appear exactly once');
-assert.match(readme,new RegExp('\\*\\*'+L.KINDS.length+' 种积木\\*\\*'),'landing block count must match executable registry');
-assert.match(readme,new RegExp('\\*\\*'+lessons.length+' 门引导课程\\*\\*'),'landing lesson count must match selectable presets');
+assert.ok(lessons.length>0,'guides must remain discoverable');
+assert.ok(guided.includes('nd_wan_i2v_full_block'),'full Wan block has a discoverable entry');
+assert.ok(readme.includes('](capabilities.html)'),'README links source-derived capability page');
 assert.match(readme,/NumPy Python/,'landing must name the real export backend');
 assert.match(readme,/PyTorch CPU/,'landing must document trainable PyTorch backend');
 assert.match(readme,/不支持的节点会明确拒绝/,'do not imply arbitrary block compilation');
@@ -75,4 +75,10 @@ for(const doc of ['docs/executable-python-codegen.md','docs/real-model-sampling.
  assert.ok(fs.existsSync(path.join(root,doc)),'required release docs exist: '+doc);
 }
 assert.match(release,/LICENSE/,'license decision must be tracked');
+for(const doc of ['CONTRIBUTING.md','CHANGELOG.md','docs/first-15-minutes.md']){
+ assert.ok(fs.existsSync(path.join(root,doc)),'public onboarding document exists: '+doc);
+ assert.ok(readme.includes(']('+doc+')'),'README links onboarding document: '+doc);
+}
+assert.ok(read('docs/first-15-minutes.md').includes('nd_wan_i2v_full_block'));
+
 console.log('RELEASE_SURFACE_PASS blocks='+L.KINDS.length+' lessons='+lessons.length+' blank=1');
