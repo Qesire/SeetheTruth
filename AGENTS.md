@@ -68,6 +68,10 @@ For freely composed graph training, use the existing `training_session.step`, `n
 
 Training-state restoration uses the original optimizer/backend checkpoint API, not reconstructed weights from observation summary fields. `engineering_pipeline/timeline` emits checkpoints per native `microStep/optimizerStep`. `Snapshots.resumeTraining` restores the original Bigram checkpoint (parameters, moments, Sampler, pending gradients) and executes/compares **each** remaining transition. The independent timeline panel in `engineering_pipeline.html` is intentionally a separate user-driven run, not a fabricated mirror of the guided lesson controller. Add numerical and desktop/phone browser contracts for any new training-state backend.
 
+## Dual-tier source-math and cross-backend numerical test gates
+
+Every new mathematical operator/graph should be evaluated at two different levels, without coupling one gate's execution to the other's: **F (fast)** exercises actual source graph inputs, independent coordinate equations, shapes, complete loss-path gradients and deliberate failure mutations using Node alone; **H (heavy)** runs standalone emitted NumPy and PyTorch code on CPU Float64 and judges both plus the original JS path against a separately implemented scalar reference. The NumPy and Torch exporters share lowering rules, so their agreement alone is not proof. Keep every claim fixture-scoped; a passing static contract must not imply independently executed backend evidence, and a successful fixed fixture does not imply GPU or arbitrary-model parity. See [dual-tier mathematics verification](docs/dual-tier-mathematics-verification.md) and the two independent jobs in `.github/workflows/math-verification.yml`. Preserve the strict final-source `torch_operator_certificate_ledger.js --check` audit for already attested operators.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
