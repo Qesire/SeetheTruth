@@ -69,3 +69,15 @@ node tests/torch_nd_broadcast_reduction_parity.js
 ```
 
 The test requires the pinned Python/CPU PyTorch environment; the executable workflow is `.github/workflows/torch-export.yml`. It fails on absent PyTorch gradients, shape mismatch, per-coordinate error or finite-difference mismatch, and leaves the input graphs unchanged. Existing evidence, Chromium PC/mobile and offline Android jobs remain release gates.
+
+
+## Fast regression gate for the same native computation
+
+`tests/nd_broadcast_fast_gradient_invariants.js` runs on the ordinary JavaScript evidence-contract job **without loading Python or PyTorch**. On both source graphs it verifies for every actual `[B,H,T,C]` coordinate that:
+
+- `dL/dV[b,h,t,c] = dL/dS[b,h,0,c]`: native keepdim Token sum expands its adjoint to all original Token entries;
+- `dL/dU[b,h,t,c] = dL/dV[b,h,t,c] * gain[c]`: actual broadcast multiplication local VJP;
+- `dL/dX = dL/dU` at every source coordinate;
+- `dL/dbias[c] = Σ_{b,h,t} dL/dU[b,h,t,c]` and `dL/dgain[c] = Σ_{b,h,t} dL/dV[b,h,t,c] * U[b,h,t,c]`.
+
+The test checks exact source graph identity/shape, original generated Torch source availability, no mutation and rejection of incompatible broadcast axes. It deliberately reports `SOURCE_EXECUTED_NOT_INDEPENDENT_TORCH`, because it is a **fast regression alarm**, not the independent numerical oracle. The existing `torch-export.yml` remains the authority for pinned-PyTorch external parity and source-bound certificates.
