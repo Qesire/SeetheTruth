@@ -3,7 +3,7 @@
 // PyTorch CPU independent evidence is checked separately by torch-export.yml.
 const assert=require('node:assert/strict');
 const L=require('../learning_lab.js'),ND=require('../nd_tensor.js');
-const G=require('../graph_autodiff.js'),T=require('../torch_codegen.js');
+const G=require('../graph_autodiff.js'),Torch=require('../torch_codegen.js');
 const {cases,create}=require('./fixtures/nd_broadcast_reduction_graphs.js');
 const near=(actual,expected,where)=>{
  assert(Number.isFinite(actual)&&Number.isFinite(expected),where+' nonfinite');
@@ -45,12 +45,12 @@ for(const spec of cases){
   near(ND.at(g.gain,[0,0,0,c]),gainExpected,spec.id+'/gain singleton axes sum '+c);
  }
  assert.equal(JSON.stringify(graph),untouched,spec.id+' original source graph mutated');
- const program=T.compile(graph,{lossId:'loss'});
+ const program=Torch.compile(graph,{lossId:'loss'});
  assert.equal(program.lossId,'loss',spec.id+' codegen kept native loss');
  assert.ok(program.source.includes('torch'),'original generated PyTorch source absent');
 }
 for(const name of ['nd_broadcast_add','nd_broadcast_mul','nd_reduce_sum','nd_mse'])
- assert.ok(T.supportedKinds.includes(name),'independent exporter removed '+name);
+ assert.ok(Torch.supportedKinds.includes(name),'independent exporter removed '+name);
 assert.throws(()=>ND.broadcastBinary(
  ND.seedTensor([1,2,3,2],2),ND.seedTensor([1,3,2,2],2),(a,b)=>a+b),
  /incompatible axes/,'disallow incompatible non-singleton broadcasting');
