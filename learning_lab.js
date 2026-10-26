@@ -300,6 +300,73 @@
   function preset(name){
     const recipe=Extensions.recipe(name);
     if(recipe)return validateGraph({schema:SCHEMA,...recipe});
+    if(name==="nd_wan_i2v_full_block"){
+      // Source-pinned Wan2.2 I2V A14B single Block:
+      // self e0/e1/e2 -> norm3/text Cross -> norm2/e3/e4 ->
+      // Linear1/GELU(tanh)/Linear2 -> e5 gate -> residual.
+      // Compose existing typed operators; 2D GELU(tanh) is bridged with
+      // nd_flatten + nd_expand4d, preserving true [1,1,8,H] coordinates.
+      // Values remain seeded tiny Float64, never official checkpoint weights.
+      const base=preset("nd_wan_i2v_self_cross");
+      const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
+      const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
+      const shape=[1,1,1,6],H=8;
+      const parameter=(id,dimensions,seed,scale=0.16)=>{
+        const values=ND.build(dimensions,idx=>ND.at(ND.seedTensor(dimensions,seed),idx)*scale);
+        return N(id,"nd_parameter",200,3700+seed*32,{values,optimizer:{
+          t:0,m:ND.build(dimensions,()=>0),v:ND.build(dimensions,()=>0)}});
+      };
+      const added=[
+        N("norm2_ffn","nd_layernorm_last",9950,210,{epsilon:1e-6}),
+        ...[3,4,5].map(i=>N("e"+i,"nd_input",50,3900+i*180,
+          {b:1,h:1,t:8,d:6,seed:80+i})),
+        ...[3,4,5].map(i=>parameter("mod"+i,shape,80+i,0.09)),
+        ...[3,4,5].map(i=>N("e"+i+"_sum","nd_broadcast_add",10230,
+          770+(i-3)*320)),
+        N("ffn_norm_scale_product","nd_broadcast_mul",10620,175),
+        N("ffn_norm_scaled","nd_broadcast_add",10960,175),
+        N("ffn_conditioned","nd_broadcast_add",11300,175),
+        parameter("ffn_w1",[1,1,6,H],90,0.21),
+        N("ffn_b1","nd_input",200,4800,{b:1,h:1,t:1,d:H,seed:91}),
+        N("ffn_up","nd_batched_matmul",11600,175),
+        N("ffn_up_bias","nd_broadcast_add",11900,175),
+        N("ffn_flat","nd_flatten",12210,175),
+        N("ffn_gelu_tanh","gelu_tanh",12520,175),
+        N("ffn_act4d","nd_expand4d",12830,175),
+        parameter("ffn_w2",[1,1,H,6],92,0.19),
+        N("ffn_b2","nd_input",200,5160,{b:1,h:1,t:1,d:6,seed:93}),
+        N("ffn_down","nd_batched_matmul",13140,175),
+        N("ffn_down_bias","nd_broadcast_add",13450,175),
+        N("ffn_gated","nd_broadcast_mul",13760,175),
+        N("after_ffn","nd_broadcast_add",14070,175)
+      ];
+      const edges=base.edges.map(e=>e.from==="after_cross"&&e.to==="loss"&&
+        e.port==="prediction"?{...e,from:"after_ffn"}:e);
+      const links=[
+        ["after_cross","norm2_ffn","x"],
+        ...[3,4,5].flatMap(i=>[["e"+i,"e"+i+"_sum","a"],
+          ["mod"+i,"e"+i+"_sum","b"]]),
+        ["norm2_ffn","ffn_norm_scale_product","a"],
+        ["e4_sum","ffn_norm_scale_product","b"],
+        ["norm2_ffn","ffn_norm_scaled","a"],
+        ["ffn_norm_scale_product","ffn_norm_scaled","b"],
+        ["ffn_norm_scaled","ffn_conditioned","a"],
+        ["e3_sum","ffn_conditioned","b"],
+        ["ffn_conditioned","ffn_up","a"],["ffn_w1","ffn_up","b"],
+        ["ffn_up","ffn_up_bias","a"],["ffn_b1","ffn_up_bias","b"],
+        ["ffn_up_bias","ffn_flat","x"],["ffn_flat","ffn_gelu_tanh","x"],
+        ["ffn_gelu_tanh","ffn_act4d","x"],
+        ["ffn_act4d","ffn_down","a"],["ffn_w2","ffn_down","b"],
+        ["ffn_down","ffn_down_bias","a"],["ffn_b2","ffn_down_bias","b"],
+        ["ffn_down_bias","ffn_gated","a"],["e5_sum","ffn_gated","b"],
+        ["after_cross","after_ffn","a"],["ffn_gated","after_ffn","b"]
+      ];
+      return validateGraph({...base,
+        title:"Wan2.2 I2V A14B · Self → Text Cross → e3/e4 FFN GELU(tanh) → e5 残差（完整单 Block）",
+        nodes:[...base.nodes,...added],
+        edges:[...edges,...links.map(([from,to,port])=>({from,to,port}))]});
+    }
+
     if(name==="nd_wan_i2v_self_cross"){
       // Source: Wan-Video/Wan2.2@1ea34ff model.py 158-180, 203-259.
       // I2V A14B config sets cross_attn_norm=true. The norm3 affine
