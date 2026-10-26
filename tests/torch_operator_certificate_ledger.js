@@ -7,15 +7,17 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {execFileSync}=require('node:child_process');
 const L=require('../learning_lab.js'),Torch=require('../torch_codegen.js');
-const GraphAutodiff=require('../graph_autodiff.js');
+const GraphAutodiff=require('../graph_autodiff.js'),ND=require('../nd_tensor.js');
 const first=require('./fixtures/coordinate_training_graph.js');
 const more=require('./fixtures/operator_coverage_graphs.js');
+const ndCases=require('./fixtures/nd_broadcast_reduction_graph.js');
 const root=path.resolve(__dirname,'..');
 const sourceFiles=[
  'block_catalog.js','graph_autodiff.js','learning_lab.js','torch_codegen.js',
- 'training_objective.js','training_coordinate_proof.js',
+ 'training_objective.js','training_coordinate_proof.js','nd_autodiff.js','nd_tensor.js',
  'tests/fixtures/coordinate_training_graph.js',
  'tests/fixtures/operator_coverage_graphs.js',
+ 'tests/fixtures/nd_broadcast_reduction_graph.js',
  'tests/torch_operator_certificate_ledger.js'
 ];
 const sha256=x=>crypto.createHash('sha256').update(x).digest('hex');
@@ -36,7 +38,10 @@ const specs=[
  {id:'relu_exact_zero',make:more.reluKink,
   source:'tests/fixtures/operator_coverage_graphs.js',
   tags:['nondifferentiable','relu_kink_zero','torch_zero_subgradient'],
-  skipFD:[{nodeId:'x',index:[0,1],reason:'ReLU at x=0 has no two-sided derivative; compare declared PyTorch zero-subgradient, not centered difference'}]}
+  skipFD:[{nodeId:'x',index:[0,1],reason:'ReLU at x=0 has no two-sided derivative; compare declared PyTorch zero-subgradient, not centered difference'}]},
+ {id:'nd_singleton_bias_token_reduction',make:ndCases.broadcastReduce,
+  source:'tests/fixtures/nd_broadcast_reduction_graph.js',
+  tags:['rank4','singleton_broadcast','token_axis_keepdim','bias_gradient_reduction'],skipFD:[]}
 ];
 const fixtures=[],nodes=[],cases=[];
 let torchVersion=null,totalFD=0;
@@ -102,26 +107,24 @@ for(const spec of specs){
  const explicitSkips=new Set(spec.skipFD.map(x=>x.nodeId+'['+x.index.join(',')+']'));
  for(const node of graph.nodes){
   if(!['parameter','nd_parameter'].includes(node.kind)||node.params.frozen)continue;
-  const old=flatten(node.params.values),grad=flatten(back.gradients[node.id]);
-  assert.equal(old.length,grad.length,spec.id+' trainable parameter adjoint count');
-  // These bounded fixtures use rank-2 parameters. General ND strides belong
-  // to the exporter/autograd contract, not to this narrow v2 fixture suite.
-  assert(Array.isArray(node.params.values)&&Array.isArray(node.params.values[0]));
-  const dims=[node.params.values.length,node.params.values[0].length];
-  for(let k=0;k<old.length;k++){
-   const idx=[Math.floor(k/dims[1]),k%dims[1]];
-   if(explicitSkips.has(node.id+'['+idx.join(',')+']'))continue;
-   const value=sign=>{
-    const copy=structuredClone(graph);
-    copy.nodes.find(n=>n.id===node.id).params.values[idx[0]][idx[1]]+=sign*1e-6;
-    const out=L.evaluate(copy).steps.find(x=>x.id==='loss');
-    return out.values[0][0];
+  const original=node.params.values,shape=ND.shape(original),grad=back.gradients[node.id];
+  assert.deepEqual(ND.shape(grad),shape,spec.id+' source parameter gradient shape');
+  ND.indices(shape,index=>{
+   if(explicitSkips.has(node.id+'['+index.join(',')+']'))return;
+   const lossValue=sign=>{
+    const copy=structuredClone(graph),parameter=copy.nodes.find(n=>n.id===node.id).params.values;
+    let dest=parameter;
+    for(let axis=0;axis<index.length-1;axis++)dest=dest[index[axis]];
+    dest[index.at(-1)]+=sign*1e-6;
+    const loss=L.evaluate(copy).steps.find(x=>x.id==='loss');
+    return loss.values[0][0];
    };
-   const derivative=(value(1)-value(-1))/(2e-6);
-   assert(Number.isFinite(derivative)&&Math.abs(derivative-grad[k])<=tol.finiteDifference,
-    spec.id+'/'+node.id+' finite difference['+idx.join(',')+'] '+derivative+' vs '+grad[k]);
+   const numerical=(lossValue(1)-lossValue(-1))/(2e-6);
+   const analytic=ND.at(grad,index);
+   assert(Number.isFinite(numerical)&&Math.abs(numerical-analytic)<=tol.finiteDifference,
+    spec.id+'/'+node.id+' finite difference['+index.join(',')+'] '+numerical+' vs '+analytic);
    fdCount++;
-  }
+  });
  }
  if(spec.id==='relu_exact_zero'){
   const xgrad=back.gradients.x[0][1];
