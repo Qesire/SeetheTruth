@@ -66,16 +66,53 @@ class GuidedFirstUse(unittest.TestCase):
                     screenshots.mkdir(exist_ok=True)
                     page.screenshot(path=str(screenshots / f"guided-first-use-{width}.png"))
                     page.locator("#guideNext").click()
-                    self.assertTrue(page.locator("#learnerGuide").is_hidden())
-                    self.assertTrue(page.locator('[data-preset="attention"]').evaluate("(e)=>e.classList.contains('active')"))
-                    page.locator("#guideShow").click()
+                    self.assertTrue(page.locator("#learnerGuide").is_visible())
+                    self.assertEqual(page.evaluate("window.SeetheTruthLearnerGuide.course"), "attention")
+                    self.assertEqual(page.evaluate("window.SeetheTruthLearnerGuide.step"), 1)
                     self.assertFalse(page.evaluate("window.SeetheTruthLearnerGuide.verified"),
-                                     "another lesson's state cannot complete the FFN exercise")
+                                     "prior FFN numerical evidence cannot complete Attention")
+                    page.locator("#guideAction").click()
+                    self.assertEqual(page.evaluate("window.SeetheTruthUnifiedWorkbench.selectedNode"), "q")
+                    self.assertTrue(page.evaluate("window.SeetheTruthLearnerGuide.verified"))
+                    page.locator("#guideNext").click()
+                    self.assertTrue(page.locator("#guideNext").is_disabled(),
+                                    "a new lesson must obtain its own accepted numerical trace")
                     self.assertLessEqual(page.locator("#learnerGuide").evaluate(
                         "(e)=>e.getBoundingClientRect().width"), width + 2)
                     self.assertEqual(errors, [])
                 finally:
                     page.close()
+
+
+    def test_curriculum_adapts_to_real_source_nodes(self):
+        page = self.browser.new_page(viewport={"width": 1366, "height": 850})
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        try:
+            self.assertEqual(page.goto(self.url,wait_until="domcontentloaded").status,200)
+            focus = {
+                "attention": "q",
+                "trainable_core": "shared_weight",
+                "nd_wan_i2v_full_block": "after_self",
+                "image_vit_patch": "patches",
+                "audio_spectrogram": "spectrum",
+                "video_causal_conv3d": "causal_conv",
+                "nd_gqa_attention": "key_groups"
+            }
+            for lesson, expected in focus.items():
+                with self.subTest(lesson=lesson):
+                    page.locator('[data-preset="' + lesson + '"]').click()
+                    page.wait_for_function("(id) => window.SeetheTruthLearnerGuide.course === id", arg=lesson)
+                    self.assertEqual(page.evaluate("window.SeetheTruthLearnerGuide.step"), 1)
+                    page.locator("#guideAction").click()
+                    self.assertEqual(page.evaluate("window.SeetheTruthUnifiedWorkbench.selectedNode"), expected)
+                    self.assertTrue(page.evaluate("window.SeetheTruthLearnerGuide.verified"))
+                    page.locator("#guideNext").click()
+                    self.assertTrue(page.locator("#guideNext").is_disabled(),
+                      "lesson requires current graph numerical evidence before progressing")
+            self.assertEqual(errors, [])
+        finally:
+            page.close()
 
 
 if __name__ == "__main__":
