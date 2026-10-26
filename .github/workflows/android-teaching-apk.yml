@@ -35,6 +35,8 @@ jobs:
           node tests/android_teaching_contracts.js
           node tests/teaching_curriculum_contracts.js
           node tests/android_asset_manifest_contracts.js
+          node tests/runtime_asset_policy_contracts.js
+          node scripts/sync_runtime_assets.js --check
           node tests/block_capability_contracts.js
           node tests/semantic_state_contracts.js
           node tests/stream_graph_blocks_contracts.js
