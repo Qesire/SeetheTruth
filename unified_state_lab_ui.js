@@ -500,6 +500,17 @@
        },null,2).slice(0,4200);
        detail.append(summary,values);contrastResults.append(detail);
      }
+     const reflection=document.createElement("div");
+     reflection.className="command-contrast-reflection";
+     const reflectionLabel=document.createElement("label");
+     reflectionLabel.setAttribute("for","stateContrastExplanation");
+     reflectionLabel.textContent="请根据两次运行的真实结果，解释机制并设计下一个最小对照";
+     const explanation=document.createElement("textarea");
+     explanation.id="stateContrastExplanation";explanation.rows=3;
+     explanation.placeholder="哪些观察支持或挑战了你的预测？哪种竞争解释仍然成立？下次只调整哪个条件来区分它们？";
+     explanation.setAttribute("aria-label","实验结果解释与下一项机制对照");
+     reflection.append(reflectionLabel,explanation);
+     contrastResults.append(reflection);
      contrastStatus.textContent="A 和 B 均由同一原生执行内核重放验证；"+
        (diff.changedSteps.length?"点击事件追踪 B 的前后状态。":"当前观测范围内未出现可追踪的状态差异。");
    }catch(error){clearResults();contrastStatus.textContent="对照无法完成："+error.message;}

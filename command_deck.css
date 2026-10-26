@@ -168,6 +168,22 @@ body[data-theme="command-deck"] .command-contrast-metric strong{
 @media(max-width:680px){
  body[data-theme="command-deck"] .command-contrast-metrics{grid-template-columns:1fr}
 }
+body[data-theme="command-deck"] .command-contrast-nochange{
+ border:1px solid #647b76;border-left:3px solid #9fe3c2;
+ background:#092b35;padding:11px;color:#c6f8e4!important;
+}
+body[data-theme="command-deck"] .command-contrast-reflection{
+ margin-top:7px;border:1px solid #456c80;border-top:2px solid #c6a36d;
+ border-radius:5px;background:#081e2e;padding:12px;display:grid;gap:8px
+}
+body[data-theme="command-deck"] .command-contrast-reflection label{
+ color:#dbceab;font-size:12px;line-height:1.65;
+}
+body[data-theme="command-deck"] .command-contrast-reflection textarea{
+ width:100%;resize:vertical;min-height:95px;padding:9px;
+ border:1px solid #4a758a;background:#071521;
+ font:12px/1.75 system-ui,"Microsoft YaHei",sans-serif;color:#eaf8ff
+}
 body[data-theme="command-deck"] .command-contrast-count{
  color:#8df1e2!important;font-family:ui-monospace,Consolas,monospace
 }

@@ -91,9 +91,12 @@ class GuidedStates(unittest.TestCase):
       self.assertTrue(page.evaluate("SeetheTruthStateContrast.current"))
       self.assertGreater(page.evaluate("SeetheTruthStateContrast.changedSteps.length"),0)
      self.assertEqual(page.locator('#stateContrastResults .command-contrast-metric').count(),3)
+     self.assertTrue(page.locator("#stateContrastExplanation").is_visible())
       self.assertIn("实验前预测",page.locator("#stateContrastResults").inner_text())
       self.assertGreater(page.locator("#stateContrastResults .command-contrast-event").count(),0)
       self.assertEqual(page.locator('#stateContrastResults .command-contrast-metric').count(),3)
+      self.assertTrue(page.locator("#stateContrastExplanation").is_visible())
+      page.locator("#stateContrastExplanation").fill("两个输入的资源状态不同；还需要调整请求负载排除替代解释。")
       self.assertGreater(page.locator('#stateContrastResults details.command-contrast-diff').count(),0)
       valid=page.locator("#stateContrastResults .command-contrast-event:not([disabled])")
       if valid.count():
