@@ -23,6 +23,7 @@ jobs:
           set -euo pipefail
           node tests/source_math_invariants.js
           node tests/semantic_5d_source_oracle.js
+          node tests/wan_full_block_contracts.js
           node tests/nd_tensor_contracts.js
           node tests/nd_vjp_local_contracts.js
           node tests/portable_operator_rules_contracts.js
