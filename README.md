@@ -4,6 +4,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+**2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
+
 **2026-10-25 多案例独立证书：** [多图、共享参数与 ReLU 边界验证](docs/operator-multifixture-coverage-v2.md) 将逐算子案例证书升级为按实际图与形状保留多条独立证据，新增非方阵、正负激活、共享参数多支路和 ReLU 零点约定次梯度测试，区分有限差分可验证点与不可微点。
 
 **2026-10-25 独立执行的逐算子案例证书：** [源码绑定的 PyTorch CPU 梯度证书](docs/source-pinned-operator-certificates-v1.md) 已为六类算子的一个固定多路径训练图保存独立 CPU 自动微分证据，覆盖 29 个前向和 25 个 Loss 反向坐标及 8 个参数有限差分坐标。能力页面可筛选具有实际执行案例的算子，且绝不将特定形状的通过结果冒充全部算子的通用梯度证明。
