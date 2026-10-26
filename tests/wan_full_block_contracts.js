@@ -28,8 +28,8 @@ assert.equal(edges.get('after_ffn:b'),'ffn_gated');
 assert.equal(edges.get('ffn_gelu_tanh:x'),'ffn_flat');
 assert.deepEqual(ND.shape(v('after_cross')),[1,1,8,6]);
 assert.deepEqual(ND.shape(v('after_ffn')),[1,1,8,6]);
-assert.deepEqual(ND.shape(v('ffn_gelu_tanh')),[8,10]);
-assert.deepEqual(ND.shape(v('ffn_act4d')),[1,1,8,10]);
+assert.deepEqual(ND.shape(v('ffn_gelu_tanh')),[8,8]);
+assert.deepEqual(ND.shape(v('ffn_act4d')),[1,1,8,8]);
 assert.ok(graph.nodes.length>89&&graph.nodes.length<=128);
 const epsilon=1e-6,x=rows('after_cross'),e3=rows('e3_sum'),
  e4=rows('e4_sum'),e5=rows('e5_sum'),
@@ -42,7 +42,7 @@ const norm=x.map(row=>{
  return row.map(y=>(y-mean)/Math.sqrt(variance+epsilon));
 });
 const affine=norm.map((row,t)=>row.map((n,c)=>n*(1+e4[t][c])+e3[t][c]));
-const up=affine.map(row=>Array.from({length:10},(_,h)=>
+const up=affine.map(row=>Array.from({length:8},(_,h)=>
  b1[h]+row.reduce((s,val,c)=>s+val*w1[c][h],0)));
 const act=up.map(row=>row.map(gelu));
 const down=act.map(row=>Array.from({length:6},(_,c)=>
@@ -98,7 +98,7 @@ assert.ok(verified.some(x=>x.id==='cross_norm3_gamma'&&Math.abs(x.analytical)>1e
  'Cross norm3 gradient must reach end objective');
 console.log('WAN_FULL_BLOCK_FAST_PASS '+JSON.stringify({
  sourceRevision:'1ea34ff48f87168174e12956e200b1d908b1c5ff',
- nodes:graph.nodes.length,shapes:{tokens:8,channels:6,hidden:10},
+ nodes:graph.nodes.length,shapes:{tokens:8,channels:6,hidden:8},
  reconstructedStages:7,fullLossFD:verified.length,
  coverage:'Self + Cross + norm2/e3-e4 + Linear1/GELU(tanh)/Linear2 + e5 residual'
 }));
