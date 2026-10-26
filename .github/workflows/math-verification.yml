@@ -53,6 +53,7 @@ jobs:
           python -m py_compile tests/python_cross_backend_reference.py
           node tests/cross_backend_nd_oracle.js
           node tests/semantic_5d_cross_backend.js
+          node tests/wan_full_block_cross_backend.js
       - name: Existing full operator, 4D adjoint and certificate evidence
         run: |
           set -euo pipefail
