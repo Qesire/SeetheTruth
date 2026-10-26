@@ -11,8 +11,9 @@ const Sync=require('../scripts/sync_runtime_assets.js');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const modules=Packs.entries.map(e=>e.module);
 const result=Sync.render();
-assert.equal(result.data.android.length,125);
-assert.equal(result.data.published.length,133);
+assert.equal(result.data.android.length,Policy.androidAssets.length+modules.length+1);
+assert.equal(result.data.published.length,
+ Policy.androidAssets.length+Policy.webOnly.length+modules.length+1);
 assert.equal(read('android/teaching-assets.txt'),result.assetList,
  'Android list must equal canonical generated publication');
 assert.ok(read('atlas_server.py').includes(result.mapping),
