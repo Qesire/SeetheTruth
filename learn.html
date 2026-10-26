@@ -1534,98 +1534,136 @@ locate.addEventListener("click",()=>{try{
 }catch(e){result.textContent=e.message;}});
 })();
 </script><script>
-/* The guide observes the shipping graph/session; it owns no numerical engine. */
+/* General learner route, derived from the same graph learning path and
+ * actual accepted computation. It never creates a parallel numerical trace. */
 (() => {
-  "use strict";
-  const el=id=>document.getElementById(id),workbench=()=>window.SeetheTruthUnifiedWorkbench;
-  const questions=Object.freeze([
-    {title:"沿着连接理解 FFN",question:"为什么先扩展中间通道，再投影回输出维度？",
-     instruction:"选中 up，观察输入、参数和 hidden 通道的形状。",action:"定位上投影",node:"up"},
-    {title:"用计算验证结构预测",question:"推演出的形状能否沿着真实算术路径执行？",
-     instruction:"切换到小矩阵数值模式，再点击下方的「运行」。",action:"切换数值模式",node:null},
-    {title:"追踪非线性",question:"SiLU 如何改变上投影得到的数值？",
-     instruction:"选中 act，比较其实际输入、输出与数学公式。",action:"定位 SiLU 激活",node:"act"},
-    {title:"把局部计算接回输出",question:"为什么输入与输出形状相同，中间通道却扩大了？",
-     instruction:"选中 down，观察 x、up、down 的实际形状，然后迁移到 Attention。",action:"定位下投影",node:"down"}
-  ]);
-  let step=0,open=true;
-  const isFFN=()=>!!document.querySelector('[data-preset=ffn].active');
-  function numeric(){
-    if(!isFFN()||el("studyMode").value!=="numeric")return null;
-    try{
-      const r=workbench().inspectAccepted();
-      return r.numericOk&&r.session?.trace?.steps?.length?r:null;
-    }catch{return null;}
-  }
-  function isVerified(){
-    if(!isFFN())return false;
-    if(step===0)return workbench().selectedNode==="up";
-    const result=numeric();
-    return !!result&&(step===1||
-      (workbench().selectedNode===questions[step].node&&
-       result.session.trace.steps.some(x=>x.id===questions[step].node)));
-  }
-  function evidence(){
-    if(!isFFN())return "这条引导使用 FFN 课程；按「定位」可回到该示例。";
-    if(step===0)return isVerified()?"已定位 up：现在可以检查真实计算图的上投影。":"观察目标：定位上投影的输入、参数与输出。";
-    const result=numeric();
-    if(!result)return "等待实际数值运行：完成模式切换，再点击下方「运行」。";
-    const path=result.session.trace.steps;
-    const src=path.find(x=>x.id==="x"),up=path.find(x=>x.id==="up"),down=path.find(x=>x.id==="down");
-    const shape=(src&&up&&down)?"输入 "+src.shape.join("×")+" → hidden "+up.shape.join("×")+" → 输出 "+down.shape.join("×"):"已记录本次图执行轨迹";
-    if(step===1)return "已运行 "+path.length+" 个计算节点 · "+shape;
-    if(step===2)return isVerified()?"已定位 act：对照真实数值与 SiLU 公式。":"数值路径已就绪；选中 act 查看非线性。";
-    return isVerified()?"已定位 down · "+shape+"。接下来试着解释 Attention。":"选中 down，把中间计算连接回输出。";
-  }
-  function paint(){
-    if(!open)return;
-    const q=questions[step],ok=isVerified();
-    el("guideStep").textContent=String(step+1).padStart(2,"0")+" / 04";
-    el("guideTitle").textContent=q.title;el("guideQuestion").textContent=q.question;
-    el("guideInstruction").textContent=q.instruction;
-    el("guideEvidence").textContent=evidence();el("guideEvidence").dataset.verified=String(ok);
-    el("guideAction").textContent=q.action;el("guideBack").disabled=step===0;
-    el("guideNext").disabled=!ok;el("guideNext").textContent=step===3?"继续探索 Attention":"下一步";
-  }
-  function reveal(yes){
-    open=yes;el("learnerGuide").hidden=!yes;el("guideShow").hidden=yes;if(yes)paint();
-  }
-  function perform(){
-    if(!isFFN())document.querySelector('[data-preset=ffn]').click();
-    if(step===1){
-      const mode=el("studyMode");
-      if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
-      el("run").focus();
-    }else workbench().focusNode(questions[step].node);
-    paint();
-  }
-  el("guideAction").addEventListener("click",perform);
-  el("guideBack").addEventListener("click",()=>{if(step>0)step--;paint();});
-  el("guideNext").addEventListener("click",()=>{
-    if(!isVerified())return;
-    if(step===3){
-      document.querySelector('[data-preset=attention]').click();
-      reveal(false);el("guideShow").textContent="重开 FFN 引导";return;
-    }
-    step++;paint();
+ "use strict";
+ const el=id=>document.getElementById(id);
+ const runtime=window.SeetheTruthUnifiedWorkbench;
+ const guideCore=window.SeetheTruthGraphLearningPath;
+ let route=null,routeKey=null,step=0,visible=true,scheduled=false;
+ const activeId=()=>document.querySelector(".mission[data-preset].active")?.dataset.preset||"free_graph";
+ function refreshRoute(){
+  const snapshot=runtime.inspect().graph;
+  const id=activeId();
+  const key=id+"|"+JSON.stringify({
+   nodes:snapshot.nodes.map(n=>[n.id,n.kind,n.params]),
+   edges:snapshot.edges
   });
-  el("guideDismiss").addEventListener("click",()=>reveal(false));
-  el("guideShow").addEventListener("click",()=>reveal(true));
-  let queued=false;
-  const queue=()=>{
-    if(queued||!open)return;
-    queued=true;requestAnimationFrame(()=>{queued=false;paint();});
-  };
-  el("studyMode").addEventListener("change",queue);
-  document.addEventListener("click",event=>{
-    if(event.target.closest('[data-preset],#run,#runBranch,#blocks [data-node],#prev,#next'))queue();
-  });
-  new MutationObserver(queue).observe(el("status"),{childList:true,characterData:true,subtree:true});
-  new MutationObserver(queue).observe(el("blocks"),{childList:true});
-  window.SeetheTruthLearnerGuide=Object.freeze({
-    get step(){return step+1;},get visible(){return open;},
-    get verified(){return isVerified();},show:()=>reveal(true)
-  });
+  if(key!==routeKey){
+   route=guideCore.plan(snapshot,{id});
+   routeKey=key;
+   step=0;
+  }
+  return route;
+ }
+ function accepted(){
+  if(el("studyMode").value!=="numeric")return null;
+  try{
+   const record=runtime.inspectAccepted();
+   return record.numericOk&&record.session?.trace?.steps?.length?record:null;
+  }catch{return null;}
+ }
+ function satisfied(point,record){
+  if(!point)return false;
+  if(point.kind==="select")return runtime.selectedNode===point.node;
+  if(!record)return false;
+  if(point.kind==="numeric")return true;
+  return runtime.selectedNode===point.node &&
+    record.session.trace.steps.some(s=>s.id===point.node);
+ }
+ function observedText(point,record,done){
+  if(!point)return "这张图目前没有可观察的计算节点。可以先尝试搭建合法的计算图。";
+  if(point.kind==="select")
+   return done?"已定位 "+point.node+"；可以检查来源、参数、形状和公式。":
+    "操作目标：在当前图中选中 "+point.node+"。";
+  if(!record)return "执行数值模式的「运行」，产生当前图的逐节点观测记录。";
+  const seq=record.session.trace.steps;
+  const stage=point.node?seq.find(x=>x.id===point.node):null;
+  const focus=stage?" · "+point.node+" 输出 "+stage.shape.join("×"):"";
+  const summary=seq.filter(x=>x.shape).slice(0,3).map(x=>x.id+" "+x.shape.join("×")).join(" → ");
+  if(point.kind==="numeric")
+   return "已完成 "+seq.length+" 个节点的微型计算 · "+summary+"；逐坐标值可在计算显微镜中查看。";
+  return done?"已定位真实计算节点"+focus+"；结合公式核对变化。":
+   "已有本次计算记录；选中 "+point.node+"，追踪该节点的实际数值。";
+ }
+ function paint(){
+  if(!visible)return;
+  refreshRoute();
+  const point=route.steps[step]||null;
+  const record=point?.kind==="numeric"||point?.kind==="numeric-select"?accepted():null;
+  const done=satisfied(point,record);
+  el("guideStep").textContent=route.steps.length?
+   String(step+1).padStart(2,"0")+" / "+String(route.steps.length).padStart(2,"0"):"探索";
+  el("guideTitle").textContent=point?.title||"开始自由探索";
+  el("guideQuestion").textContent=point?.question||"你想构造哪一种计算关系？";
+  el("guideInstruction").textContent=point?.instruction||
+   "从积木库选择算子，连接端口，再推演并检查真实的计算关系。";
+  el("guideEvidence").textContent=observedText(point,record,done);
+  el("guideEvidence").dataset.verified=String(done);
+  el("guideAction").textContent=point?.kind==="numeric"?"切换数值模式":
+    point?.node?"定位 "+point.node:"选择一个积木";
+  el("guideAction").disabled=!point;
+  el("guideBack").disabled=step===0;
+  el("guideNext").disabled=!done;
+  const hasNext=!!route.next&&!!document.querySelector('.mission[data-preset="'+route.next+'"]');
+  el("guideNext").textContent=step===route.steps.length-1?
+   (hasNext?"探索下一门课程":"完成本次学习"):"下一步";
+  el("guideNext").dataset.verified=String(done);
+ }
+ function reveal(yes){
+  visible=yes;el("learnerGuide").hidden=!yes;el("guideShow").hidden=yes;
+  if(yes)paint();
+ }
+ function perform(){
+  const point=(refreshRoute().steps[step]||null);
+  if(!point)return;
+  if(point.kind==="numeric"){
+   const mode=el("studyMode");
+   if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
+   el("run").focus();
+  }else runtime.focusNode(point.node);
   paint();
+ }
+ el("guideAction").addEventListener("click",perform);
+ el("guideBack").addEventListener("click",()=>{if(step>0)step--;paint();});
+ el("guideNext").addEventListener("click",()=>{
+  refreshRoute();
+  const point=route.steps[step];
+  const record=point?.kind==="numeric"||point?.kind==="numeric-select"?accepted():null;
+  if(!satisfied(point,record))return;
+  if(step===route.steps.length-1){
+   const next=route.next&&document.querySelector('.mission[data-preset="'+route.next+'"]');
+   if(next){next.click();step=0;paint();}
+   else reveal(false);
+   return;
+  }
+  step++;paint();
+ });
+ el("guideDismiss").addEventListener("click",()=>reveal(false));
+ el("guideShow").addEventListener("click",()=>reveal(true));
+ function queue(){
+  if(scheduled||!visible)return;
+  scheduled=true;requestAnimationFrame(()=>{scheduled=false;paint();});
+ }
+ el("studyMode").addEventListener("change",queue);
+ document.addEventListener("click",event=>{
+  if(event.target.closest('.mission[data-preset],#run,#runBranch,#blocks [data-node],#prev,#next'))queue();
+ });
+ new MutationObserver(queue).observe(el("status"),{childList:true,characterData:true,subtree:true});
+ new MutationObserver(queue).observe(el("blocks"),{childList:true});
+ window.SeetheTruthLearnerGuide=Object.freeze({
+  get step(){return step+1;},
+  get course(){return route?.id||null;},
+  get count(){return route?.steps.length||0;},
+  get visible(){return visible;},
+  get verified(){
+   refreshRoute();
+   const p=route.steps[step];
+   return satisfied(p,(p?.kind==="numeric"||p?.kind==="numeric-select")?accepted():null);
+  },
+  show:()=>reveal(true)
+ });
+ paint();
 })();
 </script></body></html>
