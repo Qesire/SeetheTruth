@@ -36,6 +36,7 @@ on:
       - 'tests/operator_certificate_registry_contracts.js'
       - 'tests/fixtures/coordinate_training_graph.js'
       - 'tests/fixtures/operator_coverage_graphs.js'
+      - 'tests/fixtures/nd_broadcast_reduction_graph.js'
       - 'operator_certificates_data.json'
       - 'operator_certificates_data.js'
       - 'operator_certificate_registry.js'
@@ -100,6 +101,6 @@ jobs:
       - run: node --check loop_input_injection.js && node tests/loop_input_injection_contracts.js
       - run: node tests/adaptive_token_depth_contracts.js
       - run: node tests/torch_stream_autograd_contracts.js
-      - run: node tests/torch_operator_certificate_ledger.js --check
+      - run: node tests/torch_operator_certificate_ledger.js --emit
       - run: node tests/torch_training_coordinate_parity.js
       - run: node tests/torch_codegen_contracts.js && node tests/torch_codegen_extensions_contracts.js && node tests/moe_executable_codegen_contracts.js && node tests/token_embedding_ce_codegen_contracts.js && node tests/causal_transformer_codegen_contracts.js && node tests/industrial_gqa_tied_codegen_contracts.js && node tests/loop_transformer_codegen_contracts.js && node tests/loop_depth_supervision_contracts.js && node tests/loop_consistency_tradeoffs_contracts.js && node tests/loop_residual_scaling_contracts.js
