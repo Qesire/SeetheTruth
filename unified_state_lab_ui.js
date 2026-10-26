@@ -335,7 +335,7 @@
  ctl(reset,"stateContrastReset","重置对照");
  contrast.append(contrastHeading,contrastPrompt,predictionLabel,prediction,controls,contrastStatus,contrastResults);
  lessonHost.after(contrast);
- let contrastBase=null,contrastResult=null,contrastBKey=null;
+ let contrastBase=null,contrastResult=null,contrastBKey=null,contrastPrediction="";
  const currentProgram=()=> {
    const current=root.SeetheTruthCurrentDomainRun;
    if(!current||current.id!==lab.id||!current.input||!current.observed||
@@ -360,6 +360,8 @@
     (contrastResult?" · B 已重放校验，差异详情见下。":
      changed?" · 输入 B 已改变，可以点击「比较当前场景 B」。":
      " · 请写下预测，然后通过原生控件修改一个条件。");
+   capture.disabled=!!contrastBase;
+   prediction.disabled=!!contrastBase;
    intervene.disabled=!contrastBase;
    compare.disabled=!contrastBase;
    reset.disabled=!contrastBase;
@@ -367,11 +369,13 @@
  capture.addEventListener("click",()=>{
    try{
      contrastBase=currentProgram();
+     contrastPrediction=prediction.value.trim().slice(0,300);
      clearResults();renderContrast();
    }catch(error){contrastStatus.textContent="基线未采纳："+error.message;}
  });
  reset.addEventListener("click",()=>{
-   contrastBase=null;clearResults();renderContrast();
+   contrastBase=null;contrastPrediction="";prediction.value="";
+   clearResults();renderContrast();
  });
 
  // Native one-control interventions keep the original laboratory as the sole
@@ -431,10 +435,10 @@
      title.className="command-contrast-count";
      title.textContent="A → B · "+diff.changedSteps.length+" 个可追踪的事件变化"+
        " · 全局结果"+(diff.valueEqual?"相同":"不同");
-     if(prediction.value.trim()){
+     if(contrastPrediction){
        const learnerPrediction=document.createElement("p");
        learnerPrediction.className="command-contrast-prediction";
-       learnerPrediction.textContent="实验前预测："+prediction.value.trim().slice(0,300);
+       learnerPrediction.textContent="实验前预测："+contrastPrediction;
        contrastResults.append(learnerPrediction);
      }
      contrastResults.append(title);
