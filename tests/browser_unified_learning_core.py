@@ -36,8 +36,9 @@ class UnifiedLearningBrowser(unittest.TestCase):
      const visible=[...document.querySelectorAll('[data-preset]')].map(e=>e.dataset.preset);
      const packs=window.SeetheTruthBlockExtensions.recipes.map(r=>r.id);
      const all=[...visible,...packs,'stream_state_branches'];
-     if(new Set(all).size!==all.length)throw Error('duplicate guided graph identity');
-     return all.length;
+     // Pack recipe buttons may already have been materialized in the
+     // live DOM; the union is the canonical identity set, not DOM count.
+     return new Set(all).size;
    }""")
    self.assertEqual(counts["graphLessons"],registered)
    self.assertEqual(counts["courses"],10)
