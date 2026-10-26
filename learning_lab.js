@@ -310,7 +310,7 @@
       const base=preset("nd_wan_i2v_self_cross");
       const ND=(typeof module==="object"&&module.exports)?require("./nd_tensor.js"):globalThis.SeetheTruthND;
       const N=(id,kind,x,y,params={})=>node(id,kind,x,y,params);
-      const shape=[1,1,1,6],H=10;
+      const shape=[1,1,1,6],H=8;
       const parameter=(id,dimensions,seed,scale=0.16)=>{
         const values=ND.build(dimensions,idx=>ND.at(ND.seedTensor(dimensions,seed),idx)*scale);
         return N(id,"nd_parameter",200,3700+seed*32,{values,optimizer:{
