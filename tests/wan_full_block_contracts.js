@@ -60,6 +60,23 @@ assert.ok(Math.abs(v('loss')[0][0]-loss)<1e-12,'full objective uses final block 
 const swapped=norm.map((row,t)=>row.map((n,c)=>(n+e3[t][c])*(1+e4[t][c])));
 assert.ok(flatten(swapped).some((v,i)=>Math.abs(v-flatten(affine)[i])>1e-5),
  'counterfactual wrong AdaLN order must differ');
+// Deliberately cancel the per-token e5 input against its shared modulation.
+ // Source-tied zero e5 means this entire FFN branch has zero residual,
+ // while the upstream Self+Cross output and shortcut are left intact.
+{
+ const zero=structuredClone(graph),e5node=zero.nodes.find(n=>n.id==='e5');
+ const shared=v('mod5')[0][0][0];
+ const values=ND.build([1,1,8,6],([b,h,t,c])=>-shared[c]);
+ e5node.kind='nd_parameter';
+ e5node.params={values,optimizer:{t:0,
+  m:ND.build([1,1,8,6],()=>0),v:ND.build([1,1,8,6],()=>0)}};
+ const zeroTrace=L.evaluate(zero),at=id=>zeroTrace.steps.find(x=>x.id===id).values;
+ close('zero e5 identity',flatten(at('after_ffn')),flatten(at('after_cross')));
+ assert.ok(flatten(at('ffn_gated')).every(x=>x===0),
+  'zero gate should contribute exactly no FFN delta');
+ assert.notDeepEqual(at('ffn_down_bias'),ND.build([1,1,8,6],()=>0),
+  'zero gate is distinct from omitting the dense FFN computation');
+}
 const beforeCross=L.preset('nd_wan_i2v_self_cross');
 const prefix=new Map(beforeCross.nodes.map(n=>[n.id,n]));
 for(const n of beforeCross.nodes)assert.deepEqual(
