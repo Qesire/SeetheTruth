@@ -12,6 +12,8 @@ Organize each guided question as **question → predicted observation → a real
 
 `learn.html` first-use guidance is a read-only consumer of `SeetheTruthUnifiedWorkbench.inspectAccepted()`, real `data-preset` routes and `focusNode`. Numeric progress requires the actual accepted trace. Preserve learner freedom to change the graph or leave the guide. Test both screen sizes, mode-only versus real execution, node-selection truth and cross-lesson invalidation. New guidance should reuse this pattern across domains without inventing alternative model calculations.
 
+The reusable `GraphLearningPath.plan()` and its mechanism-specific, source-validated hints are the default for graph courses. Extend a guide by naming meaningful existing nodes and discriminating questions, then exercise real-browser behavior rather than adding standalone hardcoded click tours. Consult [guided learning contract](docs/guided-learning-contract.md) for accepted evidence, edition coverage and positive wording examples.
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.

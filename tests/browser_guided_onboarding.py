@@ -114,6 +114,23 @@ class GuidedFirstUse(unittest.TestCase):
         finally:
             page.close()
 
+    def test_graph_edit_revokes_numeric_progress(self):
+        page = self.browser.new_page(viewport={"width": 1366, "height": 850})
+        try:
+            self.assertEqual(page.goto(self.url,wait_until="domcontentloaded").status,200)
+            page.wait_for_function("!!window.SeetheTruthLearnerGuide")
+            page.locator("#guideAction").click()
+            page.locator("#guideNext").click()
+            page.locator("#guideAction").click()
+            page.locator("#run").click()
+            page.wait_for_function("window.SeetheTruthLearnerGuide.verified")
+            page.locator("#challenge").click()
+            page.wait_for_function("!window.SeetheTruthLearnerGuide.verified")
+            self.assertTrue(page.locator("#guideNext").is_disabled())
+            self.assertNotIn("已完成 4 个节点的微型计算",page.locator("#guideEvidence").inner_text())
+        finally:
+            page.close()
+
 
 if __name__ == "__main__":
     unittest.main()
