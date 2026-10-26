@@ -63,6 +63,8 @@ jobs:
           node tests/graph_session_contracts.js
           node tests/unified_pack_registry_contracts.js
           node tests/installed_pack_manifest_contracts.js
+          node tests/runtime_asset_policy_contracts.js
+          node scripts/sync_runtime_assets.js --check
           node tests/operator_capability_matrix_contracts.js
           node tests/operator_certificate_registry_contracts.js
           node tests/graph_learning_path_contracts.js
