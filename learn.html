@@ -96,6 +96,18 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 details{border-top:1px solid #34516b;margin-top:10px;padding-top:9px}summary{cursor:pointer;color:#9fdae4;font-size:11px}
 input[type="file"]{display:none}
 #courseProgress{margin-top:9px;color:#a9d6bd;font-size:11px}
+.learner-guide{padding:12px;margin-bottom:18px;border:1px solid #376275;border-radius:12px;background:linear-gradient(115deg,#103246,#102636);display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:center}
+.learner-guide[hidden]{display:none}
+.guide-heading{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.guide-step{color:#89e2db;font:700 11px ui-monospace,monospace}
+.learner-guide h2{font-size:14px;margin:0}
+.learner-guide p{font-size:12px;color:#cbe3ee;line-height:1.7;max-width:850px}
+.guide-evidence{font-size:11px;color:#a1f0c9}.guide-evidence[data-verified="false"]{color:#b8cbd5}
+.guide-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-start}
+.guide-question{font-weight:600;color:#effaff}
+@media(max-width:880px){.learner-guide{grid-template-columns:minmax(0,1fr)}.guide-actions{justify-content:flex-start}}
+@media(max-width:680px){.app>.rail{max-height:min(60vh,470px);overflow-y:auto}.learner-guide{padding:11px}}
+
 @media(max-width:1120px){.app{grid-template-columns:210px minmax(380px,1fr)}.inspector{grid-column:1/-1;max-height:320px;border-left:0;border-top:1px solid var(--line)}.rail{grid-row:1}.app{height:auto;min-height:calc(100vh - 78px)}.stage{min-height:600px}}
 @media(max-width:680px){.header{flex-wrap:wrap}.app{display:flex;flex-direction:column}.rail,.inspector{max-height:none}.palette{grid-template-columns:repeat(3,1fr)}.stage{min-height:600px}}
 .composite-nav{padding:12px 19px;background:linear-gradient(130deg,#0b2836,#091d2b);border-bottom:1px solid #2f6175}
@@ -156,15 +168,29 @@ input[type="file"]{display:none}
 .lineage-node,.lineage-details{border:1px solid #335467;border-radius:7px;margin-top:6px;padding:7px;background:#0d2839}
 .lineage-node summary,.lineage-details summary{cursor:pointer;font-size:12px}
 .lineage-element{padding:5px;margin-top:5px;border-left:2px solid #4c958d;background:#122d3a;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace}
-</style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"></head><body>
+</style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"><link rel="stylesheet" href="command_deck.css"></head><body data-theme="command-deck">
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><button class="btn ghost" type="button" id="guideShow" hidden>打开学习引导</button><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
+    <section class="learner-guide" id="learnerGuide" aria-labelledby="guideTitle">
+    <div>
+      <div class="guide-heading"><span class="guide-step" id="guideStep">01 / 04</span><h2 id="guideTitle">沿着连接理解 FFN</h2></div>
+      <p class="guide-question" id="guideQuestion">为什么先扩展中间通道，再投影回输出维度？</p>
+      <p id="guideInstruction">选中上投影，比较输入和输出形状。</p>
+      <p class="guide-evidence" id="guideEvidence" data-verified="false" role="status" aria-live="polite">观察目标：定位真实图中的上投影节点。</p>
+    </div>
+    <div class="guide-actions">
+      <button class="btn small" type="button" id="guideBack">上一步</button>
+      <button class="btn small primary" type="button" id="guideAction">定位上投影</button>
+      <button class="btn small" type="button" id="guideNext" disabled>下一步</button>
+      <button class="btn small ghost" type="button" id="guideDismiss" aria-label="关闭学习引导">收起</button>
+    </div>
+  </section>
   <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
   <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
   <p class="hint">先搜索或按类别筛选，再拖动到画布。积木优先展示数学含义、形状约束和计算逻辑；小矩阵数值可选。</p>
@@ -1507,5 +1533,138 @@ locate.addEventListener("click",()=>{try{
  panel.focusStep("state_transition",target);
  result.textContent="已定位 "+workbench.selectedNode+" · "+target;
 }catch(e){result.textContent=e.message;}});
+})();
+</script><script>
+/* General learner route, derived from the same graph learning path and
+ * actual accepted computation. It never creates a parallel numerical trace. */
+(() => {
+ "use strict";
+ const el=id=>document.getElementById(id);
+ const runtime=window.SeetheTruthUnifiedWorkbench;
+ const guideCore=window.SeetheTruthGraphLearningPath;
+ let route=null,routeKey=null,step=0,visible=true,scheduled=false;
+ const activeId=()=>document.querySelector(".mission[data-preset].active")?.dataset.preset||"free_graph";
+ function refreshRoute(){
+  const snapshot=runtime.inspect().graph;
+  const id=activeId();
+  const key=id+"|"+JSON.stringify({
+   nodes:snapshot.nodes.map(n=>[n.id,n.kind,n.params]),
+   edges:snapshot.edges
+  });
+  if(key!==routeKey){
+   route=guideCore.plan(snapshot,{id});
+   routeKey=key;
+   step=0;
+  }
+  return route;
+ }
+ function accepted(){
+  if(el("studyMode").value!=="numeric")return null;
+  try{
+   const record=runtime.inspectAccepted();
+   return record.numericOk&&record.session?.trace?.steps?.length?record:null;
+  }catch{return null;}
+ }
+ function satisfied(point,record){
+  if(!point)return false;
+  if(point.kind==="select")return runtime.selectedNode===point.node;
+  if(!record)return false;
+  if(point.kind==="numeric")return true;
+  return runtime.selectedNode===point.node &&
+    record.session.trace.steps.some(s=>s.id===point.node);
+ }
+ function observedText(point,record,done){
+  if(!point)return "这张图目前没有可观察的计算节点。可以先尝试搭建合法的计算图。";
+  if(point.kind==="select")
+   return done?"已定位 "+point.node+"；可以检查来源、参数、形状和公式。":
+    "操作目标：在当前图中选中 "+point.node+"。";
+  if(!record)return "执行数值模式的「运行」，产生当前图的逐节点观测记录。";
+  const seq=record.session.trace.steps;
+  const stage=point.node?seq.find(x=>x.id===point.node):null;
+  const focus=stage?" · "+point.node+" 输出 "+stage.shape.join("×"):"";
+  const summary=seq.filter(x=>x.shape).slice(0,3).map(x=>x.id+" "+x.shape.join("×")).join(" → ");
+  if(point.kind==="numeric")
+   return "已完成 "+seq.length+" 个节点的微型计算 · "+summary+"；逐坐标值可在计算显微镜中查看。";
+  return done?"已定位真实计算节点"+focus+"；结合公式核对变化。":
+   "已有本次计算记录；选中 "+point.node+"，追踪该节点的实际数值。";
+ }
+ function paint(){
+  if(!visible)return;
+  refreshRoute();
+  const point=route.steps[step]||null;
+  const record=point?.kind==="numeric"||point?.kind==="numeric-select"?accepted():null;
+  const done=satisfied(point,record);
+  el("guideStep").textContent=route.steps.length?
+   String(step+1).padStart(2,"0")+" / "+String(route.steps.length).padStart(2,"0"):"探索";
+  el("guideTitle").textContent=point?.title||"开始自由探索";
+  el("guideQuestion").textContent=point?.question||"你想构造哪一种计算关系？";
+  el("guideInstruction").textContent=point?.instruction||
+   "从积木库选择算子，连接端口，再推演并检查真实的计算关系。";
+  el("guideEvidence").textContent=observedText(point,record,done);
+  el("guideEvidence").dataset.verified=String(done);
+  el("guideAction").textContent=point?.kind==="numeric"?"切换数值模式":
+    point?.node?"定位 "+point.node:"选择一个积木";
+  el("guideAction").disabled=!point;
+  el("guideBack").disabled=step===0;
+  el("guideNext").disabled=!done;
+  const hasNext=!!route.next&&!!document.querySelector('.mission[data-preset=' + route.next + ']');
+  el("guideNext").textContent=step===route.steps.length-1?
+   (hasNext?"探索下一门课程":"完成本次学习"):"下一步";
+  el("guideNext").dataset.verified=String(done);
+ }
+ function reveal(yes){
+  visible=yes;el("learnerGuide").hidden=!yes;el("guideShow").hidden=yes;
+  if(yes)paint();
+ }
+ function perform(){
+  const point=(refreshRoute().steps[step]||null);
+  if(!point)return;
+  if(point.kind==="numeric"){
+   const mode=el("studyMode");
+   if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
+   el("run").focus();
+  }else runtime.focusNode(point.node);
+  paint();
+ }
+ el("guideAction").addEventListener("click",perform);
+ el("guideBack").addEventListener("click",()=>{if(step>0)step--;paint();});
+ el("guideNext").addEventListener("click",()=>{
+  refreshRoute();
+  const point=route.steps[step];
+  const record=point?.kind==="numeric"||point?.kind==="numeric-select"?accepted():null;
+  if(!satisfied(point,record))return;
+  if(step===route.steps.length-1){
+   const next=route.next&&document.querySelector('.mission[data-preset=' + route.next + ']');
+   if(next){next.click();step=0;paint();}
+   else reveal(false);
+   return;
+  }
+  step++;paint();
+ });
+ el("guideDismiss").addEventListener("click",()=>reveal(false));
+ el("guideShow").addEventListener("click",()=>reveal(true));
+ function queue(){
+  if(scheduled||!visible)return;
+  scheduled=true;requestAnimationFrame(()=>{scheduled=false;paint();});
+ }
+ el("studyMode").addEventListener("change",queue);
+ document.addEventListener("click",event=>{
+  if(event.target.closest('.mission[data-preset],#run,#runBranch,#blocks [data-node],#prev,#next'))queue();
+ });
+ new MutationObserver(queue).observe(el("status"),{childList:true,characterData:true,subtree:true});
+ new MutationObserver(queue).observe(el("blocks"),{childList:true});
+ window.SeetheTruthLearnerGuide=Object.freeze({
+  get step(){return step+1;},
+  get course(){return route?.id||null;},
+  get count(){return route?.steps.length||0;},
+  get visible(){return visible;},
+  get verified(){
+   refreshRoute();
+   const p=route.steps[step];
+   return satisfied(p,(p?.kind==="numeric"||p?.kind==="numeric-select")?accepted():null);
+  },
+  show:()=>reveal(true)
+ });
+ paint();
 })();
 </script></body></html>

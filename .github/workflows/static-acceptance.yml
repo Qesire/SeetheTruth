@@ -45,6 +45,26 @@ jobs:
         run: python tests/browser_universal_microscope.py
       - name: Verify official-source Wan2.2 FFN in the shared Chromium microscope
         run: python tests/browser_wan_ffn.py
+      - name: Verify command deck visuals in real desktop and mobile Chromium
+        run: python tests/browser_command_deck.py
+      - name: Verify source-driven first-use guidance in desktop and mobile Chromium
+        run: python tests/browser_guided_onboarding.py
+      - name: Archive command deck visual acceptance screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-command-deck-visual-review
+          path: command_deck_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Archive novice first-use proof screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-guided-first-use
+          path: guided_onboarding_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Execute the connected 115-node Wan Self/Cross/FFN graph in real desktop/mobile Chromium
         run: python tests/browser_wan_full_block.py
       - name: Archive Wan official-source FFN desktop/phone coordinate proofs
@@ -147,6 +167,16 @@ jobs:
         with:
           name: seethetruth-android-teaching-responsive
           path: android_teaching_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify KV Scheduler Worker mechanism questions with native state replay
+        run: python tests/browser_state_learning_guide.py
+      - name: Archive native state-learning screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-state-learning-guide
+          path: state_learning_guide_screenshots/*.png
           if-no-files-found: warn
           retention-days: 14
       - name: Execute integrated DeepInfer Scheduler KV Worker under Chromium

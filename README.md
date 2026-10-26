@@ -1,164 +1,72 @@
 # SeetheTruth — 用积木理解并执行大模型计算
 
-SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy 前向程序或 PyTorch CPU 可训练程序**。
+**构建 → 执行 → 解释 → 验证。** SeetheTruth 是 Scratch 式 AI 模型学习工作台：自由连接张量积木，在同一计算图中检查端口、形状和依赖，追踪逐坐标运算、梯度及参数更新，并在支持的图上导出可执行 NumPy/PyTorch 程序。
 
-> 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
-
-**2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
-
-**2026-10-25 多案例独立证书：** [多图、共享参数与 ReLU 边界验证](docs/operator-multifixture-coverage-v2.md) 将逐算子案例证书升级为按实际图与形状保留多条独立证据，新增非方阵、正负激活、共享参数多支路和 ReLU 零点约定次梯度测试，区分有限差分可验证点与不可微点。
-
-**2026-10-25 独立执行的逐算子案例证书：** [源码绑定的 PyTorch CPU 梯度证书](docs/source-pinned-operator-certificates-v1.md) 已为六类算子的一个固定多路径训练图保存独立 CPU 自动微分证据，覆盖 29 个前向和 25 个 Loss 反向坐标及 8 个参数有限差分坐标。能力页面可筛选具有实际执行案例的算子，且绝不将特定形状的通过结果冒充全部算子的通用梯度证明。
-
-**2026-10-25 参数坐标梯度证明：** [原生训练坐标与独立 PyTorch CPU 校验](docs/training-coordinate-proof-v1.md) 支持从已执行的参数更新选取元素，拆解真实整图 Loss 梯度、指定中间坐标的局部 VJP 贡献与优化器状态。严格区分单一路径与整图梯度，并增加全部 8 个训练参数坐标的独立 Torch 自动微分比对。
-
-**2026-10-25 图训练状态统一：** [原生 Forward/VJP/Optimizer/更新后 Forward 因果图](docs/graph-training-state-lineage-v1.md) 将自由组合积木的实际训练事务接入统一状态显微镜与快照回放；状态步骤和计算节点可互相定位，所有梯度与参数更新沿用原 CPU 教学训练引擎。本能力仅覆盖被原始训练算子真正支持的有界图。
-
-**2026-10-25 扩展安装协议：** [可信积木安装和能力矩阵](docs/trusted-block-pack-installation-v1.md) 将已批准扩展包的身份、Node/浏览器入口统一到 `installed_block_packs.js`，新增 `node scripts/sync_installed_block_packs.js --write/--check` 自动维护 Web/HTTP/Android 安装资源；算子能力还分别记录导出候选与真实执行证据，防止误将登记或白名单视为已验证计算。
-
-**2026-10-25 全局基础审计：** [完整架构与可扩展性评估](docs/foundation-architecture-audit-20261025.md) 已从真实注册表验证 **150 种算子、67 个引导图入口、10 门共享课程、17 个专项域、23 个专项执行操作**。已有图执行、扩展包、专项状态、统一观测/回放和可移植快照基础，但尚不是全部算子和专项引擎都具备独立 PyTorch/NumPy/Autograd/代码导出验证的动态插件框架。新增 `Core.describeActions(id)`，执行方法与原生轨迹类型由同一个注册项声明，配合跨浏览器、Android 的架构合同审计。下方 2026-10-24 计数保留为当日历史记录。
-
-**2026-10-24 统一学习内核候选：** 新增 [统一课程与执行适配层](docs/unified-learning-core-v1.md)，为全部积木、63 门引导图、自由画布、两个扩展配方及流状态快捷示例、十门跨平台课程以及 17 个专项页面建立统一身份、数学域和证据契约。自由组合图仍走相同的 DAG/形状/数值核心；Prefill、Worker、KV、Scheduler、Wan FFN、数学 KV Cache、训练与工程引导、解析成本模型已接入受限的统一执行接口。其中 DeepInfer 四个实验室的共享显微镜直接验证用户当前页面最后一次成功执行的输入，Wan FFN 页面使用统一数值计算记录。仍有部分专项页面只统一了身份与教学接口，不应把注册视为数值执行成功。最终验证状态以该功能分支的 CI 为准。
-
-**2026-10-24 专项执行接口 v2：** 论文 LoRA/DoRA/Online Attention 数值路径、自由画布 LoRA 计算图改写、共享参数/MoE/PPO 微训练、具名轴及流状态实验、算子导出资格审计均由统一 `executeLab` 调用已有的数学计算源。对应数值反例、PC/Android 浏览器合同在 [统一底层文档](docs/unified-learning-core-v1.md) 中逐项列出。源码图谱、真实模型证据和遥测仍保持独立证据处理，不能将静态注册误认作模型实测。
-
-**2026-10-20 推理系统时间实验：** [DeepInfer Worker ZOS / 非 ZOS 对照](deepinfer_worker_lab.html) 独立展示跨 Step 的 Scheduler、GPU Forward、上一轮延迟 Post-process、Sample、Flush 的可执行事件依赖图。它以用户输入的假设时长进行可证伪的逻辑调度对照，**不是 DeepInfer 的实测吞吐或框架复刻**。精确来源与限制详见 [时序重建与证据](docs/deepinfer-worker-events.md)。
-
-**DeepInfer Decode 状态重建：** Worker 实验室现已将 C++ `prepare_decode_zos_inputs` 压缩块表、累计 Query Offset，与 `refresh_for_sampling` 的 MTP 槽位转移和 Golden Token 窗口绑定到同一真实计算 Step。全部为**可重复的小规模 CPU 参考算术**，并不执行 GPU 页分配或 DeepInfer 完整 Serving。参见 [源码与验证](docs/deepinfer-decode-blocktable-refresh.md)。\n\n**KV 资源生命周期实验室：** [DeepInfer BlockManager / Scheduler 状态回放](deepinfer_kv_lifecycle_lab.html) 已加入真正可执行的小规模 FIFO 物理块分配、引用计数、Fork 共享与 Partial-Tail Clone、请求回收及抢占重计算/停止对照。源码级边界和不支持的真实 GPU 操作详见 [KV 生命周期审计](docs/deepinfer-kv-lifecycle.md)。页面不进行 GPU 实测或推断吞吐。\n\n**DeepInfer Scheduler→KV→Worker 联合实验：** [Decode 资源竞争与跨步执行实验室](deepinfer_scheduler_lab.html) 已连接 C++ Scheduler `_schedule_decode` 的输出长度优先级/抢占规则、BlockManager 有限物理 KV 块状态与 Worker 跨 Step 因果事件。WAITING 的重计算请求只允许经显式 Prefill 准入，不会在释放 KV 后继续 Forward。当前不包含分布式步型投票、真实 Prefill 算法或性能测量。参见 [源码数学与调度边界](docs/deepinfer-scheduler-workflow.md)。
-
-**Android 教学版 APK：** 正在以离线 WebView 形式提供独立移动课堂，仅保留积木、论文解析、多模态与推理课程交互，不含代码生成、文件下载、模型训练/部署或实验产物。源代码在 [android/](android/)，工作流 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 编译并发布签名的测试版 APK 工件；构建状态以 GitHub Actions 为准。独立教学入口为 [android_teaching.html](android_teaching.html)。
-
-**DeepInfer Prefill 源码教学：** [ALL/ANY Prefill 投票与图片 Token Chunk 边界实验室](deepinfer_prefill_lab.html) 根据官方 Scheduler 的 NORMAL 引擎投票、资源不足后的第二轮回退、Chunked Prefill 的 CP 对齐预算和 IMG + PAD 保护规则进行确定性计算；不执行实际分布式 AllReduce、GPU Prefill 或图片特征计算。教学页面自动进入 Android 离线 APK。参见 [计算合同与源码对照](docs/deepinfer-prefill-policy.md)。
-
-## 可审计的积木能力表
-
-[完整积木能力矩阵](capabilities.html) 从注册表、逐积木论文知识卡和两种 CPU 编译器的白名单实时计算能力，不把积木注册误认为任意图可训练。仓库内运行 `node scripts/report_capabilities.js`，或使用 `--json` 导出机器可读明细；`node tests/block_capability_contracts.js` 校验一致性。
-
-**注意：** NumPy / PyTorch CPU 支持集合只是积木级编译候选。图级合法性、实际执行、梯度路径、检查点和真实模型/内核一致性必须分别证明。Android 仅展示审计结论，不提供代码产物。
-
-## 具名张量轴与显式流状态（实验室）
-
-新增 [具名张量轴与不可变状态实验室](semantic_state.html)：实际执行 rank 1–5 小规模张量的轴重排、显式广播、时间分块、拼接、流状态创建/追加/读取/分叉，精确检查绝对时间位置与状态版本。新增 [数学合同与验证记录](docs/semantic-state-contracts.md)。
-
-执行 `node tests/semantic_state_contracts.js` 检查数值、四维独立算子对照、五维视频分块、失效边界与旧版图兼容。**实验层新增的 stream_state_* 积木已进入自由画布和静态/数值计算；已经支持独立 NumPy/PyTorch CPU 代码生成，并通过双分叉状态参数梯度与 AdamW 验证（不包含通用跨时间步 BPTT），亦不等于实际 GPU KV Cache**；仍兼容原先的 134 类积木及 59 门课程，另有 4 类已接入工作台的流式逻辑状态积木，当前共 138 类。
-
-## PC / Android 同一份教学内容
-
-新的 [跨平台教学中心](teaching.html) 将 10 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS，以及工程入门与训练流水线）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
+原理推演模式**无需 GPU**。微型数值模式执行确定性的有界 CPU 张量运算。论文与源码证据、教学合成输入、真实模型采集及 GPU 实测采用不同证据层级。
 
 ## 立即体验
 
-需要 Python 3.10+（启动网页不需要 PyTorch、Node 或 GPU）：
+仅浏览教学页面需要 Python 3.10+，无需 PyTorch、Node 或 GPU：
 
-```bash
+~~~bash
 git clone https://github.com/Qesire/SeetheTruth.git
 cd SeetheTruth
 python atlas_server.py --port 8765
-```
+~~~
 
-浏览器打开 **http://127.0.0.1:8765/learn.html**。当前完整学习工作台已进入 main；涉及新多模态积木的功能请以对应 PR 的合并状态和 CI 为准。
+打开 **http://127.0.0.1:8765/learn.html**，从左栏选择「从 FFN 开始」。
 
-1. 选择一门引导课程，或从空白画布自由连线；端口、DAG、形状和参数有效性会进行验证，**不会因为不符合某种模型模板而禁止连接**。
-2. 默认使用**原理推演**，只追踪运算意义、形状和依赖，不执行矩阵计算。
-3. 主动切换**微型数值模式**后，可以观察中间张量、注意力、局部梯度及适用的训练事务。
-4. 选中任意积木，查看来源论文、数学公式、计算步骤、工业惯例、误区和可证伪实验。论文解析也支持悬停预览。
-5. 在导出选项中选 **NumPy Python**（独立前向计算）或 **PyTorch CPU**（可训练子集的真实 autograd、AdamW 与 checkpoint）。
-6. 点击 **⌘ 导出 .py**，将受支持的完整图或选中上游分支编译为所选后端的独立 Python 文件；不支持的节点会明确拒绝，不生成假代码。
+1. 阅读 `Linear → 激活 → Linear` 的图连接与张量形状。
+2. 在学习模式中切换「微型数值」，点击「运行」，检查各节点输入输出。
+3. 选中积木阅读公式、论文来源、工程设计动机和最小反例。
+4. 切换「自由实验」，亲手构图，观察形状诊断与实际运行。
+5. 在受支持的图上尝试 **NumPy Python** 或 **PyTorch CPU** 导出；**不支持的节点会明确拒绝**，不会输出假代码。
 
-NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需要 `python -m pip install torch`。后者的完整使用和真实执行合同见 [PyTorch 独立可训练代码](docs/pytorch-executable-training.md)。生成脚本包含可调用的 `run_graph(overrides=...)`，能够替换输入张量重新计算所有下游节点；其输出不是写死的演示结果。
+更详细的练习步骤：[第一次使用：15 分钟计算实验](docs/first-15-minutes.md)。
 
-**2026-10-20 DeepInfer 开源状态更正：** DeepSeek 已正式开源 [DeepInfer](https://github.com/deepseek-ai/DeepInfer) 真实离线推理框架及 [deepseek-recipe](https://github.com/deepseek-ai/deepseek-recipe) API/Prompt 转换组件；本项目已有的 TopK/Sparse Attention/Paged KV/Greedy Verify 是独立的 CPU 教学积木，**不是对 DeepInfer 引擎的完整复刻**。详见 [今日源码审计与差异](docs/deepinfer-day0-source-audit.md)。
+## 推荐探索路线
 
-## 当前学习工作台功能
-
-| 能力 | 已实现范围 | 明确限制 |
+| 路线 | 入口 | 你将看到 |
 | --- | --- | --- |
-| 积木库 | **150 种积木**：11 种基本积木 + 127 种目录原生/高级计算积木 + 4 种显式流状态积木 + 8 种独立扩展积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
-| 学习内容 | **64 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
-| DeepInfer 推理调度 | 按官方 Reference 数学实现 MTP remap+累积置信度+稳定排名+固定预算；YoCo SWA mask/compact 保留后缀可执行数学示例及 Query 行数对照 | YoCo 尚未实现 DeepInfer 的真实多 Chunk metadata、Yoco Pivots、ZOS Worker/GPU Kernel；不能据此推断线上部署吞吐 |\n| 推理系统基础 | 真实 CPU Top-K、Top-K 稀疏 QK/PV、Paged KV 逻辑到物理地址映射、贪心推测解码验收；四门新的可自由编辑课程可组合 FlashMLA/DeepSelect/DeepSpec 相关机制 | 属于源码机制教学抽象，不提供 DeepSeek 旧 vLLM Fork、FP8/FP4 GPU kernels、实际分布式 EP 通信、目标/草稿模型权重或 GPU 性能 |\n| 原生视频计算 | 真 5D [B,T,H,W,C] 与 [O,Kt,Kh,Kw,I] 因果 Conv3D、左侧时间补零和历史帧流式状态；逐节点 JS/NumPy/PyTorch 比较及可训练卷积核权重梯度 | 不是完整 Wan VAE；空间 valid、时间 stride=1、无完整归一化、上下采样或实际视频文件解码 |\n| 进阶多模态 | 可执行 HWC Conv2D（独立可训练 Parameter 权重）、HTK Mel 三角滤波与两步确定性 ε-DDIM；NumPy/PyTorch CPU 支持，卷积参数的真实 autograd 可单独验证 | 无完整视频 VAE、卷积填充/膨胀、真实 Whisper Slaney 滤波权重、去噪神经网络或生成质量指标 |\n| 多模态 | 图像 Patchify、音频真实 Hann-STFT 功率谱与对数压缩、视频 Tubelet，另有图像/音频/视频三路交叉注意力的可执行积木图；NumPy、PyTorch CPU 代码导出 | 采用受限二维载体、合成数据和明确轴映射；尚无真实图片/音频/视频解码、ViT/ViViT 权重、Whisper Mel 滤波及 Wan VAE 3D 因果缓存 |\n| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
-| 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
-| 代码生成 | 已验证图可导出独立 **NumPy Python**；可选 **PyTorch CPU** 支持真实 autograd、AdamW 持久状态及 checkpoint | 包含已验证的 MoE 稀疏路由、共享专家权重梯度、MAE 训练；仍不是任意积木或大型模型的通用编译器 |
-| 真实证据 | 可选 Python AST、PyTorch Runtime Trace / Profiler；真实小模型采集器和本地 JSON 溯源检查器 | 真实样本必须运行指定不可变模型版本，未复跑的数据仅结构验证，不伪造 kernel/吞吐量 |
+| 从基础开始 | [Learning Studio](learn.html) | FFN、Attention、残差、GQA、MoE 和自由 DAG 的逐节点计算 |
+| 从工程问题开始 | [跨平台教学中心](teaching.html) | 多模态、推理调度、训练流水线、论文与工业实现解释 |
+| 从真实源码结构开始 | [Wan2.2 I2V 单 Block](learn.html) | 选择 `nd_wan_i2v_full_block`，展开 Self/Cross/FFN、AdaLN e0–e5 与梯度链 |
 
-### 三个关键语义边界
+Android 教学版使用同一教学课程数据，通过 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 构建离线 WebView **debug APK 工件**；它提供学习交互，不提供代码导出、模型权重部署或 GPU 推理。
 
-- **逻辑可执行**：允许自由组合；只有端口、形状、参数、拓扑和实际已实现的算子语义会限制运行。形状合法并不代表算法有训练价值。
-- **解释、模拟、实测分离**：符号推演（SYMBOLIC）、确定性教学数值（SYNTHETIC）和带不可变模型修订/模块定位的真实采样（REAL_CAPTURE）在界面和导出中不能混同。固定修订的 TinyStories-1M CPU 采集及独立二次复跑已通过；用户本地导入但未独立复跑的 JSON 仍仅属于来源声明。
-- **导出不能降级为伪代码**：遇到不支持的算子，应清楚报出积木 ID 和算子类型；不得用预计算常数、固定输出或空实现来假装可运行。
+## 当前能力与可信边界
 
-## 其他入口
+- **自由可组合图**：端口、DAG、命名张量轴、形状与状态约束、逐节点计算显微镜、观测回放。
+- **数学与设计解释**：可展开的计算步骤、公式、论文链接、设计取舍和可复现的机制实验。
+- **训练/推理**：限定图中的 Forward/VJP、优化器状态、KV Cache、Loop、MoE、GRPO/PPO 参考实验。
+- **图像/音频/视频**：可执行基础积木、视频 5D 语义、源码顺序对齐的 Wan I2V 单 Block（115 节点合成 Float64 图）。
+- **程序生成**：支持的图可生成可独立运行的 NumPy 前向或 PyTorch CPU 训练程序；算子登记、导出候选和**独立数值通过**是不同结论。查看源码实时生成的 [能力矩阵](capabilities.html)，而不是静态承诺任意模型可导出。
+- **真实模型证据**：固定修订的 TinyStories-1M CPU 采集及独立二次复跑已通过；用户本地导入但未独立复跑的 JSON 仍仅属于来源声明。Wan 单 Block 的独立 NumPy/PyTorch 证据覆盖 FFN 闭包及其梯度边界，而非整套官方 checkpoint 或完整视频生成。
 
-- [Learning Studio](learn.html)：产品主入口、自由积木及代码导出。
-- [Architecture Trade-off Lab](tradeoffs.html)：交互比较 GQA 缓存、MoE 参数激活比例与 Loop Transformer 参数共享的解析成本；不表示真实 GPU 加速。
-- Learning Studio 的 **GRAPH COST** 折叠面板直接读取当前实际积木 DAG 的合法张量形状，核算明确覆盖的 MatMul/批量 MatMul/Linear MAC 和物理 Parameter 元素；未覆盖算子不计入总 FLOPs，不冒充 GPU 测速。
-  - 同一面板另计融合 Attention/GQA 的 QK/PV GEMM、路由专家 Linear 投影 MAC 与纯函数 Cache 快照元素；可固定当前积木图并与后续修改后的实际图逐项比较差值。不会把这些算术口径当作显存峰值或性能测量。
-- [训练状态教学](training.html)：独立的前向—损失—反向—梯度累积—AdamW/SGD 状态示例。
-- [KV Cache 实验室](cache.html)：Prefill/Decode、缓存持久化及 Head 级数学可视化。
-- [论文 Patch 实验](paper_lab.html)：模块修改和文献计算合同。
-- [训练微流程](micro_training.html)：有界自动微分、MoE、PPO 示例。
-- [真实小模型证据实验室](real_model_lab.html)：本地导入 pinned-revision 模型采集 JSON，显示参数/梯度/激活统计和证据等级；不把模拟数据冒充实测。也可在 [Learning Studio](learn.html) 的检查器中把观测关联到所选 Linear/MatMul/Parameter，**只读，不替换计算输入或模型参数**。
-- [源码与结构图](index.html)：静态源码解释、全息结构与可选 Runtime Trace。
-- [性能和张量观测](telemetry.html)：显式实测的 profiler 与可选数值采样。
+详情：[双层数学验证](docs/dual-tier-mathematics-verification.md)、[Wan Block 计算与证据](docs/wan-i2v-complete-block-verification.md)、[可信扩展包](docs/trusted-block-pack-installation-v1.md)。
 
-## 验证与开发
+## 专项入口
 
-无需训练大型模型，主要合同可以用 Node 22 检查：
+- [计算成本与设计取舍](tradeoffs.html)：已建模计算量和参数量，不是 GPU 实测。
+- [训练状态](training.html) 与 [微训练](micro_training.html)：反向传播、梯度和参数更新。
+- [KV Cache](cache.html)：Prefill / Decode 与缓存读取。
+- [论文实验](paper_lab.html)：论文驱动的模块解释、图改写。
+- [真实模型证据](real_model_lab.html)、[源码图谱](index.html)、[可选性能观测](telemetry.html)。
+- [DeepInfer Worker](deepinfer_worker_lab.html)、[KV 生命周期](deepinfer_kv_lifecycle_lab.html)、[Scheduler](deepinfer_scheduler_lab.html)、[Prefill](deepinfer_prefill_lab.html)：源码启发的有界 CPU / 状态参考实验。
 
-```bash
+## 验证与参与
+
+快速合同验证推荐 Node.js 22；独立数值验证需要 Python、NumPy、CPU PyTorch；真实浏览器验收由 GitHub Actions 执行：
+
+~~~bash
 node tests/release_surface_contracts.js
-node tests/torch_stream_autograd_contracts.js  # 有界状态双分叉、真实 PyTorch 梯度、AdamW 与 checkpoint
-node tests/torch_codegen_contracts.js    # 另外需要 CPU PyTorch
-node tests/torch_codegen_extensions_contracts.js  # torch + numpy
-node tests/moe_executable_codegen_contracts.js    # torch + numpy
-node tests/token_embedding_ce_codegen_contracts.js  # torch + numpy
-node tests/causal_transformer_codegen_contracts.js # torch + numpy
-node tests/industrial_gqa_tied_codegen_contracts.js # torch + numpy
-node tests/loop_transformer_codegen_contracts.js     # CPU NumPy/Torch，原始 2/3 轮最终步 CE
-node tests/loop_depth_supervision_contracts.js        # CPU NumPy/Torch，每轮 CE、深度加权梯度、深度调整保持参数和动量
-node tests/loop_consistency_tradeoffs_contracts.js     # CPU NumPy/Torch，深度一致性、BPTT、AdamW、真实参数/MAC 数量
-node tests/adaptive_token_depth_contracts.js            # CPU NumPy/Torch，逐 Token 停止、共享权重梯度、AdamW/断点续训
-node tests/loop_input_injection_contracts.js      # NumPy/Torch 实际运行；共享参数/梯度/续训
-node tests/architecture_why_contracts.js               # 论文与工业代码的设计动机、方案对比、失败条件
-node tests/industrial_source_contracts.js          # Node
-node tests/paper_graph_rewrites_contracts.js
-node tests/model_trace_contracts.js
-node tests/block_catalog_contracts.js
-node tests/graph_readiness_contracts.js
-node tests/graph_autodiff_contracts.js
-node tests/python_codegen_contracts.js   # 还需 Python 3.10+ 和 NumPy
-node tests/python_codegen_extensions_contracts.js
-node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python NumPy 导出与 JS 状态逐步对照
-```
+node tests/source_math_invariants.js
+node tests/architecture_extension_spine_contracts.js
+node scripts/sync_runtime_assets.js --check
+~~~
 
-浏览器验收使用 `python -m pip install playwright`、`python -m playwright install chromium`，再运行 `python tests/browser_catalog_screenshots.py`。CI 对候选分支进行数值合同、JavaScript↔NumPy 中间量一致性、真实 Chromium 操作/截图、源码审计和静态行为验证。
+运行 `node scripts/report_capabilities.js --json` 可从注册表和真实导出白名单生成当前能力明细；算子被列为 eligible 不等于任意图已通过独立数值验证。
 
-## 发布状态和文档
+查看 [Actions](https://github.com/Qesire/SeetheTruth/actions) 的确切提交验证结果，以及 [贡献指南](CONTRIBUTING.md)、[开发变更记录](CHANGELOG.md)、[发布验收清单](docs/release-readiness.md)。
 
-截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
-
-
-**新增可执行源码对齐实验（2026-10-24）**：Wan2.2 固定提交 `1ea34ff` 的 F/H/W 三维视频 RoPE 现在是第 147 种可组合积木，另有第 60 门引导图 `nd_wan_video_rope_attention`。它真实计算三维复数对旋转、QK 及 PV，并有独立有限差分 VJP 证据；输入为合成、已完成投影和 QK 归一化的 Q/K/V，小型 CPU 张量不代表执行官方权重、FlashAttention GPU 或 Wan 完整 Transformer Block。详情：[通用显微镜的 Wan F/H/W 规则](docs/universal-compute-microscope.md)。
-
-设计与实现资料：[积木和模型组合](docs/composable-model-lessons.md)、[论文驱动扩展](docs/paper-driven-block-expansion.md)、[真实小模型样本规范](docs/real-model-sampling.md)、[可执行 Python 导出](docs/executable-python-codegen.md)、[统一图反向传播](docs/unified-graph-autodiff.md)、[PyTorch 真实训练导出](docs/pytorch-executable-training.md)、[LoRA 数学重写](docs/paper-driven-block-expansion.md)、[Next-token 真实计算流与梯度](docs/next-token-training-flow.md)、[源码对齐的 Qwen3 风格 GQA / QK Norm / RoPE / 可选权重绑定](docs/industrial-gqa-rope-tied.md)、[设计决策：工业界为什么这么做？](docs/architecture-design-rationale.md)、[Loop Transformer / Ouro / Huginn / MoR 的可执行循环深度及数学边界](docs/loop-transformer-recurrent-depth.md)、[逐轮监督与自适应深度的真实计算边界](docs/looped-multidepth-supervision.md)、[循环残差为什么要缩放：2026 论文与三组真实对照](docs/loop-residual-scaling-design-why.md)、[MoR 逐 Token 递归预算：设计动机、真实计算图与没有节省的 FLOPs](docs/mor-token-depth-computation.md)、[Huginn 原输入注入：真实源码、工业设计动机与可证伪对照](docs/loop-input-injection-design-why.md)、[架构优先级](docs/learning-first-architecture.md)。
-
-项目遵守“可见效果须有测试、数值结论须有可重复实验、模型归因须有实际源码或运行证据”的原则。
-
-**逻辑状态导出（2026-10-21）：** `stream_state_init/append/read/fork` 已支持独立 **NumPy Python** 前向生成，返回的数值字典附带 `state_metadata`，在运行时检查绝对时间位置、容量和版本；移动端仍仅执行教学图，不开放脚本下载。该编译支持有界 [T,D] 数值状态，暂不包括状态算子的 PyTorch 自动微分、真实 GPU KV Page Manager 或高维递归图编译。
-
-**PyTorch 状态编译（2026-10-21）：** 4 类 `stream_state_*` 算子能在 PC 版导出真实可运行的 PyTorch CPU Float64 前向代码。通过 PyTorch `clone`/`cat`/有界时间切片保持计算图，显式区分状态元数据与可微张量，在共享前缀双分叉、两路标量损失合并和 AdamW 训练中验证梯度汇合、checkpoint 与来源覆盖重算；`torch_stream_lowering.js` 对位置、容量和类型错误严格拒绝。Android 只提供教学画布、没有代码产物。该功能仅限单次 DAG 的有界 [T,D] 状态，不提供递归时间调度、跨步 BPTT、生产级 KV/显存加速。
-
-推导和反例：[流状态积木的 PyTorch 梯度合同](docs/torch-stream-autograd.md)。
-
-
-## 2026-10-23 · Independent block-pack runtime
-
-The main free-form graph now installs two separately tested mathematical packs (five named-axis [T,D] operators and three named-axis 5D video temporal operators) through a single extension registry. These eight kinds extend the original 138 built-ins to 146. They share symbolic readiness, bounded numerical execution, the graph-derived learner and offline teaching assets. The pack-owned named-axis recipe is available in Learning Studio. New pack kinds have no claimed NumPy/PyTorch export support; unsupported code generation rejects the graph. See [the main-branch runtime contract](docs/unified-block-packs-main.md).
-
-**Wan2.2 QKV + 学习式 Q/K RMSNorm（2026-10-24）**：`nd_wan_qk_rmsnorm` 是第 148 种原生积木，第 61 门引导图 `nd_wan_qkv_fullwidth_attention` 从可训练的 Q/K/V/Wo 矩阵与显式 bias 开始，遵循源码先对 `[B,T,C]` 整个 C 做 Q/K RMSNorm、乘独立 gamma，再 Head view、3D RoPE、无因果 Attention 和输出投影的精确数学顺序。提供 loss 和端到端 gamma/W 梯度。仍是 bounded Float64 CPU 数值，不代表真实 checkpoint 或 GPU FlashAttention。
-
-**Wan2.2 self-attention AdaLN 门控残差（2026-10-25）**：新增通用 `nd_layernorm_last` 和 `nd_broadcast_mul` 两种积木。第 62 门引导图 `nd_wan_adaln_self_gated` 复用现成 QKV/三维 RoPE/带权 QK 归一化计算 DAG，在其前后加上真实的 `norm1(x)·(1+e1)+e0` 和 `x + SelfAttention(·)·e2`，其中 e0/e1/e2 各由输入条件与独立的共享可训练 modulation 相加构成。LayerNorm 的跨通道导数、广播门控汇总以及零 e2 残差旁路均有独立有限差分/训练梯度测试；Cross-Attention 与 FFN 尚未在这门课程接为完整 Wan Block。源是固定 Wan2.2 源码，数值是有界 Float64 合成张量。
-
-**Wan2.2 I2V 文本 Cross-Attention（2026-10-25）**：第 63 门课程 `nd_wan_i2v_self_cross` 将已有 e0/e1/e2 条件化 Self-Attention 与 I2V 的 **`norm3(x)`（带 gamma/beta 仿射 LayerNorm）→ 文本 Cross-Attention → 残差** 相连。固定 I2V A14B 的 `cross_attn_norm=True` 配置；Q 源自门控 Self-Attention 后的视频特征，K/V 源自长度独立的文本 Context。Cross Q/K 使用完整通道带权 RMSNorm，**不施加视频 RoPE**，无因果 Mask；本示例 8 个视频查询 Token 对 4 个有效文本 Token，`context_lens=4`，没有 padding。全部投影权重、偏置、norm3 和 QK gamma 保持显式积木和真实微型参数梯度。扩容自由图画布与计算引擎上限为 128 节点，让完整链在单图内可修改。仍属合成 Float64 计算，未引入真实 Wan 权重或 GPU FlashAttention。
-
-
-**Wan2.2 I2V 完整单 Block 计算图（2026-10-26）**：第 64 门课程 `nd_wan_i2v_full_block` 直接延续已验证的 89 节点 Self + Text Cross DAG，补齐 `norm2 → e3/e4 AdaLN → Linear1 → GELU(tanh) → Linear2 → e5 gate → residual`，将 Loss 连接在 FFN 写回之后。它复用现有 GELU(tanh) 和四轴运算，不新建同义数值实现，提供 115 节点的真实可编辑微型计算图、各阶段逐坐标复核、横跨 Self/Cross/FFN 的全 Loss 有限差分以及 PyTorch CPU 独立 FFN 子图对照。该课程固定在源码顺序对齐的 Float64 小型合成输入；独立 CPU 跨后端证明仅涵盖 FFN 闭包及梯度边界，Self/Cross 的端到端路径通过原生数值加有限差分检验，仍未声明真实模型权重、连续多块扩散视频或生产 GPU 等价。
+**发布状态：** 当前是公开 Alpha 候选，尚未发布正式 GitHub Release，根目录也尚无 `LICENSE`。公开源码可查看，不等于自动获得第三方复制与再分发许可；由版权持有者确认适合的许可证后再正式发布。

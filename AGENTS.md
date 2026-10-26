@@ -6,6 +6,20 @@ A learner can build **any well-typed runnable graph**, inspect each actual tenso
 
 Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: actual computation reconstruction → minimal equivalent mathematics → decisive counterexample/test → code/teaching change → independent evidence. Begin with the strongest new mechanism or useful implementation. Avoid bureaucratic gate proliferation; the gates below are actual release evidence, not barriers to exploration.
 
+For research teaching, derive A/B counterfactuals from two accepted native records using the unified compare contract. Let the student modify one visible control, then inspect the exact changed event fields and causal dependencies; make explicit when a policy switch also alters the native fixture. Keep experimental interpretation separate from successful UI clicks.
+
+State/event guides in `unified_state_lab_ui.js` must use the actual native record, shared `StateMicroscope` changes and `inspectObservationStep` replay. Teach causal dependence and resource ownership for KV/Scheduler/Worker; label Worker durations as abstract assumptions. Distinguish evidence inspection from learner comprehension. Test scenario switching and source-run invalidation, as well as ordinary graph lessons.
+
+## Learner guidance and constructive wording
+
+Organize each guided question as **question → predicted observation → a real operation → accepted graph/session evidence → a new question**. Lead with the mechanism the student can discover. State evidence scope near the actual observation; write concise, positive and specific teaching copy in the UI. Replace generic warning lists with a decisive comparison or concrete observable.
+
+`learn.html` first-use guidance is a read-only consumer of `SeetheTruthUnifiedWorkbench.inspectAccepted()`, real `data-preset` routes and `focusNode`. Numeric progress requires the actual accepted trace. Preserve learner freedom to change the graph or leave the guide. Test both screen sizes, mode-only versus real execution, node-selection truth and cross-lesson invalidation. New guidance should reuse this pattern across domains without inventing alternative model calculations.
+
+The reusable `GraphLearningPath.plan()` and its mechanism-specific, source-validated hints are the default for graph courses. Extend a guide by naming meaningful existing nodes and discriminating questions, then exercise real-browser behavior rather than adding standalone hardcoded click tours. Consult [guided learning contract](docs/guided-learning-contract.md) for accepted evidence, edition coverage and positive wording examples.
+
+The shared offline Command Deck styles live in command_deck.css; see docs/command-deck-design.md. Continue the same visual tokens and source-linked emphasis across lessons. Preserve the operator canvas, keyboard/touch navigation, model evidence and real-browser visual acceptance.
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.
