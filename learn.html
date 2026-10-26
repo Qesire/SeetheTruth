@@ -1606,7 +1606,7 @@ locate.addEventListener("click",()=>{try{
   el("guideAction").disabled=!point;
   el("guideBack").disabled=step===0;
   el("guideNext").disabled=!done;
-  const hasNext=!!route.next&&!!document.querySelector('.mission[data-preset="'+route.next+'"]');
+  const hasNext=!!route.next&&!!document.querySelector('.mission[data-preset=' + route.next + ']');
   el("guideNext").textContent=step===route.steps.length-1?
    (hasNext?"探索下一门课程":"完成本次学习"):"下一步";
   el("guideNext").dataset.verified=String(done);
@@ -1633,7 +1633,7 @@ locate.addEventListener("click",()=>{try{
   const record=point?.kind==="numeric"||point?.kind==="numeric-select"?accepted():null;
   if(!satisfied(point,record))return;
   if(step===route.steps.length-1){
-   const next=route.next&&document.querySelector('.mission[data-preset="'+route.next+'"]');
+   const next=route.next&&document.querySelector('.mission[data-preset=' + route.next + ']');
    if(next){next.click();step=0;paint();}
    else reveal(false);
    return;
