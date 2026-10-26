@@ -1,0 +1,58 @@
+name: Dual-Tier Source Mathematics and Cross-Backend Proof
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-math-fast:
+    name: Fast / source math (no Python backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source-defined mathematics, shapes and VJP
+        run: |
+          set -euo pipefail
+          node tests/source_math_invariants.js
+          node tests/nd_tensor_contracts.js
+          node tests/nd_vjp_local_contracts.js
+          node tests/portable_operator_rules_contracts.js
+          node tests/shared_lowering_plan_contracts.js
+          node tests/operator_certificate_registry_contracts.js
+
+  cross-backend-independent:
+    name: Heavy / separate NumPy and PyTorch CPU programs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Intentionally has no 'needs' on the fast job: separate failure/evidence gate.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install independent numerical runtimes (CPU Float64)
+        run: |
+          python -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --disable-pip-version-check 'numpy>=1.26,<3'
+      - name: Independent scalar oracle vs native JS, generated NumPy and PyTorch
+        run: |
+          set -euo pipefail
+          python -m py_compile tests/python_cross_backend_reference.py
+          node tests/cross_backend_nd_oracle.js
+      - name: Existing full operator, 4D adjoint and certificate evidence
+        run: |
+          set -euo pipefail
+          node tests/portable_operator_runtime_parity.js
+          node tests/torch_nd_broadcast_reduction_parity.js
+          node tests/torch_operator_certificate_ledger.js --check
