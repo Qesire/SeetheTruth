@@ -74,6 +74,10 @@ on:
       - 'tests/torch_operator_certificate_ledger.js'
       - 'tests/torch_codegen_contracts.js'
       - '.github/workflows/torch-export.yml'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   torch-cpu-executable:
     runs-on: ubuntu-latest
