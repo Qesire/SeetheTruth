@@ -293,6 +293,36 @@
  const contrastStatus=document.createElement("p");contrastStatus.id="stateContrastStatus";
  contrastStatus.setAttribute("role","status");contrastStatus.setAttribute("aria-live","polite");
  const contrastResults=document.createElement("div");contrastResults.id="stateContrastResults";
+
+ // Compact domain observations are read-only projections of two replayed
+ // native results; they never simulate new KV, scheduling or worker semantics.
+ function observedMeasures(record){
+  const value=record.value;
+  if(lab.id==="deepinfer_kv"){
+   const last=value.timeline.at(-1);
+   return [
+    ["可分配 KV 块容量",last.numBlocks-1,"块"],
+    ["最终空闲块",last.free.length,"块"],
+    ["最终引用计数合计",last.refs.reduce((sum,n)=>sum+n,0),"引用"]
+   ];
+  }
+  if(lab.id==="deepinfer_scheduler"){
+   return [
+    ["Decode 调度轮数",value.decisions.length,"轮"],
+    ["原生抢占记录",value.decisions.reduce((n,d)=>n+d.preempted.length,0),"次"],
+    ["最终空闲块",value.snapshots.at(-1).free.length,"块"]
+   ];
+  }
+  if(lab.id==="deepinfer_worker"){
+   return [
+    ["逻辑完成时间",value.makespan,"假设 tick"],
+    ["已排定 CPU/GPU 事件",value.events.length,"个"],
+    ["已交付输出事件",value.released.length,"个"]
+   ];
+  }
+  return [];
+ }
+
  const capture=document.createElement("button"),compare=document.createElement("button"),
    reset=document.createElement("button");
  const ctl=(button,id,label)=>{
@@ -408,6 +438,20 @@
        contrastResults.append(learnerPrediction);
      }
      contrastResults.append(title);
+     const beforeMeasures=observedMeasures(contrastBase);
+     const afterMeasures=observedMeasures(b);
+     const metrics=document.createElement("div");metrics.className="command-contrast-metrics";
+     for(let i=0;i<beforeMeasures.length;i++){
+      const [label,from,unit]=beforeMeasures[i],[,to]=afterMeasures[i];
+      const metric=document.createElement("div");metric.className="command-contrast-metric";
+      const heading=document.createElement("small");heading.textContent=label;
+      const values=document.createElement("strong");
+      const delta=to-from;
+      values.textContent=from+" → "+to+" "+unit+
+       (delta===0?" · 保持":delta>0?" · +"+delta:" · "+delta);
+      metric.append(heading,values);metrics.append(metric);
+     }
+     contrastResults.append(metrics);
      const oldStates=new Map(contrastBase.stateTrace.steps.map(x=>[x.id,x]));
      const newStates=new Map(b.stateTrace.steps.map(x=>[x.id,x]));
      for(const entry of diff.changedSteps.filter(x=>x.kind==="state_transition").slice(0,8)){
