@@ -48,11 +48,15 @@ The new independent fixtures come from `tests/fixtures/nd_broadcast_reduction_gr
 - `nd_token_reduce_head_broadcast`: X `[1,2,3,2]`, β/γ `[1,1,1,2]`, reduction along Token axis, target `[1,2,1,2]`.
 - `nd_batch_reduce_channel_broadcast`: X `[2,1,2,3]`, β/γ `[1,1,1,3]`, Token reduction, target `[2,1,1,3]`.
 
+The initial independent run revealed a real backend gap: **the source 4D `nd_broadcast_mul` had native LearningLab/ND VJP implementations but was absent from NumPy/Torch lowering allowlists**. This PR now adds `nd_broadcast_mul` to the shared `portable_operator_rules.js` multiply expression and to both explicit exporter supported-kind registries. No separate numerical arithmetic implementation is introduced. `tests/portable_operator_runtime_parity.js` executes the same `gated` node through actual independent NumPy and PyTorch to verify the portable mapping.
+
 The independent oracle compiles each exact validated graph using the existing `torch_codegen.js`, executes its standalone Python code on **PyTorch 2.6.0+cpu, Float64**, retains intermediate output adjoints, and compares every original JS forward tensor and available full-loss gradient coordinate with the generated PyTorch interpreter. Centered finite differences separately check every trainable parameter coordinate against `GraphAutodiff`.
 
 In addition, a second algebraic invariant reconstructs each channel's gradient by explicitly summing upstream contributions across Batch/Head/Token. This distinguishes an unbroadcast error (e.g. retaining one token or one head, or overwriting accumulated gradients) even if the final Loss happens to match.
 
 ## Scope and evidence boundary
+
+Because the exported code and portable operator rules change, the existing source-pinned certificate artifacts must be regenerated through the **real PyTorch CPU evidence generator** and checked with `--check` on the final SHA. Old source-digest evidence is deliberately invalid.
 
 This is a **standalone independent numerical regression** in the pinned PyTorch CI workflow, not yet an entry in `operator_certificates_data.json`. The v2 certificate ledger still reflects its own four previously executed test graphs. Only after this test passes should it be integrated into the source-pinned ledger with the correct N-D index enumeration, per-fixture source SHA and differential tolerance.
 
