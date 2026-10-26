@@ -10,4 +10,11 @@ This file tracks **merged development milestones**. It does not imply a publishe
 - [PR #96](https://github.com/Qesire/SeetheTruth/pull/96): shared canonical ExecutionIR for graph observation and backend lowering.
 - [PR #95](https://github.com/Qesire/SeetheTruth/pull/95): separate fast source-math and independent NumPy/PyTorch numerical proof gates.
 
+## In review · PR #100
+
+- Source-derived question paths across graph lessons, plus native KV/Scheduler/Worker state-event guides.
+- A/B study: preserve A, articulate a hypothesis, use a native one-control intervention, replay B, and inspect source-level changed state fields.
+- Original offline Command Deck visual system across Atlas, Learning Studio, PC/Android teaching and three state laboratories.
+- Desktop/mobile Chromium interactive acceptance and screenshot artifacts for independent review.
+
 The next candidate is `v0.1.0-alpha`, pending licensing, exact-release-SHA CI and new-user smoke testing. See [release readiness](docs/release-readiness.md).

@@ -147,6 +147,10 @@ body[data-theme="command-deck"] .command-contrast-controls button{
 }
 body[data-theme="command-deck"] .command-contrast-controls button:disabled{opacity:.47;cursor:default}
 body[data-theme="command-deck"] #stateContrastResults{display:grid;gap:6px;min-width:0}
+body[data-theme="command-deck"] .command-contrast-prediction{
+ padding:8px 10px;background:#0d2837;border-left:2px solid #e8bb70;
+ color:#ffe1ae!important;overflow-wrap:anywhere
+}
 body[data-theme="command-deck"] .command-contrast-count{
  color:#8df1e2!important;font-family:ui-monospace,Consolas,monospace
 }

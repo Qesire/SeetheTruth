@@ -14,7 +14,7 @@ The scope is a **teaching runtime**. Real Wan checkpoint execution, multi-block 
 | --- | --- |
 | Source/runtime contracts | `LearningLab`, `GraphSession`, `ExecutionIR` and source-derived [capability page](../capabilities.html); rerun mathematical and graph tests on final tag SHA |
 | Independent math | Fast source constraints and external NumPy/PyTorch CPU oracle checks from [dual-tier proof](dual-tier-mathematics-verification.md); maintain fixture-scoped conclusions |
-| Real browser | Chromium desktop/phone and [Wan complete-block browser test](../tests/browser_wan_full_block.py); independently follow [15-minute first-use guide](first-15-minutes.md) in a clean browser |
+| Real browser | Chromium desktop/phone and [Wan complete-block browser test](../tests/browser_wan_full_block.py); also complete [first-use guide](first-15-minutes.md), [native A/B learning](guided-learning-contract.md) and [Command Deck visual checks](command-deck-design.md). Review screenshots and observe an independent first-time learner explain a mechanism |
 | Android | [APK CI](../.github/workflows/android-teaching-apk.yml) builds reviewed offline teaching assets; artifact is a debug build, not app-store distribution |
 | Distribution rights | There is currently no repository-root `LICENSE`; copyright owner must select a compatible license after reviewing bundled source/material rights |
 | Release publication | No GitHub Release exists; publish an explicitly marked `v0.1.0-alpha` prerelease on a tested commit, with notes, compatibility, known scope and evidence links |
