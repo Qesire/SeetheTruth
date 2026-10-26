@@ -45,8 +45,18 @@ jobs:
         run: python tests/browser_universal_microscope.py
       - name: Verify official-source Wan2.2 FFN in the shared Chromium microscope
         run: python tests/browser_wan_ffn.py
+      - name: Verify command deck visuals in real desktop and mobile Chromium
+        run: python tests/browser_command_deck.py
       - name: Verify source-driven first-use guidance in desktop and mobile Chromium
         run: python tests/browser_guided_onboarding.py
+      - name: Archive command deck visual acceptance screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-command-deck-visual-review
+          path: command_deck_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Archive novice first-use proof screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -16,6 +16,8 @@ Organize each guided question as **question → predicted observation → a real
 
 The reusable `GraphLearningPath.plan()` and its mechanism-specific, source-validated hints are the default for graph courses. Extend a guide by naming meaningful existing nodes and discriminating questions, then exercise real-browser behavior rather than adding standalone hardcoded click tours. Consult [guided learning contract](docs/guided-learning-contract.md) for accepted evidence, edition coverage and positive wording examples.
 
+The shared offline Command Deck styles live in command_deck.css; see docs/command-deck-design.md. Continue the same visual tokens and source-linked emphasis across lessons. Preserve the operator canvas, keyboard/touch navigation, model evidence and real-browser visual acceptance.
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.
