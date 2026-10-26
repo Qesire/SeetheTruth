@@ -50,8 +50,6 @@ jobs:
           set -euo pipefail
           python -m py_compile tests/python_cross_backend_reference.py
           node tests/cross_backend_nd_oracle.js
-      - name: Generate updated source-pinned CPU evidence for review
-        run: node tests/torch_operator_certificate_ledger.js --emit
       - name: Existing full operator, 4D adjoint and certificate evidence
         run: |
           set -euo pipefail
