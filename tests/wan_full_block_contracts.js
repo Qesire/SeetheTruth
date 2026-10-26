@@ -33,7 +33,7 @@ assert.deepEqual(ND.shape(v('ffn_act4d')),[1,1,8,8]);
 assert.ok(graph.nodes.length>89&&graph.nodes.length<=128);
 const epsilon=1e-6,x=rows('after_cross'),e3=rows('e3_sum'),
  e4=rows('e4_sum'),e5=rows('e5_sum'),
- w1=matrix('ffn_w1'),w2=matrix('ffn_w2'),
+ w1=v('ffn_w1')[0][0],w2=v('ffn_w2')[0][0],
  b1=matrix('ffn_b1'),b2=matrix('ffn_b2');
 const gelu=y=>0.5*y*(1+Math.tanh(Math.sqrt(2/Math.PI)*(y+0.044715*y*y*y)));
 const norm=x.map(row=>{
