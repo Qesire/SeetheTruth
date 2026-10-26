@@ -424,8 +424,8 @@
        return;
      }
      const diff=lab.compare(contrastBase,b);
-     if(!diff.replayVerified||diff.inputEqual||!diff.changedSteps.length)
-       throw Error("当前 A/B 缺少可解释的状态差异");
+     if(!diff.replayVerified||diff.inputEqual)
+       throw Error("当前 A/B 尚未构成两个独立、可回放的输入记录");
      // The shared microscope now displays the exact native B result.
      start();
      contrastResult=diff;
@@ -433,8 +433,8 @@
      contrastResults.replaceChildren();
      const title=document.createElement("p");
      title.className="command-contrast-count";
-     title.textContent="A → B · "+diff.changedSteps.length+" 个可追踪的事件变化"+
-       " · 全局结果"+(diff.valueEqual?"相同":"不同");
+     title.textContent="A → B · "+diff.changedSteps.length+" 个状态或事件差异"+
+       " · 原生结果"+(diff.valueEqual?"相同":"不同");
      if(contrastPrediction){
        const learnerPrediction=document.createElement("p");
        learnerPrediction.className="command-contrast-prediction";
@@ -456,6 +456,13 @@
       metric.append(heading,values);metrics.append(metric);
      }
      contrastResults.append(metrics);
+     if(diff.changedSteps.length===0){
+       const noChange=document.createElement("p");
+       noChange.className="command-contrast-nochange";
+       noChange.textContent="本次输入不同，但当前状态显微镜未观察到事件变化；"+
+        (diff.valueEqual?"原生输出也保持一致。":"原生输出存在变化，需检查显微镜未覆盖的输出字段。");
+       contrastResults.append(noChange);
+     }
      const oldStates=new Map(contrastBase.stateTrace.steps.map(x=>[x.id,x]));
      const newStates=new Map(b.stateTrace.steps.map(x=>[x.id,x]));
      for(const entry of diff.changedSteps.filter(x=>x.kind==="state_transition").slice(0,8)){
@@ -494,7 +501,7 @@
        detail.append(summary,values);contrastResults.append(detail);
      }
      contrastStatus.textContent="A 和 B 均由同一原生执行内核重放验证；"+
-       "差异来自输入改变，点击事件定位 B 的前后状态。";
+       (diff.changedSteps.length?"点击事件追踪 B 的前后状态。":"当前观测范围内未出现可追踪的状态差异。");
    }catch(error){clearResults();contrastStatus.textContent="对照无法完成："+error.message;}
  });
  const contrastUpdate=()=>queueMicrotask(renderContrast);
