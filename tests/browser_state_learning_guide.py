@@ -1,0 +1,60 @@
+"""Guided state-event learning with native replay and cross-scenario invalidation."""
+import threading,unittest,sys
+from pathlib import Path
+from http.server import ThreadingHTTPServer
+from playwright.sync_api import sync_playwright
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from atlas_server import Handler
+
+class GuidedStates(unittest.TestCase):
+ @classmethod
+ def setUpClass(cls):
+  cls.server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
+  cls.thread=threading.Thread(target=cls.server.serve_forever,daemon=True);cls.thread.start()
+  cls.pw=sync_playwright().start()
+  cls.browser=cls.pw.chromium.launch(headless=True,args=["--no-sandbox"])
+ @classmethod
+ def tearDownClass(cls):
+  cls.browser.close();cls.pw.stop();cls.server.shutdown();cls.server.server_close()
+ def test_state_learning(self):
+  for domain,route,change in [
+    ("deepinfer_kv","deepinfer_kv_lifecycle_lab.html","preempt"),
+    ("deepinfer_scheduler","deepinfer_scheduler_lab.html","ample"),
+    ("deepinfer_worker","deepinfer_worker_lab.html","decode")]:
+   for width in (1480,390):
+    with self.subTest(domain=domain,width=width):
+     page=self.browser.new_page(viewport={"width":width,"height":940},
+       is_mobile=width==390,has_touch=width==390)
+     errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
+     try:
+      r=page.goto(f"http://127.0.0.1:{self.server.server_port}/{route}")
+      self.assertEqual(r.status,200)
+      page.wait_for_function("!!window.SeetheTruthStateLearningGuide")
+      self.assertEqual(page.evaluate("SeetheTruthStateLearningGuide.id"),domain)
+      self.assertTrue(page.locator("#stateGuideNext").is_disabled())
+      page.locator("#stateGuideAction").click()
+      page.wait_for_function("SeetheTruthStateLearningGuide.current")
+      self.assertTrue(page.evaluate("SeetheTruthStateLearningGuide.verified"))
+      frame=page.evaluate("SeetheTruthUnifiedStateLab.frame")
+      self.assertGreater(len(frame["steps"]),2)
+      self.assertTrue(frame["evidenceTier"].startswith("SOURCE_GROUNDED_"))
+      self.assertGreaterEqual(page.evaluate("SeetheTruthStateLearningGuide.count"),2)
+      page.locator("#stateGuideNext").click()
+      self.assertTrue(page.locator("#stateGuideNext").is_disabled())
+      step=page.evaluate("SeetheTruthStateLearningGuide.selectedEvent")
+      self.assertIn(step,[s["id"] for s in frame["steps"]])
+      page.locator("#stateGuideAction").click()
+      self.assertTrue(page.evaluate("SeetheTruthStateLearningGuide.verified"))
+      self.assertEqual(page.locator("#unifiedStateSteps .sm-step[aria-current=step]").count(),1)
+      page.locator("#scenario").select_option(change)
+      page.wait_for_function("!SeetheTruthStateLearningGuide.current")
+      self.assertTrue(page.locator("#stateGuideNext").is_disabled())
+      self.assertEqual(page.evaluate("SeetheTruthStateLearningGuide.step"),0)
+      page.locator("#stateGuideAction").click()
+      self.assertTrue(page.evaluate("SeetheTruthStateLearningGuide.current"))
+      self.assertEqual(errors,[])
+      self.assertLessEqual(page.locator("#stateLearningGuide").evaluate(
+       "(e)=>e.getBoundingClientRect().width"),width+2)
+     finally:page.close()
+
+if __name__=="__main__":unittest.main()
