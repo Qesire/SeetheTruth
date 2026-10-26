@@ -40,7 +40,9 @@ for(const spec of cases){
  for(const step of original.steps){
   eq(step.values,evidence.forward[step.id],spec.id+'/'+step.id+'/forward',tol.forward);
   nForward+=ND.flatten(step.values).length;
-  if(Object.hasOwn(reverse.gradients,step.id)){
+  // GraphAutodiff publishes zero-filled arrays for inactive source nodes.
+  // Only its actual visited pathIds are independently claimed gradients.
+  if(reverse.pathIds.includes(step.id)){
    eq(reverse.gradients[step.id],evidence.grads[step.id],
      spec.id+'/'+step.id+'/backward',tol.backward);
    nBackward+=ND.flatten(reverse.gradients[step.id]).length;
