@@ -16,7 +16,7 @@ python atlas_server.py --port 8765
 
 打开 **http://127.0.0.1:8765/learn.html**，从左栏选择「从 FFN 开始」。
 
-1. 阅读 \`Linear → 激活 → Linear\` 的图连接与张量形状。
+1. 阅读 `Linear → 激活 → Linear` 的图连接与张量形状。
 2. 在学习模式中切换「微型数值」，点击「运行」，检查各节点输入输出。
 3. 选中积木阅读公式、论文来源、工程设计动机和最小反例。
 4. 切换「自由实验」，亲手构图，观察形状诊断与实际运行。
@@ -30,7 +30,7 @@ python atlas_server.py --port 8765
 | --- | --- | --- |
 | 从基础开始 | [Learning Studio](learn.html) | FFN、Attention、残差、GQA、MoE 和自由 DAG 的逐节点计算 |
 | 从工程问题开始 | [跨平台教学中心](teaching.html) | 多模态、推理调度、训练流水线、论文与工业实现解释 |
-| 从真实源码结构开始 | [Wan2.2 I2V 单 Block](learn.html) | 选择 \`nd_wan_i2v_full_block\`，展开 Self/Cross/FFN、AdaLN e0–e5 与梯度链 |
+| 从真实源码结构开始 | [Wan2.2 I2V 单 Block](learn.html) | 选择 `nd_wan_i2v_full_block`，展开 Self/Cross/FFN、AdaLN e0–e5 与梯度链 |
 
 Android 教学版使用同一教学课程数据，通过 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 构建离线 WebView **debug APK 工件**；它提供学习交互，不提供代码导出、模型权重部署或 GPU 推理。
 
@@ -67,4 +67,4 @@ node scripts/sync_runtime_assets.js --check
 
 查看 [Actions](https://github.com/Qesire/SeetheTruth/actions) 的确切提交验证结果，以及 [贡献指南](CONTRIBUTING.md)、[开发变更记录](CHANGELOG.md)、[发布验收清单](docs/release-readiness.md)。
 
-**发布状态：** 当前是公开 Alpha 候选，尚未发布正式 GitHub Release，根目录也尚无 \`LICENSE\`。公开源码可查看，不等于自动获得第三方复制与再分发许可；由版权持有者确认适合的许可证后再正式发布。
+**发布状态：** 当前是公开 Alpha 候选，尚未发布正式 GitHub Release，根目录也尚无 `LICENSE`。公开源码可查看，不等于自动获得第三方复制与再分发许可；由版权持有者确认适合的许可证后再正式发布。
