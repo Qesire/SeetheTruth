@@ -65,6 +65,8 @@ node tests/architecture_extension_spine_contracts.js
 node scripts/sync_runtime_assets.js --check
 ~~~
 
+运行 `node scripts/report_capabilities.js --json` 可从注册表和真实导出白名单生成当前能力明细；算子被列为 eligible 不等于任意图已通过独立数值验证。
+
 查看 [Actions](https://github.com/Qesire/SeetheTruth/actions) 的确切提交验证结果，以及 [贡献指南](CONTRIBUTING.md)、[开发变更记录](CHANGELOG.md)、[发布验收清单](docs/release-readiness.md)。
 
 **发布状态：** 当前是公开 Alpha 候选，尚未发布正式 GitHub Release，根目录也尚无 `LICENSE`。公开源码可查看，不等于自动获得第三方复制与再分发许可；由版权持有者确认适合的许可证后再正式发布。
