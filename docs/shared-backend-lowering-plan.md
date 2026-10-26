@@ -78,3 +78,36 @@ There are deliberately two evidence levels: **structural**, where indexing and c
 Learning Studio offers an on-demand, per-coordinate `ELEMENT LINEAGE` inspector. The output is a grouped path/element listing and small directed dependency edge sample. Selecting another graph or changing a coordinate invalidates the old selection; rendering never mutates connections, weights, optimizers, or the numeric trace. Regression tests compare multi-path derivative aggregation to finite differences, validate 4D batched MatMul with a genuine perturbed N-D parameter, cover unsupported operator boundaries and the Softmax Jacobian invariant, and interact with the rendered browser view.
 
 The explorer computes the sensitivity of **one selected output element** to selected upstream elements, not a whole-model training loss or a substitute for backpropagation training. Larger model runtime instrumentation remains separate.
+
+## Canonical ExecutionIR and source-certificate closure (2026-10-26)
+
+`GraphSession.inspect(...,{numeric:true})` and `graph_lowering_plan.prepare`
+now consume the same `ExecutionIR.snapshot(graph,{trace})` implementation.
+The shared provenance contract is **not** another operator registry or numerical
+interpreter. It binds each exported step to canonical `LearningLab.indexGraph`
+node order, exact input port sources and declared tensor shape. It checks the
+actual nested numeric payload's rank, lengths and finiteness before accepting
+an observable step. The planner exposes `executionIR` in addition to its
+existing `graph/sorted/edges/forward/steps`; NumPy and PyTorch keep their
+own arithmetic lowering and execution.
+
+The browser bootstraps `shape_index_rules.js`, then `execution_ir.js`,
+then `graph_lowering_plan.js` before either code exporter. This ordering
+is checked as a dependency DAG (not an artificial total order), across Studio,
+capability exploration, HTTP serving and Android teaching assets.
+
+Tests compare the original numeric GraphSession IR and both exporter plans on
+normal graphs, real rank-four broadcast/reduction fixtures, and explicit
+upstream-only branch slicing. Malformed numeric envelopes with mismatched
+nested dimensions, missing coordinates or nonfinite values fail closed.
+Such structural validation cannot itself prove that a supplied value was
+recomputed from source; full forward/gradient truth remains the domain of
+the independent scalar and PyTorch/NumPy oracles in
+`docs/dual-tier-mathematics-verification.md`.
+
+The independent `operator_certificates_data.*` artifacts fingerprint the
+execution IR, shape-index semantics, branch slicing and common lowering
+planner in addition to the native graph/autodiff/codegen sources. CI regenerates
+the CPU Float64 proof and compares it byte-for-byte with checked-in artifacts
+after any relevant change. No per-kind or model-wide evidence is inferred
+from shared graph identity alone.

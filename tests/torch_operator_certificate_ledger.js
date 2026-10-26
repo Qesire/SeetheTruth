@@ -15,6 +15,8 @@ const ndCases=require('./fixtures/nd_broadcast_reduction_graphs.js');
 const root=path.resolve(__dirname,'..');
 const sourceFiles=[
  'block_catalog.js','graph_autodiff.js','learning_lab.js','torch_codegen.js',
+ 'graph_lowering_plan.js','execution_ir.js','shape_index_rules.js',
+ 'branch_execution.js',
  'training_objective.js','training_coordinate_proof.js',
  'nd_tensor.js','nd_autodiff.js','portable_operator_rules.js','python_codegen.js',
  'tests/fixtures/coordinate_training_graph.js',

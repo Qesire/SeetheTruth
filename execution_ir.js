@@ -8,6 +8,24 @@ if(isNode)module.exports=api;
 if(root)root.SeetheTruthExecutionIR=api;
 })(typeof window!=="undefined"?window:null,function(L,Shape){
 "use strict";
+function assertObservedTensor(step){
+ const shape=step.shape;
+ if(!Array.isArray(shape)||shape.length<1||shape.length>5||
+    shape.some(dim=>!Number.isSafeInteger(dim)||dim<1))
+  throw Error("execution IR invalid tensor shape "+step.id);
+ if(step.values===undefined)return;
+ function check(value,axis){
+  if(axis===shape.length){
+   if(typeof value!=="number"||!Number.isFinite(value))
+    throw Error("execution IR nonfinite or nonnumeric coordinate "+step.id);
+   return;
+  }
+  if(!Array.isArray(value)||value.length!==shape[axis])
+   throw Error("execution IR numeric value/shape mismatch "+step.id+" axis "+axis);
+  for(const child of value)check(child,axis+1);
+ }
+ check(step.values,0);
+}
 function snapshot(raw,options={}){
  if(!L)throw Error("learning runtime unavailable");
  const graph=L.validateGraph(raw),index=L.indexGraph(graph);
@@ -18,6 +36,7 @@ function snapshot(raw,options={}){
  const nodes=index.ordered.map((node,i)=>{
   const step=steps[i];
   if(step.id!==node.id||step.kind!==node.kind)throw Error("trace node identity/order mismatch "+node.id);
+  assertObservedTensor(step);
   const inputSources=Object.fromEntries(L.defs[node.kind].ports.map(p=>[p,index.incomingByPort.get(node.id+":"+p)||null]));
   let shapeTransform=null;
   if(Shape?.kinds.includes(node.kind)){

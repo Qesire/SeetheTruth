@@ -12,7 +12,24 @@ for(const p of required){
  assert.ok(assets.has(p),'Android offline manifest misses '+p);
 }
 
-for(let i=1;i<required.length;i++)assert.ok(scripts.indexOf(required[i])>scripts.indexOf(required[i-1]),'load order '+required[i]);
+// Assert the actual dependency DAG; a single total order would incorrectly
+// require capability presentation to initialize before source ExecutionIR.
+const dependencies=[
+ ['learning_lab.js','branch_execution.js'],
+ ['branch_execution.js','graph_lowering_plan.js'],
+ ['shape_index_rules.js','execution_ir.js'],
+ ['execution_ir.js','graph_lowering_plan.js'],
+ ['graph_lowering_plan.js','python_codegen.js'],
+ ['graph_lowering_plan.js','torch_codegen.js'],
+ ['python_codegen.js','block_capabilities.js'],
+ ['torch_codegen.js','block_capabilities.js'],
+ ['block_capabilities.js','operator_contracts.js'],
+ ['operator_contracts.js','graph_session.js'],
+ ['execution_ir.js','graph_session.js']
+];
+for(const [source,consumer] of dependencies)
+ assert.ok(scripts.indexOf(source)>=0&&scripts.indexOf(source)<scripts.indexOf(consumer),
+   'load order '+source+' -> '+consumer);
 for(const exporter of ['python_codegen.js','torch_codegen.js'])assert.ok(scripts.indexOf(exporter)<scripts.indexOf('block_capabilities.js'),'capability audit requires '+exporter);
 assert.ok(scripts.indexOf('block_knowledge.js')<scripts.indexOf('block_capabilities.js'));
 
