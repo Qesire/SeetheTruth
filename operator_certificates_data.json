@@ -1,7 +1,7 @@
 {
   "schema": "seethetruth-executed-operator-case-certificates-v2",
   "evidence": "EXECUTED_PINNED_PYTORCH_CPU_GRAPH_CASE",
-  "sourceDigest": "037b0e2c23c421da1801f962ee5e9aa446521581fe1aca07b110de9d60740f0e",
+  "sourceDigest": "e94f159abf2b4f3acd2f25019088abb330c40b971ecc066749d7df93d71e8cf9",
   "sourceFiles": {
     "block_catalog.js": "3e60cf5259be0f845b0c95d4c6d186c3a7c34c87f312da70ede781ea1a370e56",
     "graph_autodiff.js": "799022d88f7ef37b42b528ab1de077c7a6a7bf149e65c0fc8bb9cdb108cfd4be",
@@ -9,9 +9,12 @@
     "torch_codegen.js": "d030b30ae0b25cbcc46a27aca14a703817d966990fb634fb0ee19d5ec47cfa50",
     "training_objective.js": "0a9f9116702838692765bc3fd2c7a3f8249fe4e7811b7d2084de4b46dd180bb1",
     "training_coordinate_proof.js": "658bb0e974ea26dd983ed0656a647f08ef4c9d2cbdf99b7f36ee34206dbbd117",
+    "nd_autodiff.js": "ff0b7e350f5fc9d802040e4d83f946992aaa2212a85988296584c21d37bb19d4",
+    "nd_tensor.js": "bd8e735f1e785f97e50ebfa554cf9376063b4251a48c9bec8e10c0094210e1c0",
     "tests/fixtures/coordinate_training_graph.js": "3ba03dc174453f5bf0a440e6ab627d826d1ba8c95c7d808d70103fae0a51d6be",
     "tests/fixtures/operator_coverage_graphs.js": "d04a109dfa3c6382f5c382ae7f288c067fb1297a35068faf51bfd820ed95e6e5",
-    "tests/torch_operator_certificate_ledger.js": "218c5d31c1616fdfb2ac3c83ed992b34f87f98c8d20e2916c4b615e8cc7b7c2d"
+    "tests/fixtures/nd_broadcast_reduction_graph.js": "d6fe312afb6a89b0c663dcebabf71c154796f0571b7da4c83a82384f21a2bd4e",
+    "tests/torch_operator_certificate_ledger.js": "d1361b79045b3cef721b5037ace54235b3ef0b7859601ca17da745feb4e506d5"
   },
   "environment": {
     "torch": "2.6.0+cpu",
@@ -87,6 +90,21 @@
         }
       ],
       "nodeCount": 4
+    },
+    {
+      "id": "nd_singleton_bias_token_reduction",
+      "source": "tests/fixtures/nd_broadcast_reduction_graph.js",
+      "graphDigest": "77f58ff8e9b9d67b91a7f62c683ce507cda7cbe1b7dbed3ccde6b1809f53e109",
+      "targetId": "loss",
+      "tags": [
+        "rank4",
+        "singleton_broadcast",
+        "token_axis_keepdim",
+        "bias_gradient_reduction"
+      ],
+      "parameterCoordinatesChecked": 14,
+      "excludedFiniteDifferences": [],
+      "nodeCount": 6
     }
   ],
   "tolerance": {
@@ -221,6 +239,60 @@
       "forwardCoordinates": 1,
       "wholeLossAdjointCoordinates": 1,
       "fixtureId": "shared_weight_two_matmuls",
+      "backend": "pytorch_cpu",
+      "forward": "passed_on_fixed_fixture",
+      "backward": "passed_on_fixed_fixture",
+      "notGeneralized": true
+    },
+    {
+      "kind": "nd_broadcast_add",
+      "caseIds": [
+        "offset"
+      ],
+      "forwardCoordinates": 12,
+      "wholeLossAdjointCoordinates": 12,
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "backend": "pytorch_cpu",
+      "forward": "passed_on_fixed_fixture",
+      "backward": "passed_on_fixed_fixture",
+      "notGeneralized": true
+    },
+    {
+      "kind": "nd_mse",
+      "caseIds": [
+        "loss"
+      ],
+      "forwardCoordinates": 1,
+      "wholeLossAdjointCoordinates": 1,
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "backend": "pytorch_cpu",
+      "forward": "passed_on_fixed_fixture",
+      "backward": "passed_on_fixed_fixture",
+      "notGeneralized": true
+    },
+    {
+      "kind": "nd_parameter",
+      "caseIds": [
+        "source",
+        "bias",
+        "target"
+      ],
+      "forwardCoordinates": 18,
+      "wholeLossAdjointCoordinates": 14,
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "backend": "pytorch_cpu",
+      "forward": "passed_on_fixed_fixture",
+      "backward": "passed_on_fixed_fixture",
+      "notGeneralized": true
+    },
+    {
+      "kind": "nd_reduce_sum",
+      "caseIds": [
+        "summed"
+      ],
+      "forwardCoordinates": 4,
+      "wholeLossAdjointCoordinates": 4,
+      "fixtureId": "nd_singleton_bias_token_reduction",
       "backend": "pytorch_cpu",
       "forward": "passed_on_fixed_fixture",
       "backward": "passed_on_fixed_fixture",
@@ -760,6 +832,94 @@
       "fixtureId": "relu_exact_zero",
       "id": "loss",
       "kind": "mse",
+      "shape": [
+        1,
+        1
+      ],
+      "forwardCoordinates": 1,
+      "wholeLossAdjointCoordinates": 1,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "source",
+      "kind": "nd_parameter",
+      "shape": [
+        1,
+        2,
+        3,
+        2
+      ],
+      "forwardCoordinates": 12,
+      "wholeLossAdjointCoordinates": 12,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "bias",
+      "kind": "nd_parameter",
+      "shape": [
+        1,
+        1,
+        1,
+        2
+      ],
+      "forwardCoordinates": 2,
+      "wholeLossAdjointCoordinates": 2,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "target",
+      "kind": "nd_parameter",
+      "shape": [
+        1,
+        2,
+        1,
+        2
+      ],
+      "forwardCoordinates": 4,
+      "wholeLossAdjointCoordinates": 0,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "offset",
+      "kind": "nd_broadcast_add",
+      "shape": [
+        1,
+        2,
+        3,
+        2
+      ],
+      "forwardCoordinates": 12,
+      "wholeLossAdjointCoordinates": 12,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "summed",
+      "kind": "nd_reduce_sum",
+      "shape": [
+        1,
+        2,
+        1,
+        2
+      ],
+      "forwardCoordinates": 4,
+      "wholeLossAdjointCoordinates": 4,
+      "maxForwardErrorUpperBound": 1e-12,
+      "maxBackwardErrorUpperBound": 1e-12
+    },
+    {
+      "fixtureId": "nd_singleton_bias_token_reduction",
+      "id": "loss",
+      "kind": "nd_mse",
       "shape": [
         1,
         1
