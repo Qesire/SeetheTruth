@@ -14,8 +14,8 @@ branch_execution.js
 cache.html
 capabilities.html
 capabilities_page.js
-composite_atlas.js
 command_deck.css
+composite_atlas.js
 compute_microscope.css
 compute_microscope.js
 compute_microscope_ui.js
