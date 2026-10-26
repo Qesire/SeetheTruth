@@ -151,6 +151,23 @@ body[data-theme="command-deck"] .command-contrast-prediction{
  padding:8px 10px;background:#0d2837;border-left:2px solid #e8bb70;
  color:#ffe1ae!important;overflow-wrap:anywhere
 }
+body[data-theme="command-deck"] .command-contrast-metrics{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:3px 0;
+}
+body[data-theme="command-deck"] .command-contrast-metric{
+ border:1px solid #3d667b;border-left:2px solid #79e0e6;border-radius:4px;
+ background:linear-gradient(140deg,#123849,#0c2435);padding:10px;
+ display:grid;gap:6px;min-width:0
+}
+body[data-theme="command-deck"] .command-contrast-metric small{
+ font:10px ui-monospace,Consolas,monospace;color:#a6d3df;overflow-wrap:anywhere
+}
+body[data-theme="command-deck"] .command-contrast-metric strong{
+ font:700 13px ui-monospace,Consolas,monospace;color:#b4f3e4;overflow-wrap:anywhere
+}
+@media(max-width:680px){
+ body[data-theme="command-deck"] .command-contrast-metrics{grid-template-columns:1fr}
+}
 body[data-theme="command-deck"] .command-contrast-count{
  color:#8df1e2!important;font-family:ui-monospace,Consolas,monospace
 }
