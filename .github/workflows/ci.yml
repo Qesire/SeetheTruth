@@ -70,6 +70,7 @@ jobs:
           node tests/graph_learning_path_contracts.js
           node tests/learning_guide_contracts.js
           node tests/command_deck_contracts.js
+          node tests/native_ab_guide_contracts.js
           node tests/unified_learning_core_contracts.js
           node tests/architecture_extension_spine_contracts.js
           node tests/unified_observation_contracts.js
