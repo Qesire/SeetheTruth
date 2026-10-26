@@ -88,7 +88,7 @@
  const lessonHost=document.createElement("section");
  lessonHost.id="stateLearningGuide";
  lessonHost.setAttribute("aria-label","状态机制引导");
- lessonHost.style.cssText="margin:22px auto 0;max-width:1180px;padding:18px;border:1px solid #497388;border-radius:14px;background:linear-gradient(125deg,#113c4a,#10283b);color:#e4f6ff;display:grid;gap:9px;";
+ lessonHost.style.cssText="margin:0;width:100%;box-sizing:border-box;max-width:1180px;padding:18px;border:1px solid #497388;border-radius:14px;background:linear-gradient(125deg,#113c4a,#10283b);color:#e4f6ff;display:grid;gap:9px;";
  const lead=document.createElement("div"),stepLabel=document.createElement("small"),
    question=document.createElement("h2"),instruction=document.createElement("p"),
    observation=document.createElement("p"),actions=document.createElement("div");
@@ -108,7 +108,9 @@
  guideButton(go,"stateGuideAction","核验当前运行");
  guideButton(next,"stateGuideNext","下一步");
  lead.append(stepLabel,question);lessonHost.append(lead,instruction,observation,actions);
- document.body.insertBefore(lessonHost,host);
+ const labMain=document.querySelector("main");
+ if(!labMain)throw Error("specialized learning guide requires main");
+ labMain.insertBefore(lessonHost,labMain.children[1]||null);
  let guideRecord=null,guideFrame=null,guideKey=null,guideStages=[],guideIndex=0,
    focusedId=null,finished=false;
  const signature=current=>current?JSON.stringify({

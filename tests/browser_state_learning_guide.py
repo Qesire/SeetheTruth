@@ -1,6 +1,7 @@
 """Guided state-event learning with native replay and cross-scenario invalidation."""
 import threading,unittest,sys
 from pathlib import Path
+from pathlib import Path
 from http.server import ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -17,6 +18,7 @@ class GuidedStates(unittest.TestCase):
  def tearDownClass(cls):
   cls.browser.close();cls.pw.stop();cls.server.shutdown();cls.server.server_close()
  def test_state_learning(self):
+  screenshots=Path("state_learning_guide_screenshots");screenshots.mkdir(exist_ok=True)
   for domain,route,change in [
     ("deepinfer_kv","deepinfer_kv_lifecycle_lab.html","preempt"),
     ("deepinfer_scheduler","deepinfer_scheduler_lab.html","ample"),
@@ -46,6 +48,7 @@ class GuidedStates(unittest.TestCase):
       page.locator("#stateGuideAction").click()
       self.assertTrue(page.evaluate("SeetheTruthStateLearningGuide.verified"))
       self.assertEqual(page.locator("#unifiedStateSteps .sm-step[aria-current=step]").count(),1)
+      if width==1480:page.screenshot(path=str(screenshots/f"{domain}-learning-guide.png"),full_page=True,animations="disabled")
       page.locator("#scenario").select_option(change)
       page.wait_for_function("!SeetheTruthStateLearningGuide.current")
       self.assertTrue(page.locator("#stateGuideNext").is_disabled())
