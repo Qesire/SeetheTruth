@@ -10,7 +10,7 @@
 })(typeof window!=="undefined"?window:null,function(){"use strict";
 const OPS=Object.freeze({
  matmul:"@",nd_batched_matmul:"@",
- add:"+",mul:"*",subtract:"-",divide:"/",nd_broadcast_add:"+"
+ add:"+",mul:"*",subtract:"-",divide:"/",nd_broadcast_add:"+",nd_broadcast_mul:"*"
 });
 const KINDS=Object.freeze([...Object.keys(OPS),
  "scale","nd_scale","residual_scale","bias","square","temperature",
