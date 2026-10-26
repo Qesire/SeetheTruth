@@ -64,6 +64,7 @@ jobs:
           node tests/unified_pack_registry_contracts.js
           node tests/installed_pack_manifest_contracts.js
           node tests/operator_capability_matrix_contracts.js
+          node tests/nd_broadcast_certificate_contracts.js
           node tests/operator_certificate_registry_contracts.js
           node tests/graph_learning_path_contracts.js
           node tests/unified_learning_core_contracts.js
