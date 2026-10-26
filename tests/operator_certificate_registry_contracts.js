@@ -9,10 +9,10 @@ const S=R.summary();
 assert.equal(R.SCHEMA,'seethetruth-executed-operator-case-certificates-v2');
 assert.deepEqual(R.certificate,data,'browser/JSON evidence must be equal');
 assert.equal(S.sourceDigest,data.sourceDigest);
-assert.equal(S.fixtures,4);
+assert.equal(S.fixtures,5);
 assert.deepEqual(S.fixtureIds,['coordinate_training_graph','rectangular_relu_fanout',
- 'shared_weight_two_matmuls','relu_exact_zero']);
-assert.ok(S.certifiedKinds>=7);
+ 'shared_weight_two_matmuls','relu_exact_zero','nd_singleton_bias_token_reduction']);
+assert.ok(S.certifiedKinds>=10);
 assert.ok(S.certifiedCases>S.certifiedKinds,'different real fixtures required');
 assert.ok(S.forwardCoordinates>29&&S.lossAdjointCoordinates>25&&S.certifiedNodes>8);
 assert.equal(S.excludedFiniteDifferences,1);
@@ -32,6 +32,8 @@ for(const entry of data.cases){
 assert.deepEqual(R.forKind('nd_cache_read'),[],'unattested kinds remain empty');
 assert.ok(R.forKind('parameter').length>=4);
 assert.ok(R.forKind('matmul').length>=3);
+for(const kind of ['nd_parameter','nd_broadcast_add','nd_reduce_sum','nd_mse'])
+ assert.ok(R.forKind(kind).some(row=>row.fixtureId==='nd_singleton_bias_token_reduction'),kind+' needs executed N-D evidence');
 const m=C.matrix();
 assert.equal(m.evidence,'DECLARATIVE_NOT_EXECUTED');
 assert.equal(m.certificateEvidence,'EXECUTED_PINNED_PYTORCH_CPU_GRAPH_CASE');
