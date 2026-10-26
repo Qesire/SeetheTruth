@@ -107,4 +107,40 @@ class GuidedStates(unittest.TestCase):
       self.assertEqual(errors,[])
      finally:page.close()
 
+
+ def test_controlled_native_intervention(self):
+  for domain,route in [
+    ("deepinfer_kv","deepinfer_kv_lifecycle_lab.html"),
+    ("deepinfer_scheduler","deepinfer_scheduler_lab.html"),
+    ("deepinfer_worker","deepinfer_worker_lab.html")]:
+   with self.subTest(domain=domain):
+    page=self.browser.new_page(viewport={"width":1440,"height":900})
+    errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
+    try:
+     response=page.goto(f"http://127.0.0.1:{self.server.server_port}/{route}")
+     self.assertEqual(response.status,200)
+     page.wait_for_function("!!window.SeetheTruthStateContrast")
+     page.locator("#stateContrastCapture").click()
+     original=page.evaluate("SeetheTruthStateContrast.baselineInput")
+     self.assertIsNotNone(original)
+     page.locator("#stateContrastIntervene").click()
+     after=page.evaluate("SeetheTruthCurrentDomainRun.input")
+     self.assertNotEqual(original,after)
+     self.assertNotIn("干预未生效",page.locator("#stateContrastStatus").inner_text())
+     if domain=="deepinfer_kv":
+      self.assertEqual(after["config"]["numBlocks"],original["config"]["numBlocks"]+1)
+      self.assertEqual(after["operations"],original["operations"])
+     elif domain=="deepinfer_scheduler":
+      self.assertFalse(original["options"]["stopPreempted"])
+      self.assertTrue(after["options"]["stopPreempted"])
+     else:
+      a=original["options"]["durations"]["forward"]
+      self.assertEqual(after["options"]["durations"]["forward"],a+2)
+      self.assertEqual(after["steps"],original["steps"])
+     page.locator("#stateContrastCompare").click()
+     self.assertTrue(page.evaluate("SeetheTruthStateContrast.replayVerified"))
+     self.assertGreater(page.evaluate("SeetheTruthStateContrast.changedSteps.length"),0)
+     self.assertEqual(errors,[])
+    finally:page.close()
+
 if __name__=="__main__":unittest.main()
