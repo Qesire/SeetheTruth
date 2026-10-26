@@ -6,6 +6,12 @@ A learner can build **any well-typed runnable graph**, inspect each actual tenso
 
 Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: actual computation reconstruction → minimal equivalent mathematics → decisive counterexample/test → code/teaching change → independent evidence. Begin with the strongest new mechanism or useful implementation. Avoid bureaucratic gate proliferation; the gates below are actual release evidence, not barriers to exploration.
 
+## Learner guidance and constructive wording
+
+Organize each guided question as **question → predicted observation → a real operation → accepted graph/session evidence → a new question**. Lead with the mechanism the student can discover. State evidence scope near the actual observation; write concise, positive and specific teaching copy in the UI. Replace generic warning lists with a decisive comparison or concrete observable.
+
+`learn.html` first-use guidance is a read-only consumer of `SeetheTruthUnifiedWorkbench.inspectAccepted()`, real `data-preset` routes and `focusNode`. Numeric progress requires the actual accepted trace. Preserve learner freedom to change the graph or leave the guide. Test both screen sizes, mode-only versus real execution, node-selection truth and cross-lesson invalidation. New guidance should reuse this pattern across domains without inventing alternative model calculations.
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.

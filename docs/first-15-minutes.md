@@ -1,8 +1,8 @@
 # SeetheTruth · 第一次使用，15 分钟入门
 
-以下步骤均使用当前 Learning Studio 的真实课程和控件，只需本地浏览器与 Python 3.10+。
+采用 **问题 → 预测 → 实际操作 → 数值证据 → 下一问** 的学习路径。进入 Learning Studio 后，顶部的四步引导会定位真实计算节点、检查运行状态和展示实际张量形状；也可以随时自主探索其他课程。
 
-## 一、启动并理解 FFN
+## 一、提出 FFN 的结构问题
 
 ~~~bash
 git clone https://github.com/Qesire/SeetheTruth.git
@@ -12,13 +12,13 @@ python atlas_server.py --port 8765
 
 打开 http://127.0.0.1:8765/learn.html。左侧「从 FFN 开始」对应 `data-preset="ffn"`，默认展示 `Linear → 激活 → Linear`。观察为什么需要中间通道和非线性，选中各个节点查看 shape、输入来源及下游依赖。
 
-## 二、执行实际数值
+## 二、执行计算来检验结构推断
 
 将学习模式选择器 `#studyMode` 改为微型数值（`numeric`），点击 `#run`。状态栏 `#status` 显示执行状态。选中算子，按阶段检查张量与计算；修改可编辑参数后再次运行。
 
 目标：让 `Y=W₂ φ(W₁ X+b₁)+b₂` 的每一项都能对应到一个明确的计算节点。
 
-## 三、Attention 和训练
+## 三、观察 SiLU 和下投影，然后迁移到 Attention
 
 选择「Attention 自己拼」（`data-preset="attention"`），逐一观察 Q/K/V、缩放点积、Softmax 和 Value 汇聚。接着选择「可训练参数 · 真正闭环」（`data-preset="trainable_core"`），寻找 Forward、Loss、Backward、AdamW 更新及更新后的 Forward。
 

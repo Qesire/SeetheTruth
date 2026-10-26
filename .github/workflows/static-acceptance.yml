@@ -45,6 +45,8 @@ jobs:
         run: python tests/browser_universal_microscope.py
       - name: Verify official-source Wan2.2 FFN in the shared Chromium microscope
         run: python tests/browser_wan_ffn.py
+      - name: Verify source-driven first-use guidance in desktop and mobile Chromium
+        run: python tests/browser_guided_onboarding.py
       - name: Execute the connected 115-node Wan Self/Cross/FFN graph in real desktop/mobile Chromium
         run: python tests/browser_wan_full_block.py
       - name: Archive Wan official-source FFN desktop/phone coordinate proofs

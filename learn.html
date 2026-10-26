@@ -96,6 +96,17 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 details{border-top:1px solid #34516b;margin-top:10px;padding-top:9px}summary{cursor:pointer;color:#9fdae4;font-size:11px}
 input[type="file"]{display:none}
 #courseProgress{margin-top:9px;color:#a9d6bd;font-size:11px}
+.learner-guide{padding:12px 18px;border-bottom:1px solid #376275;background:linear-gradient(115deg,#103246,#102636);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:center}
+.learner-guide[hidden]{display:none}
+.guide-heading{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.guide-step{color:#89e2db;font:700 11px ui-monospace,monospace}
+.learner-guide h2{font-size:14px;margin:0}
+.learner-guide p{font-size:12px;color:#cbe3ee;line-height:1.7;max-width:850px}
+.guide-evidence{font-size:11px;color:#a1f0c9}.guide-evidence[data-verified="false"]{color:#b8cbd5}
+.guide-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.guide-question{font-weight:600;color:#effaff}
+@media(max-width:880px){.learner-guide{grid-template-columns:minmax(0,1fr)}.guide-actions{justify-content:flex-start}}
+
 @media(max-width:1120px){.app{grid-template-columns:210px minmax(380px,1fr)}.inspector{grid-column:1/-1;max-height:320px;border-left:0;border-top:1px solid var(--line)}.rail{grid-row:1}.app{height:auto;min-height:calc(100vh - 78px)}.stage{min-height:600px}}
 @media(max-width:680px){.header{flex-wrap:wrap}.app{display:flex;flex-direction:column}.rail,.inspector{max-height:none}.palette{grid-template-columns:repeat(3,1fr)}.stage{min-height:600px}}
 .composite-nav{padding:12px 19px;background:linear-gradient(130deg,#0b2836,#091d2b);border-bottom:1px solid #2f6175}
@@ -161,7 +172,7 @@ input[type="file"]{display:none}
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <div class="head-actions"><button class="btn ghost" type="button" id="guideShow" hidden>打开学习引导</button><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
@@ -263,6 +274,20 @@ input[type="file"]{display:none}
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
+    <section class="learner-guide" id="learnerGuide" aria-labelledby="guideTitle">
+    <div>
+      <div class="guide-heading"><span class="guide-step" id="guideStep">01 / 04</span><h2 id="guideTitle">沿着连接理解 FFN</h2></div>
+      <p class="guide-question" id="guideQuestion">为什么先扩展中间通道，再投影回输出维度？</p>
+      <p id="guideInstruction">选中上投影，比较输入和输出形状。</p>
+      <p class="guide-evidence" id="guideEvidence" data-verified="false" role="status" aria-live="polite">观察目标：定位真实图中的上投影节点。</p>
+    </div>
+    <div class="guide-actions">
+      <button class="btn small" type="button" id="guideBack">上一步</button>
+      <button class="btn small primary" type="button" id="guideAction">定位上投影</button>
+      <button class="btn small" type="button" id="guideNext" disabled>下一步</button>
+      <button class="btn small ghost" type="button" id="guideDismiss" aria-label="关闭学习引导">收起</button>
+    </div>
+  </section>
   <section id="compositeNavigator" class="composite-nav" aria-label="复合模块逐层展开" hidden>
    <div class="composite-bar"><div class="composite-title" id="compositeTitle"></div><button class="btn small" id="compositeBack">← 返回上层</button></div>
    <nav class="composite-crumbs" id="compositeTrail" aria-label="模块层级"></nav>
@@ -1507,5 +1532,100 @@ locate.addEventListener("click",()=>{try{
  panel.focusStep("state_transition",target);
  result.textContent="已定位 "+workbench.selectedNode+" · "+target;
 }catch(e){result.textContent=e.message;}});
+})();
+</script><script>
+/* The guide observes the shipping graph/session; it owns no numerical engine. */
+(() => {
+  "use strict";
+  const el=id=>document.getElementById(id),workbench=()=>window.SeetheTruthUnifiedWorkbench;
+  const questions=Object.freeze([
+    {title:"沿着连接理解 FFN",question:"为什么先扩展中间通道，再投影回输出维度？",
+     instruction:"选中 up，观察输入、参数和 hidden 通道的形状。",action:"定位上投影",node:"up"},
+    {title:"用计算验证结构预测",question:"推演出的形状能否沿着真实算术路径执行？",
+     instruction:"切换到小矩阵数值模式，再点击下方的「运行」。",action:"切换数值模式",node:null},
+    {title:"追踪非线性",question:"SiLU 如何改变上投影得到的数值？",
+     instruction:"选中 act，比较其实际输入、输出与数学公式。",action:"定位 SiLU 激活",node:"act"},
+    {title:"把局部计算接回输出",question:"为什么输入与输出形状相同，中间通道却扩大了？",
+     instruction:"选中 down，观察 x、up、down 的实际形状，然后迁移到 Attention。",action:"定位下投影",node:"down"}
+  ]);
+  let step=0,open=true;
+  const isFFN=()=>!!document.querySelector('[data-preset="ffn"].active');
+  function numeric(){
+    if(!isFFN()||el("studyMode").value!=="numeric")return null;
+    try{
+      const r=workbench().inspectAccepted();
+      return r.numericOk&&r.session?.trace?.steps?.length?r:null;
+    }catch{return null;}
+  }
+  function isVerified(){
+    if(!isFFN())return false;
+    if(step===0)return workbench().selectedNode==="up";
+    const result=numeric();
+    return !!result&&(step===1||
+      (workbench().selectedNode===questions[step].node&&
+       result.session.trace.steps.some(x=>x.id===questions[step].node)));
+  }
+  function evidence(){
+    if(!isFFN())return "这条引导使用 FFN 课程；按「定位」可回到该示例。";
+    if(step===0)return isVerified()?"已定位 up：现在可以检查真实计算图的上投影。":"观察目标：定位上投影的输入、参数与输出。";
+    const result=numeric();
+    if(!result)return "等待实际数值运行：完成模式切换，再点击下方「运行」。";
+    const path=result.session.trace.steps;
+    const src=path.find(x=>x.id==="x"),up=path.find(x=>x.id==="up"),down=path.find(x=>x.id==="down");
+    const shape=(src&&up&&down)?"输入 "+src.shape.join("×")+" → hidden "+up.shape.join("×")+" → 输出 "+down.shape.join("×"):"已记录本次图执行轨迹";
+    if(step===1)return "已运行 "+path.length+" 个计算节点 · "+shape;
+    if(step===2)return isVerified()?"已定位 act：对照真实数值与 SiLU 公式。":"数值路径已就绪；选中 act 查看非线性。";
+    return isVerified()?"已定位 down · "+shape+"。接下来试着解释 Attention。":"选中 down，把中间计算连接回输出。";
+  }
+  function paint(){
+    if(!open)return;
+    const q=questions[step],ok=isVerified();
+    el("guideStep").textContent=String(step+1).padStart(2,"0")+" / 04";
+    el("guideTitle").textContent=q.title;el("guideQuestion").textContent=q.question;
+    el("guideInstruction").textContent=q.instruction;
+    el("guideEvidence").textContent=evidence();el("guideEvidence").dataset.verified=String(ok);
+    el("guideAction").textContent=q.action;el("guideBack").disabled=step===0;
+    el("guideNext").disabled=!ok;el("guideNext").textContent=step===3?"继续探索 Attention":"下一步";
+  }
+  function reveal(yes){
+    open=yes;el("learnerGuide").hidden=!yes;el("guideShow").hidden=yes;if(yes)paint();
+  }
+  function perform(){
+    if(!isFFN())document.querySelector('[data-preset="ffn"]').click();
+    if(step===1){
+      const mode=el("studyMode");
+      if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
+      el("run").focus();
+    }else workbench().focusNode(questions[step].node);
+    paint();
+  }
+  el("guideAction").addEventListener("click",perform);
+  el("guideBack").addEventListener("click",()=>{if(step>0)step--;paint();});
+  el("guideNext").addEventListener("click",()=>{
+    if(!isVerified())return;
+    if(step===3){
+      document.querySelector('[data-preset="attention"]').click();
+      reveal(false);el("guideShow").textContent="重开 FFN 引导";return;
+    }
+    step++;paint();
+  });
+  el("guideDismiss").addEventListener("click",()=>reveal(false));
+  el("guideShow").addEventListener("click",()=>reveal(true));
+  let queued=false;
+  const queue=()=>{
+    if(queued||!open)return;
+    queued=true;requestAnimationFrame(()=>{queued=false;paint();});
+  };
+  el("studyMode").addEventListener("change",queue);
+  document.addEventListener("click",event=>{
+    if(event.target.closest('[data-preset],#run,#runBranch,#blocks [data-node],#prev,#next'))queue();
+  });
+  new MutationObserver(queue).observe(el("status"),{childList:true,characterData:true,subtree:true});
+  new MutationObserver(queue).observe(el("blocks"),{childList:true});
+  window.SeetheTruthLearnerGuide=Object.freeze({
+    get step(){return step+1;},get visible(){return open;},
+    get verified(){return isVerified();},show:()=>reveal(true)
+  });
+  paint();
 })();
 </script></body></html>
