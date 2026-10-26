@@ -391,8 +391,12 @@
        item.type="button";item.className="command-contrast-event";
        const changes=new Set([...(left?.changes||[]).map(x=>x.key),
          ...(right?.changes||[]).map(x=>x.key)]);
+       const fields=new Set([...Object.keys(left?.after||{}),
+         ...Object.keys(right?.after||{})]);
+       const changedFields=[...fields].filter(key=>!equivalent(left?.after?.[key],right?.after?.[key]));
        item.textContent=entry.stepId+" · "+entry.change+
-         (changes.size?" · "+[...changes].slice(0,5).join(" / "):" · 事件结构改变");
+         (changedFields.length?" · "+changedFields.slice(0,5).join(" / "):
+         changes.size?" · "+[...changes].slice(0,4).join(" / "):" · 事件结构改变");
        if(!right){item.disabled=true;item.title="此事件只存在于基线 A";}
        else item.addEventListener("click",()=>{
          const proof=lab.inspectStep(b,{kind:"state_transition",stepId:entry.stepId});
@@ -404,6 +408,17 @@
            "比较 A/B 之前请观察两次执行中共享的状态字段。";
        });
        contrastResults.append(item);
+       const detail=document.createElement("details");detail.className="command-contrast-diff";
+       const summary=document.createElement("summary");summary.textContent="对照 A / B 状态字段 · "+entry.stepId;
+       const values=document.createElement("pre");
+       const proofFields=changedFields.slice(0,6);
+       const extract=(event)=>Object.fromEntries(proofFields.map(key=>[
+         key,Object.hasOwn(event?.after||{},key)?event.after[key]:null]));
+       values.textContent=JSON.stringify({
+         A:extract(left),B:extract(right),
+         timingA:left?.timing||null,timingB:right?.timing||null
+       },null,2).slice(0,4200);
+       detail.append(summary,values);contrastResults.append(detail);
      }
      contrastStatus.textContent="A 和 B 均由同一原生执行内核重放验证；"+
        "差异来自输入改变，点击事件定位 B 的前后状态。";
