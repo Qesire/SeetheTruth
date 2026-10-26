@@ -19,8 +19,6 @@ const tag=name=>'<script src="'+name+'"></script>';
 const htmlFiles=['learn.html','capabilities.html'];
 const marker=tag('block_extension_registry.js');
 const htmlRe=/<script src="(?:[a-z][a-z0-9_]*_block_pack|installed_block_packs)\.js"><\/script>\s*/g;
-const routeRe=/"\/(?:[a-z][a-z0-9_]*_block_pack|installed_block_packs)\.js":"(?:[a-z][a-z0-9_]*_block_pack|installed_block_packs)\.js",/g;
-const assetRe=/^(?:[a-z][a-z0-9_]*_block_pack|installed_block_packs)\.js\r?\n/gm;
 for(const e of Manifest.entries){
  assert.ok(fs.existsSync(path.join(ROOT,e.module)),'missing trusted pack source '+e.module);
  const actual=require(path.join(ROOT,e.module));
