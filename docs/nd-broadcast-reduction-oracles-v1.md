@@ -58,7 +58,7 @@ In addition, a second algebraic invariant reconstructs each channel's gradient b
 
 Because the exported code and portable operator rules change, the existing source-pinned certificate artifacts must be regenerated through the **real PyTorch CPU evidence generator** and checked with `--check` on the final SHA. Old source-digest evidence is deliberately invalid.
 
-This is a **standalone independent numerical regression** in the pinned PyTorch CI workflow, not yet an entry in `operator_certificates_data.json`. The v2 certificate ledger still reflects its own four previously executed test graphs. Only after this test passes should it be integrated into the source-pinned ledger with the correct N-D index enumeration, per-fixture source SHA and differential tolerance.
+The independent test is **also integrated into the source-pinned v2 certificate ledger**. Both rank-4 fixtures have actual PyTorch 2.6.0 CPU forward/full-loss VJP and finite-difference measurements, with shape, source digest and node identities included in `operator_certificates_data.json` and its offline browser mirror. The overall executed ledger now contains **six fixtures, 13 operator kinds, 33 kind×fixture records, 222 forward coordinates, 196 backward coordinates, and 75 differentiable parameter finite differences**; the ReLU kink exclusion from the earlier fixture is still explicit.
 
 These examples test rank-4 singleton-axis broadcasting and a keepdim reduction. They do **not** prove every broadcast combination, arbitrary shapes, production tensor kernels, non-contiguous strides, mixed precision or GPU parity.
 
