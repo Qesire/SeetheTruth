@@ -16,7 +16,6 @@ const mod=(name,fn)=>{
  fs.writeFileSync(file,next);return true;
 };
 const tag=name=>'<script src="'+name+'"></script>';
-const route=name=>'"/'+name+'":"'+name+'",';
 const htmlFiles=['learn.html','capabilities.html'];
 const marker=tag('block_extension_registry.js');
 const htmlRe=/<script src="(?:[a-z][a-z0-9_]*_block_pack|installed_block_packs)\.js"><\/script>\s*/g;
@@ -35,11 +34,9 @@ const normalize=(content,drop,anchor,prepend,name)=>{
 let changed=[];
 for(const file of htmlFiles)if(mod(file,s=>normalize(s,htmlRe,marker,
  SCRIPTS.map(tag).join('\n')+'\n',file)))changed.push(file);
-const serverMarker=route('block_extension_registry.js');
-if(mod('atlas_server.py',s=>normalize(s,routeRe,serverMarker,
- SCRIPTS.map(route).join(''),'atlas_server.py')))changed.push('atlas_server.py');
-if(mod('android/teaching-assets.txt',s=>normalize(s,assetRe,'block_extension_registry.js',
- SCRIPTS.join('\n')+'\n','android/teaching-assets.txt')))changed.push('android/teaching-assets.txt');
+// The static publication policy owns HTTP and Android outputs. The pack
+// manifest contributes its modules to that one generator, not another writer.
+require('./sync_runtime_assets.js').sync(process.argv.includes('--write')?'--write':'--check');
 if(!process.argv.includes('--check')&&!process.argv.includes('--write'))
  throw Error('supply --check or --write');
 console.log('TRUSTED_PACK_INSTALL_'+(process.argv.includes('--check')?'CHECK':'SYNC')+'_PASS '+JSON.stringify({
