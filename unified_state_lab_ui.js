@@ -275,6 +275,20 @@
   deepinfer_worker:"先固定混合请求时序，再切换连续 Decode 或调整 Forward 时间，比较事件依赖和重叠。"
  };
  contrastPrompt.textContent=contrastAdvice[lab.id]||"固定一份合法状态输入，再改变一个变量观察转移差异。";
+ const prediction=document.createElement("textarea");
+ prediction.id="stateContrastHypothesis";prediction.rows=2;
+ prediction.setAttribute("aria-label","实验前预测 A/B 状态会如何改变");
+ prediction.placeholder=lab.id==="deepinfer_kv"?
+   "实验前预测：增加一个物理块会怎样改变 FIFO 空闲列表及 RefCount？":
+   lab.id==="deepinfer_scheduler"?
+   "实验前预测：改变抢占处置策略会怎样影响 WAITING 和 Worker Forward？":
+   "实验前预测：Forward 时长增加后，哪些 CPU/GPU 事件的重叠会变化？";
+ prediction.style.cssText="width:100%;min-height:56px;max-width:100%;padding:9px;background:#071a2c;color:#e9f8ff;border:1px solid #567b87;border-radius:5px;font:12px/1.55 system-ui,sans-serif;";
+ const predictionLabel=document.createElement("label");
+ predictionLabel.setAttribute("for","stateContrastHypothesis");
+ predictionLabel.textContent="先提出一个可检验的预测，再执行 B";
+ predictionLabel.style.cssText="font-size:11px;color:#93d8df;";
+
  const controls=document.createElement("div");controls.className="command-contrast-controls";
  const contrastStatus=document.createElement("p");contrastStatus.id="stateContrastStatus";
  contrastStatus.setAttribute("role","status");contrastStatus.setAttribute("aria-live","polite");
@@ -289,7 +303,7 @@
  ctl(intervene,"stateContrastIntervene","执行一个原生变量干预");
  ctl(compare,"stateContrastCompare","比较当前场景 B");
  ctl(reset,"stateContrastReset","重置对照");
- contrast.append(contrastHeading,contrastPrompt,controls,contrastStatus,contrastResults);
+ contrast.append(contrastHeading,contrastPrompt,predictionLabel,prediction,controls,contrastStatus,contrastResults);
  lessonHost.after(contrast);
  let contrastBase=null,contrastResult=null,contrastBKey=null;
  const currentProgram=()=> {
@@ -309,8 +323,13 @@
  function renderContrast(){
    if(contrastBKey&&contrastBKey!==signature(root.SeetheTruthCurrentDomainRun))
     clearResults();
+   const current=root.SeetheTruthCurrentDomainRun;
+   const changed=!!(contrastBase&&current&&current.id===lab.id&&
+     !equivalent(current.input,contrastBase.inputSnapshot));
    contrastStatus.textContent=baselineLabel()+
-    (contrastResult?" · B 已重放校验，差异详情见下。":" · 接下来在上方原生控件修改场景。");
+    (contrastResult?" · B 已重放校验，差异详情见下。":
+     changed?" · 输入 B 已改变，可以点击「比较当前场景 B」。":
+     " · 请写下预测，然后通过原生控件修改一个条件。");
    intervene.disabled=!contrastBase;
    compare.disabled=!contrastBase;
    reset.disabled=!contrastBase;
@@ -382,6 +401,12 @@
      title.className="command-contrast-count";
      title.textContent="A → B · "+diff.changedSteps.length+" 个可追踪的事件变化"+
        " · 全局结果"+(diff.valueEqual?"相同":"不同");
+     if(prediction.value.trim()){
+       const learnerPrediction=document.createElement("p");
+       learnerPrediction.className="command-contrast-prediction";
+       learnerPrediction.textContent="实验前预测："+prediction.value.trim().slice(0,300);
+       contrastResults.append(learnerPrediction);
+     }
      contrastResults.append(title);
      const oldStates=new Map(contrastBase.stateTrace.steps.map(x=>[x.id,x]));
      const newStates=new Map(b.stateTrace.steps.map(x=>[x.id,x]));
