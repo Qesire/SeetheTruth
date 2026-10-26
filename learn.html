@@ -96,14 +96,14 @@ h1,h2,h3,p{margin:0}h1{font-size:18px;letter-spacing:.01em}h2{font-size:17px;mar
 details{border-top:1px solid #34516b;margin-top:10px;padding-top:9px}summary{cursor:pointer;color:#9fdae4;font-size:11px}
 input[type="file"]{display:none}
 #courseProgress{margin-top:9px;color:#a9d6bd;font-size:11px}
-.learner-guide{padding:12px 18px;border-bottom:1px solid #376275;background:linear-gradient(115deg,#103246,#102636);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:center}
+.learner-guide{padding:12px;margin-bottom:18px;border:1px solid #376275;border-radius:12px;background:linear-gradient(115deg,#103246,#102636);display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:center}
 .learner-guide[hidden]{display:none}
 .guide-heading{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
 .guide-step{color:#89e2db;font:700 11px ui-monospace,monospace}
 .learner-guide h2{font-size:14px;margin:0}
 .learner-guide p{font-size:12px;color:#cbe3ee;line-height:1.7;max-width:850px}
 .guide-evidence{font-size:11px;color:#a1f0c9}.guide-evidence[data-verified="false"]{color:#b8cbd5}
-.guide-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.guide-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-start}
 .guide-question{font-weight:600;color:#effaff}
 @media(max-width:880px){.learner-guide{grid-template-columns:minmax(0,1fr)}.guide-actions{justify-content:flex-start}}
 
@@ -176,6 +176,20 @@ input[type="file"]{display:none}
 </header>
 <div class="app">
  <aside class="rail">
+    <section class="learner-guide" id="learnerGuide" aria-labelledby="guideTitle">
+    <div>
+      <div class="guide-heading"><span class="guide-step" id="guideStep">01 / 04</span><h2 id="guideTitle">沿着连接理解 FFN</h2></div>
+      <p class="guide-question" id="guideQuestion">为什么先扩展中间通道，再投影回输出维度？</p>
+      <p id="guideInstruction">选中上投影，比较输入和输出形状。</p>
+      <p class="guide-evidence" id="guideEvidence" data-verified="false" role="status" aria-live="polite">观察目标：定位真实图中的上投影节点。</p>
+    </div>
+    <div class="guide-actions">
+      <button class="btn small" type="button" id="guideBack">上一步</button>
+      <button class="btn small primary" type="button" id="guideAction">定位上投影</button>
+      <button class="btn small" type="button" id="guideNext" disabled>下一步</button>
+      <button class="btn small ghost" type="button" id="guideDismiss" aria-label="关闭学习引导">收起</button>
+    </div>
+  </section>
   <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
   <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
   <p class="hint">先搜索或按类别筛选，再拖动到画布。积木优先展示数学含义、形状约束和计算逻辑；小矩阵数值可选。</p>
@@ -274,20 +288,6 @@ input[type="file"]{display:none}
     <button class="btn small" id="save">↧ 保存</button><label class="btn small" for="load">↥ 导入</label><input id="load" type="file" accept="application/json,.json">
    </div>
   </div>
-    <section class="learner-guide" id="learnerGuide" aria-labelledby="guideTitle">
-    <div>
-      <div class="guide-heading"><span class="guide-step" id="guideStep">01 / 04</span><h2 id="guideTitle">沿着连接理解 FFN</h2></div>
-      <p class="guide-question" id="guideQuestion">为什么先扩展中间通道，再投影回输出维度？</p>
-      <p id="guideInstruction">选中上投影，比较输入和输出形状。</p>
-      <p class="guide-evidence" id="guideEvidence" data-verified="false" role="status" aria-live="polite">观察目标：定位真实图中的上投影节点。</p>
-    </div>
-    <div class="guide-actions">
-      <button class="btn small" type="button" id="guideBack">上一步</button>
-      <button class="btn small primary" type="button" id="guideAction">定位上投影</button>
-      <button class="btn small" type="button" id="guideNext" disabled>下一步</button>
-      <button class="btn small ghost" type="button" id="guideDismiss" aria-label="关闭学习引导">收起</button>
-    </div>
-  </section>
   <section id="compositeNavigator" class="composite-nav" aria-label="复合模块逐层展开" hidden>
    <div class="composite-bar"><div class="composite-title" id="compositeTitle"></div><button class="btn small" id="compositeBack">← 返回上层</button></div>
    <nav class="composite-crumbs" id="compositeTrail" aria-label="模块层级"></nav>
