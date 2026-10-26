@@ -76,6 +76,22 @@ For an observed executable graph, `ExecutionIR.snapshot` is the common node/port
 
 Every new mathematical operator/graph should be evaluated at two different levels, without coupling one gate's execution to the other's: **F (fast)** exercises actual source graph inputs, independent coordinate equations, shapes, complete loss-path gradients and deliberate failure mutations using Node alone; **H (heavy)** runs standalone emitted NumPy and PyTorch code on CPU Float64 and judges both plus the original JS path against a separately implemented scalar reference. The NumPy and Torch exporters share lowering rules, so their agreement alone is not proof. Keep every claim fixture-scoped; a passing static contract must not imply independently executed backend evidence, and a successful fixed fixture does not imply GPU or arbitrary-model parity. See [dual-tier mathematics verification](docs/dual-tier-mathematics-verification.md) and the two independent jobs in `.github/workflows/math-verification.yml`. Preserve the strict final-source `torch_operator_certificate_ledger.js --check` audit for already attested operators.
 
+## One reviewed static publication policy
+
+`static_asset_policy.json` is the reviewed source for PC-only and Android
+offline static assets. `installed_block_packs.js` is the only separate source
+for dynamically enumerated **trusted build-time pack modules**. Use
+`node scripts/sync_installed_block_packs.js --write` for pack installs;
+`node scripts/sync_runtime_assets.js --write` for resource-only changes.
+The latter generates both `atlas_server.py`'s local static route whitelist
+and `android/teaching-assets.txt` from the same policy and installed packs.
+Avoid hand-editing generated outputs or introducing a second route/asset
+registry. Keep HTML execution order explicit and verify its actual dependency
+DAG. Run both `--check` commands and adversarial
+`tests/runtime_asset_policy_contracts.js` before browser/Android CI. See
+[foundation strength assessment](docs/foundation-strength-assessment-20261026.md)
+for what this unification does and does not establish.
+
 ## Acceptance for each change
 
 1. Pin source revision, focal graph/state and what is being claimed. A non-obvious equivalence needs the actual operator or state transition, not a model-family shortcut.
