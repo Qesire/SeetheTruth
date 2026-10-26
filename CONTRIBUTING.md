@@ -6,7 +6,7 @@ We welcome reproducible improvements to the learning runtime, numerical correctn
 
 1. Begin with an observable learning goal or a reproducible bug. Include the relevant page, preset/operator ID, input, browser/OS and expected versus actual behavior.
 2. Trace the existing source computation before changing mathematical claims. Specify port types, shapes, axis semantics, state transitions, relevant paper/source revision and the smallest counterexample.
-3. Reuse the canonical \`LearningLab / GraphSession / ExecutionIR\` graph and shared \`UnifiedCore\` observation contracts. New trusted operator packs follow [the installation protocol](docs/trusted-block-pack-installation-v1.md); they are reviewed at build time, not loaded as arbitrary network plugins.
+3. Reuse the canonical `LearningLab / GraphSession / ExecutionIR` graph and shared `UnifiedCore` observation contracts. New trusted operator packs follow [the installation protocol](docs/trusted-block-pack-installation-v1.md); they are reviewed at build time, not loaded as arbitrary network plugins.
 4. Add a fast source-math test and an independent CPU/NumPy/PyTorch oracle where numerical/gradient equivalence is claimed. Make registered, export-eligible, fixture-tested and real-model-backed capabilities explicit.
 5. For visual changes, test desktop and phone behavior. For Android asset changes run the shared static publication-policy checks. In a PR include exact tests run and their results; label pending checks as pending.
 
