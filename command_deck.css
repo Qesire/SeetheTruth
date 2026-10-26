@@ -155,6 +155,17 @@ body[data-theme="command-deck"] .command-contrast-event{
  padding:9px 11px;border:1px solid #406f84;border-left:3px solid #57d7e8;
  border-radius:4px;background:#0c293a
 }
+body[data-theme="command-deck"] .command-contrast-diff{
+ margin:0 0 6px;border:1px solid #365f72;border-left:3px solid #c9a064;
+ border-radius:4px;padding:8px 10px;background:#071d2d;min-width:0
+}
+body[data-theme="command-deck"] .command-contrast-diff summary{
+ color:#dcbd87;font:11px/1.5 ui-monospace,Consolas,monospace
+}
+body[data-theme="command-deck"] .command-contrast-diff pre{
+ white-space:pre-wrap;overflow-wrap:anywhere;max-height:210px;overflow:auto;
+ margin:9px 0 0;padding:9px;color:#d6f4fa;background:#041522
+}
 body[data-theme="command-deck"] .command-contrast-event:hover:not(:disabled){
  border-color:#8feaf1;background:#1a4152
 }

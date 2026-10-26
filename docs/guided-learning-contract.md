@@ -30,6 +30,14 @@ KV Cache, Scheduler and Worker use the same specialized lesson contract and the 
 
 The first stage is an *execution replay check*, not an educational-comprehension score. A learner explains the observed difference in their own words; the UI records successful inspection, not mastery. Test each case in real desktop/mobile Chromium and check invalidation, event linkage, page runtime errors and data provenance.
 
+## Controlled A/B mechanism experiments
+
+The learner can keep an immutable **A** record from the current specialist lab, intervene through exactly one native control, then execute **B** under the original domain engine. The comparison uses `SeetheTruthSpecializedLesson.compare(A,B)`, which independently replays both records before reporting differing event IDs and state fields. A changed event can be opened in the state microscope via `inspectObservationStep(B,{kind:"state_transition",stepId})`.
+
+The **执行一个原生变量干预** button proposes a domain-specific question and invokes the laboratory's own controls: add one physical KV block to the CPU pool; toggle the Scheduler's preemption disposition; or extend the Worker's *assumed* Forward duration by two logical ticks. Learners may instead change the original scenario selector or valid JSON inputs themselves. The scheduler intervention changes one visible policy control and the native fixture adapts accordingly; distinguish that intervention from a mathematically one-variable physical-world experiment.
+
+The UI preserves the accepted A snapshot across changes, invalidates stale B on later scenario edits, and shows common source-event fields side by side. Human interpretation asks **which state changed, why this event depends on its predecessors, and what follow-up counterexample would distinguish the mechanism**. A click or source replay establishes an inspection, not proof of conceptual mastery. Browser acceptance asserts parameter changes and event-level replay evidence on desktop and phone.
+
 ## Coverage and next phase
 
 The guided graph route applies to Learning Studio preset graphs and freely edited graphs. Focus nodes for FFN, Attention, shared-parameter training, Wan2.2 I2V, image Patch, STFT audio, causal video Conv3D and N-D GQA use source-specific prompts. Other graph lessons use a source-derived topology and operator knowledge prompt. For very small graphs, the guide uses a shorter path.

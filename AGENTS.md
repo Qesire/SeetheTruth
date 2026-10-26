@@ -6,6 +6,8 @@ A learner can build **any well-typed runnable graph**, inspect each actual tenso
 
 Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: actual computation reconstruction → minimal equivalent mathematics → decisive counterexample/test → code/teaching change → independent evidence. Begin with the strongest new mechanism or useful implementation. Avoid bureaucratic gate proliferation; the gates below are actual release evidence, not barriers to exploration.
 
+For research teaching, derive A/B counterfactuals from two accepted native records using the unified compare contract. Let the student modify one visible control, then inspect the exact changed event fields and causal dependencies; make explicit when a policy switch also alters the native fixture. Keep experimental interpretation separate from successful UI clicks.
+
 State/event guides in `unified_state_lab_ui.js` must use the actual native record, shared `StateMicroscope` changes and `inspectObservationStep` replay. Teach causal dependence and resource ownership for KV/Scheduler/Worker; label Worker durations as abstract assumptions. Distinguish evidence inspection from learner comprehension. Test scenario switching and source-run invalidation, as well as ordinary graph lessons.
 
 ## Learner guidance and constructive wording
