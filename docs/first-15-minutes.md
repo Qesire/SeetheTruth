@@ -4,25 +4,37 @@
 
 ## 一、提出 FFN 的结构问题
 
+启动本地服务：
+
 ~~~bash
 git clone https://github.com/Qesire/SeetheTruth.git
 cd SeetheTruth
 python atlas_server.py --port 8765
 ~~~
 
-打开 http://127.0.0.1:8765/learn.html。左侧「从 FFN 开始」对应 `data-preset="ffn"`，默认展示 `Linear → 激活 → Linear`。观察为什么需要中间通道和非线性，选中各个节点查看 shape、输入来源及下游依赖。
+打开 http://127.0.0.1:8765/learn.html。顶部会显示四步学习引导，左侧默认课程是「从 FFN 开始」（`ffn`）。
 
-## 二、执行计算来检验结构推断
+**研究问题：** 为什么相同的 Token 经过上投影后通道从 4 扩展到 8，最后还要投影回 4？
 
-将学习模式选择器 `#studyMode` 改为微型数值（`numeric`），点击 `#run`。状态栏 `#status` 显示执行状态。选中算子，按阶段检查张量与计算；修改可编辑参数后再次运行。
+点击引导中的「定位上投影」，查看 `up` 的输入来源、矩阵运算、输出形状。先预测：如果将中间通道数改变，哪些后续节点的形状也应改变？
 
-目标：让 `Y=W₂ φ(W₁ X+b₁)+b₂` 的每一项都能对应到一个明确的计算节点。
+## 二、用实际计算检验结构预测
 
-## 三、观察 SiLU 和下投影，然后迁移到 Attention
+在引导第二步点击「切换数值模式」，然后点击下方「运行」。执行完成后，现有计算图引擎将产生真实的教学数值轨迹，引导显示实际来源于本次运行的：
 
-选择「Attention 自己拼」（`data-preset="attention"`），逐一观察 Q/K/V、缩放点积、Softmax 和 Value 汇聚。接着选择「可训练参数 · 真正闭环」（`data-preset="trainable_core"`），寻找 Forward、Loss、Backward、AdamW 更新及更新后的 Forward。
+`x [3,4] → up [3,8] → down [3,4]`
 
-目标：分辨 *知道张量形状*、*真正执行前向*、*已验证某个 Loss 路径梯度* 和 *真实修改参数*。
+**观察任务：** 在 `#studyMode` 选择数值并不等于已运行；必须等待 `#run` 得到本次 `inspectAccepted()` 的实际结果。用输入与输出形状核对第一步的预测。
+
+## 三、追踪 SiLU 与下投影
+
+第三步定位 `act`：结合计算公式 `SiLU(z)=z·sigmoid(z)`，观察上投影输出在激活后有哪些坐标发生改变。第四步定位 `down`：比较输入、中间通道与输出的实际形状，并解释两次投影各自的作用。
+
+**新问题：** 如果移除中间激活，哪些数值关系会改变？可以先写出一个猜想，再利用自由画布构造简单的线性对照。
+
+完成 FFN 引导后会进入「Attention 自己拼」（`attention`），按 Q/K/V → Scores → Softmax → Value 加权继续理解模型；然后进入「可训练参数 · 真正闭环」（`trainable_core`），观察 Forward、Loss、Backward 与 AdamW 参数更新。
+
+**学习证据：** 区分形状推演、实际前向数值、梯度路径以及参数更新；让每一种结论都对应可选中的图节点与真实运行记录。
 
 ## 四、展开一个源码顺序对齐的 Wan Block
 

@@ -62,6 +62,9 @@ class GuidedFirstUse(unittest.TestCase):
                     page.locator("#guideNext").click()
                     page.locator("#guideAction").click()
                     self.assertIn("3×4", page.locator("#guideEvidence").inner_text())
+                    screenshots = Path(__file__).resolve().parents[1] / "guided_onboarding_screenshots"
+                    screenshots.mkdir(exist_ok=True)
+                    page.screenshot(path=str(screenshots / f"guided-first-use-{width}.png"))
                     page.locator("#guideNext").click()
                     self.assertTrue(page.locator("#learnerGuide").is_hidden())
                     self.assertTrue(page.locator('[data-preset="attention"]').evaluate("(e)=>e.classList.contains('active')"))
