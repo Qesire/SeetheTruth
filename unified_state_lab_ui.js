@@ -258,6 +258,137 @@
   if(event.target?.closest("#apply,#applySteps,#applyMetadata,#applyDecode,#reset,#next,#prev,#previous"))
    refreshAfterPageAction();
  });
+
+ // Two controlled native experiments: preserve accepted A while learners change
+ // the laboratory's own configuration to B. Never compare UI-derived facsimiles.
+ const contrast=document.createElement("section");
+ contrast.id="stateContrast";
+ contrast.className="command-contrast";
+ contrast.setAttribute("aria-label","原生 A/B 机制实验");
+ const contrastHeading=document.createElement("h2");
+ contrastHeading.textContent="A/B 机制实验 · CHANGE ONE INPUT";
+ const contrastPrompt=document.createElement("p");
+ contrastPrompt.id="stateContrastPrompt";
+ const contrastAdvice={
+  deepinfer_kv:"先固定 Fork 的资源所有权，再切换到 Preempt，比较 FIFO、Refs、请求状态和资源释放。",
+  deepinfer_scheduler:"先固定内存压力场景，再选充足资源，比较调度、抢占和 Worker 派发。",
+  deepinfer_worker:"先固定混合请求时序，再切换连续 Decode 或调整 Forward 时间，比较事件依赖和重叠。"
+ };
+ contrastPrompt.textContent=contrastAdvice[lab.id]||"固定一份合法状态输入，再改变一个变量观察转移差异。";
+ const controls=document.createElement("div");controls.className="command-contrast-controls";
+ const contrastStatus=document.createElement("p");contrastStatus.id="stateContrastStatus";
+ contrastStatus.setAttribute("role","status");contrastStatus.setAttribute("aria-live","polite");
+ const contrastResults=document.createElement("div");contrastResults.id="stateContrastResults";
+ const capture=document.createElement("button"),compare=document.createElement("button"),
+   reset=document.createElement("button");
+ const ctl=(button,id,label)=>{
+   button.type="button";button.id=id;button.textContent=label;controls.append(button);
+ };
+ ctl(capture,"stateContrastCapture","固定基线 A");
+ ctl(compare,"stateContrastCompare","比较当前场景 B");
+ ctl(reset,"stateContrastReset","重置对照");
+ contrast.append(contrastHeading,contrastPrompt,controls,contrastStatus,contrastResults);
+ lessonHost.after(contrast);
+ let contrastBase=null,contrastResult=null,contrastBKey=null;
+ const currentProgram=()=> {
+   const current=root.SeetheTruthCurrentDomainRun;
+   if(!current||current.id!==lab.id||!current.input||!current.observed||
+      typeof current.operation!=="string")throw Error("当前实验没有可核验的成功执行记录");
+   const actual=lab.execute(current.operation,current.input);
+   if(!equivalent(actual.value,current.observed))
+    throw Error("现有实验结果与原生执行内核不一致");
+   lab.replay(actual);
+   return actual;
+ };
+ const clearResults=()=>{contrastResult=null;contrastBKey=null;contrastResults.replaceChildren();};
+ const baselineLabel=()=>contrastBase?
+   "已固定 A · "+contrastBase.stateTrace.steps.length+" 个状态事件 · "+
+   contrastBase.stateTrace.evidenceTier:"先执行「固定基线 A」，记录这个场景的原生输入与全部执行状态。";
+ function renderContrast(){
+   if(contrastBKey&&contrastBKey!==signature(root.SeetheTruthCurrentDomainRun))
+    clearResults();
+   contrastStatus.textContent=baselineLabel()+
+    (contrastResult?" · B 已重放校验，差异详情见下。":" · 接下来在上方原生控件修改场景。");
+   compare.disabled=!contrastBase;
+   reset.disabled=!contrastBase;
+ }
+ capture.addEventListener("click",()=>{
+   try{
+     contrastBase=currentProgram();
+     clearResults();renderContrast();
+   }catch(error){contrastStatus.textContent="基线未采纳："+error.message;}
+ });
+ reset.addEventListener("click",()=>{
+   contrastBase=null;clearResults();renderContrast();
+ });
+ compare.addEventListener("click",()=>{
+   if(!contrastBase)return;
+   try{
+     const b=currentProgram();
+     if(equivalent(contrastBase.inputSnapshot,b.inputSnapshot)){
+       clearResults();
+       contrastStatus.textContent="输入与基线 A 相同；先修改上方一个真实参数或场景，再比较。";
+       return;
+     }
+     const diff=lab.compare(contrastBase,b);
+     if(!diff.replayVerified||diff.inputEqual||!diff.changedSteps.length)
+       throw Error("当前 A/B 缺少可解释的状态差异");
+     // The shared microscope now displays the exact native B result.
+     start();
+     contrastResult=diff;
+     contrastBKey=signature(root.SeetheTruthCurrentDomainRun);
+     contrastResults.replaceChildren();
+     const title=document.createElement("p");
+     title.className="command-contrast-count";
+     title.textContent="A → B · "+diff.changedSteps.length+" 个可追踪的事件变化"+
+       " · 全局结果"+(diff.valueEqual?"相同":"不同");
+     contrastResults.append(title);
+     const oldStates=new Map(contrastBase.stateTrace.steps.map(x=>[x.id,x]));
+     const newStates=new Map(b.stateTrace.steps.map(x=>[x.id,x]));
+     for(const entry of diff.changedSteps.filter(x=>x.kind==="state_transition").slice(0,8)){
+       const left=oldStates.get(entry.stepId),right=newStates.get(entry.stepId);
+       const item=document.createElement("button");
+       item.type="button";item.className="command-contrast-event";
+       const changes=new Set([...(left?.changes||[]).map(x=>x.key),
+         ...(right?.changes||[]).map(x=>x.key)]);
+       item.textContent=entry.stepId+" · "+entry.change+
+         (changes.size?" · "+[...changes].slice(0,5).join(" / "):" · 事件结构改变");
+       if(!right){item.disabled=true;item.title="此事件只存在于基线 A";}
+       else item.addEventListener("click",()=>{
+         const proof=lab.inspectStep(b,{kind:"state_transition",stepId:entry.stepId});
+         if(!proof.replayVerified)throw Error("B 事件回放校验失败");
+         view.show(b.stateTrace,right.index);
+         // Comparing two cases is independent of the active guide's step.
+         focusedId=null;paintGuide();
+         contrastStatus.textContent="当前查看 B: "+entry.stepId+" · "+
+           "比较 A/B 之前请观察两次执行中共享的状态字段。";
+       });
+       contrastResults.append(item);
+     }
+     contrastStatus.textContent="A 和 B 均由同一原生执行内核重放验证；"+
+       "差异来自输入改变，点击事件定位 B 的前后状态。";
+   }catch(error){clearResults();contrastStatus.textContent="对照无法完成："+error.message;}
+ });
+ const contrastUpdate=()=>queueMicrotask(renderContrast);
+ document.addEventListener("change",contrastUpdate);
+ document.addEventListener("input",event=>{
+   if(event.target?.closest("#scenario,#stopPreempted,#forwardTime,#postTime,#flush"))
+    contrastUpdate();
+ });
+ document.addEventListener("click",event=>{
+   if(event.target?.closest("#apply,#applySteps,#applyMetadata,#applyDecode,#reset,#next,#prev,#previous"))
+    contrastUpdate();
+ });
+ root.SeetheTruthStateContrast=Object.freeze({
+   get baseline(){return contrastBase?.id||null;},
+   get baselineInput(){return contrastBase?.inputSnapshot||null;},
+   get compared(){return !!contrastResult;},
+   get changedSteps(){return contrastResult?.changedSteps||[];},
+   get current(){return contrastBKey===signature(root.SeetheTruthCurrentDomainRun);},
+   get replayVerified(){return contrastResult?.replayVerified||false;}
+ });
+ renderContrast();
+
  root.SeetheTruthStateLearningGuide=Object.freeze({
   get id(){return lab.id;},
   get step(){return guideIndex;},
