@@ -110,7 +110,7 @@
  lead.append(stepLabel,question);lessonHost.append(lead,instruction,observation,actions);
  document.body.insertBefore(lessonHost,host);
  let guideRecord=null,guideFrame=null,guideKey=null,guideStages=[],guideIndex=0,
-   focusedId=null;
+   focusedId=null,finished=false;
  const signature=current=>current?JSON.stringify({
    id:current.id,operation:current.operation,input:current.input,
    observed:current.observed
@@ -176,7 +176,7 @@
  function invalidated(){
   const value=root.SeetheTruthCurrentDomainRun;
   if(!value||!matches()){
-   guideRecord=null;guideFrame=null;guideKey=null;guideStages=[];guideIndex=0;focusedId=null;
+   guideRecord=null;guideFrame=null;guideKey=null;guideStages=[];guideIndex=0;focusedId=null;finished=false;
    view.clear();
    acceptedSnapshot=null;
    output.textContent="当前场景已改变；核验后可查看新的状态轨迹。";
@@ -200,7 +200,7 @@
      guideFrame.evidenceTier+"；可继续逐项追踪。";
   go.textContent=point?"定位并核验 "+point.id:"核验当前运行";
   previous.disabled=guideIndex===0;
-  next.disabled=!complete;
+  next.disabled=!complete||finished;
   next.textContent=guideIndex>=guideStages.length?"完成本次探究":"下一步";
   go.disabled=false;
  }
@@ -211,7 +211,7 @@
   lab.replay(record);
   const stages=chooseStages(frame);
   guideRecord=record;guideFrame=frame;guideKey=signature(current);
-  guideStages=stages;guideIndex=0;focusedId=null;
+  guideStages=stages;guideIndex=0;focusedId=null;finished=false;
   paintGuide();
  }
  function locate(){
@@ -231,14 +231,15 @@
   try{if(guideIndex===0)start();else locate()}
   catch(error){observation.textContent="本次核验未完成："+error.message;invalidated();paintGuide();}
  });
- previous.addEventListener("click",()=>{if(guideIndex>0){guideIndex--;focusedId=null;paintGuide();}});
+ previous.addEventListener("click",()=>{if(guideIndex>0){guideIndex--;focusedId=null;finished=false;paintGuide();}});
  next.addEventListener("click",()=>{
   paintGuide();
   if(!verified())return;
   if(guideIndex<guideStages.length){guideIndex++;focusedId=null;paintGuide();}
   else{
-   observation.textContent="已完成当前场景的状态因果观察；可以修改场景，再比较新旧的资源与事件变化。";
-   next.disabled=true;
+   finished=true;
+   paintGuide();
+   observation.textContent="本次因果观察已完成；修改场景后可重新核验并比较状态变化。";
   }
  });
  const refreshAfterPageAction=()=>{

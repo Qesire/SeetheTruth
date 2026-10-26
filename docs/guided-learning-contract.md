@@ -18,6 +18,18 @@ Each stage leads with one relevant **mechanism question**. Follow it with a conc
 
 Mathematical guarantees are placed next to the claim to which they apply: source-pinned order and dimensionality are not model-checkpoint parity; numerical path acceptance uses the bounded browser tensor engine; independent PyTorch certificates are scoped to their executed fixture. They remain accessible from the existing cards without dominating onboarding prose.
 
+## Native state/event learning
+
+KV Cache, Scheduler and Worker use the same specialized lesson contract and the existing `SeetheTruthUnifiedStateLab` microscope rather than a tensor DAG projection.
+
+1. A laboratory computes its chosen scenario with the domain engine and exposes `SeetheTruthCurrentDomainRun` (operation, full input, accepted result). The learner presses **核验当前运行** to replay it through `SeetheTruthSpecializedLesson.execute`, compare the original result and validate the microscope frame.
+2. The guide chooses 2–3 *existing* source-derived events with actual before/after changes or dependencies. KV teaches ownership, FIFO and Fork; Scheduler teaches preemption and Forward allocation; Worker teaches cross-step event dependency and abstract resource time.
+3. **定位并核验** calls the shared `inspectObservationStep({kind:"state_transition",stepId})`, which first reproduces the native engine result. Only then is the event selected in the shared microscope and the question considered observed.
+4. Changing a scenario invalidates the observed trace; the next action must replay the new program. Navigating a valid current program's native timeline preserves its evidence. Invalid operations leave the last successful controller program intact.
+5. Questions invite an actual mathematical or causal distinction. They are displayed beside changes and dependencies; source scope accompanies the existing evidence tier.
+
+The first stage is an *execution replay check*, not an educational-comprehension score. A learner explains the observed difference in their own words; the UI records successful inspection, not mastery. Test each case in real desktop/mobile Chromium and check invalidation, event linkage, page runtime errors and data provenance.
+
 ## Coverage and next phase
 
 The guided graph route applies to Learning Studio preset graphs and freely edited graphs. Focus nodes for FFN, Attention, shared-parameter training, Wan2.2 I2V, image Patch, STFT audio, causal video Conv3D and N-D GQA use source-specific prompts. Other graph lessons use a source-derived topology and operator knowledge prompt. For very small graphs, the guide uses a shorter path.
