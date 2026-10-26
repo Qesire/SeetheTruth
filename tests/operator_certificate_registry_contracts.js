@@ -9,10 +9,16 @@ const S=R.summary();
 assert.equal(R.SCHEMA,'seethetruth-executed-operator-case-certificates-v2');
 assert.deepEqual(R.certificate,data,'browser/JSON evidence must be equal');
 assert.equal(S.sourceDigest,data.sourceDigest);
-assert.equal(S.fixtures,4);
+assert.equal(S.fixtures,6);
 assert.deepEqual(S.fixtureIds,['coordinate_training_graph','rectangular_relu_fanout',
- 'shared_weight_two_matmuls','relu_exact_zero']);
-assert.ok(S.certifiedKinds>=7);
+ 'shared_weight_two_matmuls','relu_exact_zero',
+ 'nd_token_reduce_head_broadcast','nd_batch_reduce_channel_broadcast']);
+assert.ok(S.certifiedKinds>=13);
+assert.ok(R.forKind('nd_broadcast_mul').length>=2);
+assert.ok(R.forKind('nd_reduce_sum').length>=2);
+assert.ok(R.forKind('nd_broadcast_add').length>=2);
+assert.ok(R.forKind('nd_mse').length>=2);
+assert.ok(R.forKind('nd_parameter').length>=2);
 assert.ok(S.certifiedCases>S.certifiedKinds,'different real fixtures required');
 assert.ok(S.forwardCoordinates>29&&S.lossAdjointCoordinates>25&&S.certifiedNodes>8);
 assert.equal(S.excludedFiniteDifferences,1);
