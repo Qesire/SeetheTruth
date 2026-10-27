@@ -29,7 +29,8 @@ const x=Focus.create({domain:"guided_graph",executionId:"graph/one",nodeId:"add"
  shape:[2,3],coordinate:[1,1],evidence:tiers.STATIC,note:"structural only"});
 assert.equal(x.value,undefined);
 assert.deepEqual(x.coordinate,[1,1]);
-assert.throws(()=>Focus.compare(a,x),/same native execution/);
+assert.throws(()=>Focus.compare(a,x),/native compareRecords/);
+assert.throws(()=>Focus.compare(x,x),/native compareRecords/);
 const video=Examples.run("video"),left=Focus.fromState(Bridge.coordinate("video",video,"a",22)),
  right=Focus.fromState(Bridge.coordinate("video",video,"b",22));
 assert.equal(Focus.compare(left,right).delta,0);
