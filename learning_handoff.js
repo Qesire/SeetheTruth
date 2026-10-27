@@ -82,5 +82,63 @@
   try{parsed=JSON.parse(raw);}catch(_){fail("invalid cross-page JSON");}
   return check(parsed);
  }
- return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load});
+
+ // The mechanism lens is a read-only join of two independently executed
+ // contracts. Native event dependencies are precedence relations, graph ports
+ // are data dependencies; neither represents a cross-domain arithmetic edge.
+ function explain(core,payload,currentGraph,numericRecord=null){
+  const native=restore(core,payload);
+  const graph=core.inspectGraph(currentGraph,{numeric:false,id:native.course});
+  const node=graph.path.steps.find(step=>step.id===native.focusNode);
+  const expectedKind=native.domain==="deepinfer_worker"?"attention":"gqa";
+  if(!node||node.kind!==expectedKind)
+   fail("current graph lesson no longer contains the intended Attention operation");
+  const ports=node.ports.filter(p=>["q","k","v"].includes(p.port)).map(p=>Object.freeze({
+   port:p.port,sourceId:p.sourceId,sourceShape:p.sourceShape,
+   destinationId:node.id,destinationKind:node.kind
+  }));
+  if(ports.length!==3||ports.some(p=>!p.sourceId||!Array.isArray(p.sourceShape)))
+   fail("the current lesson needs three actual Q/K/V source ports");
+  let numeric=null;
+  if(numericRecord){
+   if(numericRecord.kind!=="graph"||numericRecord.numericOk!==true||
+      JSON.stringify(numericRecord.graph)!==JSON.stringify(graph.graph))
+    fail("numeric trace belongs to a different or non-executed graph");
+   core.replay(numericRecord);
+   const computed=numericRecord.path?.steps?.find(step=>step.id===native.focusNode);
+   if(!computed||computed.evidence!=="SYNTHETIC_NUMERIC"||
+      !numericRecord.session?.trace?.steps?.some(step=>step.id===node.id))
+    fail("selected graph node lacks an accepted numeric calculation");
+   numeric=Object.freeze({shape:computed.shape,sample:computed.sample,
+    evidence:computed.evidence,observedNode:computed.id});
+  }
+  const step=native.current.record.stateTrace.steps[native.selectedStepIndex];
+  if(!step||step.id!==native.selectedStepId)fail("native selected event changed");
+  const changed=native.comparison?.changedSteps.some(item=>
+   item.kind==="state_transition"&&item.stepId===step.id)??null;
+  const details=Object.freeze({
+   stepId:step.id,title:step.title,
+   dependencies:Object.freeze(step.dependencies.slice()),
+   changes:Object.freeze(step.changes.map(item=>item.key)),
+   timing:step.timing?Object.freeze({...step.timing}):null,
+   selectedStepChangedInAB:changed,
+   totalChangedNativeSteps:native.comparison?.changedSteps.length??null
+  });
+  const topic=native.domain==="deepinfer_worker"
+   ?"Worker 的边是事件先后约束；Q/K/V 的边是张量输入依赖。试比较两者的可并行条件。"
+   :native.domain==="deepinfer_kv"
+   ?"物理块队列与引用计数管理 K/V 存储所有权；图中的 k/v 是逻辑张量数据输入。试区分存储地址与内容。"
+   :"Scheduler 的准入决定请求能否进入 Forward；图的 Q/K/V 端口说明已准入的一次 Attention 如何计算。试区分调度与算术。";
+  return Object.freeze({
+   schema:"seethetruth-native-graph-mechanism-v1",domain:native.domain,
+   course:native.course,question:native.question,sourceEvidence:native.evidence,
+   native:details,graph:Object.freeze({id:graph.id,kind:node.kind,
+    nodeId:node.id,shape:node.shape,
+    ports:Object.freeze(ports),evidence:numeric?"SYNTHETIC_NUMERIC":"STATIC_ONLY",
+    numeric}),
+   contrast:topic,
+   status:numeric?"REPLAYED_NATIVE_AND_GRAPH_NUMERIC":"REPLAYED_NATIVE_AND_GRAPH_STATIC"
+  });
+ }
+ return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain});
 });
