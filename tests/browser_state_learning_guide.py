@@ -263,6 +263,11 @@ class GuidedStates(unittest.TestCase):
        page.evaluate("SeetheTruthNativeGraphBridge.score.headWidth"))
       self.assertEqual(page.locator("#nativeGraphPropagationGraphSteps li").count(),flow["graphSteps"])
       self.assertEqual(page.locator("#nativeGraphPropagationPhases li").count(),4)
+      focus_id="gqa" if course=="decode" else "attn"
+      page.locator('#nativeGraphPropagationGraphSteps button[data-causal-node="'+focus_id+'"]').click()
+      self.assertEqual(page.evaluate("SeetheTruthUnifiedWorkbench.selectedNode"),focus_id)
+      self.assertEqual(page.locator('#nativeGraphPropagationGraphSteps button[data-causal-node="ab_k_probe"]').count(),0)
+      self.assertTrue(page.evaluate("SeetheTruthNativeGraphBridge.propagationVerified"))
       self.assertIn("逐阶段证据",page.locator("#nativeGraphPropagation").inner_text())
       page.locator("#nativeGraphInterveneDelta").fill("0")
       page.locator("#nativeGraphInterveneRun").click()
