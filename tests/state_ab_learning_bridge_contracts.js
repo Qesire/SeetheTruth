@@ -22,6 +22,11 @@ assert.ok(policy.androidAssets.includes("state_learning_handoff.js"),"shared off
 assert.match(stateHtml,/prefers-reduced-motion/);
 assert.match(studioHtml,/state-handoff-anchor/);
 assert.match(studioHtml,/state-evidence-path/);
+const runtimeSources=["semantic_state.js","semantic_state_examples.js","learning_experience_core.js","state_learning_handoff.js"];
+for(const src of runtimeSources)assert.ok(studioHtml.includes('<script src="'+src+'"></script>'),"missing runtime dependency "+src);
+for(let i=1;i<runtimeSources.length;i++)
+ assert.ok(studioHtml.indexOf('<script src="'+runtimeSources[i-1]+'"></script>')<
+   studioHtml.indexOf('<script src="'+runtimeSources[i]+'"></script>'),"invalid runtime dependency order");
 const expectedPresets={
  stream:"stream_state_branches",video:"extension_video_time_composition",
  axis:"extension_named_axis_composition",reject:"stream_state_branches"
