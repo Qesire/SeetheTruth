@@ -1694,7 +1694,8 @@ locate.addEventListener("click",()=>{try{
  if(rail)rail.insertBefore(panel,rail.firstChild);
  try{
   const restored=H.restore(root.SeetheTruthUnifiedCore,H.load(root.sessionStorage));
-  const preset=document.querySelector('[data-preset="'+restored.course+'"]');
+  const preset=Array.from(document.querySelectorAll(".mission[data-preset]"))
+   .find(button=>button.dataset.preset===restored.course);
   if(!preset)throw Error("此版本没有对应的计算图课程");
   preset.click();
   const graph=root.SeetheTruthUnifiedWorkbench.inspect().graph;
