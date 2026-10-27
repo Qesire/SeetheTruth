@@ -51,3 +51,35 @@ assert.equal(control.diff.valueEqual,true);
 assert.equal(control.diff.stateTraceEqual,true);
 assert.deepEqual(control.diff.changedSteps,[]);
 console.log('NATIVE_AB_GUIDE_PASS 3 engines and one replay-verified no-effect comparison');
+
+const Handoff=require('../learning_handoff.js');
+for(const [name,pair,target] of [
+ ['deepinfer_kv',kv,'decode'],['deepinfer_scheduler',scheduler,'decode'],
+ ['deepinfer_worker',worker,'attention'],['deepinfer_worker',control,'attention']
+]){
+ const selected=pair.B.stateTrace.steps[1].id;
+ const handoff=Handoff.create(Core,pair.B,pair.A,selected,
+  '哪些真实源事件由一个原生输入变化引起？');
+ const storage=new Map();
+ Handoff.store({setItem:(key,val)=>storage.set(key,val)},handoff);
+ const imported=Handoff.load({getItem:key=>storage.get(key)});
+ const restored=Handoff.restore(Core,imported);
+ assert.equal(restored.domain,name);
+ assert.equal(restored.course,target);
+ assert.equal(restored.selectedStepId,selected);
+ assert.equal(restored.current.checkpoint.stepId,selected);
+ assert.equal(restored.comparison.replayVerified,true);
+ assert.equal(restored.comparison.inputEqual,false);
+ assert.equal(restored.baseline.record.evidence,pair.A.evidence);
+ const changed=JSON.parse(JSON.stringify(imported));
+ changed.active.cursor.stateDigest='fnv1a32:00000000:1';
+ assert.throws(()=>Handoff.restore(Core,changed),/replay differs|cursor/);
+ const mismatched=JSON.parse(JSON.stringify(imported));
+ mismatched.domain=name==='deepinfer_kv'?'deepinfer_worker':'deepinfer_kv';
+ assert.throws(()=>Handoff.restore(Core,mismatched),/mismatch/);
+ assert.throws(()=>Handoff.load({getItem:()=>'{invalid'}),/invalid cross-page JSON/);
+}
+const single=Handoff.create(Core,worker.B,null,null,'单次实验进入计算图');
+assert.equal(Handoff.restore(Core,single).baseline,null);
+assert.equal(Handoff.restore(Core,single).current.record.id,'deepinfer_worker');
+console.log('NATIVE_GRAPH_HANDOFF_PASS replayed A/B, negative/no-effect, cursor tamper, source mismatch');
