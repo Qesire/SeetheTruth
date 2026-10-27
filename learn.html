@@ -578,17 +578,17 @@ function mutate(fn){
  try{const next=fn(clone(graph));const valid=L.validateGraph(next);L.order(valid);
   // Duplicate change events and idempotent connections must not consume history.
   if(JSON.stringify(before)===JSON.stringify(valid)){render();return false;}
-  undo.push(before);if(undo.length>40)undo.shift();redo=[];elementLineageState=null;graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
+  undo.push(before);if(undo.length>40)undo.shift();redo=[];coordinateFocusSession.clear();elementLineageState=null;graph=valid;run=null;runGraph=null;runScope=null;step=-1;backwardTrace=null;trainStatus=null;render();return true;
  }catch(e){render();say(e.message,true);return false;}
 }
 function setPreset(name){
- try{shapeCoordsByNode.clear();elementLineageState=null;realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","nd_wan_video_rope_attention","nd_wan_qkv_fullwidth_attention","nd_wan_adaln_self_gated","nd_wan_i2v_self_cross","nd_wan_i2v_full_block","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(UnifiedCore.openPreset(name).graph):UnifiedCore.openPreset(name).graph);undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
+ try{coordinateFocusSession.clear();shapeCoordsByNode.clear();elementLineageState=null;realAssociationId=null;backwardTrace=null;trainStatus=null;activeComposite=null;compositeHistory=[];zoomOverride=null;zoomMode="readable";graph=(["mla_lite","moe_route","grpo_signals","moe_expert_ffn","mla_cache","grpo_objective","autodiff_core","moe_backward","trainable_core","trainable_attention","trainable_swiglu","trainable_moe","nd_attention_lesson","nd_causal_attention","nd_gqa_attention","nd_mqa_attention","nd_trainable_gqa","nd_trainable_mqa","nd_cached_gqa_decode","nd_wan_video_rope_attention","nd_wan_qkv_fullwidth_attention","nd_wan_adaln_self_gated","nd_wan_i2v_self_cross","nd_wan_i2v_full_block","activation_gallery","optimizer_compare","activation_extension","optimizer_decay_compare"].includes(name)?G.layout(UnifiedCore.openPreset(name).graph):UnifiedCore.openPreset(name).graph);undo=[];redo=[];run=null;runGraph=null;runScope=null;step=-1;from=null;selected=graph.nodes[0]?.id||null;render();
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("active",b.dataset.preset===name));
   say("任务已加载；可以运行，也可以修改参数和连线。");
  }catch(e){say(e.message,true);}
 }
 function openComposite(id,history){
- try{shapeCoordsByNode.clear();elementLineageState=null;backwardTrace=null;trainStatus=null;
+ try{coordinateFocusSession.clear();shapeCoordsByNode.clear();elementLineageState=null;backwardTrace=null;trainStatus=null;
   const next=A.get(id);if(!next)throw Error("未知复合模块 "+id);
   const g=A.build(id);
   activeComposite=id;compositeHistory=history.slice();graph=g;undo=[];redo=[];zoomOverride=null;zoomMode="readable";
@@ -1652,7 +1652,7 @@ runProof.addEventListener("click",()=>{
     note:v.note,evidence:v.evidence
   },null,2);
   workbench.focusNode(selectedId);
- }catch(err){coordinateStatus.textContent="坐标验证未完成："+err.message;coordinateDetail.textContent="";}
+ }catch(err){coordinateFocusSession.clear();coordinateStatus.textContent="坐标验证未完成："+err.message;coordinateDetail.textContent="";}
 });
 mode.addEventListener("change",()=>{try{panel.refresh();result.textContent="";}catch(e){result.textContent=e.message;}});
 locate.addEventListener("click",()=>{try{
