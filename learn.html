@@ -1435,7 +1435,8 @@ $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
 renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script>
-<script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
+<script src="observation_snapshots.js"></script>
+<script src="learning_handoff.js"></script><script src="unified_observation_ui.js"></script>
 <script>
 (function(){
 const control=document.createElement("div");control.id="graphTrainingObservationControls";
@@ -1667,4 +1668,59 @@ locate.addEventListener("click",()=>{try{
  });
  paint();
 })();
+</script>
+<script>
+/* Pedagogical link to an independently replayed native state/event experiment.
+ * Enter the registered graph lesson using the existing mission switch; this
+ * comparison never interprets native state fields as numeric tensor values.
+ */
+(function(root){"use strict";
+ if(!new URLSearchParams(root.location.search).has("nativeGraphBridge"))return;
+ const H=root.SeetheTruthLearningHandoff;
+ const panel=document.createElement("section");panel.id="nativeGraphBridgePanel";
+ panel.style.cssText="padding:13px;margin:0 0 15px;border:1px solid #60afbb;border-radius:10px;background:#103749;display:grid;gap:9px;overflow-wrap:anywhere;";
+ const heading=document.createElement("h2");heading.textContent="SOURCE → GRAPH / 机制对照";
+ const status=document.createElement("p");status.id="nativeGraphBridgeStatus";
+ status.setAttribute("role","status");status.setAttribute("aria-live","polite");
+ const source=document.createElement("p");source.id="nativeGraphBridgeEvidence";
+ const question=document.createElement("p");question.id="nativeGraphBridgeQuestion";
+ const distinction=document.createElement("p");distinction.textContent=
+  "此处观察的是教学计算图中的真实节点与小规模数值；原生 Worker 事件、KV 资源状态与张量 Attention 具有不同的数学语义。两者通过机制问题联系，不主张逐元素数值等价。";
+ distinction.style.cssText="font-size:11px;color:#b4d7e4";
+ const back=document.createElement("a");back.id="nativeGraphBridgeBack";
+ back.className="btn primary";back.textContent="← 返回原生事件与 A/B 视图";
+ panel.append(heading,status,source,question,distinction,back);
+ const rail=document.querySelector(".rail");
+ if(rail)rail.insertBefore(panel,rail.firstChild);
+ try{
+  const restored=H.restore(root.SeetheTruthUnifiedCore,H.load(root.sessionStorage));
+  const preset=document.querySelector('[data-preset="'+restored.course+'"]');
+  if(!preset)throw Error("此版本没有对应的计算图课程");
+  preset.click();
+  const graph=root.SeetheTruthUnifiedWorkbench.inspect().graph;
+  if(!graph.nodes.some(n=>n.id===restored.focusNode))
+   throw Error("所选课程缺少目标计算节点");
+  root.SeetheTruthUnifiedWorkbench.focusNode(restored.focusNode);
+  const step=restored.current.record.stateTrace.steps[restored.selectedStepIndex];
+  if(step?.id!==restored.selectedStepId)throw Error("跨页面事件索引已变化");
+  status.textContent="源引擎已再次核验 · "+restored.domain+" → "+
+   restored.course+" / "+restored.focusNode;
+  source.textContent="原生事件："+step.id+" · "+step.title+" · "+
+   (step.changes?.length||0)+" 项状态字段变化"+
+   (restored.comparison?" · A/B 记录差异 "+restored.comparison.changedSteps.length+" 项":" · 单次原生运行")+
+   " · "+restored.evidence;
+  question.textContent="继续探究："+restored.question;
+  back.href=restored.sourceHref+"?nativeGraphReturn=1";
+  root.SeetheTruthNativeGraphBridge=Object.freeze({
+   replayVerified:true,domain:restored.domain,course:restored.course,
+   selectedStepId:restored.selectedStepId,hasBaseline:!!restored.baseline,
+   compared:!!restored.comparison
+  });
+ }catch(error){
+  status.textContent="来源证据未完成核验："+error.message;
+  source.textContent="请从原生状态实验室主动选取一次已执行的场景，再进入此课程。";
+  question.textContent="";
+  back.href="deepinfer_worker_lab.html";back.textContent="进入 Worker 源实验室";
+ }
+})(window);
 </script></body></html>
