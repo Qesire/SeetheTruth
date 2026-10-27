@@ -229,18 +229,17 @@
      error>1e-10*Math.max(1,Math.abs(observed))||
      (contextAt&&Math.abs(contextAt(query,head,channel)-observed)>1e-10))
    fail("source P×V decomposition diverges from accepted output");
-  let originalSubstep=null;
-  if(kind==="attention"){
-   const proof=core.inspectObservationStep(numericRecord,{
-    kind:"tensor_computation",stepId:nodeId+":weighted_value",
-    coordinate:[query,channel]});
-   if(!proof.replayVerified||!proof.detail?.reconstructable||
-      Math.abs(proof.detail.value-observed)>1e-12||
-      Math.abs(proof.detail.recomputed-sum)>1e-10)
-    fail("independent original scalar microscope mismatch");
-   originalSubstep=Object.freeze({id:nodeId+":weighted_value",
-    replayVerified:true,error:proof.detail.error});
-  }
+  // Independently request the selected *parent node* from the existing
+  // coordinate microscope. Substeps are consumed internally by that UI; the
+  // shared Core inspector accepts real graph node identities only.
+  const proof=core.inspectObservationStep(numericRecord,{
+   kind:"tensor_computation",stepId:nodeId,
+   coordinate:[query,outputChannel]});
+  if(!proof.replayVerified||!Number.isFinite(proof.detail?.value)||
+     Math.abs(proof.detail.value-observed)>1e-12)
+   fail("original graph coordinate microscope mismatch");
+  const originalSubstep=Object.freeze({id:nodeId,replayVerified:true,
+   coordinateValue:proof.detail.value});
   return Object.freeze({
    schema:"seethetruth-attention-coordinate-witness-v1",domain:lens.domain,
    nativeStepId:lens.native.stepId,nodeId,queryToken:query,queryHead:head,
