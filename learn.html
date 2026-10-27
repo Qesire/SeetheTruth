@@ -1809,6 +1809,7 @@ locate.addEventListener("click",()=>{try{
   panel.insertBefore(mechanics,back);
   const snapshot=H.load(root.sessionStorage);
   let lastMechanism=null,lastCoordinate=null,lastScore=null,lastIntervention=null;
+  let interventionIdentity=null;
   function renderMechanism(){
    const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
    const numericalMode=document.getElementById("studyMode")?.value==="numeric";
@@ -1819,6 +1820,13 @@ locate.addEventListener("click",()=>{try{
      if(accepted.numericOk&&JSON.stringify(accepted.graph)===JSON.stringify(editable))
       numericRecord=accepted;
     }catch(_){/* failed runs do not supply numeric evidence */}
+   }
+   const currentIdentity=numericRecord?
+    JSON.stringify(numericRecord.graph)+"|"+JSON.stringify(numericRecord.session.trace):null;
+   if(lastIntervention&&currentIdentity!==interventionIdentity){
+    lastIntervention=null;interventionIdentity=null;
+    interveneStatus.dataset.verified="false";
+    interveneStatus.textContent="已切换数值图或修改计算图；此前的干预证据已撤销。";
    }
    const proof=H.explain(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord);
    lastMechanism=proof;
@@ -1988,7 +1996,7 @@ locate.addEventListener("click",()=>{try{
   });
 
   const revokeIntervention=()=>{
-   lastIntervention=null;interveneStatus.dataset.verified="false";
+   lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";
    interveneStatus.textContent="干预设置已更改；重新执行获得对应的 A/B 数值结果。";
   };
   for(const sel of [...Object.values(coordinateControls),keySelect,
@@ -2011,7 +2019,9 @@ locate.addEventListener("click",()=>{try{
      sourceToken:Number(interveneToken.value),feature:Number(interveneFeature.value),
      keyToken:Number(keySelect.value),delta:Number(interveneDelta.value)
     });
-    lastIntervention=result;interveneStatus.dataset.verified="true";
+    lastIntervention=result;
+    interventionIdentity=JSON.stringify(record.graph)+"|"+JSON.stringify(record.session.trace);
+    interveneStatus.dataset.verified="true";
     interveneStatus.textContent=
      "原图 ≡ A: 最大误差 "+result.sourceEquivalent.maxAbsolute.toExponential(2)+
      " · "+result.source.port.toUpperCase()+"["+result.source.token+","+result.source.feature+"] "+
@@ -2022,7 +2032,7 @@ locate.addEventListener("click",()=>{try{
      " · 全输出最大变化 "+result.outputChange.maxAbsolute.toPrecision(6)+
      " · 改变坐标 "+result.outputChange.changedCoordinates;
    }catch(error){
-    lastIntervention=null;interveneStatus.dataset.verified="false";
+    lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";
     interveneStatus.textContent="该组输入未完成 A/B 重放："+error.message;
    }
   });
@@ -2039,7 +2049,7 @@ locate.addEventListener("click",()=>{try{
    if(!panel.isConnected)return;
    try{renderMechanism();}
    catch(error){lastMechanism=null;lastCoordinate=null;lastScore=null;
-    lastIntervention=null;interveneStatus.dataset.verified="false";coords.hidden=true;
+    lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";coords.hidden=true;
     coordSummary.dataset.verified="false";scoreSummary.dataset.verified="false";
     numericStatus.dataset.verified="false";
     numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
