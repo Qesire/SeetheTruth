@@ -44,6 +44,17 @@ assert.equal(mic.domain,"computation_microscope");
 assert.equal(mic.flatIndex,5);
 assert.equal(mic.value,1.5);
 assert.throws(()=>Focus.fromMicroscope({...frame,evidenceTier:tiers.STATIC},node,[0,1,2],1.5),/numeric coordinate/);
+const accepted={kind:"graph",numericOk:true,id:"free_graph",
+ path:{steps:[{id:"sum",shape:[2,3]}]}};
+const inspected={kind:"tensor_computation",replayVerified:true,stepId:"sum",
+ coordinate:[1,2],evidence:tiers.GRAPH,detail:{value:23}};
+const observed=Focus.fromObservation(accepted,inspected);
+assert.equal(observed.domain,"unified_observation");
+assert.equal(observed.value,23);
+assert.equal(observed.flatIndex,5);
+assert.throws(()=>Focus.fromObservation({...accepted,numericOk:false},inspected),/replayed native/);
+assert.throws(()=>Focus.fromObservation(accepted,{...inspected,replayVerified:false}),/replayed native/);
+assert.throws(()=>Focus.fromObservation(accepted,{...inspected,detail:{value:null}}),/missing native coordinate/);
 const store=Focus.store();const events=[],unsubscribe=store.subscribe(v=>events.push(v));
 assert.equal(store.current,null);
 const chosen=store.select(a);
