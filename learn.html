@@ -1498,6 +1498,12 @@ const panel=window.SeetheTruthUnifiedObservationUI.mount({
  snapshots:window.SeetheTruthObservationSnapshots,
  readAccepted:()=>mode.value==="training"?workbench.inspectTrainingStep():workbench.inspectAccepted(),
  onInspect:(proof,record)=>{
+  if(record.kind==="graph"&&proof.kind==="tensor_computation"){
+   const native=window.SeetheTruthCoordinateFocus.fromObservation(record,proof);
+   window.SeetheTruthCoordinateFocusSession.select(native);
+   workbench.focusNode(proof.stepId);
+   return;
+  }
   if(record.id!=="training"||record.operation!=="graph_step")return;
   const nodeId=proof.detail?.after?.nodeId;
   if(nodeId)workbench.focusNode(nodeId);
