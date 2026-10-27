@@ -1689,9 +1689,11 @@ const parseCoordinate=value=>{
  return numbers.map(Number);
 };
 const invalidateTrainingProof=()=>{
- coordinateFocusSession.clear();
+ // Immediately retract visible evidence before redrawing the (possibly large)
+ // graph overlay. UI must never retain an accepted proof for edited inputs.
  coordinateStatus.textContent="坐标验证未完成：参数或路径输入已更改，请重新验证";
  coordinateDetail.textContent="";
+ coordinateFocusSession.clear();
 };
 for(const field of [parameter,index,via,viaIndex]){
  field.addEventListener("input",invalidateTrainingProof);
