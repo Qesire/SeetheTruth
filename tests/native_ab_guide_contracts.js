@@ -243,7 +243,7 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  assert.ok(path.featureTerms.length>=2);
  assert.ok(path.graphSteps.some(x=>x.id===(course==='decode'?'gqa':'attn') && x.changed));
  assert.ok(path.graphSteps.some(x=>x.id===experiment.source.from && !x.changed));
- assert.ok(path.graphSteps.some(x=>x.id!==kind&&x.id!==experiment.source.parameter&&!x.changed));
+ assert.ok(path.graphSteps.some(x=>x.id!==(course==='decode'?'gqa':'attn')&&x.id!==experiment.source.parameter&&!x.changed));
  assert.ok(Math.abs(path.score.delta-experiment.score.delta)<1e-12);
  assert.ok(Math.abs(path.probability.delta-experiment.probability.delta)<1e-12);
  assert.ok(Math.abs(path.output.delta-experiment.output.delta)<1e-12);
