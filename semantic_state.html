@@ -33,6 +33,21 @@ button:active{transform:translateX(0)}button[aria-pressed=true]{box-shadow:inset
  text-decoration:none;transition:border-color .15s,background .15s}
 .evidence-cta:hover,.evidence-cta:focus-visible{border-color:#8debdc;background:#204555;text-decoration:none}
 .ab-case:focus-within{border-color:#84decf;box-shadow:0 0 0 1px #84decf55}
+.coordinate-header{display:flex;justify-content:space-between;gap:10px;margin:13px 0 5px;
+ font:650 11px/1.5 ui-monospace,monospace;color:#acdeea}
+.coordinate-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:180px;overflow:auto;
+ border:1px solid #244f62;border-radius:10px;padding:8px;background:#081826}
+.coordinate-grid button{min-width:0;min-height:35px;width:100%;padding:5px 3px;margin:0;text-align:center;
+ font:600 11px/1.25 ui-monospace,monospace;border-radius:6px;border:1px solid #35546b;background:#153044;
+ transition:background .16s,border-color .16s;color:#d9f2f8;overflow:hidden;text-overflow:ellipsis}
+.coordinate-grid button:hover{transform:none;background:#21556c}.coordinate-grid button[aria-pressed=true]{
+ border-color:#82f2d8;background:#1b6b70;box-shadow:0 0 0 1px #55d3bd55;color:#f4fffb}
+.coordinate-grid .no-coordinate{grid-column:1/-1;color:#bcd6e1;font-size:12px;line-height:1.6}
+.coordinate-inspector{margin-top:13px;background:#0b2234;border:1px solid #3b6679;border-radius:10px;padding:12px 15px}
+.coordinate-inspector strong{font-size:13px}.coordinate-inspector p{font:12px/1.7 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:#d3edf7;margin:8px 0}
+.coordinate-inspector .evidence-cta{margin-top:0}
+@media(max-width:730px){.coordinate-grid{grid-template-columns:repeat(6,minmax(0,1fr));max-height:140px}}
+@media(prefers-reduced-motion:reduce){.coordinate-grid button{transition:none}}
 @media(max-width:730px){.ab-grid{grid-template-columns:1fr}.learning-next{align-items:stretch}.lesson-link{width:100%;justify-content:center}}
 @media(prefers-reduced-motion:reduce){button{transition:none}button:hover{transform:none}}
 </style></head><body><main>
@@ -49,9 +64,9 @@ button:active{transform:translateX(0)}button[aria-pressed=true]{box-shadow:inset
 <p><strong>可证伪条件：</strong><span id="prediction">—</span></p><p id="status" role="status" aria-live="polite">—</p>
 <details><summary>展开原始数值证据</summary><pre id="trace" aria-label="数值证明"></pre></details></section></div>
 <section class="card comparison" aria-label="状态实验 A/B 对照"><div class="step">03 / COMPARE TWO EXECUTION OUTCOMES</div><div class="comparison-head"><h2>状态实验 · A/B 对照</h2><span class="small">同一案例的真实输出投影</span></div>
-<div class="ab-grid"><article class="ab-case"><div class="ab-label">A / REFERENCE</div><strong id="aTitle">—</strong><p id="aDescription">—</p><pre id="aValues"></pre><a id="aGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图中查看 A →</a></article>
-<article class="ab-case"><div class="ab-label">B / INTERVENTION</div><strong id="bTitle">—</strong><p id="bDescription">—</p><pre id="bValues"></pre><a id="bGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图中查看 B →</a></article></div>
-<p id="difference" role="status" aria-live="polite">—</p>
+<div class="ab-grid"><article class="ab-case"><div class="ab-label">A / REFERENCE</div><strong id="aTitle">—</strong><p id="aDescription">—</p><pre id="aValues"></pre><div class="coordinate-header">逐坐标取证 <span id="aCoordinateCount"></span></div><div id="aCoordinateGrid" class="coordinate-grid" role="group" aria-label="A 组实际输出坐标"></div><a id="aGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图中查看 A →</a></article>
+<article class="ab-case"><div class="ab-label">B / INTERVENTION</div><strong id="bTitle">—</strong><p id="bDescription">—</p><pre id="bValues"></pre><div class="coordinate-header">逐坐标取证 <span id="bCoordinateCount"></span></div><div id="bCoordinateGrid" class="coordinate-grid" role="group" aria-label="B 组实际输出坐标"></div><a id="bGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图中查看 B →</a></article></div>
+<p id="difference" role="status" aria-live="polite">—</p><div class="coordinate-inspector"><strong>输出坐标与真实输入来源</strong><p id="coordinateDetail" role="status" aria-live="polite">选中任一输出坐标，查看元素数值和实际来源。</p><a id="coordinateGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图追踪这条依赖 →</a></div>
 <div class="learning-next"><div><div class="step">04 / OPEN THE COMPUTATION GRAPH</div><h2 id="lessonTitle">从数值证据进入积木课程</h2><p id="lessonReason">—</p></div><a id="lessonLink" class="lesson-link" href="learn.html?edition=teaching">在积木工作台追踪计算 →</a></div></section>
 <section class="card" style="margin-top:15px"><h2>工业设计动机与适用边界</h2>
 <p>显式轴名避免将视频的时间 T 误解释成音频频率 F、Attention Key 的 Tk 或 Feature D；流状态的写入位置和只增版本使推理缓存与循环网络的时间依赖变成可检查的计算合同。可以将多个独立模块在边界处进行数值等价检查。</p>
