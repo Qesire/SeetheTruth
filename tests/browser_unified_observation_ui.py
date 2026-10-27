@@ -51,7 +51,9 @@ class UnifiedObservationBrowser(unittest.TestCase):
      self.assertEqual(page.locator('#coordinateJourneyTitle').inner_text(),'输出坐标 · 单位种子')
      self.assertGreater(page.locator('#coordinateJourneyPosition').evaluate('(el)=>Number(el.max)'),0)
      page.locator('#coordinateJourneyNext').click()
-     self.assertIn('未求值',page.locator('#sharedCoordinateJourney').inner_text())
+     # Add has an analytically known Jacobian even without a numerical forward trace.
+     self.assertIn('边局部导数',page.locator('#sharedCoordinateJourney').inner_text())
+     self.assertIn('∂输出/∂a',page.locator('#sharedCoordinateJourney').inner_text())
      page.locator('#unifiedObservationInspect').click()
      detail=page.locator('#unifiedObservationDetail').inner_text()
      self.assertIn('"replayVerified": true',detail)
