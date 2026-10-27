@@ -134,6 +134,7 @@ function evaluateHandoff(name,node,branch=null,index=null){
  assert.equal(selection.at(-1),spec.preset);
  assert.equal(focus.at(-1),node);
  assert.equal(panel.children[2].textContent.includes("课程关联待检查"),false);
+ if(branch!==null)assert.match(panel.children[2].textContent,/实验坐标/);
  const links=panel.children[3];
  assert.equal(links.children.length,spec.anchors.length);
  for(let i=0;i<links.children.length;i++){
@@ -142,10 +143,7 @@ function evaluateHandoff(name,node,branch=null,index=null){
  }
  assert.ok(panel.children[4].textContent.includes("独立示例输入"));
  if(branch===null)assert.equal(panel.children[6].href,"semantic_state.html?state_case="+name);
- else{
-  assert.match(panel.children[2].textContent,/实验坐标/);
-  assert.ok(panel.children[6].href.includes("&state_index="+index));
- }
+ else assert.ok(panel.children[6].href.includes("&state_index="+index));
 }
 for(const name of names){
  const spec=Bridge.caseOf(name);
