@@ -147,6 +147,8 @@ input[type="file"]{display:none}
 .coordinate-focus-summary strong{font:700 10px/1.3 ui-monospace,monospace;color:#8fe6d1;letter-spacing:.13em}
 .coordinate-focus-summary span{font:12px/1.5 ui-monospace,monospace;color:#ddf9ff;overflow-wrap:anywhere}
 .coordinate-focus-summary small{font:11px/1.5 system-ui,sans-serif;color:#aacbda}
+.coordinate-focus-summary .btn{justify-self:start;min-height:30px}
+.coordinate-focus-drill-result{font:11px/1.6 system-ui,sans-serif;color:#b2efe4;overflow-wrap:anywhere}
 .state-handoff-trail{display:none;align-items:center;gap:5px;flex-wrap:wrap;
  padding:4px 0;min-width:0}
 .state-handoff-path-chip{border:1px solid #377e8d;border-radius:6px;background:#102b42;color:#b8e8f2;
@@ -412,6 +414,7 @@ input[type="file"]{display:none}
 <script src="paper_patches.js"></script><script src="paper_graph_rewrites.js"></script><script src="compute_microscope.js"></script>
 <script src="compute_microscope_ui.js"></script>
 <script src="coordinate_focus.js"></script>
+<script src="coordinate_drilldown.js"></script>
 <script src="composite_atlas.js"></script>
 <script src="model_trace.js"></script>
 <script src="model_trace_bridge.js"></script>
@@ -446,9 +449,42 @@ focusSummary.setAttribute("role","status");focusSummary.setAttribute("aria-live"
 const focusType=document.createElement("strong"),focusValue=document.createElement("span"),
  focusSource=document.createElement("small");
 focusSummary.append(focusType,focusValue,focusSource);
+const focusDrill=document.createElement("button");focusDrill.id="sharedCoordinateDrilldown";
+focusDrill.type="button";focusDrill.className="btn small";focusDrill.textContent="追踪此坐标的实际依赖 / 局部 VJP";
+const focusDrillResult=document.createElement("div");focusDrillResult.id="sharedCoordinateDrilldownResult";
+focusDrillResult.setAttribute("role","status");focusDrillResult.setAttribute("aria-live","polite");
+focusDrillResult.className="coordinate-focus-drill-result";
+focusSummary.append(focusDrill,focusDrillResult);
+focusDrill.addEventListener("click",()=>{
+ try{
+  const focus=coordinateFocusSession.current;
+  if(!focus)throw Error("请先选择一个真实坐标");
+  const sameRun=!!run&&(!runGraph||JSON.stringify(runGraph)===JSON.stringify(graph));
+  const context={graph,
+   ...(sameRun?{run,frame:microscopeCachedFrame}:{}),
+   ...(focus.domain==="unified_observation"?{accepted:window.SeetheTruthUnifiedWorkbench.inspectAccepted()}:{} )};
+  const result=window.SeetheTruthCoordinateDrilldown.inspect(focus,context);
+  if(!result.lineage){
+   focusDrillResult.textContent=result.note;return;
+  }
+  shapeCoordsByNode.set(focus.nodeId,focus.coordinate.slice());
+  selected=focus.nodeId;
+  elementLineageState={graph,id:focus.nodeId,index:[...focus.coordinate],report:result.lineage};
+  render();
+  const chosen=graph.nodes.find(n=>n.id===focus.nodeId);
+  if(chosen)renderElementLineage(chosen);
+  const root=result.lineage.vertices.find(v=>v.id===focus.nodeId&&
+    JSON.stringify(v.index)===JSON.stringify(focus.coordinate));
+  const val=root?.value===null||root?.value===undefined?"静态形状":String(root.value);
+  focusDrillResult.textContent="已追踪 ["+focus.coordinate.join(",")+"] = "+val+
+   " · "+result.lineage.vertices.length+" 个元素 · "+result.lineage.edges.length+" 条依赖"+
+   (result.vjp?" · 局部 VJP "+(result.vjp.backward.complete?"已覆盖":"包含精确边界"):" · 静态依赖")+
+   (result.lineage.complete?"":" · 存在边界或截断");
+ }catch(error){focusDrillResult.textContent="本次坐标追踪未完成："+error.message;}
+});
 document.querySelector(".inspector")?.prepend(focusSummary);
 coordinateFocusSession.subscribe(focus=>{
- focusSummary.hidden=!focus;if(!focus)return;
+ focusSummary.hidden=!focus;focusDrillResult.textContent="";if(!focus)return;
  focusType.textContent=focus.evidence===CoordinateFocus.TIERS.STATIC?"STATIC COORDINATE":"OBSERVED COORDINATE";
  const label="["+focus.coordinate.map((v,i)=>focus.axes?.[i]?focus.axes[i]+"="+v:v).join(",")+"]";
  focusValue.textContent=focus.nodeId+" · "+label+(focus.value===undefined?"":" = "+Number(focus.value).toPrecision(7));
