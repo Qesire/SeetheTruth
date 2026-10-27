@@ -70,7 +70,7 @@
    const match=detail.loss.sourceContributions?.find(c=>
      c.nodeId===id&&equal(c.index,idx));
    const unitSource=detail.backward.sources?.find(c=>
-     c.id===id&&equal(c.index,idx));
+     c.nodeId===id&&equal(c.index,idx));
    const eligible=detail.backward.complete&&
     detail.loss.status==="VERIFIED_GRAPH_LOSS_VJP"&&
     detail.loss.throughSelectedEligible;
