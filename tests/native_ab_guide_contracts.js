@@ -146,7 +146,8 @@ for(const [pair,course,kind,heads] of [
  if(kind==='gqa'){
   const observed=Handoff.coordinate(Core,packet,graph,record,{queryToken:0,head:0,channel:0});
   assert.ok(observed.terms.every(x=>!x.masked || x.probability===0));
-  assert.ok(observed.terms.some(x=>x.masked),'causal decode mask must be visible');
+  assert.ok(observed.terms.every(x=>!x.masked),
+   'single final decode query may attend every key in the supplied prefix');
   assert.equal(observed.kvHead,0);
  }
  assert.throws(()=>Handoff.coordinate(Core,packet,graph,record,{queryToken:999}),/out of bounds/);
@@ -156,5 +157,14 @@ for(const [pair,course,kind,heads] of [
  assert.throws(()=>Handoff.coordinate(Core,packet,graph,
   Core.inspectGraph(Learning.preset('ffn'),{numeric:true,id:'ffn'})),/different or non-executed graph/);
 }
+// A multi-query causal GQA fixture actually excludes future keys for early queries.
+const causalGraph=Learning.preset('gqa');
+const causalRun=Core.inspectGraph(causalGraph,{id:'decode',numeric:true});
+const causalPacket=Handoff.create(Core,kv.B,kv.A,kv.B.stateTrace.steps[1].id);
+const maskedProof=Handoff.coordinate(Core,causalPacket,causalGraph,causalRun,
+ {queryToken:0,head:1,channel:0});
+assert.ok(maskedProof.terms.some(x=>x.masked&&x.probability===0));
+assert.ok(maskedProof.terms.some(x=>!x.masked&&x.probability>0));
+assert.ok(maskedProof.error<1e-10);
 console.log('NATIVE_GRAPH_COORDINATE_PASS full original P×V evidence, attention/GQA, head sharing, causal mask, bounds and stale-graph rejection');
 
