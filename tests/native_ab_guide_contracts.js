@@ -252,6 +252,15 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  assert.ok(Math.abs(path.featureTerms.reduce((sum,x)=>sum+x.dot.delta,0)-experiment.score.delta)<1e-10);
  assert.ok(path.keys.every(x=>Number.isFinite(x.score.delta)&&Number.isFinite(x.probability.delta)&&Number.isFinite(x.contribution.delta)));
  assert.ok(path.graphSteps.every(x=>x.examples.length<=6));
+ assert.equal(path.changedOutsideCausalCone,0);
+ assert.ok(path.causalReachableCount>=2);
+ assert.ok(path.graphSteps.filter(x=>x.changed).every(x=>x.reachable));
+ assert.ok(path.graphSteps.some(x=>!x.reachable&&!x.changed));
+ assert.ok(path.graphSteps.find(x=>x.id===(course==='decode'?'gqa':'attn')).incoming
+  .some(x=>x.from===experiment.source.parameter&&x.port===port&&x.sourceChanged));
+ assert.ok(path.graphSteps.every(step=>step.incoming.every(edge=>
+  typeof edge.port==='string'&&path.graphSteps.some(s=>s.id===edge.from))));
+
 
  assert.equal(experiment.sourceEquivalent.maxAbsolute,0);
  assert.equal(experiment.sourceEquivalent.changedCoordinates,0);
@@ -317,6 +326,7 @@ assert.equal(negative.propagation.keys[2].contribution.changed,false);
 assert.equal(negative.propagation.row.probabilityChangedKeys,0);
 assert.equal(negative.propagation.row.contributionChangedKeys,0);
 assert.ok(negative.propagation.graphSteps.find(x=>x.id==='gqa').changed);
+assert.equal(negative.propagation.changedOutsideCausalCone,0);
 assert.equal(negative.propagation.output.delta,0);
 
 console.log('NATIVE_GRAPH_INTERVENTION_PASS replayed one-element Q/K A/B, numeric cascade, masked negative, provenance and bounds');
