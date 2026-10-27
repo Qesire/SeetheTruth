@@ -3,6 +3,7 @@ const assert=require("node:assert/strict");
 const L=require("../learning_lab.js"),M=require("../compute_microscope.js"),
  Focus=require("../coordinate_focus.js"),Drill=require("../coordinate_drilldown.js"),
  E=require("../element_lineage.js"),V=require("../coordinate_vjp_bridge.js"),
+ Journey=require("../coordinate_journey.js"),
  Core=require("../learning_experience_core.js"),Examples=require("../semantic_state_examples.js"),
  Bridge=require("../state_learning_handoff.js");
 const node=(id,kind,params={})=>({id,kind,params,x:20,y:30});
@@ -35,6 +36,44 @@ assert.equal(verified.vjp.backward.complete,true);
 assert.equal(verified.vjp.selected.value,numerical.value);
 assert.deepEqual(verified.lineage.outputIndex,coord);
 assert.deepEqual(verified.vjp.selected.index,coord);
+const timeline=Journey.fromDrilldown(verified);
+assert.equal(timeline.schema,Journey.SCHEMA);
+assert.equal(timeline.scope,"native_numeric_graph");
+assert.equal(timeline.complete,true);
+assert.equal(timeline.steps.length,verified.lineage.vertices.length+verified.lineage.edges.length);
+assert.equal(timeline.steps[0].kind,"seed");
+assert.equal(timeline.steps[0].sensitivity,1);
+const sourceSteps=timeline.steps.filter(s=>s.kind==="merge"&&s.nodeId==="x");
+assert.ok(sourceSteps.length>0);
+const actualSources=verified.lineage.vertices.filter(v=>v.status==="source");
+for(const source of actualSources){
+ const step=timeline.steps.find(s=>s.kind==="merge"&&s.key===source.key);
+ assert.ok(step,"native source has a timeline merge "+source.key);
+ assert.ok(Math.abs(step.sensitivity-source.sensitivity)<1e-9);
+}
+const fanout=timeline.steps.filter(s=>s.kind==="edge"&&s.targetKey==="project@0,1");
+assert.ok(fanout.length>=2,"shared projected coordinate should receive two path contributions");
+assert.ok(fanout.some(e=>e.firstArrival===false),"second incoming path is tagged as accumulation");
+const staticTimeline=Journey.fromDrilldown(Drill.inspect(Focus.create({
+ domain:"guided_graph",executionId:"graph/shape",nodeId:"out",shape:[2,2],
+ coordinate:coord,evidence:Focus.TIERS.STATIC,note:"static lesson"}),{graph:g}));
+assert.equal(staticTimeline.scope,"native_structural_graph");
+assert.ok(staticTimeline.steps.some(x=>x.kind==="edge"&&x.localDerivative===null),
+ "unknown static derivative remains unevaluated");
+const trainingInput=Core.executeLab("training","coordinate_proof",{
+ graph:require("./fixtures/coordinate_training_graph.js").create(),
+ options:{targetId:"loss",lr:0.01,weightDecay:0.001},
+ selection:{parameterId:"w",index:[0,1],viaNodeId:"project",viaIndex:[0,1]}
+});
+const trainingFocus=Focus.fromTraining(trainingInput,Core.replay(trainingInput));
+const trainingSteps=Journey.fromDrilldown(Drill.inspect(trainingFocus)).steps;
+assert.deepEqual(trainingSteps.map(x=>x.kind),["parameter_before","loss_gradient",
+ "optimizer_state","parameter_after","loss_transition","selected_path"]);
+assert.equal(trainingSteps.find(x=>x.kind==="loss_gradient").value,
+ trainingInput.value.wholeLossGradient);
+assert.equal(trainingSteps.find(x=>x.kind==="parameter_after").value,
+ trainingInput.value.parameter.after);
+assert.ok(Object.isFrozen(trainingSteps.find(x=>x.kind==="optimizer_state").moment1));
 assert.equal(JSON.stringify(g),before);
 const structural=Focus.create({domain:"guided_graph",executionId:"current/shape",nodeId:"out",
  shape:[2,2],coordinate:coord,evidence:Focus.TIERS.STATIC,note:"native static graph"});
@@ -52,6 +91,7 @@ assert.throws(()=>Drill.inspect({...structural,coordinate:[4,0]},{graph:g}),/out
 assert.throws(()=>Drill.inspect(Focus.create({...structural,nodeId:"unknown"}),{graph:g}),/node not in/);
 const state=Focus.fromState(Bridge.coordinate("video",Examples.run("video"),"b",22));
 const paired=Drill.inspect(state,{graph:g,run,frame});
+assert.equal(Journey.fromDrilldown(paired).steps[0].kind,"correspondence");
 assert.equal(paired.scope,"mechanism_correspondence");
 assert.equal(paired.lineage,null);
 assert.equal(paired.vjp,null);
