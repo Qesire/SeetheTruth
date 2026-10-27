@@ -1712,10 +1712,86 @@ locate.addEventListener("click",()=>{try{
    " · "+restored.evidence;
   question.textContent="继续探究："+restored.question;
   back.href=restored.sourceHref+"?nativeGraphReturn=1";
+  // Read the same verified original state and the currently editable graph.
+  // Event precedence and tensor input ports retain their separate semantics.
+  const mechanics=document.createElement("section");mechanics.id="nativeGraphMechanism";
+  mechanics.style.cssText="display:grid;gap:8px;border-top:1px solid #356779;padding-top:10px";
+  const nativeDetail=document.createElement("p");nativeDetail.id="nativeGraphMechanismEvent";
+  const portDetail=document.createElement("div");portDetail.id="nativeGraphMechanismPorts";
+  const comparison=document.createElement("p");comparison.id="nativeGraphMechanismContrast";
+  const numericStatus=document.createElement("p");numericStatus.id="nativeGraphMechanismNumeric";
+  numericStatus.setAttribute("role","status");numericStatus.setAttribute("aria-live","polite");
+  const probe=document.createElement("button");probe.type="button";
+  probe.id="nativeGraphBridgeProbe";probe.className="btn small primary";
+  probe.textContent="运行当前积木图并核验 Q/K/V";
+  mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe);
+  panel.insertBefore(mechanics,back);
+  const snapshot=H.load(root.sessionStorage);
+  let lastMechanism=null;
+  function renderMechanism(){
+   const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
+   const numericalMode=document.getElementById("studyMode")?.value==="numeric";
+   let numericRecord=null;
+   if(numericalMode){
+    try{
+     const accepted=root.SeetheTruthUnifiedWorkbench.inspectAccepted();
+     if(accepted.numericOk&&JSON.stringify(accepted.graph)===JSON.stringify(editable))
+      numericRecord=accepted;
+    }catch(_){/* failed runs do not supply numeric evidence */}
+   }
+   const proof=H.explain(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord);
+   lastMechanism=proof;
+   nativeDetail.textContent="原生事件 "+proof.native.stepId+
+    " · 先行依赖："+(proof.native.dependencies.join(" → ")||"源记录未列出")+
+    " · 状态字段："+(proof.native.changes.join(" / ")||"本步无状态字段变化")+
+    (proof.native.selectedStepChangedInAB===null?" · 单次运行":
+     proof.native.selectedStepChangedInAB?" · 本事件在 A/B 中改变":" · 本事件在 A/B 中保持");
+   portDetail.replaceChildren();
+   for(const p of proof.graph.ports){
+    const item=document.createElement("p");
+    item.textContent="端口 "+p.port.toUpperCase()+" ← "+p.sourceId+" · "+p.sourceShape.join("×")+
+      " · 目标 "+p.destinationId;
+    item.style.cssText="font:11px/1.5 ui-monospace,monospace;background:#0c293a;border-left:2px solid #58b6c2;padding:5px 7px;margin:0";
+    portDetail.append(item);
+   }
+   comparison.textContent="机制问题："+proof.contrast;
+   numericStatus.textContent=proof.graph.numeric?
+    "已执行并重放核验 "+proof.graph.numeric.observedNode+
+     " · 输出形状 "+proof.graph.numeric.shape.join("×")+
+     " · 样本 "+JSON.stringify(proof.graph.numeric.sample):
+    "当前只有图结构及形状证据；点击按钮执行真正的微型数值计算。";
+   numericStatus.dataset.verified=String(!!proof.graph.numeric);
+  }
+  probe.addEventListener("click",()=>{
+   try{
+    const mode=document.getElementById("studyMode");
+    if(mode.value!=="numeric"){mode.value="numeric";mode.dispatchEvent(new Event("change",{bubbles:true}));}
+    document.getElementById("run").click();
+    renderMechanism();
+   }catch(error){numericStatus.textContent="当前图数值核验未完成："+error.message;
+    numericStatus.dataset.verified="false";}
+  });
+  const refresh=()=>queueMicrotask(()=>{
+   if(!panel.isConnected)return;
+   try{renderMechanism();}
+   catch(error){lastMechanism=null;numericStatus.dataset.verified="false";
+    numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
+  });
+  document.addEventListener("click",event=>{
+   if(event.target.closest(".mission[data-preset],#run,#runBranch,#undo,#redo,#guideAction"))
+    refresh();
+  });
+  const graphNodes=document.getElementById("blocks");
+  if(graphNodes)new MutationObserver(refresh).observe(graphNodes,{childList:true});
+  renderMechanism();
+
   root.SeetheTruthNativeGraphBridge=Object.freeze({
    replayVerified:true,domain:restored.domain,course:restored.course,
    selectedStepId:restored.selectedStepId,hasBaseline:!!restored.baseline,
-   compared:!!restored.comparison
+   compared:!!restored.comparison,
+   get mechanismVerified(){return !!lastMechanism;},
+   get numericVerified(){return !!lastMechanism?.graph.numeric;},
+   get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];}
   });
  }catch(error){
   status.textContent="来源证据未完成核验："+error.message;
