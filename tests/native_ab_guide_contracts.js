@@ -83,3 +83,35 @@ const single=Handoff.create(Core,worker.B,null,null,'单次实验进入计算图
 assert.equal(Handoff.restore(Core,single).baseline,null);
 assert.equal(Handoff.restore(Core,single).current.record.id,'deepinfer_worker');
 console.log('NATIVE_GRAPH_HANDOFF_PASS replayed A/B, negative/no-effect, cursor tamper, source mismatch');
+
+const Learning=require('../learning_lab.js');
+for(const [pair,name,course,focus] of [
+ [kv,'deepinfer_kv','decode','gqa'],
+ [scheduler,'deepinfer_scheduler','decode','gqa'],
+ [worker,'deepinfer_worker','attention','attn'],
+ [control,'deepinfer_worker','attention','attn']
+]){
+ const packet=Handoff.create(Core,pair.B,pair.A,pair.B.stateTrace.steps[1].id);
+ const graph=Learning.preset(course);
+ const staticProof=Handoff.explain(Core,packet,graph);
+ assert.equal(staticProof.status,'REPLAYED_NATIVE_AND_GRAPH_STATIC');
+ assert.equal(staticProof.graph.nodeId,focus);
+ assert.equal(staticProof.graph.numeric,null);
+ assert.deepEqual(staticProof.graph.ports.map(x=>x.port),['q','k','v']);
+ assert.ok(staticProof.graph.ports.every(x=>typeof x.sourceId==='string'&&x.sourceShape.length>=1));
+ assert.equal(staticProof.native.stepId,pair.B.stateTrace.steps[1].id);
+ assert.equal(staticProof.native.selectedStepChangedInAB,
+  pair.diff.changedSteps.some(x=>x.kind==='state_transition'&&x.stepId===staticProof.native.stepId));
+ const numeric=Core.inspectGraph(graph,{id:course,numeric:true});
+ assert.equal(numeric.numericOk,true);
+ const computed=Handoff.explain(Core,packet,graph,numeric);
+ assert.equal(computed.status,'REPLAYED_NATIVE_AND_GRAPH_NUMERIC');
+ assert.equal(computed.graph.numeric.observedNode,focus);
+ assert.ok(Array.isArray(computed.graph.numeric.sample));
+ assert.throws(()=>Handoff.explain(Core,packet,graph,
+  Core.inspectGraph(Learning.preset('ffn'),{id:'ffn',numeric:true})),/different or non-executed graph/);
+ const edited=JSON.parse(JSON.stringify(graph));
+ edited.nodes=edited.nodes.filter(n=>n.id!==focus);
+ assert.throws(()=>Handoff.explain(Core,packet,edited),/unknown|missing|requires|target|node|graph|edge|invalid/i);
+}
+console.log('NATIVE_GRAPH_MECHANISM_PASS real Q/K/V port provenance, numeric replay, edited graph and stale numeric rejection');
