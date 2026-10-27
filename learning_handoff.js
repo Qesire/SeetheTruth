@@ -512,6 +512,25 @@
     changedCoordinates:changedCount,maxAbsolute:maximum,
     changed:changedCount>0,examples:Object.freeze(examples)}));
   }
+
+  // Convert observed deltas into a grounded causal *subgraph*: nothing
+  // outside a directed descendant of the one changed Parameter may change.
+  // Include actual port-labelled DAG edges so each explanation is navigable.
+  const reachable=new Set([id]),byStep=new Map(graphFlow.map(step=>[step.id,step]));
+  for(const step of graphFlow){
+   if(aGraph.edges.some(edge=>edge.to===step.id&&reachable.has(edge.from)))
+    reachable.add(step.id);
+  }
+  for(const step of graphFlow){
+   if(step.changed&&!reachable.has(step.id))
+    fail("an unrelated non-descendant graph node changed during intervention: "+step.id);
+  }
+  const graphRoutes=graphFlow.map(step=>Object.freeze({...step,
+   reachable:reachable.has(step.id),
+   incoming:Object.freeze(aGraph.edges.filter(edge=>edge.to===step.id).map(edge=>
+    Object.freeze({from:edge.from,port:edge.port,
+     sourceChanged:byStep.get(edge.from)?.changed===true})))
+  }));
   const nativeNode=graphFlow.find(step=>step.id===relation.graph.nodeId);
   if(!nativeNode||nativeNode.changedCoordinates!==readOnly.outputChange.changedCoordinates)
    fail("Attention node difference disagrees with full graph trace");
@@ -573,7 +592,9 @@
     contributionChangedKeys:rowContributionChanged,
     probabilitySumDelta:allKeys.reduce((sum,item)=>sum+item.probability.delta,0),
     reconstructedOutputDelta:allKeys.reduce((sum,item)=>sum+item.contribution.delta,0)}),
-   graphSteps:Object.freeze(graphFlow),
+   graphSteps:Object.freeze(graphRoutes),
+   causalReachableCount:reachable.size,
+   changedOutsideCausalCone:0,
    maskedSelectedKey:!!attentionA.terms[selected.keyToken].masked,
    selectedKeySuppressed:!!attentionA.terms[selected.keyToken].masked&&
     !softmaxStage.changed,
