@@ -167,12 +167,12 @@ input[type="file"]{display:none}
 .coordinate-journey-metrics dt{color:#90b8ca}.coordinate-journey-metrics dd{margin:0;color:#d9f7f3}
 .block.coordinate-journey-current{outline:3px solid #f8c875;outline-offset:4px;box-shadow:0 0 0 5px #ebad4c33}
 .block.coordinate-journey-downstream{outline:2px solid #70e4d9;outline-offset:3px;box-shadow:0 0 0 4px #70e4d92c}
-.block.coordinate-journey-current::after,.block.coordinate-journey-downstream::before{
+.block.coordinate-journey-current[data-journey-coordinate]::after,.block.coordinate-journey-downstream[data-journey-downstream]::before{
  position:absolute;z-index:6;bottom:-15px;max-width:92%;white-space:normal;overflow-wrap:anywhere;
  background:#1d4a4a;color:#fff5d7;border:1px solid #e4c780;border-radius:6px;
  padding:4px 7px;font:700 11px/1.4 ui-monospace,monospace;pointer-events:none
 }
-.block.coordinate-journey-current::after{content:"反向坐标 " attr(data-journey-coordinate);left:4px}
+.block.coordinate-journey-current[data-journey-coordinate]::after{content:"反向坐标 " attr(data-journey-coordinate);left:4px}
 .block.coordinate-journey-downstream::before{content:"目标坐标 " attr(data-journey-downstream);right:4px;bottom:auto;top:-17px;
  background:#0b4750;border-color:#70e4d9}
 .block .coordinate-journey-port .socket{outline:3px solid #ffd078;outline-offset:3px}
