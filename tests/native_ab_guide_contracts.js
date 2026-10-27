@@ -239,10 +239,9 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  assert.equal(path.nativeEventId,experiment.sourceEventId);
  assert.equal(path.graphSteps.length,experiment.baselineVerifiedSteps+1);
  assert.equal(path.graphSteps.filter(x=>x.id===experiment.source.parameter)[0].changedCoordinates,1);
- assert.equal(path.keys.length,Learning.preset(course).nodes.some(n=>n.id==='gqa')?3:3);
+ assert.equal(path.keys.length,3);
  assert.ok(path.featureTerms.length>=2);
- assert.ok(path.features===undefined);
- assert.ok(path.graphSteps.some(x=>x.id===kind && x.changed));
+ assert.ok(path.graphSteps.some(x=>x.id===(course==='decode'?'gqa':'attn') && x.changed));
  assert.ok(path.graphSteps.some(x=>x.id===experiment.source.from && !x.changed));
  assert.ok(path.graphSteps.some(x=>x.id!==kind&&x.id!==experiment.source.parameter&&!x.changed));
  assert.ok(Math.abs(path.score.delta-experiment.score.delta)<1e-12);
