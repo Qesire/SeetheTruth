@@ -141,6 +141,12 @@ input[type="file"]{display:none}
  color:#eafffa;border-radius:8px;font-size:12px;font-weight:650;cursor:pointer}
 .state-handoff-jump:hover{background:#1b6070;border-color:#90e6d8}
 .state-handoff-jump:focus-visible{outline:3px solid #f2cc87;outline-offset:2px}
+.state-handoff-trail{display:none;align-items:center;gap:5px;flex-wrap:wrap;
+ padding:4px 0;min-width:0}
+.state-handoff-path-chip{border:1px solid #377e8d;border-radius:6px;background:#102b42;color:#b8e8f2;
+ padding:6px 9px;min-height:32px;font:600 11px ui-monospace,monospace;cursor:pointer}
+.state-handoff-path-chip:hover,.state-handoff-path-chip:focus-visible{border-color:#91e6ca;background:#1a5360;color:#fff}
+.state-handoff-path-chip:focus-visible{outline:2px solid #f2cc87;outline-offset:2px}
 .state-handoff strong{font-size:14px}.state-handoff p{margin:8px 0}
 .state-handoff-caption{color:#b8dbe6}.state-handoff-provenance{color:#a9ced9;border-left:2px solid #5bd7d0;padding-left:10px}
 .state-handoff-links{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
@@ -151,7 +157,7 @@ input[type="file"]{display:none}
 .block.state-evidence-path.selected{outline:3px solid #ffdc95;outline-offset:3px}
 .state-handoff a{color:#9de9e7}.state-handoff-close{margin-left:12px}
 .state-handoff :is(button,a):focus-visible{outline:3px solid #f2cc87;outline-offset:2px}
-@media(max-width:1250px){.state-handoff-jump{display:inline-flex;align-items:center}}
+@media(max-width:1250px){.state-handoff-jump{display:inline-flex;align-items:center}.state-handoff-trail{display:flex;flex-basis:100%}}
 @media(max-width:760px){.state-handoff{max-height:290px;padding:12px 13px}.state-handoff-docked{margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.state-handoff *{scroll-behavior:auto!important}}
 </style><style>
