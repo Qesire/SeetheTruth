@@ -112,6 +112,6 @@ for(const [pair,name,course,focus] of [
   Core.inspectGraph(Learning.preset('ffn'),{id:'ffn',numeric:true})),/different or non-executed graph/);
  const edited=JSON.parse(JSON.stringify(graph));
  edited.nodes=edited.nodes.filter(n=>n.id!==focus);
- assert.throws(()=>Handoff.explain(Core,packet,edited),/unknown|missing|requires|target|node|graph|edge|invalid/i);
+ assert.throws(()=>Handoff.explain(Core,packet,edited),'missing target node must fail source-graph mechanism proof');
 }
 console.log('NATIVE_GRAPH_MECHANISM_PASS real Q/K/V port provenance, numeric replay, edited graph and stale numeric rejection');
