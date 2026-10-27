@@ -1623,7 +1623,12 @@ const parseCoordinate=value=>{
  if(!numbers.length||numbers.some(x=>!/^[0-9]+$/.test(x)))throw Error("坐标必须是非负整数，以逗号分隔");
  return numbers.map(Number);
 };
-runProof.addEventListener("click",()=>{
+document.addEventListener("click",event=>{
+ const clicked=event.target.closest?.("#trainingProofExecute");
+ if(!clicked)return;
+ // Event delegation keeps the proof action wired if the workbench inspector
+ // regenerates visible controls after choosing a different graph node.
+ event.preventDefault();
  try{
   if(mode.value!=="training"){mode.value="training";panel.refresh();}
   const accepted=workbench.inspectTrainingStep();
