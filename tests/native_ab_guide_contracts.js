@@ -233,6 +233,27 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  assert.equal(experiment.graphComparison.numericCompared,true);
  assert.equal(experiment.baselineVerifiedSteps,record.session.trace.steps.length);
  assert.equal(experiment.changedInputScalars,1);
+ const path=experiment.propagation;
+ assert.equal(path.schema,'seethetruth-attention-causal-propagation-v1');
+ assert.equal(path.observed,'REPLAYED_GRAPH_PARAMETER_AB');
+ assert.equal(path.nativeEventId,experiment.sourceEventId);
+ assert.equal(path.graphSteps.length,experiment.baselineVerifiedSteps+1);
+ assert.equal(path.graphSteps.filter(x=>x.id===experiment.source.parameter)[0].changedCoordinates,1);
+ assert.equal(path.keys.length,Learning.preset(course).nodes.some(n=>n.id==='gqa')?3:3);
+ assert.ok(path.featureTerms.length>=2);
+ assert.ok(path.features===undefined);
+ assert.ok(path.graphSteps.some(x=>x.id===kind && x.changed));
+ assert.ok(path.graphSteps.some(x=>x.id===experiment.source.from && !x.changed));
+ assert.ok(path.graphSteps.some(x=>x.id!==kind&&x.id!==experiment.source.parameter&&!x.changed));
+ assert.ok(Math.abs(path.score.delta-experiment.score.delta)<1e-12);
+ assert.ok(Math.abs(path.probability.delta-experiment.probability.delta)<1e-12);
+ assert.ok(Math.abs(path.output.delta-experiment.output.delta)<1e-12);
+ assert.ok(Math.abs(path.row.reconstructedOutputDelta-experiment.output.delta)<1e-10);
+ assert.ok(Math.abs(path.row.probabilitySumDelta)<1e-10);
+ assert.ok(Math.abs(path.featureTerms.reduce((sum,x)=>sum+x.dot.delta,0)-experiment.score.delta)<1e-10);
+ assert.ok(path.keys.every(x=>Number.isFinite(x.score.delta)&&Number.isFinite(x.probability.delta)&&Number.isFinite(x.contribution.delta)));
+ assert.ok(path.graphSteps.every(x=>x.examples.length<=6));
+
  assert.equal(experiment.sourceEquivalent.maxAbsolute,0);
  assert.equal(experiment.sourceEquivalent.changedCoordinates,0);
  assert.ok(experiment.graphComparison.changedSteps.some(x=>x.stepId===experiment.source.parameter));
@@ -269,6 +290,13 @@ assert.equal(headLocal.score.delta,0);
 assert.equal(headLocal.probability.delta,0);
 assert.equal(headLocal.output.delta,0);
 assert.ok(headLocal.outputChange.maxAbsolute>0);
+assert.equal(headLocal.propagation.selectedHeadIsolated,true);
+assert.equal(headLocal.propagation.score.changed,false);
+assert.equal(headLocal.propagation.probability.changed,false);
+assert.equal(headLocal.propagation.output.changed,false);
+assert.ok(headLocal.propagation.graphSteps.find(x=>x.id==='gqa').changed);
+assert.ok(headLocal.propagation.keys.every(x=>!x.probability.changed));
+
 // A future-K score can change while its causal-masked probability and
 // forward output remain unchanged: a necessary negative control.
 const negative=Handoff.intervene(Core,causalPacket,causalGraph,causalRun,{
@@ -282,7 +310,19 @@ assert.ok(negative.outputChange.changedCoordinates>0,
  'later queries can observe a key masked for the selected early query');
 assert.equal(negative.sourceEquivalent.maxAbsolute,0);
 assert.equal(negative.changedInputScalars,1);
+assert.equal(negative.propagation.maskedSelectedKey,true);
+assert.equal(negative.propagation.selectedKeySuppressed,true);
+assert.equal(negative.propagation.keys[2].score.changed,true);
+assert.equal(negative.propagation.keys[2].probability.changed,false);
+assert.equal(negative.propagation.keys[2].contribution.changed,false);
+assert.equal(negative.propagation.row.probabilityChangedKeys,0);
+assert.equal(negative.propagation.row.contributionChangedKeys,0);
+assert.ok(negative.propagation.graphSteps.find(x=>x.id==='gqa').changed);
+assert.equal(negative.propagation.output.delta,0);
+
 console.log('NATIVE_GRAPH_INTERVENTION_PASS replayed one-element Q/K A/B, numeric cascade, masked negative, provenance and bounds');
 
 
 
+
+console.log('NATIVE_GRAPH_PROPAGATION_PASS full-DAG stage deltas, per-feature Score/PV conservation, head isolation and causal-mask suppression');
