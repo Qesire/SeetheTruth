@@ -17,6 +17,11 @@ assert.equal(witness.path.selected.nodeId,'project');
 assert.ok(witness.path.localTerms.length>=2);
 assert.equal(witness.path.loss.targetId,'loss');
 assert.ok(Math.abs(witness.path.parameterContribution)>1e-8);
+assert.ok(Number.isFinite(witness.path.parameterUnitVJP));
+assert.ok(Number.isFinite(witness.path.loss.selectedAdjoint));
+assert.ok(Math.abs(witness.path.parameterUnitVJP*witness.path.loss.selectedAdjoint-
+ witness.path.parameterContribution)<2e-10,
+ "selected contribution must equal full-Loss adjoint times original unit VJP");
 assert.equal(witness.path.sourceProof,'seethetruth-coordinate-vjp-bridge-v1');
 const originalRecord=Core.executeLab('training','graph_step',{graph,options});
 const result=Core.executeLab('training','coordinate_proof',{graph,options,selection});
