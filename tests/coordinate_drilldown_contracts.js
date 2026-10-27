@@ -86,8 +86,22 @@ const trainingInput=Core.executeLab("training","coordinate_proof",{
 });
 const trainingFocus=Focus.fromTraining(trainingInput,Core.replay(trainingInput));
 const trainingSteps=Journey.fromDrilldown(Drill.inspect(trainingFocus)).steps;
-assert.deepEqual(trainingSteps.map(x=>x.kind),["parameter_before","loss_gradient",
- "optimizer_state","parameter_after","loss_transition","selected_path"]);
+assert.deepEqual(trainingSteps.map(x=>x.kind),["parameter_before",
+ "forward_intermediate","loss_adjoint","selected_path","loss_gradient",
+ "optimizer_state","parameter_after","loss_transition"]);
+const intermediate=trainingSteps.find(x=>x.kind==="forward_intermediate");
+const adjoint=trainingSteps.find(x=>x.kind==="loss_adjoint");
+const pathContribution=trainingSteps.find(x=>x.kind==="selected_path");
+assert.equal(intermediate.nodeId,trainingInput.value.path.selected.nodeId);
+assert.deepEqual(intermediate.index,trainingInput.value.path.selected.index);
+assert.equal(intermediate.value,trainingInput.value.path.selected.value);
+assert.equal(adjoint.value,trainingInput.value.path.loss.selectedAdjoint);
+assert.equal(pathContribution.value,trainingInput.value.path.parameterContribution);
+assert.equal(pathContribution.nodeId,trainingInput.value.parameterId);
+assert.notEqual(pathContribution.value,trainingInput.value.wholeLossGradient,
+ "one native selected route must remain distinct from full-loss gradient");
+assert.equal(adjoint.localTermCount,trainingInput.value.path.localTerms.length);
+
 assert.equal(trainingSteps.find(x=>x.kind==="loss_gradient").value,
  trainingInput.value.wholeLossGradient);
 assert.equal(trainingSteps.find(x=>x.kind==="parameter_after").value,
