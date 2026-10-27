@@ -56,6 +56,24 @@ assert.equal(observed.flatIndex,5);
 assert.throws(()=>Focus.fromObservation({...accepted,numericOk:false},inspected),/replayed native/);
 assert.throws(()=>Focus.fromObservation(accepted,{...inspected,replayVerified:false}),/replayed native/);
 assert.throws(()=>Focus.fromObservation(accepted,{...inspected,detail:{value:null}}),/missing native coordinate/);
+const Core=require("../learning_experience_core.js");
+const Drill=require("../coordinate_drilldown.js");
+const {create:trainingGraph}=require("./fixtures/coordinate_training_graph.js");
+const acceptedTraining=Core.executeLab("training","coordinate_proof",{
+ graph:trainingGraph(),options:{targetId:"loss",lr:0.01,weightDecay:0.001},
+ selection:{parameterId:"w",index:[0,1],viaNodeId:"project",viaIndex:[0,1]}
+});
+const trainingReplay=Core.replay(acceptedTraining);
+const training=Focus.fromTraining(acceptedTraining,trainingReplay);
+assert.equal(training.domain,"training_parameter");
+assert.equal(training.evidence,Focus.TIERS.TRAINING);
+assert.equal(training.value,acceptedTraining.value.parameter.after);
+assert.equal(training.transition.before,acceptedTraining.value.parameter.before);
+assert.equal(training.transition.after-training.transition.before,training.transition.delta);
+assert.equal(training.transition.wholeLossGradient,acceptedTraining.value.wholeLossGradient);
+assert.equal(Drill.inspect(training).scope,"native_training_transaction");
+assert.throws(()=>Focus.fromTraining(acceptedTraining,{reproduced:false}),/replay-verified/);
+assert.throws(()=>Focus.create({...training,transition:{...training.transition,delta:500}}),/training coordinate transition/);
 const store=Focus.store();const events=[],unsubscribe=store.subscribe(v=>events.push(v));
 assert.equal(store.current,null);
 const chosen=store.select(a);
