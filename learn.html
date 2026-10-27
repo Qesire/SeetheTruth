@@ -1841,6 +1841,11 @@ locate.addEventListener("click",()=>{try{
     head.append(header);const body=document.createElement("tbody");
     for(const term of witness.terms){
      const row=document.createElement("tr");row.dataset.masked=String(term.masked);
+     row.dataset.keyToken=String(term.key);
+     row.tabIndex=0;row.setAttribute("role","button");
+     row.setAttribute("aria-label","查看 Key "+term.key+" 的匹配分数来源");
+     row.title="定位此 Key 的 Q/K 分维 Score 计算";
+     row.style.cursor="pointer";
      const parts=[term.masked?term.key+" masked":String(term.key),
       term.score.toFixed(4),term.probability.toFixed(5),
       term.value.toFixed(5),term.contribution.toFixed(6)];
@@ -1908,6 +1913,20 @@ locate.addEventListener("click",()=>{try{
      coordSummary.textContent="坐标核验未完成："+error.message;}
    });
   }
+
+  const openScoreKey=event=>{
+   const row=event.target.closest("tr[data-key-token]");
+   if(!row||!coordTable.contains(row))return;
+   keySelect.value=row.dataset.keyToken;
+   keySelect.dispatchEvent(new Event("change",{bubbles:true}));
+   scoreBox.scrollIntoView({block:"nearest",behavior:"auto"});
+  };
+  coordTable.addEventListener("click",openScoreKey);
+  coordTable.addEventListener("keydown",event=>{
+   if(event.key!=="Enter"&&event.key!==" ")return;
+   if(!event.target.closest("tr[data-key-token]"))return;
+   event.preventDefault();openScoreKey(event);
+  });
   keySelect.addEventListener("change",()=>{
    try{renderMechanism();}
    catch(error){lastScore=null;scoreSummary.dataset.verified="false";
