@@ -1766,11 +1766,49 @@ locate.addEventListener("click",()=>{try{
   const scoreNote=document.createElement("small");
   scoreNote.textContent="Score=Σ Q′[d]K′[d]/√Dk，Q′/K′ 使用原 RoPE 结果；概率由已接受 Score 的行内稳定 Softmax 核验。";
   scoreBox.append(scoreLabel,scoreSummary,scoreScroll,scoreNote);
-  coords.append(coordTitle,selectors,coordSummary,tableScroll,scoreBox,coordNote);
+
+  const interveneBox=document.createElement("section");interveneBox.id="nativeGraphInterventionLab";
+  interveneBox.style.cssText="display:grid;gap:7px;border-top:1px solid #527483;margin-top:10px;padding-top:9px";
+  const interveneHeading=document.createElement("strong");
+  interveneHeading.textContent="Q/K 单元素 A/B 干预 · 同图执行";
+  const interveneControls=document.createElement("div");
+  interveneControls.style.cssText="display:flex;flex-wrap:wrap;gap:8px";
+  function experimentSelect(labelText,id){
+   const label=document.createElement("label");label.textContent=labelText;
+   label.style.cssText="display:grid;gap:3px;font-size:10px";
+   const select=document.createElement("select");select.id=id;
+   select.setAttribute("aria-label",labelText);
+   select.style.cssText="color:#e4f9ff;background:#103547;border:1px solid #67949c;padding:5px";
+   label.append(select);interveneControls.append(label);return select;
+  }
+  const intervenePort=experimentSelect("干预端口","nativeGraphIntervenePort");
+  for(const p of ["q","k"]){
+   const option=document.createElement("option");option.value=p;option.textContent=p.toUpperCase();
+   intervenePort.append(option);
+  }
+  const interveneToken=experimentSelect("投影 Token","nativeGraphInterveneToken");
+  const interveneFeature=experimentSelect("投影特征","nativeGraphInterveneFeature");
+  const deltaLabel=document.createElement("label");deltaLabel.textContent="变化 Δ（−1 至 1）";
+  deltaLabel.style.cssText="display:grid;gap:3px;font-size:10px";
+  const interveneDelta=document.createElement("input");interveneDelta.type="number";
+  interveneDelta.id="nativeGraphInterveneDelta";interveneDelta.value="0.25";
+  interveneDelta.min="-1";interveneDelta.max="1";interveneDelta.step="0.05";
+  interveneDelta.style.cssText="width:85px;color:#e4f9ff;background:#103547;border:1px solid #67949c;padding:5px";
+  deltaLabel.append(interveneDelta);interveneControls.append(deltaLabel);
+  const interveneRun=document.createElement("button");interveneRun.type="button";
+  interveneRun.id="nativeGraphInterveneRun";interveneRun.className="btn primary small";
+  interveneRun.textContent="执行双轨 A/B · 仅一个元素";
+  const interveneStatus=document.createElement("p");interveneStatus.id="nativeGraphInterveneStatus";
+  interveneStatus.setAttribute("role","status");interveneStatus.setAttribute("aria-live","polite");
+  interveneStatus.style.cssText="font:11px/1.6 ui-monospace,monospace;overflow-wrap:anywhere";
+  const interveneNote=document.createElement("small");
+  interveneNote.textContent="A 将当前 Q/K 已计算的整个端口复制为有界 Parameter 并校验与原图等价；B 仅修改其中一个值。同拓扑重放，不修改原工作台，不伪称更新投影权重。";
+  interveneBox.append(interveneHeading,interveneControls,interveneRun,interveneStatus,interveneNote);
+  coords.append(coordTitle,selectors,coordSummary,tableScroll,scoreBox,interveneBox,coordNote);
   mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe,coords);
   panel.insertBefore(mechanics,back);
   const snapshot=H.load(root.sessionStorage);
-  let lastMechanism=null,lastCoordinate=null,lastScore=null;
+  let lastMechanism=null,lastCoordinate=null,lastScore=null,lastIntervention=null;
   function renderMechanism(){
    const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
    const numericalMode=document.getElementById("studyMode")?.value==="numeric";
@@ -1867,6 +1905,20 @@ locate.addEventListener("click",()=>{try{
     }
     keySelect.value=String(Number.isSafeInteger(previousKey)&&
      previousKey>=0&&previousKey<witness.keyCount?previousKey:0);
+
+    const portMeta=proof.graph.ports.find(p=>p.port===intervenePort.value);
+    const selectable={token:portMeta.sourceShape[0],feature:portMeta.sourceShape[1]};
+    for(const [selector,count] of [[interveneToken,selectable.token],
+     [interveneFeature,selectable.feature]]){
+     const last=Number(selector.value);
+     if(selector.options.length!==count){
+      selector.replaceChildren(...Array.from({length:count},(_,i)=>{
+       const opt=document.createElement("option");opt.value=String(i);
+       opt.textContent=String(i);return opt;
+      }));
+     }
+     selector.value=String(Number.isSafeInteger(last)&&last>=0&&last<count?last:0);
+    }
     const score=H.score(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord,{
      ...selected,keyToken:Number(keySelect.value)});
     lastScore=score;
@@ -1900,7 +1952,9 @@ locate.addEventListener("click",()=>{try{
     scoreTable.replaceChildren(scoreHead,scoreBody);
 
    }else{
-    lastCoordinate=null;lastScore=null;coordSummary.dataset.verified="false";
+    lastCoordinate=null;lastScore=null;lastIntervention=null;
+    interveneStatus.dataset.verified="false";interveneStatus.textContent="";
+    coordSummary.dataset.verified="false";
     scoreSummary.dataset.verified="false";scoreTable.replaceChildren();
     coordTable.replaceChildren();
    }
@@ -1932,6 +1986,46 @@ locate.addEventListener("click",()=>{try{
    catch(error){lastScore=null;scoreSummary.dataset.verified="false";
     scoreSummary.textContent="分数核验未完成："+error.message;}
   });
+
+  const revokeIntervention=()=>{
+   lastIntervention=null;interveneStatus.dataset.verified="false";
+   interveneStatus.textContent="干预设置已更改；重新执行获得对应的 A/B 数值结果。";
+  };
+  for(const sel of [...Object.values(coordinateControls),keySelect,
+   intervenePort,interveneToken,interveneFeature,interveneDelta])
+   sel.addEventListener("change",revokeIntervention);
+  intervenePort.addEventListener("change",()=>{
+   for(const sel of [interveneToken,interveneFeature])sel.replaceChildren();
+   renderMechanism();
+  });
+  interveneRun.addEventListener("click",()=>{
+   try{
+    const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
+    const record=root.SeetheTruthUnifiedWorkbench.inspectAccepted();
+    if(document.getElementById("studyMode").value!=="numeric"||!record.numericOk)
+     throw Error("请先运行计算图的数值模式");
+    const current=Object.fromEntries(Object.entries(coordinateControls)
+     .map(([key,select])=>[key,Number(select.value)]));
+    const result=H.intervene(root.SeetheTruthUnifiedCore,snapshot,editable,record,{
+     ...current,port:intervenePort.value,
+     sourceToken:Number(interveneToken.value),feature:Number(interveneFeature.value),
+     keyToken:Number(keySelect.value),delta:Number(interveneDelta.value)
+    });
+    lastIntervention=result;interveneStatus.dataset.verified="true";
+    interveneStatus.textContent=
+     "原图 ≡ A: 最大误差 "+result.sourceEquivalent.maxAbsolute.toExponential(2)+
+     " · "+result.source.port.toUpperCase()+"["+result.source.token+","+result.source.feature+"] "+
+     result.source.before.toPrecision(6)+" → "+result.source.after.toPrecision(6)+
+     " · ΔScore "+result.score.delta.toPrecision(6)+
+     " · ΔP "+result.probability.delta.toPrecision(6)+
+     " · ΔOut "+result.output.delta.toPrecision(6)+
+     " · 全输出最大变化 "+result.outputChange.maxAbsolute.toPrecision(6)+
+     " · 改变坐标 "+result.outputChange.changedCoordinates;
+   }catch(error){
+    lastIntervention=null;interveneStatus.dataset.verified="false";
+    interveneStatus.textContent="该组输入未完成 A/B 重放："+error.message;
+   }
+  });
   probe.addEventListener("click",()=>{
    try{
     const mode=document.getElementById("studyMode");
@@ -1944,7 +2038,8 @@ locate.addEventListener("click",()=>{try{
   const refresh=()=>queueMicrotask(()=>{
    if(!panel.isConnected)return;
    try{renderMechanism();}
-   catch(error){lastMechanism=null;lastCoordinate=null;lastScore=null;coords.hidden=true;
+   catch(error){lastMechanism=null;lastCoordinate=null;lastScore=null;
+    lastIntervention=null;interveneStatus.dataset.verified="false";coords.hidden=true;
     coordSummary.dataset.verified="false";scoreSummary.dataset.verified="false";
     numericStatus.dataset.verified="false";
     numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
@@ -1965,6 +2060,15 @@ locate.addEventListener("click",()=>{try{
    get mechanismVerified(){return !!lastMechanism;},
    get numericVerified(){return !!lastMechanism?.graph.numeric;},
    get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];},
+   get interventionVerified(){return !!lastIntervention;},
+   get intervention(){return lastIntervention?{
+    source:lastIntervention.source,
+    baselineError:lastIntervention.sourceEquivalent.maxAbsolute,
+    replayVerified:lastIntervention.graphComparison.replayVerified,
+    changedSteps:lastIntervention.graphComparison.changedSteps.length,
+    scoreDelta:lastIntervention.score.delta,probabilityDelta:lastIntervention.probability.delta,
+    outputDelta:lastIntervention.output.delta,changedOutputCoords:lastIntervention.outputChange.changedCoordinates
+   }:null;},
    get scoreVerified(){return !!lastScore;},
    get score(){return lastScore?{
     queryToken:lastScore.queryToken,keyToken:lastScore.keyToken,
