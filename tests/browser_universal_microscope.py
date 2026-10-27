@@ -31,6 +31,8 @@ class MicroscopeBrowser(unittest.TestCase):
    cell.click()
    record=p.evaluate('window.SeetheTruthCoordinateFocusSession.current')
    self.assertEqual(record['schema'],'seethetruth-coordinate-focus-v1')
+   self.assertIn('OBSERVED COORDINATE',p.locator('#sharedCoordinateFocus').inner_text())
+   self.assertIn(record['nodeId'],p.locator('#sharedCoordinateFocus').inner_text())
    self.assertEqual(record['domain'],'computation_microscope')
    self.assertEqual(record['evidence'],'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS')
    self.assertEqual(len(record['shape']),len(record['coordinate']))
