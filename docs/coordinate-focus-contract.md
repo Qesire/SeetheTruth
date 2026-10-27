@@ -70,6 +70,21 @@ The inspector clears previous selection and timeline when a graph changes, a dif
 - `tests/browser_unified_observation_ui.py`: static analytical Jacobian and numerical graph stepper on PC/mobile.
 - `tests/browser_training_coordinate_proof.py`: parameter timeline and actual shape-derived invalid coordinate with stale-proof invalidation; screenshots are archived separately.
 
+## Scalar-to-canvas cross-highlighting (v1)
+
+A step in the authenticated reverse-coordinate timeline now maps to **exactly one existing directed graph edge and input port**:
+
+- `coordinate_journey.js` preserves the downstream element index (`sourceIndex`) and upstream index (`index`) from the original `element_lineage` vertices.
+- `coordinate_journey_canvas.js` validates each step's identity against the active `graph.edges`. For a reverse contribution `out@j → input@i`, it highlights the actual *forward* wire `input → out : port` while displaying the reverse sensitivity direction separately.
+- The canvas renders SVG paths with `data-edge-from`, `data-edge-to`, `data-edge-port` attributes, using native DOM SVG creation instead of interpolating untrusted ids into HTML strings. Position/zoom recomputation preserves the active edge identity.
+- The corresponding upstream node displays `[i]`, the downstream node displays `[j]`, and the original input port receives a separate highlight. The element-lineage panel highlights precisely the two native vertex keys and expands the pertinent operator group.
+- A user-requested **定位画布积木** action brings the upstream node into the viewport. Step changes update the graph without forcing navigation or mutating numeric results.
+- A graph edit, preset switch, or a new focused coordinate clears the previous visual overlay alongside its provenance. Independent state-scenario records never claim a numeric wire relationship with an unrelated lesson.
+
+Mathematical authority remains with `element_lineage` and `coordinate_vjp_bridge`; this module is **coordinate navigation**, not an alternative differentiation or trace engine.
+
+Validation: `tests/coordinate_drilldown_contracts.js` checks exact port identity and stale/missing-wire rejection. `tests/browser_universal_microscope.py` checks SVG edge identity, highlighted upstream/downstream scalar cells, node/socket styles, and explicit locate navigation in Chromium.
+
 ## Validations
 
 - `node tests/coordinate_focus_contracts.js`: rank/index/axes/finite value limits, same native A/B delta, replayed graph observation, native training transition and controller notifications.\n- `node tests/coordinate_drilldown_contracts.js`: original static element lineage, numeric unit-seed VJP, stale-graph rejection, and state/optimizer distinctness.
