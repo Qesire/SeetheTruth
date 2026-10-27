@@ -57,6 +57,15 @@ class StateABBridgeChromium(unittest.TestCase):
        panel=page.locator("#stateHandoff").inner_text() if page.locator("#stateHandoff").count() else "(missing)"
        selected=page.locator("#blocks .selected").evaluate_all("(xs)=>xs.map(e=>e.dataset.node)")
        raise AssertionError(f"{label} {name} expected {node_id}, panel={panel!r}, selected={selected!r}, js={errors!r}")
+      self.assertEqual(page.locator(".inspector #stateHandoff").count(),1)
+      unobstructed=page.evaluate("""() => {
+        const a=document.querySelector('#stateHandoff').getBoundingClientRect();
+        const b=document.querySelector('.stage').getBoundingClientRect();
+        return a.right<=b.left+1 || a.left>=b.right-1 || a.bottom<=b.top+1 || a.top>=b.bottom-1;
+      }""")
+      self.assertTrue(unobstructed,"state evidence card must not cover the graph canvas")
+      if label=="phone":
+       self.assertTrue(page.locator("#stateHandoffJump").is_visible())
       panel=page.locator("#stateHandoff")
       self.assertIn("实验坐标",panel.inner_text())
       self.assertIn("独立示例",panel.inner_text())
