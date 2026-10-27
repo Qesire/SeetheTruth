@@ -46,7 +46,7 @@
    fail("node identity required");
   if(typeof info.evidence!=="string"||!Object.values(TIERS).includes(info.evidence))
    fail("explicit evidence tier required");
-  const c=bound(info.shape,info.coordinate,info.axes);
+  const c=bound(info.shape,info.coordinate,info.axes??undefined);
   if(info.value!==undefined&&(!numeric.has(info.evidence)||typeof info.value!=="number"||!Number.isFinite(info.value)))
    fail("numeric coordinate needs actual finite native execution evidence");
   if(info.branch!==undefined&&(!["a","b"].includes(info.branch)))fail("invalid A/B branch");
