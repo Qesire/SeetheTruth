@@ -101,5 +101,22 @@
    path:[...(parentId&&parentId!==step.id?[parentId]:[]),step.id],
    note:"selected native microscope output; original execution provenance "+frame.evidenceTier});
  }
- return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope});
+ function fromObservation(record,proof){
+  if(record?.kind!=="graph"||record.numericOk!==true||
+     proof?.kind!=="tensor_computation"||proof.replayVerified!==true)
+   fail("replayed native numeric graph observation required");
+  const step=record.path?.steps?.find(s=>s.id===proof.stepId);
+  if(!step?.shape||!Array.isArray(proof.coordinate)||
+    typeof proof.detail?.value!=="number"||!Number.isFinite(proof.detail.value))
+   fail("graph observation is missing native coordinate or numeric value");
+  const evidence=proof.evidence;
+  if(!numeric.has(evidence))fail("unrecognized numerical evidence tier");
+  // Used for local selection identity only. Native Core.compareRecords is the
+  // authority for comparing two separately accepted graph executions.
+  const executionId="guided_graph/"+(record.id||"learning_studio")+"/accepted_numeric";
+  return create({domain:"unified_observation",executionId,nodeId:proof.stepId,
+   shape:step.shape,coordinate:proof.coordinate,evidence,value:proof.detail.value,
+   path:[proof.stepId],note:"replayed accepted graph step; per-execution comparison uses native compareRecords"});
+ }
+ return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope,fromObservation});
 });
