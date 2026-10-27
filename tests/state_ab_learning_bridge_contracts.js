@@ -25,6 +25,7 @@ const elements=new Map(),buttons=["stream","video","axis","reject"].map(name=>({
 const get=id=>{if(!elements.has(id))elements.set(id,{textContent:"",href:""});return elements.get(id);};
 const calls=[];
 const window={
+ location:{search:""},
  SeetheTruthSemanticExamples:{names:Object.keys(values)},
  SeetheTruthUnifiedCore:{executeLab(lab,action,args){
   calls.push([lab,action,args.name]);
@@ -33,7 +34,7 @@ const window={
  }}
 };
 const document={getElementById:get,querySelectorAll:selector=>selector==="[data-scenario]"?buttons:[]};
-vm.runInNewContext(source,{window,document,Error,Object,JSON,String});
+vm.runInNewContext(source,{window,document,Error,Object,JSON,String,URLSearchParams});
 for(const name of Object.keys(values)){
  const result=window.SeetheTruthStateLab.run(name);
  assert.equal(result.title,name);
@@ -46,3 +47,27 @@ for(const name of Object.keys(values)){
 assert.equal(calls.length,5);
 assert.equal(window.SeetheTruthStateLab.comparison("video",{values:values.video}).b[2].exactEqual,true);
 console.log("State A/B learning bridge DOM and canonical-execution contract passed");
+
+const handoffSource=fs.readFileSync(path.join(root,"state_learning_handoff.js"),"utf8");
+const selected=[];
+const hrefs=[];
+function element(tag){return {tag,style:{},children:[],dataset:{},handlers:{},textContent:"",href:"",setAttribute(){},addEventListener(k,v){this.handlers[k]=v;},append(...xs){this.children.push(...xs);},remove(){this.removed=true;}};}
+const panelNodes=[];
+const routeDocument={
+ createElement:element,
+ body:{append(node){panelNodes.push(node);}},
+ getElementById:id=>id==="stateGraphExample"?{click(){selected.push("stream_state_branches");}}:null,
+ querySelector:selector=>selector==='[data-preset="video_causal_conv3d"]'?{click(){selected.push("video_causal_conv3d");}}:null
+};
+for(const scenario of ["stream","video","axis","reject"]){
+ const expected=scenario==="video"?"video_causal_conv3d":"stream_state_branches";
+ const kind=scenario==="video"?"video_causal_conv3d":scenario==="reject"?"stream_state_append":scenario==="axis"?"stream_state_read":"stream_state_fork";
+ const focused=[];
+ const studio={inspect(){return {graph:{nodes:[{id:"target",kind}]}};},focusNode:id=>focused.push(id)};
+ const w={location:{search:"?state_case="+scenario},SeetheTruthUnifiedWorkbench:studio};
+ vm.runInNewContext(handoffSource,{window:w,document:routeDocument,URLSearchParams,Object,Error});
+ assert.equal(selected.at(-1),expected);
+ assert.deepEqual(focused,["target"]);
+ assert.equal(panelNodes.at(-1).id,"stateHandoff");
+}
+console.log("State-to-graph handoff selection and focus contracts passed");
