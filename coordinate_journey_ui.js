@@ -45,7 +45,7 @@
    detail.textContent=step.detail||"已验证原生计算环节";
    metrics.replaceChildren();
    const rows=[["节点",step.nodeId],["坐标",step.index?"["+step.index.join(",")+"]":null]];
-   if(step.kind==="edge")rows.push(["来源 → 目标",step.sourceKey+" → "+step.targetKey],
+   if(step.kind==="edge")rows.push(["反向方向 · 当前 → 上游",step.sourceKey+" → "+step.targetKey],
     ["输入端口",step.port],["局部规则",step.rule],
     ["上游灵敏度",format(step.upstreamSensitivity)],
     ["边局部导数",format(step.localDerivative)],
