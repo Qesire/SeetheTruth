@@ -37,6 +37,14 @@ jobs:
         run: python tests/browser_learning_path.py
       - name: Verify parameter coordinate and local VJP proof in PC/mobile Chromium
         run: python tests/browser_training_coordinate_proof.py
+      - name: Archive native training coordinate timeline on desktop and phone
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-training-coordinate-timeline
+          path: training_coordinate_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify source-verified graph training to node/state navigation in Chromium
         run: python tests/browser_graph_training_lineage.py
       - name: Verify native training timeline and portable optimizer state in Chromium
