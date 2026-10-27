@@ -69,6 +69,23 @@
     if(pair!==undefined&&pair!==null&&(!Number.isFinite(pair.before)||!Number.isFinite(pair.after)))
      fail("optimizer moment is missing finite native values");
    }
+   if(transition.selectedRoute!==undefined){
+    const r=transition.selectedRoute;
+    if(!r||typeof r.nodeId!=="string"||!r.nodeId||r.nodeId.length>160||
+       !Array.isArray(r.index)||r.index.length<1||r.index.length>5||
+       !r.index.every(n=>Number.isSafeInteger(n)&&n>=0)||
+       typeof r.value!=="number"||!Number.isFinite(r.value)||
+       typeof r.status!=="string"||
+       !["VERIFIED_SELECTED_PATH_CONTRIBUTION","VERIFIED_ZERO_SELECTED_PATH",
+         "PARTIAL_OR_UNAVAILABLE_PATH"].includes(r.status)||
+       r.adjoint!==null&&r.adjoint!==undefined&&!Number.isFinite(r.adjoint)||
+       r.localTermCount!==undefined&&(!Number.isSafeInteger(r.localTermCount)||r.localTermCount<0)||
+       r.frontierCount!==undefined&&(!Number.isSafeInteger(r.frontierCount)||r.frontierCount<0)||
+       transition.selectedPathStatus!==r.status)
+      fail("invalid native selected intermediate route");
+    if(r.status.startsWith("VERIFIED_")&&r.adjoint===null)
+     fail("verified selected route needs native loss adjoint");
+   }
    for(const key of ["lossBefore","lossAfter","selectedPathContribution"]){
     if(transition[key]!==undefined&&transition[key]!==null&&!Number.isFinite(transition[key]))
      fail("invalid native scalar transition field "+key);
@@ -84,7 +101,9 @@
    ...(info.branch?{branch:info.branch}:{}),
    ...(transition?{transition:Object.freeze({...transition,
     ...(transition.moment1?{moment1:Object.freeze({...transition.moment1})}:{}),
-    ...(transition.moment2?{moment2:Object.freeze({...transition.moment2})}:{})})}:{}),
+    ...(transition.moment2?{moment2:Object.freeze({...transition.moment2})}:{}),
+    ...(transition.selectedRoute?{selectedRoute:Object.freeze({...transition.selectedRoute,
+     index:Object.freeze([...transition.selectedRoute.index])})}:{})})}:{}),
    path:Object.freeze(path.slice()),note:info.note});
  }
  function compare(a,b){
@@ -173,7 +192,14 @@
      ...(proof.optimizer.secondMoment?{moment2:proof.optimizer.secondMoment}:{}),
      lossBefore:proof.loss.before,lossAfter:proof.loss.after,
      selectedPathStatus:proof.path.status,
-     selectedPathContribution:proof.path.parameterContribution??null},
+     selectedPathContribution:proof.path.parameterContribution??null,
+     ...(proof.path.selected?{selectedRoute:{
+      nodeId:proof.path.selected.nodeId,index:[...proof.path.selected.index],
+      value:proof.path.selected.value,status:proof.path.status,
+      adjoint:proof.path.loss?.selectedAdjoint??null,
+      localTermCount:proof.path.localTerms?.length??0,
+      frontierCount:proof.path.frontiers?.length??0
+     }}:{})},
    note:"来自已重放的原生小模型训练更新；完整 Loss 梯度与选定局部 VJP 路径贡献需分别解释。"});
  }
  return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope,fromObservation,fromTraining});
