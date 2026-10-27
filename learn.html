@@ -1748,10 +1748,13 @@ locate.addEventListener("click",()=>{try{
      proof.native.selectedStepChangedInAB?" · 本事件在 A/B 中改变":" · 本事件在 A/B 中保持");
    portDetail.replaceChildren();
    for(const p of proof.graph.ports){
-    const item=document.createElement("p");
+    const item=document.createElement("button");
+    item.type="button";item.className="btn small";
+    item.dataset.sourceNode=p.sourceId;item.dataset.port=p.port;
     item.textContent="端口 "+p.port.toUpperCase()+" ← "+p.sourceId+" · "+p.sourceShape.join("×")+
-      " · 目标 "+p.destinationId;
-    item.style.cssText="font:11px/1.5 ui-monospace,monospace;background:#0c293a;border-left:2px solid #58b6c2;padding:5px 7px;margin:0";
+      " · 点击定位来源积木";
+    item.style.cssText="width:100%;text-align:left;font:11px/1.5 ui-monospace,monospace;background:#0c293a;border-left:2px solid #58b6c2;padding:5px 7px;overflow-wrap:anywhere";
+    item.addEventListener("click",()=>root.SeetheTruthUnifiedWorkbench.focusNode(p.sourceId));
     portDetail.append(item);
    }
    comparison.textContent="机制问题："+proof.contrast;
