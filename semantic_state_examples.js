@@ -40,7 +40,7 @@ const cases={
   return {title:"真正的五维视频时间分块与重组成",
    explanation:"把 THWC 视频张量按 T 轴拆成三个帧块，再按原顺序重组；数据位置逐项复现。",
    prediction:"最终 24 个元素、[B,T,H,W,C] 轴与原张量完全一致。最后一帧从 17 开始。",
-   passed,values:{axes:tensor.axes,shape:tensor.shape,firstFrame:chunks[0].data,lastFrame:chunks[2].data,
+   passed,values:{axes:tensor.axes,shape:tensor.shape,original:tensor.data.slice(),firstFrame:chunks[0].data,lastFrame:chunks[2].data,
     joined:joined.data,exactEqual:passed}};
  },
  axis(){
@@ -51,7 +51,7 @@ const cases={
   return {title:"轴名严格对应的广播",
    explanation:"偏置位于特征轴 D，不能悄悄匹配为时间轴 T 或 Key 时间轴 Tk。",
    prediction:"D 偏置广播得到 [11,22,33;14,25,36]，带 Tk 的不相容广播被拒绝。",
-   passed,values:{shape:y.shape,axes:y.axes,values:y.data,wrongAxisRejected:rejected}};
+   passed,values:{shape:y.shape,axes:y.axes,input:x.data.slice(),bias:bias.data.slice(),values:y.data,wrongAxisRejected:rejected}};
  },
  reject(){
   const st=S.init(F([1,2,2],['B','T','D'],[1,2,3,4]),{axis:'T',origin:4,capacity:5});
