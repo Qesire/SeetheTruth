@@ -1628,15 +1628,16 @@ runProof.addEventListener("click",()=>{
   if(mode.value!=="training"){mode.value="training";panel.refresh();}
   const accepted=workbench.inspectTrainingStep();
   const input=accepted.inputSnapshot;
-  const selectedId=parameter.value.trim()||
+  const currentValue=id=>document.getElementById(id)?.value||"";
+  const selectedId=currentValue("trainingProofParameter").trim()||
    input.graph.nodes.find(n=>(n.kind==="parameter"||n.kind==="nd_parameter")&&!n.params.frozen)?.id;
   if(!selectedId)throw Error("请先选择可训练参数");
-  const chosenVia=via.value.trim()||
+  const chosenVia=currentValue("trainingProofVia").trim()||
    accepted.value.timeline.nodes.find(n=>n.kind==="matmul")?.id||selectedId;
   const proof=window.SeetheTruthUnifiedCore.executeLab("training","coordinate_proof",{
    graph:input.graph,options:input.options,
-   selection:{parameterId:selectedId,index:parseCoordinate(index.value||"0,0"),
-    viaNodeId:chosenVia,viaIndex:parseCoordinate(viaIndex.value||"0,0")}
+   selection:{parameterId:selectedId,index:parseCoordinate(currentValue("trainingProofIndex")||"0,0"),
+    viaNodeId:chosenVia,viaIndex:parseCoordinate(currentValue("trainingProofViaIndex")||"0,0")}
   });
   const verifiedReplay=window.SeetheTruthUnifiedCore.replay(proof);
   const v=proof.value;
