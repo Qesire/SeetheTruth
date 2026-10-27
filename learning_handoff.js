@@ -438,6 +438,18 @@
    }
    return Object.freeze({maxAbsolute:max,changedCoordinates:changedCoords});
   };
+  // A freezes a port yet reproduces every existing graph step's output
+  // and original intermediate stages, not merely the selected Attention node.
+  for(const oldStep of trace){
+   const now=aTrace.find(step=>step.id===oldStep.id);
+   if(!now||JSON.stringify(now.values)!==JSON.stringify(oldStep.values)||
+      JSON.stringify(now.internals??null)!==JSON.stringify(oldStep.internals??null))
+    fail("frozen A differs from original source execution: "+oldStep.id);
+  }
+  const restoredB=JSON.parse(JSON.stringify(bGraph));
+  restoredB.nodes.find(n=>n.id===id).params.values[token][feature]=previous;
+  if(JSON.stringify(restoredB)!==JSON.stringify(aGraph))
+   fail("A/B differ beyond the specified single Parameter coordinate");
   const equivalence=distance(original.values,a.values);
   if(equivalence.maxAbsolute>1e-10)
    fail("frozen A input does not reproduce source Attention output");
@@ -463,6 +475,7 @@
   return Object.freeze({schema:"seethetruth-coordinate-intervention-v1",
    evidence:"REPLAYED_GRAPH_PARAMETER_AB",
    source:readOnly.source,sourceEquivalent:equivalence,
+   baselineVerifiedSteps:trace.length,changedInputScalars:1,
    graphComparison:Object.freeze({replayVerified:comparison.replayVerified,
     inputEqual:comparison.inputEqual,changedSteps:comparison.changedSteps,
     numericCompared:comparison.numericCompared}),
