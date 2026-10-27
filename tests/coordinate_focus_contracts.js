@@ -71,6 +71,7 @@ assert.equal(training.value,acceptedTraining.value.parameter.after);
 assert.equal(training.transition.before,acceptedTraining.value.parameter.before);
 assert.equal(training.transition.after-training.transition.before,training.transition.delta);
 assert.equal(training.transition.wholeLossGradient,acceptedTraining.value.wholeLossGradient);
+assert.equal(training.transition.lossNodeId,acceptedTraining.value.targetId);
 assert.equal(training.transition.selectedRoute.nodeId,acceptedTraining.value.path.selected.nodeId);
 assert.deepEqual(training.transition.selectedRoute.index,acceptedTraining.value.path.selected.index);
 assert.equal(training.transition.selectedRoute.value,acceptedTraining.value.path.selected.value);
