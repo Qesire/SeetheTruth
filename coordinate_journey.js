@@ -126,6 +126,7 @@
    steps.push(immutable({kind:"selected_path",...base,title:"指定路径 · 对参数梯度的贡献",
     value:tr.selectedPathContribution??null,status:route.status,
     viaNodeId:route.nodeId,viaIndex:immutable([...route.index]),
+    lossAdjoint:route.adjoint??null,parameterUnitVJP:route.unitVJP??null,
     detail:tr.selectedPathContribution===null?
      "该中间坐标对所选参数的完整路径贡献尚未可核验，未求值不等于 0":
      "经由这一中间输出坐标的损失梯度贡献；全 Loss 参数梯度还包含其他路径"}));
