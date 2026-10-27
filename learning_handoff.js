@@ -472,10 +472,119 @@
   const attentionB=coordinate(core,packet,bGraph,changed,selected);
   const scoreA=score(core,packet,aGraph,baseline,selected);
   const scoreB=score(core,packet,bGraph,changed,selected);
+
+  // Evidence-only propagation: use the two accepted graph traces and the
+  // already replayed original score/coordinate witnesses. No inferred
+  // cross-domain event-to-tensor edge and no second Attention execution.
+  const tolerance=1e-12,near=(lhs,rhs,label)=>{
+   if(!Number.isFinite(lhs)||!Number.isFinite(rhs)||
+      Math.abs(lhs-rhs)>1e-10*Math.max(1,Math.abs(rhs)))
+    fail("causal propagation witness mismatch: "+label);
+  };
+  const graphFlow=[];
+  if(aTrace.length!==bTrace.length)fail("A/B trace topology mismatch");
+  const BById=new Map(bTrace.map(step=>[step.id,step]));
+  for(const step of aTrace){
+   const other=BById.get(step.id);
+   if(!other||other.kind!==step.kind||
+      JSON.stringify(step.shape)!==JSON.stringify(other.shape))
+    fail("A/B graph step identity/shape changed");
+   const aValues=step.values,bValues=other.values;
+   if(!Array.isArray(aValues)||!Array.isArray(bValues)||aValues.length!==bValues.length)
+    fail("A/B execution stage has incompatible values");
+   let maximum=0,changedCount=0;
+   const examples=[];
+   for(let t=0;t<aValues.length;t++){
+    if(!Array.isArray(aValues[t])||!Array.isArray(bValues[t])||
+       aValues[t].length!==bValues[t].length)
+     fail("A/B stage tensor rank mismatch");
+    for(let c=0;c<aValues[t].length;c++){
+     const before=aValues[t][c],after=bValues[t][c],diff=after-before;
+     if(!Number.isFinite(diff))fail("nonfinite A/B propagation delta");
+     maximum=Math.max(maximum,Math.abs(diff));
+     if(Math.abs(diff)>tolerance){
+      changedCount++;
+      if(examples.length<6)examples.push(Object.freeze({token:t,feature:c,before,after,delta:diff}));
+     }
+    }
+   }
+   graphFlow.push(Object.freeze({id:step.id,kind:step.kind,
+    changedCoordinates:changedCount,maxAbsolute:maximum,
+    changed:changedCount>0,examples:Object.freeze(examples)}));
+  }
+  const nativeNode=graphFlow.find(step=>step.id===relation.graph.nodeId);
+  if(!nativeNode||nativeNode.changedCoordinates!==readOnly.outputChange.changedCoordinates)
+   fail("Attention node difference disagrees with full graph trace");
+  const sourceNode=graphFlow.find(step=>step.id===id);
+  if(!sourceNode||sourceNode.changedCoordinates!==1)
+   fail("intervention source must differ at exactly one coordinate");
+  const originalNodes=new Set(trace.map(step=>step.id));
+  if(graphFlow.some(step=>step.id!==id&&!originalNodes.has(step.id)))
+   fail("unexpected extra execution stage");
+  const stage=(label,before,after)=>Object.freeze({
+   label,before,after,delta:after-before,changed:Math.abs(after-before)>tolerance});
+  const allKeys=attentionA.terms.map((term,i)=>{
+   const other=attentionB.terms[i];
+   if(!other||other.key!==term.key||term.masked!==other.masked)
+    fail("A/B changed key ordering or causal visibility");
+   if(term.masked&&(term.probability!==0||other.probability!==0))
+    fail("masked future key acquired probability");
+   const scoreDelta=other.score-term.score,
+    probabilityDelta=other.probability-term.probability,
+    valueDelta=other.value-term.value,
+    contributionDelta=other.contribution-term.contribution;
+   if(![scoreDelta,probabilityDelta,valueDelta,contributionDelta].every(Number.isFinite))
+    fail("nonfinite per-key A/B contribution");
+   return Object.freeze({key:term.key,masked:term.masked,
+    score:stage("Score",term.score,other.score),
+    probability:stage("Softmax P",term.probability,other.probability),
+    value:stage("Value",term.value,other.value),
+    contribution:stage("P×V",term.contribution,other.contribution)});
+  });
+  const features=scoreA.features.map((item,i)=>{
+   const other=scoreB.features[i];
+   if(!other||other.dimension!==item.dimension)
+    fail("A/B score feature index changed");
+   return Object.freeze({dimension:item.dimension,
+    q:stage("Q positioned",item.positionedQ,other.positionedQ),
+    k:stage("K positioned",item.positionedK,other.positionedK),
+    dot:stage("QK/√Dk",item.scaledContribution,other.scaledContribution)});
+  });
+  near(features.reduce((sum,item)=>sum+item.dot.delta,0),
+   scoreB.sourceScore-scoreA.sourceScore,"feature Score sum");
+  near(allKeys.reduce((sum,item)=>sum+item.probability.delta,0),
+   0,"Softmax row normalization delta");
+  near(allKeys.reduce((sum,item)=>sum+item.contribution.delta,0),
+   attentionB.observed-attentionA.observed,"P×V to output delta");
+  const scoreStage=stage("QK scaled Score",scoreA.sourceScore,scoreB.sourceScore);
+  const softmaxStage=stage("selected P",scoreA.probability,scoreB.probability);
+  const outputStage=stage("selected Output",attentionA.observed,attentionB.observed);
+  const rowScoreChanged=allKeys.filter(item=>item.score.changed).length;
+  const rowProbabilityChanged=allKeys.filter(item=>item.probability.changed).length;
+  const rowContributionChanged=allKeys.filter(item=>item.contribution.changed).length;
+  const propagation=Object.freeze({
+   schema:"seethetruth-attention-causal-propagation-v1",
+   tolerance,nativeEventId:relation.native.stepId,
+   observed: "REPLAYED_GRAPH_PARAMETER_AB",
+   featureTerms:Object.freeze(features),keys:Object.freeze(allKeys),
+   score:scoreStage,probability:softmaxStage,output:outputStage,
+   row:Object.freeze({scoreChangedKeys:rowScoreChanged,
+    probabilityChangedKeys:rowProbabilityChanged,
+    contributionChangedKeys:rowContributionChanged,
+    probabilitySumDelta:allKeys.reduce((sum,item)=>sum+item.probability.delta,0),
+    reconstructedOutputDelta:allKeys.reduce((sum,item)=>sum+item.contribution.delta,0)}),
+   graphSteps:Object.freeze(graphFlow),
+   maskedSelectedKey:!!attentionA.terms[selected.keyToken].masked,
+   selectedKeySuppressed:!!attentionA.terms[selected.keyToken].masked&&
+    !softmaxStage.changed,
+   selectedHeadIsolated:!scoreStage.changed&&nativeNode.changed,
+   note:"Graph stages use accepted A/B DAG traces; QK, Softmax and PV are decompositions of the same traced operation. Unchanged local result does not imply unchanged global output."
+  });
   return Object.freeze({schema:"seethetruth-coordinate-intervention-v1",
    evidence:"REPLAYED_GRAPH_PARAMETER_AB",
    source:readOnly.source,sourceEquivalent:equivalence,
    baselineVerifiedSteps:trace.length,changedInputScalars:1,
+   propagation,
    graphComparison:Object.freeze({replayVerified:comparison.replayVerified,
     inputEqual:comparison.inputEqual,changedSteps:comparison.changedSteps,
     numericCompared:comparison.numericCompared}),
