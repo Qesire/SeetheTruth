@@ -14,13 +14,14 @@ const stateSource=fs.readFileSync(path.join(ROOT,"semantic_state_lab.js"),"utf8"
 const handoffSource=fs.readFileSync(path.join(ROOT,"state_learning_handoff.js"),"utf8");
 const policy=JSON.parse(fs.readFileSync(path.join(ROOT,"static_asset_policy.json"),"utf8"));
 const names=["stream","video","axis","reject"];
-for(const id of ["aTitle","bTitle","aValues","bValues","aGraphLink","bGraphLink","difference","lessonLink","trace"])
+for(const id of ["aTitle","bTitle","aValues","bValues","aGraphLink","bGraphLink","aCoordinateGrid","bCoordinateGrid","coordinateDetail","coordinateGraphLink","difference","lessonLink","trace"])
  assert.match(stateHtml,new RegExp('id="'+id+'"'),"missing experiment UI "+id);
 for(const html of [stateHtml,studioHtml])
  assert.ok(html.includes('<script src="state_learning_handoff.js"></script>'),"missing navigation bootstrap");
 assert.ok(policy.androidAssets.includes("state_learning_handoff.js"),"shared offline asset must be reviewed");
 assert.match(stateHtml,/prefers-reduced-motion/);
 assert.match(studioHtml,/state-handoff-anchor/);
+assert.match(studioHtml,/state-evidence-path/);
 const expectedPresets={
  stream:"stream_state_branches",video:"extension_video_time_composition",
  axis:"extension_named_axis_composition",reject:"stream_state_branches"
@@ -32,6 +33,19 @@ for(const name of names){
  Bridge.validateGraph(name,graph);
  const result=Examples.run(name);assert.equal(result.passed,true);
  const proofs=Bridge.evidence(name,result);
+ const expectedCount={stream:[6,6],video:[24,24],axis:[6,0],reject:[4,0]}[name];
+ for(const [b,total] of [["a",expectedCount[0]],["b",expectedCount[1]]]){
+  const indices=Bridge.coordinateList(name,result,b);
+  assert.equal(indices.length,total);
+  for(const i of indices){
+   const proof=Bridge.coordinate(name,result,b,i);
+   assert.equal(proof.coordinate.length,proof.shape.length);
+   assert.ok(Number.isFinite(proof.value));
+   assert.ok(graph.nodes.some(n=>n.id===proof.nodeId));
+   assert.match(Bridge.href(name,proof.nodeId,b,i),/state_index=/);
+  }
+ }
+ if(expectedCount[1]===0)assert.throws(()=>Bridge.coordinate(name,result,"b",0),/范围/);
  assert.equal(proofs.length,spec.anchors.length);
  for(const point of proofs){
   const node=graph.nodes.find(n=>n.id===point.id);
@@ -53,20 +67,21 @@ function domElement(tag){
   setAttribute(k,v){this.attributes[k]=String(v);},
   addEventListener(k,v){this.handlers[k]=v;},
   append(...parts){this.children.push(...parts);},
+  replaceChildren(...parts){this.children=[...parts];},
   click(){if(this.handlers.click)this.handlers.click();},
   remove(){this.removed=true;}};
 }
 function evaluateStatePage(search){
  const elements=new Map(),buttons=names.map(name=>({dataset:{scenario:name},attributes:{},
   setAttribute(k,v){this.attributes[k]=String(v);},addEventListener(){}}));
- const get=id=>{if(!elements.has(id))elements.set(id,{textContent:"",href:""});return elements.get(id);};
+ const get=id=>{if(!elements.has(id))elements.set(id,domElement("div"));return elements.get(id);};
  const core={executeLab(domain,op,input){
   assert.equal(domain,"semantic_state");assert.equal(op,"scenario");
   return {value:Examples.run(input.name)};
  }};
  const window={location:{search},SeetheTruthStateBridge:Bridge,
   SeetheTruthUnifiedCore:core,SeetheTruthSemanticExamples:{names}};
- const document={getElementById:get,querySelectorAll:selector=>selector==="[data-scenario]"?buttons:[]};
+ const document={getElementById:get,createElement:domElement,querySelectorAll:selector=>selector==="[data-scenario]"?buttons:[]};
  vm.runInNewContext(stateSource,{window,document,URLSearchParams,JSON,Object,String,Error});
  return {window,get,buttons};
 }
@@ -81,6 +96,11 @@ for(const name of names){
  assert.equal(get("bGraphLink").href,Bridge.href(name,spec.primary.b));
  assert.match(get("lessonLink").href,/state_case=/);
  assert.equal(window.SeetheTruthStateLab.run(name).passed,true);
+ const n=Bridge.coordinateList(name,Examples.run(name),"a").length;
+ assert.equal(get("aCoordinateGrid").children.length,n);
+ get("aCoordinateGrid").children.at(-1).click();
+ assert.match(get("coordinateDetail").textContent,/实际来源/);
+ assert.match(get("coordinateGraphLink").href,/state_branch=a/);
 }
 function evaluateHandoff(name,node){
  const selection=[],focus=[],panels=[],studio={};
@@ -90,6 +110,7 @@ function evaluateHandoff(name,node){
  const document={
   createElement:domElement,body:{append:el=>panels.push(el)},
   getElementById:id=>id==="stateGraphExample"?{click:()=>selection.push("stream_state_branches")}:null,
+  querySelectorAll:selector=>[],
   querySelector:selector=>selector==='[data-preset="'+spec.preset+'"]'
    ?{click:()=>selection.push(spec.preset)}:null
  };
@@ -117,5 +138,12 @@ for(const name of names){
  const spec=Bridge.caseOf(name);
  evaluateHandoff(name,spec.primary.a);
  evaluateHandoff(name,spec.primary.b);
+}
+for(const name of names){
+ const graph=Lab.preset(Bridge.caseOf(name).preset),entry=Bridge.caseOf(name);
+ const p=Bridge.upstreamPath(name,graph,entry.primary.a);
+ assert.ok(p.includes(entry.primary.a));
+ const row=Bridge.coordinateList(name,Examples.run(name),"a");
+ assert.ok(row.length>0);
 }
 console.log("STATE_AB_GRAPH_BRIDGE_PASS: real scenario arithmetic, installed recipe signatures, per-branch focus, provenance and offline publication");
