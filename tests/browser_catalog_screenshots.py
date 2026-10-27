@@ -82,9 +82,17 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
         p=self.page
         p.goto(self.base+"/semantic_state.html?state_case=video",wait_until="domcontentloaded")
         self.assertIn("五维视频",p.locator("#caseTitle").inner_text())
+        p.locator("#bCoordinateGrid [data-coordinate='b:22']").click()
+        self.assertIn("22",p.locator("#coordinateGraphLink").get_attribute("href"))
+        self.assertIn("A−B = 0",p.locator("#coordinateDetail").inner_text())
         self.assertIn("state_node=join",p.locator("#bGraphLink").get_attribute("href"))
         p.locator("#bGraphLink").click()
         p.wait_for_url("**/learn.html?edition=teaching&state_case=video&state_node=join")
+        p.wait_for_function("""() => {
+          const panel=document.querySelector('#stateHandoff');
+          return panel && panel.querySelector('[aria-pressed=true]') &&
+            document.querySelector("#blocks [data-node='join'].selected");
+        }""",timeout=20000)
         self.assertEqual(p.locator("#blocks [data-node='join'].selected").count(),1)
         self.assertEqual(p.locator("#stateHandoff [aria-pressed='true']").count(),1)
         self.assertIn("独立示例输入",p.locator("#stateHandoff").inner_text())
@@ -103,6 +111,11 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
             self.assertEqual(phone.locator("#aGraphLink").count(),1)
             phone.locator("#bGraphLink").click()
             phone.wait_for_url("**/learn.html?edition=teaching&state_case=axis&state_node=bias")
+            phone.wait_for_function("""() => {
+              const panel=document.querySelector('#stateHandoff');
+              return panel && panel.querySelector('[aria-pressed=true]') &&
+                document.querySelector("#blocks [data-node='bias'].selected");
+            }""",timeout=20000)
             self.assertEqual(phone.locator("#blocks [data-node='bias'].selected").count(),1)
             self.assertIn("具名轴",phone.locator("#stateHandoff").inner_text())
             self.assertNotIn("课程关联待检查",phone.locator("#stateHandoff").inner_text())
