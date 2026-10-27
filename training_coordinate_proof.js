@@ -74,7 +74,9 @@
    const eligible=detail.backward.complete&&
     detail.loss.status==="VERIFIED_GRAPH_LOSS_VJP"&&
     detail.loss.throughSelectedEligible;
-   if(eligible&&match&&unitSource&&Number.isFinite(unitSource.sensitivity)&&
+   if(eligible&&match&&(!unitSource||!Number.isFinite(unitSource.sensitivity)))
+    fail("verified selected gradient lacks native source-coordinate unit VJP");
+   if(eligible&&match&&
       !close(detail.loss.selectedAdjoint*unitSource.sensitivity,match.throughSelected))
     fail("selected loss adjoint multiplied by unit VJP differs from native path contribution");
    if(eligible&&match&&!close(match.wholeLossGradient,g))
