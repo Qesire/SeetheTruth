@@ -29,7 +29,7 @@ const cases={
    prediction:"相同前缀可以得到不同的分支后缀，旧状态保持 next=102，且窗口 [101,103) 精确返回两条时间记录。",
    passed,values:{initial:{next:initial.nextPosition,prefix:initial.tensor.data},advanced:{next:advanced.nextPosition,values:advanced.tensor.data},
     fork:{next:forked.nextPosition,values:forked.tensor.data},readWindow:{start:window.logicalStart,end:window.logicalEnd,values:window.tensor.data},
-    storagePolicy:advanced.storage}};
+    appendChunks:{a:current.data.slice(),b:alternative.data.slice()},storagePolicy:advanced.storage}};
  },
  video(){
   const tensor=F([1,3,2,2,2],['B','T','H','W','C'],Array.from({length:24},(_,i)=>i+1));
