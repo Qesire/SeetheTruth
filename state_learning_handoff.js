@@ -209,9 +209,9 @@
   const challenge=doc.createElement("p");challenge.textContent=entry.challenge;
   const back=doc.createElement("a");back.href="semantic_state.html?state_case="+name;
   back.textContent="返回当前状态实验";
-  let jump=null;
+  let jump=null,trail=null;
   const close=doc.createElement("button");close.type="button";close.textContent="收起";
-  close.className="state-handoff-close";close.addEventListener("click",()=>{panel.remove();jump?.remove();});
+  close.className="state-handoff-close";close.addEventListener("click",()=>{panel.remove();jump?.remove();trail?.remove();});
   panel.append(title,sub,status,links,source,challenge,back,close);
   const inspector=doc.querySelector?.(".inspector");
   if(inspector&&typeof inspector.prepend==="function"){
@@ -223,6 +223,9 @@
     jump.className="state-handoff-jump";jump.textContent="实验 → 计算图 · 查看坐标证据";
     jump.addEventListener("click",()=>panel.scrollIntoView({block:"start",behavior:"auto"}));
     stageTop.append(jump);
+    trail=doc.createElement("div");trail.id="stateHandoffTrail";trail.className="state-handoff-trail";
+    trail.setAttribute("role","group");trail.setAttribute("aria-label","当前坐标的实际计算依赖路径");
+    stageTop.append(trail);
    }
   }else doc.body.append(panel);
   try{
@@ -265,6 +268,21 @@
      el.classList.toggle("state-evidence-path",actualPath.includes(el.dataset.node));
     }
     if(jump)jump.textContent="实验坐标 ["+proof.coordinate.join(",")+"] · "+proof.value+" · 查看证据";
+    if(trail){
+     trail.replaceChildren();
+     for(const [i,id] of actualPath.entries()){
+      const chip=doc.createElement("button");chip.type="button";chip.className="state-handoff-path-chip";
+      chip.textContent=(i?"→ ":"")+id;
+      chip.setAttribute("aria-label","定位当前坐标路径上的 "+id+" 积木");
+      chip.addEventListener("click",()=>{
+       studio.focusNode(id);
+       for(const e of doc.querySelectorAll("#blocks [data-node]"))
+        e.classList.toggle("state-evidence-path",actualPath.includes(e.dataset.node));
+       status.textContent="已定位 "+id+"；源实验坐标 ["+proof.coordinate.join(",")+"]，路径 "+actualPath.join(" → ")+"。";
+      });
+      trail.append(chip);
+     }
+    }
     status.textContent="实验坐标 ["+proof.coordinate.join(",")+"] = "+proof.value+
      " · 源 "+proof.terms.map(t=>t.role+"["+t.index+"]="+t.value).join(" + ")+
      "。本坐标对应的图路径："+actualPath.join(" → ")+"；课程输入独立，数值不直接等同。";
