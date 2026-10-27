@@ -70,6 +70,8 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      # Reject unsafe/invalid coordinates without displaying stale accepted proof.
      invalid=f"{focus['shape'][0]},0"
      page.locator('#trainingProofIndex').fill(invalid)
+     self.assertEqual(page.locator('#trainingProofIndex').input_value(),invalid)
+     self.assertEqual(page.locator('#trainingProofIndex').count(),1)
      page.locator('#trainingProofExecute').click()
      self.assertIn('坐标验证未完成',page.locator('#trainingProofStatus').inner_text())
      self.assertEqual(page.locator('#trainingProofDetail').inner_text(),'')
