@@ -1623,13 +1623,15 @@ const parseCoordinate=value=>{
  if(!numbers.length||numbers.some(x=>!/^[0-9]+$/.test(x)))throw Error("坐标必须是非负整数，以逗号分隔");
  return numbers.map(Number);
 };
-document.addEventListener("input",event=>{
- if(!["trainingProofParameter","trainingProofIndex","trainingProofVia","trainingProofViaIndex"]
-   .includes(event.target.id))return;
+const invalidateTrainingProof=()=>{
  coordinateFocusSession.clear();
  coordinateStatus.textContent="坐标验证未完成：参数或路径输入已更改，请重新验证";
  coordinateDetail.textContent="";
-});
+};
+for(const field of [parameter,index,via,viaIndex]){
+ field.addEventListener("input",invalidateTrainingProof);
+ field.addEventListener("change",invalidateTrainingProof);
+}
 document.addEventListener("click",event=>{
  const clicked=event.target.closest?.("#trainingProofExecute");
  if(!clicked)return;
