@@ -231,6 +231,8 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  assert.equal(experiment.graphComparison.replayVerified,true);
  assert.equal(experiment.graphComparison.inputEqual,false);
  assert.equal(experiment.graphComparison.numericCompared,true);
+ assert.equal(experiment.baselineVerifiedSteps,record.session.trace.steps.length);
+ assert.equal(experiment.changedInputScalars,1);
  assert.equal(experiment.sourceEquivalent.maxAbsolute,0);
  assert.equal(experiment.sourceEquivalent.changedCoordinates,0);
  assert.ok(experiment.graphComparison.changedSteps.some(x=>x.stepId===experiment.source.parameter));
@@ -279,6 +281,7 @@ assert.equal(negative.output.delta,0);
 assert.ok(negative.outputChange.changedCoordinates>0,
  'later queries can observe a key masked for the selected early query');
 assert.equal(negative.sourceEquivalent.maxAbsolute,0);
+assert.equal(negative.changedInputScalars,1);
 console.log('NATIVE_GRAPH_INTERVENTION_PASS replayed one-element Q/K A/B, numeric cascade, masked negative, provenance and bounds');
 
 
