@@ -77,9 +77,11 @@
   const entry=caseOf(name);
   return entry?.anchors.find(a=>a.id===id)||null;
  }
- function href(name,id){
+ function href(name,id,branch=null,index=null){
   if(!anchorOf(name,id))throw Error("未知的计算图证据锚点");
-  return "learn.html?edition=teaching&state_case="+name+"&state_node="+id;
+  let url="learn.html?edition=teaching&state_case="+name+"&state_node="+id;
+  if(branch!==null||index!==null){if(!["a","b"].includes(branch)||!Number.isSafeInteger(index)||index<0||index>4095)throw Error("无效坐标导航");url+="&state_branch="+branch+"&state_index="+index;}
+  return url;
  }
  function validateGraph(name,graph){
   const entry=caseOf(name);
@@ -100,6 +102,82 @@
   const entry=caseOf(name);
   if(!entry||!result||!result.values)throw Error("缺少统一实验执行结果");
   return entry.anchors.map(a=>Object.freeze({...a,sample:readPath(result.values,a.field)}));
+ }
+ function coordinateList(name,result,branch){
+  const entry=caseOf(name);
+  if(!entry||!["a","b"].includes(branch)||!result?.values)throw Error("无效坐标案例");
+  if(branch==="b"&&["axis","reject"].includes(name))return Object.freeze([]);
+  const v=result.values;
+  const array=name==="stream"?(branch==="a"?v.advanced.values:v.fork.values):
+   name==="video"?(branch==="a"?v.original:v.joined):
+   name==="axis"?v.values:v.original;
+  if(!Array.isArray(array)||!array.every(x=>typeof x==="number"&&Number.isFinite(x)))throw Error("数值坐标源缺失");
+  const shape=name==="stream"?[1,3,2]:name==="video"?v.shape:
+   name==="axis"?v.shape:[1,2,2];
+  if(!Array.isArray(shape)||shape.reduce((a,b)=>a*b,1)!==array.length)throw Error("真实源张量形状不匹配");
+  return Object.freeze(array.map((_,i)=>i));
+ }
+ function unravel(i,shape){
+  const out=new Array(shape.length);
+  for(let k=shape.length-1;k>=0;k--){out[k]=i%shape[k];i=Math.floor(i/shape[k]);}
+  return out;
+ }
+ function coordinate(name,result,branch,index){
+  const ids=coordinateList(name,result,branch);
+  if(!Number.isSafeInteger(index)||index<0||index>=ids.length)throw Error("坐标超出执行张量范围");
+  const v=result.values,shape=name==="stream"?[1,3,2]:
+   name==="video"?v.shape:name==="axis"?v.shape:[1,2,2];
+  const location=unravel(index,shape),axes=name==="video"?["B","T","H","W","C"]:
+   name==="axis"?["T","D"]:["B","T","D"];
+  let value,terms=[],traceNodes=[],related=null,origin;
+  if(name==="stream"){
+   value=(branch==="a"?v.advanced.values:v.fork.values)[index];
+   const prefixLen=v.initial.prefix.length,fromPrefix=index<prefixLen;
+   const source=fromPrefix?v.initial.prefix:(branch==="a"?v.advanced.values:v.fork.values);
+   const sourceIndex=fromPrefix?index:index-prefixLen;
+   const sourceValue=source[fromPrefix?sourceIndex:index];
+   if(value!==sourceValue)throw Error("stream append coordinate proof mismatch");
+   terms=[{role:fromPrefix?"prefix":"append_chunk",index:sourceIndex,value:sourceValue}];
+   traceNodes=fromPrefix?["prefix","init"]:["prefix","init",branch==="a"?"chunk_a":"chunk_b"];
+   origin=100+location[1];
+  }else if(name==="video"){
+   value=(branch==="a"?v.original:v.joined)[index];
+   if(value!==v.original[index]||value!==v.joined[index])throw Error("video T composition coordinate mismatch");
+   const time=location[1],span=shape.slice(2).reduce((a,b)=>a*b,1);
+   terms=[{role:"original_video",index,value:v.original[index]},
+    {role:time<2?"early_T_slice":"late_T_slice",index:time<2?index:index-2*span,value}];
+   traceNodes=["video",time<2?"early":"late",...(branch==="b"?["join"]:[])];
+  }else if(name==="axis"){
+   value=v.values[index];
+   const D=shape[1],d=location[1],x=v.input[index],bias=v.bias[d];
+   if(x+bias!==value)throw Error("named-axis broadcast coordinate mismatch");
+   terms=[{role:"input[T,D]",index,value:x},{role:"bias[D]",index:d,value:bias}];
+   traceNodes=["x","bias","add"];
+  }else{
+   value=v.original[index];
+   terms=[{role:"immutable_original",index,value}];
+   traceNodes=["init"];
+   origin=v.origin+location[1];
+  }
+  related=name==="video"?(branch==="a"?"video":"join"):
+   name==="stream"?(branch==="a"?"append_a":"append_b"):
+   name==="axis"?"add":"init";
+  return Object.freeze({name,branch,index,coordinate:Object.freeze(location),axes:Object.freeze(axes),
+   shape:Object.freeze(shape.slice()),value,terms:Object.freeze(terms),origin,
+   nodeId:related,traceNodes:Object.freeze(traceNodes),
+   note:"实验室中同一次确定性数值执行的坐标证明；课程使用独立样本，不声明跨页面数值相同"});
+ }
+ function upstreamPath(name,graph,nodeId){
+  validateGraph(name,graph);
+  if(!graph.nodes.some(n=>n.id===nodeId))throw Error("计算图不存在对应节点");
+  const found=new Set(),work=[nodeId];
+  while(work.length){
+   const id=work.pop();
+   if(found.has(id))continue;
+   found.add(id);
+   for(const e of graph.edges)if(e.to===id)work.push(e.from);
+  }
+  return Object.freeze(graph.nodes.filter(n=>found.has(n.id)).map(n=>n.id));
  }
  function mount(host,doc){
   const query=new URLSearchParams(host.location.search);
@@ -133,6 +211,7 @@
    const rows=evidence(name,accepted.value);
    const requested=query.get("state_node");
    const start=anchorOf(name,requested)?.id||entry.primary.a;
+   const requestedBranch=query.get("state_branch"),requestedIndex=query.get("state_index");
    const controls=[];
    for(const item of rows){
     const button=doc.createElement("button");button.type="button";button.className="state-handoff-anchor";
@@ -144,12 +223,23 @@
      for(const b of controls)b.setAttribute("aria-pressed",String(b===button));
      status.textContent=item.label+" / "+item.field+" = "+JSON.stringify(item.sample)+
       "。当前数值来自状态实验，积木课程使用独立输入。";
+     const closure=upstreamPath(name,studio.inspect().graph,item.id);
+     for(const el of doc.querySelectorAll("#blocks [data-node]")){
+      el.classList.toggle("state-evidence-path",closure.includes(el.dataset.node));
+     }
     });
     controls.push(button);links.append(button);
    }
    controls[rows.findIndex(item=>item.id===start)].click();
+   if(["a","b"].includes(requestedBranch)&&requestedIndex!==null&&/^(0|[1-9]\\d*)$/.test(requestedIndex)){
+    const proof=coordinate(name,accepted.value,requestedBranch,Number(requestedIndex));
+    status.textContent="实验坐标 ["+proof.coordinate.join(",")+"] = "+proof.value+
+     " · 源 "+proof.terms.map(t=>t.role+"["+t.index+"]="+t.value).join(" + ")+
+     "。当前课程是独立示例，机制与依赖路径可对应，数值不直接等同。";
+    back.href+="&state_branch="+requestedBranch+"&state_index="+proof.index;
+   }
   }catch(err){status.textContent="课程关联待检查："+err.message;}
   return panel;
  }
- return Object.freeze({cases,caseOf,anchorOf,href,validateGraph,evidence,mount});
+ return Object.freeze({cases,caseOf,anchorOf,href,validateGraph,evidence,coordinateList,coordinate,upstreamPath,mount});
 });
