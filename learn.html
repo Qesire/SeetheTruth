@@ -1788,6 +1788,63 @@ locate.addEventListener("click",()=>{try{
      " · 样本 "+JSON.stringify(proof.graph.numeric.sample):
     "当前只有图结构及形状证据；点击按钮执行真正的微型数值计算。";
    numericStatus.dataset.verified=String(!!proof.graph.numeric);
+   coords.hidden=!numericRecord;
+   if(numericRecord){
+    const first=H.coordinate(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord);
+    const counts={queryToken:first.outputShape[0],head:first.headCount,
+     channel:first.outputShape[1]/first.headCount};
+    for(const [key,count] of Object.entries(counts)){
+     const selector=coordinateControls[key];
+     const prev=Number(selector.value);
+     if(selector.options.length!==count){
+      selector.replaceChildren(...Array.from({length:count},(_,i)=>{
+       const option=document.createElement("option");
+       option.value=String(i);option.textContent=String(i);return option;
+      }));
+     }
+     selector.value=String(Number.isSafeInteger(prev)&&prev>=0&&prev<count?prev:0);
+    }
+    const selected=Object.fromEntries(Object.entries(coordinateControls)
+     .map(([key,sel])=>[key,Number(sel.value)]));
+    const witness=H.coordinate(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord,selected);
+    lastCoordinate=witness;
+    coordSummary.textContent="Out["+witness.queryToken+","+witness.outputChannel+"] = "+
+     witness.observed.toPrecision(9)+" · Σ P×V = "+witness.recomputed.toPrecision(9)+
+     " · Δ="+witness.error.toExponential(2)+" · Hq "+witness.queryHead+
+     " → Hkv "+witness.kvHead+" · ΣP="+witness.probabilitySum.toFixed(8);
+    coordSummary.dataset.verified="true";
+    const head=document.createElement("thead"),header=document.createElement("tr");
+    for(const label of ["Key","Score","P","V","P×V"]){
+     const th=document.createElement("th");th.textContent=label;
+     th.style.cssText="text-align:left;padding:4px;border-bottom:1px solid #53798b";
+     header.append(th);
+    }
+    head.append(header);const body=document.createElement("tbody");
+    for(const term of witness.terms){
+     const row=document.createElement("tr");row.dataset.masked=String(term.masked);
+     const parts=[term.masked?term.key+" masked":String(term.key),
+      term.score.toFixed(4),term.probability.toFixed(5),
+      term.value.toFixed(5),term.contribution.toFixed(6)];
+     for(const value of parts){
+      const cell=document.createElement("td");cell.textContent=value;
+      cell.style.cssText="padding:4px;border-bottom:1px solid #315263";
+      row.append(cell);
+     }
+     body.append(row);
+    }
+    coordTable.replaceChildren(head,body);
+   }else{
+    lastCoordinate=null;coordSummary.dataset.verified="false";
+    coordTable.replaceChildren();
+   }
+
+  }
+  for(const select of Object.values(coordinateControls)){
+   select.addEventListener("change",()=>{
+    try{renderMechanism();}
+    catch(error){lastCoordinate=null;coordSummary.dataset.verified="false";
+     coordSummary.textContent="坐标核验未完成："+error.message;}
+   });
   }
   probe.addEventListener("click",()=>{
    try{
@@ -1801,7 +1858,8 @@ locate.addEventListener("click",()=>{try{
   const refresh=()=>queueMicrotask(()=>{
    if(!panel.isConnected)return;
    try{renderMechanism();}
-   catch(error){lastMechanism=null;numericStatus.dataset.verified="false";
+   catch(error){lastMechanism=null;lastCoordinate=null;coords.hidden=true;
+    coordSummary.dataset.verified="false";numericStatus.dataset.verified="false";
     numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
   });
   document.addEventListener("click",event=>{
@@ -1818,7 +1876,16 @@ locate.addEventListener("click",()=>{try{
    compared:!!restored.comparison,
    get mechanismVerified(){return !!lastMechanism;},
    get numericVerified(){return !!lastMechanism?.graph.numeric;},
-   get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];}
+   get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];},
+   get coordinateVerified(){return !!lastCoordinate;},
+   get coordinate(){return lastCoordinate?{
+    queryToken:lastCoordinate.queryToken,head:lastCoordinate.queryHead,
+    channel:lastCoordinate.headChannel,observed:lastCoordinate.observed,
+    recomputed:lastCoordinate.recomputed,error:lastCoordinate.error,
+    probabilitySum:lastCoordinate.probabilitySum,
+    maskedCount:lastCoordinate.terms.filter(t=>t.masked).length,
+    keyCount:lastCoordinate.keyCount
+   }:null;}
   });
  }catch(error){
   status.textContent="来源证据未完成核验："+error.message;
