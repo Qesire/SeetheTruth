@@ -22,7 +22,7 @@ try{
  if(bridge.preset==="stream_state_branches")document.getElementById("stateGraphExample").click();
  else if(target)target.click();
  else throw Error("目标课程尚未安装");
- const graph=studio.inspect().inputSnapshot?.graph||studio.inspect().graph;
+ const graph=studio.inspect().graph;
  const node=graph?.nodes?.find(n=>bridge.kinds.includes(n.kind));
  if(node){studio.focusNode(node.id);body.textContent="已加载对应课程并定位 "+node.kind+"。继续选中端口、逐坐标观察或修改输入。";}
  else body.textContent="已加载课程。请从画布上选择相关节点，沿计算依赖追踪。";
