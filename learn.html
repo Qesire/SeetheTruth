@@ -1852,6 +1852,8 @@ locate.addEventListener("click",()=>{try{
    pathSummary.textContent="同图重放 · "+result.changedInputScalars+
     " 个参数标量 · 误差阈值 "+p.tolerance+
     " · 已验证原图节点 "+result.baselineVerifiedSteps+
+    " · DAG可达节点 "+p.causalReachableCount+
+    " · 锥外变化 "+p.changedOutsideCausalCone+
     " · Score变化Key "+p.row.scoreChangedKeys+
     " / P变化Key "+p.row.probabilityChangedKeys+
     " / P×V变化Key "+p.row.contributionChangedKeys+
@@ -1883,9 +1885,13 @@ locate.addEventListener("click",()=>{try{
    pathGraph.replaceChildren();
    for(const step of p.graphSteps){
     const li=document.createElement("li");
-    li.textContent=step.id+" · "+step.kind+" · "+step.changedCoordinates+
-     " 个坐标变化 · 最大 |Δ|="+step.maxAbsolute.toExponential(3)+
-     (step.changed?" · 受影响":" · 保持");
+    const incoming=step.incoming.map(edge=>
+     edge.from+"."+edge.port+(edge.sourceChanged?" (源变化)":" (源保持)"));
+    li.textContent=step.id+" · "+step.kind+
+     " · 输入 ["+(incoming.join("，")||"无")+"]"+
+     " · "+step.changedCoordinates+" 个坐标变化"+
+     " · 最大 |Δ|="+step.maxAbsolute.toExponential(3)+
+     (step.changed?" · 受影响":step.reachable?" · 可达但数值保持":" · 因果锥外保持");
     if(step.examples.length){
      const detail=document.createElement("small");
      detail.textContent=" 示范："+
@@ -2184,6 +2190,8 @@ locate.addEventListener("click",()=>{try{
     maskedSelectedKey:lastIntervention.propagation.maskedSelectedKey,
     row:lastIntervention.propagation.row,
     graphSteps:lastIntervention.propagation.graphSteps.length,
+    reachableSteps:lastIntervention.propagation.causalReachableCount,
+    changedOutsideCone:lastIntervention.propagation.changedOutsideCausalCone,
     keys:lastIntervention.propagation.keys.length
    }:null;},
    get interventionVerified(){return !!lastIntervention;},
