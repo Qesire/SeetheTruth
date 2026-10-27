@@ -333,6 +333,8 @@
  ctl(intervene,"stateContrastIntervene","执行一个原生变量干预");
  ctl(compare,"stateContrastCompare","比较当前场景 B");
  ctl(reset,"stateContrastReset","重置对照");
+ const graphBridge=document.createElement("button");
+ ctl(graphBridge,"stateGraphBridge","联系计算图积木 →");
  contrast.append(contrastHeading,contrastPrompt,predictionLabel,prediction,controls,contrastStatus,contrastResults);
  lessonHost.after(contrast);
  let contrastBase=null,contrastResult=null,contrastBKey=null,contrastPrediction="";
@@ -534,6 +536,52 @@
    get replayVerified(){return contrastResult?.replayVerified||false;}
  });
  renderContrast();
+
+ // Native state evidence is transported as snapshots, never projected
+ // into a fabricated numeric computation graph.
+ const H=root.SeetheTruthLearningHandoff;
+ graphBridge.addEventListener("click",()=>{
+  try{
+   if(!H)throw Error("跨课程观测合同未加载");
+   const current=currentProgram();
+   const selected=view.frame?.steps?.[view.selected]?.id||null;
+   const baseline=contrastResult&&contrastBKey===signature(root.SeetheTruthCurrentDomainRun)
+      ?contrastBase:null;
+   const packet=H.create(root.SeetheTruthUnifiedCore,current,baseline,selected,contrastPrediction);
+   H.store(root.sessionStorage,packet);
+   root.location.assign("learn.html?nativeGraphBridge=1");
+  }catch(error){contrastStatus.textContent="课程衔接未建立："+error.message;}
+ });
+ if(new URLSearchParams(root.location.search).has("nativeGraphReturn")){
+  try{
+   const restored=H.restore(root.SeetheTruthUnifiedCore,H.load(root.sessionStorage));
+   if(restored.domain!==lab.id||restored.sourceHref!==root.location.pathname.split("/").at(-1))
+    throw Error("返回来源实验室不匹配");
+   view.show(restored.current.record.stateTrace,restored.selectedStepIndex);
+   output.textContent="课程返回：源引擎重新核验 "+restored.selectedStepId+" · 只读教学视图";
+   const label=document.createElement("p");label.id="stateGraphReturnStatus";
+   label.textContent="已重新核验 "+(restored.baseline?"A / B 两份原生运行":"原生运行")+
+    "；浏览器中的场景控件与本次只读回放分别管理。";
+   contrast.append(label);
+   if(restored.baseline){
+    const toggle=document.createElement("button");toggle.id="stateGraphReturnToggle";
+    let showingB=true;toggle.textContent="查看已核验 A";
+    toggle.addEventListener("click",()=>{
+     showingB=!showingB;
+     const record=showingB?restored.current.record:restored.baseline.record;
+     view.show(record.stateTrace,showingB?restored.selectedStepIndex:0);
+     toggle.textContent=showingB?"查看已核验 A":"返回已核验 B";
+     label.textContent=(showingB?"B 事件 "+restored.selectedStepId:"A 起始事件")+
+       " · 源引擎重放核验通过";
+    });
+    controls.append(toggle);
+   }
+   root.SeetheTruthNativeGraphReturn=Object.freeze({
+    replayVerified:true,domain:restored.domain,selectedStepId:restored.selectedStepId,
+    hasBaseline:!!restored.baseline,changedSteps:restored.comparison?.changedSteps.length??null
+   });
+  }catch(error){contrastStatus.textContent="返回证据未核验："+error.message;}
+ }
 
  root.SeetheTruthStateLearningGuide=Object.freeze({
   get id(){return lab.id;},
