@@ -803,16 +803,31 @@ function drawWires(){
  const board=$("#board"),box=board.getBoundingClientRect(),svg=$("#wires");
  svg.setAttribute("viewBox","0 0 "+board.clientWidth+" "+board.clientHeight);
  const r=(id,attr)=>document.querySelector('[data-node="'+CSS.escape(id)+'"] '+attr)?.getBoundingClientRect();
- const paths=graph.edges.map(e=>{
-  const o=r(e.from,'[data-out] .socket'),i=r(e.to,'[data-in][data-port="'+CSS.escape(e.port)+'"] .socket');
-  if(!o||!i)return "";
+ const fragment=document.createDocumentFragment();
+ for(const edge of graph.edges){
+  const o=r(edge.from,'[data-out] .socket'),i=r(edge.to,
+   '[data-in][data-port="'+CSS.escape(edge.port)+'"] .socket');
+  if(!o||!i)continue;
   const scale=Number(board.style.zoom)||1;
   const x1=(o.left+o.width/2-box.left)/scale,y1=(o.top+o.height/2-box.top)/scale,
     x2=(i.left+i.width/2-box.left)/scale,y2=(i.top+i.height/2-box.top)/scale,
     bend=Math.max(70,Math.abs(x2-x1)*.47);
-  return '<path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#14334a" stroke-width="9" stroke-linecap="round"/><path d="M '+x1+' '+y1+' C '+(x1+bend)+' '+y1+' '+(x2-bend)+' '+y2+' '+x2+' '+y2+'" fill="none" stroke="#65dadd" stroke-opacity=".9" stroke-width="2.3"/>';
- }).join("");
- svg.innerHTML=paths;
+  const shape="M "+x1+" "+y1+" C "+(x1+bend)+" "+y1+" "+(x2-bend)+" "+y2+" "+x2+" "+y2;
+  const active=JourneyCanvas.wireEquals(edge,activeJourneyOverlay?.wire);
+  for(const foreground of [false,true]){
+   const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+   path.setAttribute("d",shape);path.setAttribute("fill","none");
+   path.setAttribute("stroke-linecap","round");
+   path.setAttribute("stroke",foreground?"#65dadd":"#14334a");
+   path.setAttribute("stroke-width",foreground?"2.3":"9");
+   if(foreground)path.setAttribute("stroke-opacity",".9");
+   path.dataset.edgeFrom=edge.from;path.dataset.edgeTo=edge.to;
+   path.dataset.edgePort=edge.port;path.dataset.edgeRole=foreground?"foreground":"background";
+   if(active)path.classList.add(foreground?"coordinate-journey-wire":"coordinate-journey-wire-back");
+   fragment.append(path);
+  }
+ }
+ svg.replaceChildren(fragment);
 }
 function matrixHTML(matrix,label){
  const m=matrix;if(!Array.isArray(m)||!m.length)return "";
