@@ -100,8 +100,12 @@ class RealTraceBrowserAcceptance(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w",suffix=".json",encoding="utf8") as tmp:
             json.dump(synthetic_test_only(),tmp);tmp.flush()
             p.locator("#traceReferenceFile").set_input_files(tmp.name)
-        p.wait_for_function("document.querySelector(\'#status\').textContent.includes(\'只读关联积木 q_proj\')",timeout=10000)
-        self.assertIn("只读关联积木 q_proj",p.locator("#status").inner_text())
+        p.wait_for_function("""() => {
+            const status=document.querySelector('#traceReferenceStatus')?.textContent||'';
+            const evidence=document.querySelector('#realTracePanel')?.textContent||'';
+            return status.includes('关联到 q_proj')&&evidence.includes('TEST_FIXTURE_NOT_REAL');
+        }""",timeout=15000)
+        self.assertIn("关联到 q_proj",p.locator("#traceReferenceStatus").inner_text())
         self.assertIn("TEST_FIXTURE_NOT_REAL",p.locator("#realTracePanel").inner_text())
         self.assertIn("不修改执行图、参数、优化器、导出代码",p.locator("#realTracePanel").inner_text())
         self.assertEqual(p.locator("#realTracePanel .real-sample-values").count(),4)
