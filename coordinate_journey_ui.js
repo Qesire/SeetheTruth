@@ -76,7 +76,13 @@
     rows.push(["参数更新后",format(step.value)],["参数位移",format(step.delta)]);
    else if(step.kind==="selected_path")
     rows.push(["途经输出",step.viaNodeId+"["+step.viaIndex.join(",")+"]"],
-     ["已验证路径状态",step.status],["对参数梯度贡献",format(step.value)]);
+     ["已验证路径状态",step.status],
+     ["全 Loss 伴随量 ∂L/∂y",format(step.lossAdjoint)],
+     ["单位种子 VJP ∂y/∂θ",format(step.parameterUnitVJP)],
+     ["乘积 (∂L/∂y) × (∂y/∂θ)",
+      step.lossAdjoint===null||step.parameterUnitVJP===null?"未求值":
+       format(step.lossAdjoint*step.parameterUnitVJP)],
+     ["对参数梯度贡献",format(step.value)]);
    else if(step.value!==undefined)rows.push(["原生证据值",format(step.value)]);
    for(const [label,value]of rows){
     if(value===null||value===undefined||value==="")continue;
