@@ -88,6 +88,8 @@ class StateABBridgeChromium(unittest.TestCase):
       self.assertEqual(handoff_focus["domain"],"semantic_state")
       page.locator('#sharedCoordinateDrilldown').click()
       self.assertIn('独立数值执行',page.locator('#sharedCoordinateDrilldownResult').inner_text())
+      self.assertEqual(page.locator('#coordinateJourneyCount').inner_text(),'1 / 1')
+      self.assertIn('机制与执行实例',page.locator('#coordinateJourneyTitle').inner_text())
       self.assertIn("实验原生数值",page.locator("#sharedCoordinateFocus").inner_text())
       self.assertEqual(handoff_focus["executionId"],source_focus["executionId"])
       self.assertEqual(handoff_focus["flatIndex"],source_focus["flatIndex"])
