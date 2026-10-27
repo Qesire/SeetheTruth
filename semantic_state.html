@@ -33,6 +33,13 @@ button:active{transform:translateX(0)}button[aria-pressed=true]{box-shadow:inset
  text-decoration:none;transition:border-color .15s,background .15s}
 .evidence-cta:hover,.evidence-cta:focus-visible{border-color:#8debdc;background:#204555;text-decoration:none}
 .ab-case:focus-within{border-color:#84decf;box-shadow:0 0 0 1px #84decf55}
+.mechanism-journey{border-top:1px solid #355d72;margin-top:15px;padding-top:10px}
+.mechanism-flow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:5px 0 9px}
+.mechanism-flow a{display:inline-flex;align-items:center;min-height:34px;font:650 11px/1.4 ui-monospace,monospace;
+ padding:6px 10px;border:1px solid #367d85;border-radius:7px;background:#113e50;color:#c0f5ec;text-decoration:none}
+.mechanism-flow a:hover,.mechanism-flow a:focus-visible{background:#205c69;border-color:#96e7dc;text-decoration:none}
+.mechanism-flow .mechanism-arrow{color:#64cdd6;font-size:12px}
+.mechanism-journey .small{line-height:1.6}
 .coordinate-header{display:flex;justify-content:space-between;gap:10px;margin:13px 0 5px;
  font:650 11px/1.5 ui-monospace,monospace;color:#acdeea}
 .coordinate-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:180px;overflow:auto;
@@ -62,6 +69,9 @@ button:active{transform:translateX(0)}button[aria-pressed=true]{box-shadow:inset
 <p class="small">这里执行真实数值，没有 GPU KV 分页、真实模型权重或显存性能测量。核心合同来自仓库的 tensor_ir.js 与 semantic_state.js。</p></section>
 <section class="card"><div class="step">02 / OBSERVE THE INVARIANT</div><h2 id="caseTitle">—</h2><p id="explanation">—</p>
 <p><strong>可证伪条件：</strong><span id="prediction">—</span></p><p id="status" role="status" aria-live="polite">—</p>
+<div class="mechanism-journey"><div class="coordinate-header">计算图关联路径 <span id="caseEvidenceTier">CPU · Float64</span></div>
+<div id="caseFlow" class="mechanism-flow" aria-label="已映射的具名计算节点"></div>
+<p id="caseQuickFacts" class="small">—</p></div>
 <details><summary>展开原始数值证据</summary><pre id="trace" aria-label="数值证明"></pre></details></section></div>
 <section class="card comparison" aria-label="状态实验 A/B 对照"><div class="step">03 / COMPARE TWO EXECUTION OUTCOMES</div><div class="comparison-head"><h2>状态实验 · A/B 对照</h2><span class="small">同一案例的真实输出投影</span></div>
 <div class="ab-grid"><article class="ab-case"><div class="ab-label">A / REFERENCE</div><strong id="aTitle">—</strong><p id="aDescription">—</p><pre id="aValues"></pre><div class="coordinate-header">逐坐标取证 <span id="aCoordinateCount"></span></div><div id="aCoordinateGrid" class="coordinate-grid" role="group" aria-label="A 组实际输出坐标"></div><a id="aGraphLink" class="evidence-cta" href="learn.html?edition=teaching">在计算图中查看 A →</a></article>
