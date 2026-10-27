@@ -90,8 +90,8 @@ class GuidedStates(unittest.TestCase):
       self.assertTrue(page.evaluate("SeetheTruthStateContrast.replayVerified"))
       self.assertTrue(page.evaluate("SeetheTruthStateContrast.current"))
       self.assertGreater(page.evaluate("SeetheTruthStateContrast.changedSteps.length"),0)
-     self.assertEqual(page.locator('#stateContrastResults .command-contrast-metric').count(),3)
-     self.assertTrue(page.locator("#stateContrastExplanation").is_visible())
+      self.assertEqual(page.locator('#stateContrastResults .command-contrast-metric').count(),3)
+      self.assertTrue(page.locator("#stateContrastExplanation").is_visible())
       self.assertIn("实验前预测",page.locator("#stateContrastResults").inner_text())
       self.assertGreater(page.locator("#stateContrastResults .command-contrast-event").count(),0)
       self.assertEqual(page.locator('#stateContrastResults .command-contrast-metric').count(),3)
@@ -156,5 +156,51 @@ class GuidedStates(unittest.TestCase):
      self.assertGreater(page.evaluate("SeetheTruthStateContrast.changedSteps.length"),0)
      self.assertEqual(errors,[])
     finally:page.close()
+
+
+ def test_native_graph_bidirectional_handoff(self):
+  """Native A/B -> real graph mission -> replay-checked native selected cursor."""
+  for domain,route,course in [
+    ("deepinfer_worker","deepinfer_worker_lab.html","attention"),
+    ("deepinfer_kv","deepinfer_kv_lifecycle_lab.html","decode"),
+    ("deepinfer_scheduler","deepinfer_scheduler_lab.html","decode")]:
+   for width in (1440,390):
+    with self.subTest(domain=domain,width=width):
+     page=self.browser.new_page(viewport={"width":width,"height":900},
+       is_mobile=width==390,has_touch=width==390)
+     errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
+     try:
+      root=f"http://127.0.0.1:{self.server.server_port}/"
+      self.assertEqual(page.goto(root+route).status,200)
+      page.wait_for_function("!!window.SeetheTruthStateContrast && !!window.SeetheTruthLearningHandoff")
+      page.locator("#stateContrastHypothesis").fill("控制一个输入，哪些事件变化仍是源引擎能证实的？")
+      page.locator("#stateContrastCapture").click()
+      page.locator("#stateContrastIntervene").click()
+      page.locator("#stateContrastCompare").click()
+      self.assertTrue(page.evaluate("SeetheTruthStateContrast.replayVerified"))
+      page.locator("#stateGraphBridge").click()
+      page.wait_for_url("**/learn.html?nativeGraphBridge=1")
+      page.wait_for_function("!!window.SeetheTruthNativeGraphBridge")
+      self.assertTrue(page.evaluate("SeetheTruthNativeGraphBridge.replayVerified"))
+      self.assertEqual(page.evaluate("SeetheTruthNativeGraphBridge.course"),course)
+      self.assertTrue(page.evaluate("SeetheTruthNativeGraphBridge.compared"))
+      selected=page.evaluate("SeetheTruthNativeGraphBridge.selectedStepId")
+      self.assertEqual(page.locator(".mission.active").get_attribute("data-preset"),course)
+      self.assertIn(selected,page.locator("#nativeGraphBridgeEvidence").inner_text())
+      self.assertIn("不同的数学语义",page.locator("#nativeGraphBridgePanel").inner_text())
+      self.assertIn("nativeGraphReturn=1",page.locator("#nativeGraphBridgeBack").get_attribute("href"))
+      page.locator("#nativeGraphBridgeBack").click()
+      page.wait_for_url("**/"+route+"?nativeGraphReturn=1")
+      page.wait_for_function("!!window.SeetheTruthNativeGraphReturn")
+      self.assertEqual(page.evaluate("SeetheTruthNativeGraphReturn.selectedStepId"),selected)
+      self.assertTrue(page.evaluate("SeetheTruthNativeGraphReturn.hasBaseline"))
+      self.assertEqual(page.evaluate(
+       "SeetheTruthUnifiedStateLab.frame.steps[document.querySelector('#unifiedStateSteps .sm-step[aria-current=step]')?.dataset.index ?? 0]?.id"),selected)
+      page.locator("#stateGraphReturnToggle").click()
+      self.assertIn("A",page.locator("#stateGraphReturnStatus").inner_text())
+      page.locator("#stateGraphReturnToggle").click()
+      self.assertIn(selected,page.locator("#stateGraphReturnStatus").inner_text())
+      self.assertEqual(errors,[])
+     finally:page.close()
 
 if __name__=="__main__":unittest.main()
