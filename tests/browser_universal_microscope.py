@@ -51,6 +51,8 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertGreater(p.locator("#coordinateJourneyPosition").evaluate("(e)=>Number(e.max)"),1)
    p.locator("#coordinateJourneyPosition").evaluate("(e)=>{e.value=e.max;e.dispatchEvent(new Event('input',{bubbles:true}))}")
    self.assertTrue(p.locator("#coordinateJourneyNext").is_disabled())
+   p.screenshot(path=str(OUT/'coordinate-journey-unit-seed-and-gradient.png'),
+                animations='disabled',full_page=True)
    self.assertGreater(p.locator("#coordinateJourneyTitle").inner_text().__len__(),0)
    self.assertGreater(p.locator("#graphLineageInspector .lineage-summary").count(),0)
    self.assertEqual(errors,[])
