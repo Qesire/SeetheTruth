@@ -176,6 +176,10 @@ input[type="file"]{display:none}
 .block.coordinate-journey-downstream::before{content:"目标坐标 " attr(data-journey-downstream);right:4px;bottom:auto;top:-17px;
  background:#0b4750;border-color:#70e4d9}
 .block .coordinate-journey-port .socket{outline:3px solid #ffd078;outline-offset:3px}
+#graphLineageInspector .lineage-element.coordinate-journey-upstream{border-left:3px solid #f1c677;
+ padding-left:9px;background:#65502954}
+#graphLineageInspector .lineage-element.coordinate-journey-output{border-left:3px solid #6ce0d2;
+ padding-left:9px;background:#1a68624d}
 #wires path.coordinate-journey-wire{stroke:#ffc978;stroke-width:4;stroke-opacity:1;
  filter:drop-shadow(0 0 5px #ffba6e); }
 #wires path.coordinate-journey-wire-back{stroke:#6b4424;stroke-width:11;stroke-opacity:1}
@@ -510,6 +514,13 @@ function refreshJourneyCanvas(){
    socket.classList.toggle("coordinate-journey-port",
     !!overlay?.wire&&downstream&&socket.dataset.port===overlay.wire.port);
  }
+ for(const element of document.querySelectorAll("#graphLineageInspector [data-coordinate-key]")){
+  const key=element.dataset.coordinateKey;
+  element.classList.toggle("coordinate-journey-upstream",key===overlay?.upstreamKey);
+  element.classList.toggle("coordinate-journey-output",key===overlay?.downstreamKey);
+  if(key===overlay?.upstreamKey||key===overlay?.downstreamKey)
+   element.closest("details.lineage-node")?.setAttribute("open","");
+ }
  drawWires();
 }
 const coordinateJourneyUI=window.SeetheTruthCoordinateJourneyUI.mount(focusSummary,{
@@ -524,6 +535,7 @@ const coordinateJourneyUI=window.SeetheTruthCoordinateJourneyUI.mount(focusSumma
   if(activeJourneyOverlay?.nodeId)focusGraphNode(activeJourneyOverlay.nodeId);
  }
 });
+window.SeetheTruthCoordinateJourneySession=coordinateJourneyUI;
 focusDrill.addEventListener("click",()=>{
  try{
   const focus=coordinateFocusSession.current;
@@ -543,6 +555,7 @@ focusDrill.addEventListener("click",()=>{
   render();
   const chosen=graph.nodes.find(n=>n.id===focus.nodeId);
   if(chosen)renderElementLineage(chosen);
+  refreshJourneyCanvas();
   const root=result.lineage.vertices.find(v=>v.id===focus.nodeId&&
     JSON.stringify(v.index)===JSON.stringify(focus.coordinate));
   const val=root?.value===null||root?.value===undefined?"静态形状":String(root.value);
@@ -930,7 +943,7 @@ function renderElementLineage(selectedNode){
    const first=verts[0];
    return '<details class="lineage-node"><summary>'+esc(id)+' · '+esc(first.kind)+
     ' · '+verts.length+' 个坐标'+(first.status==='boundary'?' · 精确规则边界':'')+'</summary>'+
-    verts.map(v=>'<div class="lineage-element">['+v.index.join(', ')+']'+
+    verts.map(v=>'<div class="lineage-element" data-coordinate-key="'+esc(v.key)+'">['+v.index.join(', ')+']'+
      (v.value!==null?' · 值 '+display(v.value):'')+
      (v.sensitivity!==null?' · ∂输出/∂该元素 '+display(v.sensitivity):' · 导数待数值计算')+
      (v.rule?'<div class="hint">'+esc(v.rule)+'</div>':'')+'</div>').join("")+
