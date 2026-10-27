@@ -69,6 +69,8 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("路径",page.locator("#coordinateJourneyTitle").inner_text())
      self.assertIn("对参数梯度贡献",page.locator("#sharedCoordinateJourney").inner_text())
+     self.assertIn("单位种子 VJP",page.locator("#sharedCoordinateJourney").inner_text())
+     self.assertIn("乘积",page.locator("#sharedCoordinateJourney").inner_text())
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("全 Loss",page.locator("#coordinateJourneyTitle").inner_text())
      self.assertIn("原生证据值",page.locator("#sharedCoordinateJourney").inner_text())
