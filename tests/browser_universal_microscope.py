@@ -18,6 +18,27 @@ class MicroscopeBrowser(unittest.TestCase):
  @classmethod
  def tearDownClass(cls):
   cls.browser.close();cls.pw.stop();cls.server.shutdown();cls.server.server_close()
+ def test_shared_coordinate_focus_from_real_microscope_click(self):
+  p=self.browser.new_page(viewport={'width':1440,'height':920})
+  errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(p.goto(self.base).status,200)
+   p.locator('#studyMode').select_option('numeric')
+   p.locator('#run').click()
+   p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===4')
+   cell=p.locator('#computeMicroscope .cmp-out .cmp-cell').first
+   cell.wait_for(timeout=10000)
+   cell.click()
+   record=p.evaluate('window.SeetheTruthCoordinateFocusSession.current')
+   self.assertEqual(record['schema'],'seethetruth-coordinate-focus-v1')
+   self.assertEqual(record['domain'],'computation_microscope')
+   self.assertEqual(record['evidence'],'EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS')
+   self.assertEqual(len(record['shape']),len(record['coordinate']))
+   self.assertIsInstance(record['value'],(int,float))
+   self.assertEqual(record['flatIndex'],0)
+   self.assertEqual(p.evaluate('window.SeetheTruthUnifiedWorkbench.coordinateFocus')['value'],record['value'])
+   self.assertEqual(errors,[])
+  finally:p.close()
  def test_ffn_attention_and_video(self):
   p=self.browser.new_page(viewport={'width':1490,'height':960})
   errors=[];p.on('pageerror',lambda e:errors.append(str(e)))
