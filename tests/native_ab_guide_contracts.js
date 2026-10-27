@@ -276,7 +276,8 @@ assert.ok(Math.abs(negative.score.delta)>1e-12);
 assert.equal(negative.probability.before,0);
 assert.equal(negative.probability.after,0);
 assert.equal(negative.output.delta,0);
-assert.equal(negative.outputChange.changedCoordinates,0);
+assert.ok(negative.outputChange.changedCoordinates>0,
+ 'later queries can observe a key masked for the selected early query');
 assert.equal(negative.sourceEquivalent.maxAbsolute,0);
 console.log('NATIVE_GRAPH_INTERVENTION_PASS replayed one-element Q/K A/B, numeric cascade, masked negative, provenance and bounds');
 
