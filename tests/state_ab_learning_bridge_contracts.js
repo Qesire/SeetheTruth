@@ -14,7 +14,7 @@ const stateSource=fs.readFileSync(path.join(ROOT,"semantic_state_lab.js"),"utf8"
 const handoffSource=fs.readFileSync(path.join(ROOT,"state_learning_handoff.js"),"utf8");
 const policy=JSON.parse(fs.readFileSync(path.join(ROOT,"static_asset_policy.json"),"utf8"));
 const names=["stream","video","axis","reject"];
-for(const id of ["aTitle","bTitle","aValues","bValues","aGraphLink","bGraphLink","aCoordinateGrid","bCoordinateGrid","coordinateDetail","coordinateGraphLink","difference","lessonLink","trace"])
+for(const id of ["aTitle","bTitle","aValues","bValues","aGraphLink","bGraphLink","aCoordinateGrid","bCoordinateGrid","caseFlow","caseQuickFacts","coordinateDetail","coordinateGraphLink","difference","lessonLink","trace"])
  assert.match(stateHtml,new RegExp('id="'+id+'"'),"missing experiment UI "+id);
 for(const html of [stateHtml,studioHtml])
  assert.ok(html.includes('<script src="state_learning_handoff.js"></script>'),"missing navigation bootstrap");
@@ -103,6 +103,8 @@ for(const name of names){
  assert.equal(get("aGraphLink").href,Bridge.href(name,spec.primary.a));
  assert.equal(get("bGraphLink").href,Bridge.href(name,spec.primary.b));
  assert.match(get("lessonLink").href,/state_case=/);
+ assert.equal(get("caseFlow").children.length,spec.anchors.length);
+ assert.match(get("caseQuickFacts").textContent,/本次真实数值输出/);
  assert.equal(window.SeetheTruthStateLab.run(name).passed,true);
  const n=Bridge.coordinateList(name,Examples.run(name),"a").length;
  assert.equal(get("aCoordinateGrid").children.length,n);
