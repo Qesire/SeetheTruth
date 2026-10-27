@@ -138,7 +138,9 @@
    const sourceValue=source[sourceIndex];
    if(value!==sourceValue)throw Error("stream append coordinate proof mismatch");
    terms=[{role:fromPrefix?"prefix":"append_chunk",index:sourceIndex,value:sourceValue}];
-   traceNodes=fromPrefix?["prefix","init"]:["prefix","init",branch==="a"?"chunk_a":"chunk_b"];
+   const suffix=branch==="a"?"a":"b";
+   traceNodes=fromPrefix?["prefix","init","fork_"+suffix,"append_"+suffix]:
+    ["prefix","init","fork_"+suffix,"chunk_"+suffix,"append_"+suffix];
    origin=100+location[1];
   }else if(name==="video"){
    value=(branch==="a"?v.original:v.joined)[index];
@@ -146,7 +148,7 @@
    const time=location[1],span=shape.slice(2).reduce((a,b)=>a*b,1);
    terms=[{role:"original_video",index,value:v.original[index]},
     {role:time<2?"early_T_slice":"late_T_slice",index:time<2?index:index-2*span,value}];
-   traceNodes=["video",time<2?"early":"late",...(branch==="b"?["join"]:[])];
+   traceNodes=branch==="a"?["video"]:["video",time<2?"early":"late","join"];
   }else if(name==="axis"){
    value=v.values[index];
    const D=shape[1],d=location[1],x=v.input[index],bias=v.bias[d];
@@ -156,7 +158,7 @@
   }else{
    value=v.original[index];
    terms=[{role:"immutable_original",index,value}];
-   traceNodes=["init"];
+   traceNodes=["prefix","init"];
    origin=v.origin+location[1];
   }
   related=name==="video"?(branch==="a"?"video":"join"):
@@ -178,6 +180,18 @@
    for(const e of graph.edges)if(e.to===id)work.push(e.from);
   }
   return Object.freeze(graph.nodes.filter(n=>found.has(n.id)).map(n=>n.id));
+ }
+ function coordinatePath(name,graph,proof){
+  if(proof?.name!==name)throw Error("坐标案例不一致");
+  const closure=upstreamPath(name,graph,proof.nodeId);
+  if(!proof.traceNodes.every(id=>closure.includes(id)))throw Error("坐标依赖不属于实际计算图上游");
+  const edges=graph.edges,selected=new Set(proof.traceNodes);
+  for(const id of proof.traceNodes.filter(id=>id!==proof.nodeId)){
+   if(id===proof.traceNodes[0])continue;
+   if(!edges.some(e=>e.to===id&&selected.has(e.from)))
+    throw Error("坐标依赖在课程中缺少连接："+id);
+  }
+  return Object.freeze(proof.traceNodes.slice());
  }
  function mount(host,doc){
   const query=new URLSearchParams(host.location.search);
@@ -233,13 +247,17 @@
    controls[rows.findIndex(item=>item.id===start)].click();
    if(["a","b"].includes(requestedBranch)&&requestedIndex!==null&&/^(0|[1-9]\\d*)$/.test(requestedIndex)){
     const proof=coordinate(name,accepted.value,requestedBranch,Number(requestedIndex));
+    const actualPath=coordinatePath(name,studio.inspect().graph,proof);
+    for(const el of (typeof doc.querySelectorAll==="function"?doc.querySelectorAll("#blocks [data-node]"):[])){
+     el.classList.toggle("state-evidence-path",actualPath.includes(el.dataset.node));
+    }
     status.textContent="实验坐标 ["+proof.coordinate.join(",")+"] = "+proof.value+
      " · 源 "+proof.terms.map(t=>t.role+"["+t.index+"]="+t.value).join(" + ")+
-     "。当前课程是独立示例，机制与依赖路径可对应，数值不直接等同。";
+     "。本坐标对应的图路径："+actualPath.join(" → ")+"；课程输入独立，数值不直接等同。";
     back.href+="&state_branch="+requestedBranch+"&state_index="+proof.index;
    }
   }catch(err){status.textContent="课程关联待检查："+err.message;}
   return panel;
  }
- return Object.freeze({cases,caseOf,anchorOf,href,validateGraph,evidence,coordinateList,coordinate,upstreamPath,mount});
+ return Object.freeze({cases,caseOf,anchorOf,href,validateGraph,evidence,coordinateList,coordinate,upstreamPath,coordinatePath,mount});
 });
