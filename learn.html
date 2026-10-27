@@ -1804,6 +1804,104 @@ locate.addEventListener("click",()=>{try{
   const interveneNote=document.createElement("small");
   interveneNote.textContent="A 将当前 Q/K 已计算的整个端口复制为有界 Parameter 并校验与原图等价；B 仅修改其中一个值。同拓扑重放，不修改原工作台，不伪称更新投影权重。";
   interveneBox.append(interveneHeading,interveneControls,interveneRun,interveneStatus,interveneNote);
+  const pathBox=document.createElement("section");pathBox.id="nativeGraphPropagation";
+  pathBox.hidden=true;pathBox.style.cssText=
+   "border-top:1px solid #527483;padding-top:10px;display:grid;gap:9px;min-width:0";
+  const pathHeader=document.createElement("strong");
+  pathHeader.textContent="A/B 因果传播 · 逐阶段证据";
+  const pathSummary=document.createElement("p");pathSummary.id="nativeGraphPropagationSummary";
+  pathSummary.setAttribute("role","status");pathSummary.setAttribute("aria-live","polite");
+  pathSummary.style.cssText="font:11px/1.5 ui-monospace,monospace;overflow-wrap:anywhere";
+  const pathPhases=document.createElement("ol");pathPhases.id="nativeGraphPropagationPhases";
+  pathPhases.style.cssText="padding-left:20px;display:grid;gap:5px;font-size:11px";
+  const pathKeysWrap=document.createElement("div");pathKeysWrap.style.cssText="overflow-x:auto;max-width:100%";
+  const pathKeys=document.createElement("table");pathKeys.id="nativeGraphPropagationKeys";
+  pathKeys.style.cssText="width:100%;border-collapse:collapse;white-space:nowrap;font:10px/1.6 ui-monospace,monospace";
+  pathKeysWrap.append(pathKeys);
+  const pathFeaturesWrap=document.createElement("div");pathFeaturesWrap.style.cssText="overflow-x:auto;max-width:100%";
+  const pathFeatures=document.createElement("table");pathFeatures.id="nativeGraphPropagationFeatures";
+  pathFeatures.style.cssText="width:100%;border-collapse:collapse;white-space:nowrap;font:10px/1.6 ui-monospace,monospace";
+  pathFeaturesWrap.append(pathFeatures);
+  const pathGraph=document.createElement("ol");pathGraph.id="nativeGraphPropagationGraphSteps";
+  pathGraph.style.cssText="padding-left:20px;display:grid;gap:5px;font:11px/1.5 ui-monospace,monospace";
+  const pathNote=document.createElement("small");
+  pathNote.textContent="阶段数据均来自已重放的 A/B 数值图；局部零效应不代表整个模型输出不变。按原 DAG 顺序列出执行节点。";
+  pathBox.append(pathHeader,pathSummary,pathPhases,pathKeysWrap,pathFeaturesWrap,pathGraph,pathNote);
+  function renderDeltaTable(table,headings,rows){
+   const header=document.createElement("thead"),tr=document.createElement("tr");
+   for(const label of headings){
+    const th=document.createElement("th");th.textContent=label;
+    th.style.cssText="text-align:left;padding:4px;border-bottom:1px solid #587b89";
+    tr.append(th);
+   }
+   header.append(tr);const body=document.createElement("tbody");
+   for(const parts of rows){
+    const row=document.createElement("tr");
+    for(const part of parts){
+     const cell=document.createElement("td");cell.textContent=String(part);
+     cell.style.cssText="padding:4px;border-bottom:1px solid #315263";
+     row.append(cell);
+    }
+    body.append(row);
+   }
+   table.replaceChildren(header,body);
+  }
+  function renderPropagation(result){
+   const p=result.propagation;
+   pathBox.hidden=false;pathSummary.dataset.verified="true";
+   pathSummary.textContent="同图重放 · "+result.changedInputScalars+
+    " 个参数标量 · 误差阈值 "+p.tolerance+
+    " · 已验证原图节点 "+result.baselineVerifiedSteps+
+    " · Score变化Key "+p.row.scoreChangedKeys+
+    " / P变化Key "+p.row.probabilityChangedKeys+
+    " / P×V变化Key "+p.row.contributionChangedKeys+
+    (p.selectedHeadIsolated?" · 所选Head局部不受影响":"")+
+    (p.selectedKeySuppressed?" · 所选Key被Mask抑制":"");
+   pathPhases.replaceChildren();
+   const stages=[
+    ["源端口 "+result.source.port.toUpperCase()+"["+result.source.token+","+result.source.feature+"]",
+     result.source.before,result.source.after,result.source.delta],
+    ["目标 Score",p.score.before,p.score.after,p.score.delta],
+    ["目标 Softmax P",p.probability.before,p.probability.after,p.probability.delta],
+    ["目标输出 Out",p.output.before,p.output.after,p.output.delta]
+   ];
+   for(const [label,a,b,delta] of stages){
+    const li=document.createElement("li");
+    li.textContent=label+" · A "+a.toPrecision(7)+" → B "+b.toPrecision(7)+
+     " · Δ "+delta.toExponential(3)+
+     (Math.abs(delta)>p.tolerance?" · 改变":" · 局部保持");
+    pathPhases.append(li);
+   }
+   renderDeltaTable(pathKeys,
+    ["Key","状态","Δ Score","Δ Softmax","Δ Value","Δ P×V"],
+    p.keys.map(k=>[k.key,k.masked?"mask":"可见",
+     k.score.delta.toExponential(3),k.probability.delta.toExponential(3),
+     k.value.delta.toExponential(3),k.contribution.delta.toExponential(3)]));
+   renderDeltaTable(pathFeatures,["特征 d","ΔQ′","ΔK′","ΔQ′K′/√Dk"],
+    p.featureTerms.map(f=>[f.dimension,f.q.delta.toExponential(3),
+     f.k.delta.toExponential(3),f.dot.delta.toExponential(3)]));
+   pathGraph.replaceChildren();
+   for(const step of p.graphSteps){
+    const li=document.createElement("li");
+    li.textContent=step.id+" · "+step.kind+" · "+step.changedCoordinates+
+     " 个坐标变化 · 最大 |Δ|="+step.maxAbsolute.toExponential(3)+
+     (step.changed?" · 受影响":" · 保持");
+    if(step.examples.length){
+     const detail=document.createElement("small");
+     detail.textContent=" 示范："+
+      step.examples.map(x=>"["+x.token+","+x.feature+"] Δ="+x.delta.toExponential(2)).join(" · ");
+     li.append(detail);
+    }
+    pathGraph.append(li);
+   }
+  }
+  function clearPropagation(){
+   pathBox.hidden=true;pathSummary.dataset.verified="false";
+   pathPhases.replaceChildren();pathKeys.replaceChildren();
+   pathFeatures.replaceChildren();pathGraph.replaceChildren();
+  }
+
+  interveneBox.append(pathBox);
   coords.append(coordTitle,selectors,coordSummary,tableScroll,scoreBox,interveneBox,coordNote);
   mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe,coords);
   panel.insertBefore(mechanics,back);
@@ -1827,6 +1925,7 @@ locate.addEventListener("click",()=>{try{
     lastIntervention=null;interventionIdentity=null;
     interveneStatus.dataset.verified="false";
     interveneStatus.textContent="已切换数值图或修改计算图；此前的干预证据已撤销。";
+    clearPropagation();
    }
    const proof=H.explain(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord);
    lastMechanism=proof;
@@ -1962,6 +2061,7 @@ locate.addEventListener("click",()=>{try{
    }else{
     lastCoordinate=null;lastScore=null;lastIntervention=null;
     interveneStatus.dataset.verified="false";interveneStatus.textContent="";
+    clearPropagation();
     coordSummary.dataset.verified="false";
     scoreSummary.dataset.verified="false";scoreTable.replaceChildren();
     coordTable.replaceChildren();
@@ -1997,6 +2097,7 @@ locate.addEventListener("click",()=>{try{
 
   const revokeIntervention=()=>{
    lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";
+   clearPropagation();
    interveneStatus.textContent="干预设置已更改；重新执行获得对应的 A/B 数值结果。";
   };
   for(const sel of [...Object.values(coordinateControls),keySelect,
@@ -2022,6 +2123,7 @@ locate.addEventListener("click",()=>{try{
     lastIntervention=result;
     interventionIdentity=JSON.stringify(record.graph)+"|"+JSON.stringify(record.session.trace);
     interveneStatus.dataset.verified="true";
+    renderPropagation(result);
     interveneStatus.textContent=
      "原图 ≡ A: 最大误差 "+result.sourceEquivalent.maxAbsolute.toExponential(2)+
      " · "+result.source.port.toUpperCase()+"["+result.source.token+","+result.source.feature+"] "+
@@ -2033,6 +2135,7 @@ locate.addEventListener("click",()=>{try{
      " · 改变坐标 "+result.outputChange.changedCoordinates;
    }catch(error){
     lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";
+    clearPropagation();
     interveneStatus.textContent="该组输入未完成 A/B 重放："+error.message;
    }
   });
@@ -2049,7 +2152,8 @@ locate.addEventListener("click",()=>{try{
    if(!panel.isConnected)return;
    try{renderMechanism();}
    catch(error){lastMechanism=null;lastCoordinate=null;lastScore=null;
-    lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";coords.hidden=true;
+    lastIntervention=null;interventionIdentity=null;interveneStatus.dataset.verified="false";
+    clearPropagation();coords.hidden=true;
     coordSummary.dataset.verified="false";scoreSummary.dataset.verified="false";
     numericStatus.dataset.verified="false";
     numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
@@ -2070,6 +2174,18 @@ locate.addEventListener("click",()=>{try{
    get mechanismVerified(){return !!lastMechanism;},
    get numericVerified(){return !!lastMechanism?.graph.numeric;},
    get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];},
+   get propagationVerified(){return !!lastIntervention?.propagation;},
+   get propagation(){return lastIntervention?{
+    scoreDelta:lastIntervention.propagation.score.delta,
+    probabilityDelta:lastIntervention.propagation.probability.delta,
+    outputDelta:lastIntervention.propagation.output.delta,
+    selectedHeadIsolated:lastIntervention.propagation.selectedHeadIsolated,
+    selectedKeySuppressed:lastIntervention.propagation.selectedKeySuppressed,
+    maskedSelectedKey:lastIntervention.propagation.maskedSelectedKey,
+    row:lastIntervention.propagation.row,
+    graphSteps:lastIntervention.propagation.graphSteps.length,
+    keys:lastIntervention.propagation.keys.length
+   }:null;},
    get interventionVerified(){return !!lastIntervention;},
    get intervention(){return lastIntervention?{
     source:lastIntervention.source,
