@@ -1747,11 +1747,30 @@ locate.addEventListener("click",()=>{try{
   tableScroll.append(coordTable);
   const coordNote=document.createElement("small");coordNote.textContent=
    "P×V 来自本次已接受的微型计算；单坐标拆分不等于 KV 物理块或 Worker 时间占用。";
-  coords.append(coordTitle,selectors,coordSummary,tableScroll,coordNote);
+
+  const scoreBox=document.createElement("section");scoreBox.id="nativeGraphScoreLab";
+  scoreBox.style.cssText="margin-top:10px;border-top:1px solid #527483;padding-top:10px;display:grid;gap:6px";
+  const scoreLabel=document.createElement("label");scoreLabel.textContent="展开 Key 的 Score 来源";
+  scoreLabel.style.cssText="display:grid;gap:3px;font-size:11px";
+  const keySelect=document.createElement("select");keySelect.id="nativeGraphScoreKey";
+  keySelect.setAttribute("aria-label","Key token coordinate");
+  keySelect.style.cssText="color:#e4f9ff;background:#103547;border:1px solid #67949c;padding:5px";
+  scoreLabel.append(keySelect);
+  const scoreSummary=document.createElement("p");scoreSummary.id="nativeGraphScoreSummary";
+  scoreSummary.setAttribute("role","status");scoreSummary.setAttribute("aria-live","polite");
+  scoreSummary.style.cssText="font:11px/1.6 ui-monospace,monospace;overflow-wrap:anywhere";
+  const scoreScroll=document.createElement("div");scoreScroll.style.cssText="max-width:100%;overflow-x:auto";
+  const scoreTable=document.createElement("table");scoreTable.id="nativeGraphScoreFeatures";
+  scoreTable.style.cssText="width:100%;border-collapse:collapse;white-space:nowrap;font:10px/1.6 ui-monospace,monospace";
+  scoreScroll.append(scoreTable);
+  const scoreNote=document.createElement("small");
+  scoreNote.textContent="Score=Σ Q′[d]K′[d]/√Dk，Q′/K′ 使用原 RoPE 结果；概率由已接受 Score 的行内稳定 Softmax 核验。";
+  scoreBox.append(scoreLabel,scoreSummary,scoreScroll,scoreNote);
+  coords.append(coordTitle,selectors,coordSummary,tableScroll,scoreBox,coordNote);
   mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe,coords);
   panel.insertBefore(mechanics,back);
   const snapshot=H.load(root.sessionStorage);
-  let lastMechanism=null,lastCoordinate=null;
+  let lastMechanism=null,lastCoordinate=null,lastScore=null;
   function renderMechanism(){
    const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
    const numericalMode=document.getElementById("studyMode")?.value==="numeric";
@@ -1833,8 +1852,51 @@ locate.addEventListener("click",()=>{try{
      body.append(row);
     }
     coordTable.replaceChildren(head,body);
+
+    const previousKey=Number(keySelect.value);
+    if(keySelect.options.length!==witness.keyCount){
+     keySelect.replaceChildren(...Array.from({length:witness.keyCount},(_,key)=>{
+      const option=document.createElement("option");option.value=String(key);
+      option.textContent="Key "+key;return option;
+     }));
+    }
+    keySelect.value=String(Number.isSafeInteger(previousKey)&&
+     previousKey>=0&&previousKey<witness.keyCount?previousKey:0);
+    const score=H.score(root.SeetheTruthUnifiedCore,snapshot,editable,numericRecord,{
+     ...selected,keyToken:Number(keySelect.value)});
+    lastScore=score;
+    scoreSummary.textContent="Q "+score.queryToken+" / Hq "+score.queryHead+
+     " → K "+score.keyToken+" / Hkv "+score.kvHead+
+     (score.masked?" · 因果掩码排除":" · 可参与 Softmax")+
+     " · RoPE "+(score.rotary?"开启":"关闭")+
+     " · Score "+score.recomputedScore.toPrecision(9)+
+     " (误差 "+score.scoreError.toExponential(2)+")"+
+     " · P "+score.softmax.recomputed.toPrecision(9)+
+     " (误差 "+score.softmax.error.toExponential(2)+")";
+    scoreSummary.dataset.verified="true";
+    const scoreHead=document.createElement("thead"),scoreHeaders=document.createElement("tr");
+    for(const heading of ["d","Q 原值","K 原值","Q′","K′","角度 Q/K (rad)","Q′K′/√Dk"]){
+     const th=document.createElement("th");th.textContent=heading;
+     th.style.cssText="text-align:left;padding:4px;border-bottom:1px solid #527483";
+     scoreHeaders.append(th);
+    }
+    scoreHead.append(scoreHeaders);const scoreBody=document.createElement("tbody");
+    for(const f of score.features){
+     const row=document.createElement("tr");
+     for(const value of [String(f.dimension),f.rawQ.toFixed(5),
+      f.rawK.toFixed(5),f.positionedQ.toFixed(5),f.positionedK.toFixed(5),
+      f.qAngle.toFixed(3)+" / "+f.kAngle.toFixed(3),
+      f.scaledContribution.toFixed(7)]){
+      const cell=document.createElement("td");cell.textContent=value;
+      cell.style.cssText="padding:4px;border-bottom:1px solid #315263";row.append(cell);
+     }
+     scoreBody.append(row);
+    }
+    scoreTable.replaceChildren(scoreHead,scoreBody);
+
    }else{
-    lastCoordinate=null;coordSummary.dataset.verified="false";
+    lastCoordinate=null;lastScore=null;coordSummary.dataset.verified="false";
+    scoreSummary.dataset.verified="false";scoreTable.replaceChildren();
     coordTable.replaceChildren();
    }
 
@@ -1846,6 +1908,11 @@ locate.addEventListener("click",()=>{try{
      coordSummary.textContent="坐标核验未完成："+error.message;}
    });
   }
+  keySelect.addEventListener("change",()=>{
+   try{renderMechanism();}
+   catch(error){lastScore=null;scoreSummary.dataset.verified="false";
+    scoreSummary.textContent="分数核验未完成："+error.message;}
+  });
   probe.addEventListener("click",()=>{
    try{
     const mode=document.getElementById("studyMode");
@@ -1858,8 +1925,9 @@ locate.addEventListener("click",()=>{try{
   const refresh=()=>queueMicrotask(()=>{
    if(!panel.isConnected)return;
    try{renderMechanism();}
-   catch(error){lastMechanism=null;lastCoordinate=null;coords.hidden=true;
-    coordSummary.dataset.verified="false";numericStatus.dataset.verified="false";
+   catch(error){lastMechanism=null;lastCoordinate=null;lastScore=null;coords.hidden=true;
+    coordSummary.dataset.verified="false";scoreSummary.dataset.verified="false";
+    numericStatus.dataset.verified="false";
     numericStatus.textContent="当前编辑图与机制目标需要重新对齐："+error.message;}
   });
   document.addEventListener("click",event=>{
@@ -1878,6 +1946,15 @@ locate.addEventListener("click",()=>{try{
    get mechanismVerified(){return !!lastMechanism;},
    get numericVerified(){return !!lastMechanism?.graph.numeric;},
    get portSources(){return lastMechanism?.graph.ports.map(p=>p.sourceId)||[];},
+   get scoreVerified(){return !!lastScore;},
+   get score(){return lastScore?{
+    queryToken:lastScore.queryToken,keyToken:lastScore.keyToken,
+    queryHead:lastScore.queryHead,kvHead:lastScore.kvHead,
+    rotary:lastScore.rotary,masked:lastScore.masked,
+    headWidth:lastScore.headWidth,scoreError:lastScore.scoreError,
+    softmaxError:lastScore.softmax.error,
+    recomputedScore:lastScore.recomputedScore
+   }:null;},
    get coordinateVerified(){return !!lastCoordinate;},
    get coordinate(){return lastCoordinate?{
     queryToken:lastCoordinate.queryToken,head:lastCoordinate.queryHead,
