@@ -60,6 +60,19 @@
       Math.abs(transition.after-transition.before-transition.delta)>
        1e-10*Math.max(1,Math.abs(transition.after),Math.abs(transition.before)))
     fail("training coordinate transition must come from a finite native parameter update");
+   if(transition.optimizerKind!==undefined&&(
+      typeof transition.optimizerKind!=="string"||!transition.optimizerKind||
+      !["adamw","adam","sgd_momentum","rmsprop","adagrad","lion"].includes(transition.optimizerKind)))
+    fail("unsupported native optimizer identity");
+   for(const key of ["moment1","moment2"]){
+    const pair=transition[key];
+    if(pair!==undefined&&pair!==null&&(!Number.isFinite(pair.before)||!Number.isFinite(pair.after)))
+     fail("optimizer moment is missing finite native values");
+   }
+   for(const key of ["lossBefore","lossAfter","selectedPathContribution"]){
+    if(transition[key]!==undefined&&transition[key]!==null&&!Number.isFinite(transition[key]))
+     fail("invalid native scalar transition field "+key);
+   }
   }
   const path=info.path===undefined?[]:info.path;
   if(!Array.isArray(path)||path.length>256||path.some(p=>typeof p!=="string"||!p||p.length>160))
@@ -69,7 +82,9 @@
    ...c,flatIndex:flatten(c.shape,c.coordinate),evidence:info.evidence,
    ...(info.value!==undefined?{value:info.value}:{}),
    ...(info.branch?{branch:info.branch}:{}),
-   ...(transition?{transition:Object.freeze({...transition})}:{}),
+   ...(transition?{transition:Object.freeze({...transition,
+    ...(transition.moment1?{moment1:Object.freeze({...transition.moment1})}:{}),
+    ...(transition.moment2?{moment2:Object.freeze({...transition.moment2})}:{})})}:{}),
    path:Object.freeze(path.slice()),note:info.note});
  }
  function compare(a,b){
@@ -152,7 +167,13 @@
    evidence:TIERS.TRAINING,value:proof.parameter.after,path:[proof.parameterId],
    transition:{before:proof.parameter.before,after:proof.parameter.after,
      delta:proof.parameter.delta,wholeLossGradient:proof.wholeLossGradient,
-     optimizerStepBefore:proof.optimizer.stepBefore,optimizerStepAfter:proof.optimizer.stepAfter},
+     optimizerStepBefore:proof.optimizer.stepBefore,optimizerStepAfter:proof.optimizer.stepAfter,
+     optimizerKind:proof.optimizer.kind,
+     ...(proof.optimizer.firstMoment?{moment1:proof.optimizer.firstMoment}:{}),
+     ...(proof.optimizer.secondMoment?{moment2:proof.optimizer.secondMoment}:{}),
+     lossBefore:proof.loss.before,lossAfter:proof.loss.after,
+     selectedPathStatus:proof.path.status,
+     selectedPathContribution:proof.path.parameterContribution??null},
    note:"来自已重放的原生小模型训练更新；完整 Loss 梯度与选定局部 VJP 路径贡献需分别解释。"});
  }
  return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope,fromObservation,fromTraining});
