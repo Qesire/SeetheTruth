@@ -26,6 +26,9 @@ class MicroscopeBrowser(unittest.TestCase):
    p.locator('#studyMode').select_option('numeric')
    p.locator('#run').click()
    p.wait_for_function('window.SeetheTruthMicroscopeWorkbench?.stageCount===4')
+   # A source tensor has one scalar seed but no incoming VJP edges.
+   # Use the final real graph operator to verify edge/port highlights.
+   p.locator('#computeMicroscope .cmp-steps .cmp-step').last.click()
    cell=p.locator('#computeMicroscope .cmp-out .cmp-cell').first
    cell.wait_for(timeout=10000)
    cell.click()
