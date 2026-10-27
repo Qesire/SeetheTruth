@@ -12,9 +12,10 @@
   STATE:"EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS",
   GRAPH:"EXECUTABLE_DETERMINISTIC_TEACHING_TENSORS",
   PINNED:"PINNED_WAN_SOURCE_SYNTHETIC_FLOAT64",
+  TRAINING:"EXECUTED_BOUNDED_CPU_TRAINING_COORDINATE",
   STATIC:"STATIC_SHAPES_NO_EXECUTION"
  });
- const domains=Object.freeze(["semantic_state","guided_graph","computation_microscope","unified_observation"]);
+ const domains=Object.freeze(["semantic_state","guided_graph","computation_microscope","unified_observation","training_parameter"]);
  const numeric=new Set([TIERS.STATE,TIERS.GRAPH,TIERS.PINNED]);
  const fail=msg=>{throw Error("coordinate focus: "+msg);};
  const product=shape=>shape.reduce((p,n)=>p*n,1);
@@ -50,6 +51,16 @@
   if(info.value!==undefined&&(!numeric.has(info.evidence)||typeof info.value!=="number"||!Number.isFinite(info.value)))
    fail("numeric coordinate needs actual finite native execution evidence");
   if(info.branch!==undefined&&(!["a","b"].includes(info.branch)))fail("invalid A/B branch");
+  const transition=info.transition;
+  if(transition!==undefined){
+   if(info.domain!=="training_parameter"||info.evidence!==TIERS.TRAINING||
+      !transition||["before","after","delta","wholeLossGradient"].every(k=>
+       typeof transition[k]==="number"&&Number.isFinite(transition[k]))===false||
+      info.value!==transition.after||
+      Math.abs(transition.after-transition.before-transition.delta)>
+       1e-10*Math.max(1,Math.abs(transition.after),Math.abs(transition.before)))
+    fail("training coordinate transition must come from a finite native parameter update");
+  }
   const path=info.path===undefined?[]:info.path;
   if(!Array.isArray(path)||path.length>256||path.some(p=>typeof p!=="string"||!p||p.length>160))
    fail("invalid dependency path");
@@ -57,7 +68,9 @@
   return Object.freeze({schema:SCHEMA,domain:info.domain,executionId:info.executionId,nodeId:info.nodeId,
    ...c,flatIndex:flatten(c.shape,c.coordinate),evidence:info.evidence,
    ...(info.value!==undefined?{value:info.value}:{}),
-   ...(info.branch?{branch:info.branch}:{}),path:Object.freeze(path.slice()),note:info.note});
+   ...(info.branch?{branch:info.branch}:{}),
+   ...(transition?{transition:Object.freeze({...transition})}:{}),
+   path:Object.freeze(path.slice()),note:info.note});
  }
  function compare(a,b){
   for(const s of [a,b])if(!s||s.schema!==SCHEMA)fail("two coordinate selections required");
@@ -122,5 +135,25 @@
    shape:step.shape,coordinate:proof.coordinate,evidence,value:proof.detail.value,
    path:[proof.stepId],note:"replayed accepted graph step; per-execution comparison uses native compareRecords"});
  }
- return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope,fromObservation});
+ function fromTraining(record,replay){
+  if(record?.kind!=="specialized_execution"||record.id!=="training"||
+     record.operation!=="coordinate_proof"||replay?.reproduced!==true||
+     record.value?.schema!=="seethetruth-training-coordinate-proof-v1"||
+     record.value.evidence!==TIERS.TRAINING)
+   fail("replay-verified native training coordinate proof required");
+  const proof=record.value;
+  if(typeof proof.parameterId!=="string"||!proof.parameterId||
+     !Array.isArray(proof.index)||!Array.isArray(proof.shape)||
+     !proof.parameter||!Number.isFinite(proof.wholeLossGradient))
+   fail("original parameter, shape and whole-loss gradient required");
+  return create({domain:"training_parameter",executionId:"training/coordinate_proof/"+
+    proof.parameterId+"/"+proof.index.join(",")+"/step_"+proof.optimizer.stepAfter,
+   nodeId:proof.parameterId,shape:proof.shape,coordinate:proof.index,
+   evidence:TIERS.TRAINING,value:proof.parameter.after,path:[proof.parameterId],
+   transition:{before:proof.parameter.before,after:proof.parameter.after,
+     delta:proof.parameter.delta,wholeLossGradient:proof.wholeLossGradient,
+     optimizerStepBefore:proof.optimizer.stepBefore,optimizerStepAfter:proof.optimizer.stepAfter},
+   note:"来自已重放的原生小模型训练更新；完整 Loss 梯度与选定局部 VJP 路径贡献需分别解释。"});
+ }
+ return Object.freeze({SCHEMA,TIERS,bound,flatten,unflatten,create,compare,store,fromState,fromMicroscope,fromObservation,fromTraining});
 });
