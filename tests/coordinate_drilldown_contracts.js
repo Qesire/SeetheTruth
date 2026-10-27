@@ -110,6 +110,9 @@ assert.equal(trainingSteps.find(x=>x.kind==="loss_gradient").value,
  trainingInput.value.wholeLossGradient);
 assert.equal(trainingSteps.find(x=>x.kind==="parameter_after").value,
  trainingInput.value.parameter.after);
+assert.equal(trainingSteps.find(x=>x.kind==="loss_transition").nodeId,
+ trainingInput.value.targetId);
+assert.equal(trainingSteps.find(x=>x.kind==="loss_transition").index,undefined);
 assert.ok(Object.isFrozen(trainingSteps.find(x=>x.kind==="optimizer_state").moment1));
 assert.equal(JSON.stringify(g),before);
 const structural=Focus.create({domain:"guided_graph",executionId:"current/shape",nodeId:"out",
