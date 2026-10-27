@@ -16,7 +16,7 @@
   STATIC:"STATIC_SHAPES_NO_EXECUTION"
  });
  const domains=Object.freeze(["semantic_state","guided_graph","computation_microscope","unified_observation","training_parameter"]);
- const numeric=new Set([TIERS.STATE,TIERS.GRAPH,TIERS.PINNED]);
+ const numeric=new Set([TIERS.STATE,TIERS.GRAPH,TIERS.PINNED,TIERS.TRAINING]);
  const fail=msg=>{throw Error("coordinate focus: "+msg);};
  const product=shape=>shape.reduce((p,n)=>p*n,1);
  function bound(shape,index,axes){
