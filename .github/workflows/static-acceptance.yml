@@ -19,6 +19,16 @@ jobs:
         run: |
           python -m pip install 'playwright==1.55.0'
           python -m playwright install --with-deps chromium
+      - name: Verify state A/B exact coordinate round trip in Chromium (PC and phone)
+        run: python tests/browser_state_ab_bridge.py
+      - name: Archive state A/B coordinate and graph path screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-state-ab-coordinate-graph
+          path: state_ab_screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14
       - name: Real-browser UI behavior and adversarial imports
         run: python tests/browser_acceptance.py
       - name: Verify cross-graph scalar lineage and VJP in Chromium
