@@ -46,3 +46,24 @@
 - 结果严格标记 `SYNTHETIC_NUMERIC_REPLAY_VERIFIED`。它来自有界微型 CPU 教学计算；没有推断真实 GPU 速度、KV 物理块地址与单坐标值的一一对应关系。原生状态 A/B 仍独立保留和回放。
 
 Learning Studio 的 `#nativeGraphCoordinateLab` 新增三个坐标下拉选择、原始 Score/P/V/P×V 表格、Query Head → KV Head 及核验误差。修改当前计算图或转入非数值模式时，原有坐标见证失效；重新执行后由最新轨迹恢复。浏览器测试覆盖桌面与移动视口、切换 head/token/channel，以及跨课程后失效；Node 测试覆盖普通 Attention、GQA、头共享、真正的 Mask 反例、越界坐标和错误图证据。
+
+## 第四阶段：Score 的分维来源、RoPE 与稳定 Softmax
+
+新增 `learning_handoff.score(core, packet, graph, numericRecord, selection)`；复用已验证的 `coordinate` 上下文，在具体 `queryToken, head, keyToken, channel` 上沿**原执行记录**解析 Attention 分数。GQA 从 `TensorIR.gqa` 已生成的 `q_heads / k_heads / q_positioned / k_positioned / scores / probabilities` 读取，原生 Attention 从 Q/K 上游执行节点读取。它不在跨页教学层创建另一个完整 Attention 引擎。
+
+每个真实特征位置 `d` 依次展示原值 `Q,K`、位置编码后 `Q',K'`、RoPE 偶/奇 pair 的原始旋转角度，以及缩放贡献：
+
+```text
+angle_q(pair) = (query_index + queryPositionOffset) / 10000^(pair/Dk)
+angle_k(pair) = key_index / 10000^(pair/Dk)
+Q'[2i]   = Q[2i]cos(angle_q) - Q[2i+1]sin(angle_q)
+Q'[2i+1] = Q[2i]sin(angle_q) + Q[2i+1]cos(angle_q)
+Score[t,h,k] = Σ_d Q'[t,h,d] * K'[k,kvHead(h),d] / sqrt(Dk)
+P[t,h,k] = 0 (masked); otherwise exp(Score[t,h,k]-max(visible Score)) / Σ_visible exp(...)
+```
+
+每个 Rotated Q/K 元素和源码执行阶段逐值核对；缩放点积之和与原 `scores` 核对；行最大值仅取可见的 Key，且计算稳定 Softmax 后与原 `probabilities` 核对。未执行 RoPE 的单头 Attention 展示恒等位置变换。对 Causal 多 Query 的未来 Key，即使原始 QK Score 有数值，Attention 概率严格为零；单 Query 最后时刻的 Decode 前缀则可以全部可见。所有见证有界、可重放、因图结构变化而失效。
+
+Learning Studio 通过 `#nativeGraphScoreKey` 指定 Key，通过已有 Query/Head/Channel 控件指定上下文，并在 `#nativeGraphScoreFeatures` 展示逐特征原始值、RoPE 结果及缩放乘积。此界面的证明身份是 `SYNTHETIC_NUMERIC_REPLAY_VERIFIED`，不是来自真实模型权重或生产 GPU 内核的测试结果。
+
+新增 Node 正/反例：原始单头、GQA 分组、RoPE 旋转后坐标、Score 重构、稳定 Softmax 重构、未来 Key 掩码、非整数及越界 Key；浏览器覆盖桌面与手机 Key 下拉、分维贡献、数值模式切换与编辑图后的证据失效。
