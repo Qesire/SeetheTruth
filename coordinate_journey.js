@@ -111,10 +111,28 @@
   const base={nodeId:focus.nodeId,index:immutable([...focus.coordinate])};
   const steps=[
    immutable({kind:"parameter_before",...base,title:"参数坐标 · 更新前",value:tr.before,
-    detail:"原生训练事务中的初始参数值"}),
-   immutable({kind:"loss_gradient",...base,title:"全 Loss 梯度",
-    value:tr.wholeLossGradient,detail:"从完整训练目标对该参数求导；区别于任意单条中间路径的贡献"}),
+    detail:"原生训练事务中的初始参数值"})
   ];
+  const route=tr.selectedRoute;
+  if(route){
+   const via={nodeId:route.nodeId,index:immutable([...route.index])};
+   steps.push(immutable({kind:"forward_intermediate",...via,title:"前向计算 · 指定中间坐标",
+    value:route.value,detail:"来自独立验证的源图前向轨迹；此值属于更新前的同一次训练事务"}));
+   steps.push(immutable({kind:"loss_adjoint",...via,title:"反向传播 · 中间输出的全 Loss 伴随量",
+    value:route.adjoint??null,status:route.status,
+    localTermCount:route.localTermCount,frontierCount:route.frontierCount,
+    detail:route.adjoint===null?"原生 Loss VJP 未提供可核验伴随量；保留精确的未知边界":
+     "∂L/∂y_i 来自完整 Loss 的原生反向传播；不是局部单位种子 VJP"}));
+   steps.push(immutable({kind:"selected_path",...base,title:"指定路径 · 对参数梯度的贡献",
+    value:tr.selectedPathContribution??null,status:route.status,
+    viaNodeId:route.nodeId,viaIndex:immutable([...route.index]),
+    detail:tr.selectedPathContribution===null?
+     "该中间坐标对所选参数的完整路径贡献尚未可核验，未求值不等于 0":
+     "经由这一中间输出坐标的损失梯度贡献；全 Loss 参数梯度还包含其他路径"}));
+  }
+  steps.push(immutable({kind:"loss_gradient",...base,title:"全 Loss · 参数梯度",
+    value:tr.wholeLossGradient,
+    detail:"完整训练目标对该参数坐标的原生梯度，聚合所有有效路径；区别于单条选定路径"}));
   if(tr.optimizerKind)
    steps.push(immutable({kind:"optimizer_state",...base,title:"优化器状态 · "+tr.optimizerKind,
     value:null,detail:tr.optimizerNote||"原生优化器计算已完成；参数位移以事务输出为准",
@@ -125,10 +143,6 @@
    steps.push(immutable({kind:"loss_transition",...base,title:"训练目标 · 提交前后",
     value:tr.lossAfter,lossBefore:tr.lossBefore,
     detail:"目标值来自完整训练事务，不能归因于单独一个参数坐标的更新"}));
-  if(tr.selectedPathStatus)
-   steps.push(immutable({kind:"selected_path",...base,title:"指定路径 · 局部贡献",
-    value:tr.selectedPathContribution??null,status:tr.selectedPathStatus,
-    detail:"选定中间坐标到该参数的路径贡献；全 Loss 梯度还可能包含其他路径"}));
   return immutable({schema:SCHEMA,scope:"native_training_transaction",focus,
    complete:true,steps:immutable(steps)});
  }
