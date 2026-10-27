@@ -39,6 +39,10 @@ class MicroscopeBrowser(unittest.TestCase):
    self.assertIsInstance(record['value'],(int,float))
    self.assertEqual(record['flatIndex'],0)
    self.assertEqual(p.evaluate('window.SeetheTruthUnifiedWorkbench.coordinateFocus')['value'],record['value'])
+   p.locator("#sharedCoordinateDrilldown").click()
+   p.wait_for_function("document.querySelector('#sharedCoordinateDrilldownResult').textContent.includes('已追踪')")
+   self.assertIn("局部 VJP",p.locator("#sharedCoordinateDrilldownResult").inner_text())
+   self.assertGreater(p.locator("#graphLineageInspector .lineage-summary").count(),0)
    self.assertEqual(errors,[])
   finally:p.close()
  def test_ffn_attention_and_video(self):
