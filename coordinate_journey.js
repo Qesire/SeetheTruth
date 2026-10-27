@@ -45,6 +45,7 @@
   }
   const roots=[...incoming].filter(([,count])=>count===0).map(([id])=>id);
   if(roots.length!==1||roots[0]!==key)fail("lineage must have one selected output seed");
+  const originalIncoming=new Map(incoming);
   const acc=new Map([[key,1]]),initial=immutable({key,kind:"seed",title:"输出坐标 · 单位种子",
    nodeId:focus.nodeId,index:immutable([...focus.coordinate]),value:focus.value??null,
    sensitivity:1,detail:report.scope==="native_numeric_graph"
@@ -60,7 +61,7 @@
       before===null&&v.sensitivity!==null||before!==null&&v.sensitivity===null)
     fail("accumulated sensitivity differs from native element lineage at "+id);
    ordered.push(id);
-   if(id!==key)steps.push(immutable({kind:"merge",title:(incoming.get(id)===0?"输出":"汇合")+" · "+v.id,
+   if(id!==key)steps.push(immutable({kind:"merge",title:(v.status==="source"?"源坐标":originalIncoming.get(id)>1?"多路径汇合":"上游元素")+" · "+v.id,
     key:id,nodeId:v.id,index:immutable([...v.index]),value:v.value,
     sensitivity:before,rule:v.rule??null,
     detail:v.status==="boundary"?"算子依赖规则存在精确边界；未知局部导数保留为未求值":
