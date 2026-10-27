@@ -1511,8 +1511,8 @@ const panel=window.SeetheTruthUnifiedObservationUI.mount({
  onInspect:(proof,record)=>{
   if(record.kind==="graph"&&proof.kind==="tensor_computation"){
    const native=window.SeetheTruthCoordinateFocus.fromObservation(record,proof);
+   workbench.focusCoordinate(proof.stepId,proof.coordinate);
    window.SeetheTruthCoordinateFocusSession.select(native);
-   workbench.focusNode(proof.stepId);
    return;
   }
   if(record.id!=="training"||record.operation!=="graph_step")return;
