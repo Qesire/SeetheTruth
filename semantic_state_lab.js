@@ -20,8 +20,58 @@ function comparison(name,r){
  default:throw Error("unknown state comparison "+name);
  }
 }
+function paintCoordinates(name,result){
+ const groups=[];
+ for(const branch of ["a","b"]){
+  const root=$(branch+"CoordinateGrid"),indices=Bridge.coordinateList(name,result,branch);
+  root.replaceChildren();
+  $(branch+"CoordinateCount").textContent=indices.length?indices.length+" values":"拒绝执行";
+  const buttons=[];
+  if(!indices.length){
+   const empty=document.createElement("p");
+   empty.className="no-coordinate";
+   empty.textContent="该反例在数学/状态校验阶段被拒绝，没有可追踪的数值输出；请查看错误条件与对应积木。";
+   root.append(empty);
+  }
+  for(const i of indices){
+   const item=Bridge.coordinate(name,result,branch,i);
+   const button=document.createElement("button");button.type="button";
+   button.dataset.coordinate=branch+":"+i;
+   button.setAttribute("aria-pressed","false");
+   button.setAttribute("aria-label",branch.toUpperCase()+" 实际输出坐标 ["+item.coordinate.join(",")+"] 值 "+item.value);
+   button.textContent="#"+i+" · "+item.value;
+   button.addEventListener("click",()=>{
+    for(const {buttons:list} of groups)for(const control of list)
+     control.setAttribute("aria-pressed","false");
+    button.setAttribute("aria-pressed","true");
+    const other=branch==="a"?"b":"a";
+    const sibling=Bridge.coordinateList(name,result,other).includes(i)
+     ?Bridge.coordinate(name,result,other,i):null;
+    const delta=sibling?item.value-sibling.value:null;
+    const origin=item.origin===undefined?"":" · 绝对位置 "+item.origin;
+    $("coordinateDetail").textContent=branch.toUpperCase()+" ["+item.coordinate.join(",")+"] = "+item.value+
+     origin+"\n实际来源："+item.terms.map(t=>t.role+"["+t.index+"]="+t.value).join("；")+
+     (delta===null?"\n对照分支没有可执行的同坐标输出":"\n同坐标 A−B = "+(branch==="a"?delta:-delta))+
+     "\n"+item.note;
+    $("coordinateGraphLink").href=Bridge.href(name,item.nodeId,branch,i);
+    $("coordinateGraphLink").textContent="定位 "+item.nodeId+" 的上游计算路径 →";
+   });
+   root.append(button);buttons.push(button);
+  }
+  groups.push({branch,buttons});
+ }
+ const query=new URLSearchParams(window.location.search);
+ const requestedBranch=query.get("state_branch"),requestedIndex=query.get("state_index");
+ const requested=groups.find(g=>g.branch===requestedBranch)?.buttons.find(b=>
+  b.dataset.coordinate===requestedBranch+":"+requestedIndex);
+ const first=requested||groups[0].buttons[0];
+ if(first)first.click();
+}
 function run(name){
- const r=Core.executeLab("semantic_state","scenario",{name}).value;
+ const accepted=Core.executeLab("semantic_state","scenario",{name});
+ const r=accepted.value;
+ if(r.passed!==true)throw Error("本次状态实验数值合同失败");
+ Core.replay?.(accepted);
  $("caseTitle").textContent=r.title;
  $("explanation").textContent=r.explanation;
  $("prediction").textContent=r.prediction;
@@ -39,6 +89,7 @@ function run(name){
  $("bGraphLink").href=Bridge.href(name,primary.b);
  $("aGraphLink").textContent=Bridge.caseOf(name).labels.a+" →";
  $("bGraphLink").textContent=Bridge.caseOf(name).labels.b+" →";
+ paintCoordinates(name,r);
  const lesson=lessons[name];
  $("lessonTitle").textContent=lesson.title;
  $("lessonReason").textContent=lesson.reason;
