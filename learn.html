@@ -488,7 +488,9 @@ coordinateFocusSession.subscribe(focus=>{
  focusType.textContent=focus.evidence===CoordinateFocus.TIERS.STATIC?"STATIC COORDINATE":"OBSERVED COORDINATE";
  const label="["+focus.coordinate.map((v,i)=>focus.axes?.[i]?focus.axes[i]+"="+v:v).join(",")+"]";
  focusValue.textContent=focus.nodeId+" · "+label+(focus.value===undefined?"":" = "+Number(focus.value).toPrecision(7));
- focusSource.textContent=focus.domain==="semantic_state"?
+ focusSource.textContent=focus.domain==="training_parameter"?
+   "原生训练：更新 "+focus.transition.before+" → "+focus.transition.after+"；全 Loss 梯度 "+focus.transition.wholeLossGradient:
+   focus.domain==="semantic_state"?
    "实验原生数值 · 画布使用独立课程输入":
    focus.evidence===CoordinateFocus.TIERS.STATIC?"当前图的形状定位 · 等待原生数值执行":
    "原生计算步骤 · "+focus.domain+" · "+focus.evidence;
@@ -1601,8 +1603,10 @@ runProof.addEventListener("click",()=>{
    selection:{parameterId:selectedId,index:parseCoordinate(index.value||"0,0"),
     viaNodeId:chosenVia,viaIndex:parseCoordinate(viaIndex.value||"0,0")}
   });
-  window.SeetheTruthUnifiedCore.replay(proof);
+  const verifiedReplay=window.SeetheTruthUnifiedCore.replay(proof);
   const v=proof.value;
+  window.SeetheTruthCoordinateFocusSession.select(
+   window.SeetheTruthCoordinateFocus.fromTraining(proof,verifiedReplay));
   coordinateStatus.textContent="已核验参数 "+selectedId+" 的总梯度和原生优化器变化 · 路径 "+v.path.status;
   coordinateDetail.textContent=JSON.stringify({
     parameterId:v.parameterId,index:v.index,
