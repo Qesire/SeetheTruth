@@ -25,7 +25,9 @@
   slider.setAttribute("aria-label","跳转到计算依赖或训练状态时间线中的一个环节");
   const next=doc.createElement("button");next.type="button";next.id="coordinateJourneyNext";
   next.textContent="下一环节";next.setAttribute("aria-label","查看下一个真实计算环节");
-  nav.append(previous,slider,next);
+  const locate=doc.createElement("button");locate.type="button";locate.id="coordinateJourneyLocate";
+  locate.textContent="定位画布积木";locate.setAttribute("aria-label","跳转到当前反向依赖环节对应的图积木");
+  nav.append(previous,slider,next,locate);
   const body=doc.createElement("div");body.className="coordinate-journey-body";
   body.setAttribute("role","status");body.setAttribute("aria-live","polite");
   const title=doc.createElement("strong");title.id="coordinateJourneyTitle";
@@ -40,12 +42,14 @@
    const stages=report.steps,step=stages[position];
    counter.textContent=(position+1)+" / "+stages.length;
    previous.disabled=position<=0;next.disabled=position>=stages.length-1;
+   locate.disabled=typeof options.onLocate!=="function"||!step.nodeId;
    slider.max=String(stages.length-1);slider.value=String(position);
    title.textContent=step.title||step.kind;
    detail.textContent=step.detail||"已验证原生计算环节";
    metrics.replaceChildren();
    const rows=[["节点",step.nodeId],["坐标",step.index?"["+step.index.join(",")+"]":null]];
    if(step.kind==="edge")rows.push(["反向方向 · 当前 → 上游",step.sourceKey+" → "+step.targetKey],
+    ["当前输出坐标","["+step.sourceIndex.join(",")+"]"],
     ["输入端口",step.port],["局部规则",step.rule],
     ["上游灵敏度",format(step.upstreamSensitivity)],
     ["边局部导数",format(step.localDerivative)],
@@ -83,6 +87,9 @@
   next.addEventListener("click",()=>{if(report&&position<report.steps.length-1)move(position+1)});
   slider.addEventListener("input",()=>move(Number(slider.value)));
   slider.addEventListener("change",()=>move(Number(slider.value)));
+  locate.addEventListener("click",()=>{
+   if(report&&typeof options.onLocate==="function")options.onLocate(report.steps[position],report);
+  });
   return Object.freeze({
    show:source=>{
     if(!Journey||typeof Journey.fromDrilldown!=="function")
