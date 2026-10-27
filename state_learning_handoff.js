@@ -245,7 +245,7 @@
     controls.push(button);links.append(button);
    }
    controls[rows.findIndex(item=>item.id===start)].click();
-   if(["a","b"].includes(requestedBranch)&&requestedIndex!==null&&/^(0|[1-9]\\d*)$/.test(requestedIndex)){
+   if(["a","b"].includes(requestedBranch)&&requestedIndex!==null&&/^(0|[1-9]\d*)$/.test(requestedIndex)){
     const proof=coordinate(name,accepted.value,requestedBranch,Number(requestedIndex));
     const actualPath=coordinatePath(name,studio.inspect().graph,proof);
     for(const el of (typeof doc.querySelectorAll==="function"?doc.querySelectorAll("#blocks [data-node]"):[])){
