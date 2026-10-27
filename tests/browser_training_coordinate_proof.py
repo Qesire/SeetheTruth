@@ -80,6 +80,12 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      self.assertEqual(page.locator('#trainingProofDetail').inner_text(),'')
      self.assertEqual(page.evaluate('window.SeetheTruthCoordinateFocusSession.current'),None)
      self.assertTrue(page.locator('#sharedCoordinateJourney').is_hidden())
+     # A second valid request must actually execute, not merely leave a stale status.
+     page.locator('#trainingProofIndex').fill('0,1')
+     self.assertIn('坐标验证未完成',page.locator('#trainingProofStatus').inner_text())
+     page.locator('#trainingProofExecute').click()
+     self.assertIn('已核验参数 shared_weight',page.locator('#trainingProofStatus').inner_text())
+     self.assertEqual(page.evaluate('window.SeetheTruthCoordinateFocusSession.current.nodeId'),'shared_weight')
      self.assertEqual(errors,[])
     finally:page.close()
 if __name__=='__main__':unittest.main()
