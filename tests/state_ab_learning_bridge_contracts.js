@@ -8,6 +8,7 @@ const ROOT=path.resolve(__dirname,"..");
 const Lab=require("../learning_lab.js");
 const Examples=require("../semantic_state_examples.js");
 const Bridge=require("../state_learning_handoff.js");
+const Focus=require("../coordinate_focus.js");
 const stateHtml=fs.readFileSync(path.join(ROOT,"semantic_state.html"),"utf8");
 const studioHtml=fs.readFileSync(path.join(ROOT,"learn.html"),"utf8");
 const stateSource=fs.readFileSync(path.join(ROOT,"semantic_state_lab.js"),"utf8");
@@ -22,6 +23,7 @@ assert.ok(policy.androidAssets.includes("state_learning_handoff.js"),"shared off
 assert.match(stateHtml,/prefers-reduced-motion/);
 assert.match(studioHtml,/state-handoff-anchor/);
 assert.match(studioHtml,/state-evidence-path/);
+for(const page of [stateHtml,studioHtml])assert.ok(page.includes('<script src="coordinate_focus.js"></script>'),"focus contract missing in teaching page");
 const runtimeSources=["semantic_state.js","semantic_state_examples.js","learning_experience_core.js","state_learning_handoff.js"];
 for(const src of runtimeSources)assert.ok(studioHtml.includes('<script src="'+src+'"></script>'),"missing runtime dependency "+src);
 for(let i=1;i<runtimeSources.length;i++)
@@ -87,7 +89,7 @@ function evaluateStatePage(search){
   assert.equal(domain,"semantic_state");assert.equal(op,"scenario");
   return {value:Examples.run(input.name)};
  }};
- const window={location:{search},SeetheTruthStateBridge:Bridge,
+ const window={location:{search},SeetheTruthStateBridge:Bridge,SeetheTruthCoordinateFocus:Focus,
   SeetheTruthUnifiedCore:core,SeetheTruthSemanticExamples:{names}};
  const document={getElementById:get,createElement:domElement,querySelectorAll:selector=>selector==="[data-scenario]"?buttons:[]};
  vm.runInNewContext(stateSource,{window,document,URLSearchParams,JSON,Object,String,Error});
@@ -111,6 +113,7 @@ for(const name of names){
  get("aCoordinateGrid").children.at(-1).click();
  assert.match(get("coordinateDetail").textContent,/实际来源/);
  assert.match(get("coordinateGraphLink").href,/state_branch=a/);
+ assert.equal(window.SeetheTruthCoordinateFocusSession.current.domain,"semantic_state");
 }
 function evaluateHandoff(name,node,branch=null,index=null){
  const selection=[],focus=[],panels=[],studio={};
@@ -129,7 +132,7 @@ function evaluateHandoff(name,node,branch=null,index=null){
  },replay:accepted=>{assert.equal(accepted.value.passed,true);}};
  const query="?state_case="+name+"&state_node="+node+(branch===null?"":"&state_branch="+branch+"&state_index="+index);
  const window={location:{search:query},
-  SeetheTruthUnifiedCore:core,SeetheTruthUnifiedWorkbench:studio};
+  SeetheTruthUnifiedCore:core,SeetheTruthUnifiedWorkbench:studio,SeetheTruthCoordinateFocus:Focus};
  vm.runInNewContext(handoffSource,{window,document,URLSearchParams,JSON,Object,String,Error});
  const panel=panels.at(-1);
  assert.ok(panel&&panel.id==="stateHandoff");
@@ -137,6 +140,10 @@ function evaluateHandoff(name,node,branch=null,index=null){
  assert.equal(focus.at(-1),node);
  assert.equal(panel.children[2].textContent.includes("课程关联待检查"),false);
  if(branch!==null)assert.match(panel.children[2].textContent,/实验坐标/);
+ if(branch!==null){
+  assert.equal(window.SeetheTruthCoordinateFocusSession.current.domain,"semantic_state");
+  assert.equal(window.SeetheTruthCoordinateFocusSession.current.flatIndex,index);
+ }
  const links=panel.children[3];
  assert.equal(links.children.length,spec.anchors.length);
  for(let i=0;i<links.children.length;i++){
