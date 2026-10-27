@@ -42,7 +42,7 @@ function mini(t,label,click,selected){
  if(R>20||C>24)wrapper.append(el('p','仅显示前 '+Math.min(R,20)+' 行、'+Math.min(C,24)+' 列；计算仍使用完整的有界张量。','cmp-hint'));
  return wrapper;
 }
-function mount(rootElement,onSelect,onCoordinate){
+function mount(rootElement,onSelect,onCoordinate,onFocus){
  if(!rootElement||typeof rootElement.replaceChildren!=='function')throw Error('microscope UI mount required');
  let frame=null,active=null,subSelected=null,row=0,col=0,prefix=[];
  function clear(msg='运行数值图或进行静态形状分析后，选择积木即可展开；当前没有执行证据。'){
@@ -91,7 +91,16 @@ function mount(rootElement,onSelect,onCoordinate){
    link.href=frame.source.url+'#L'+s.sourceLines.start+'-L'+s.sourceLines.end;link.target='_blank';link.rel='noopener noreferrer';rootElement.append(link);
   }
   const output=el('div',undefined,'cmp-out');
-  output.append(mini(s.out,'输出张量 / '+s.id,(r,c,p)=>{row=r;col=c;prefix=p||[];present();}, {row,col,prefix}));
+  output.append(mini(s.out,'输出张量 / '+s.id,(r,c,p)=>{
+    row=r;col=c;prefix=p||[];
+    if(typeof onFocus==="function"){
+     const rank=s.out.shape.length;
+     const indices=[...prefix,...(rank===1?[]:[row]),col];
+     const detail=CORE.dot(frame,s.id,row,col,prefix);
+     onFocus({stepId:s.id,parentId:parent.id,coordinate:indices,frame,step:s,detail});
+    }
+    present();
+   }, {row,col,prefix}));
   rootElement.append(output);
   if(s.out.values!==null){
    const detail=CORE.dot(frame,s.id,Math.min(row,s.out.shape.length===1?0:s.out.shape[s.out.shape.length-2]-1),Math.min(col,s.out.shape[s.out.shape.length-1]-1),prefix);
