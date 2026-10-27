@@ -97,6 +97,10 @@ assert.deepEqual(intermediate.index,trainingInput.value.path.selected.index);
 assert.equal(intermediate.value,trainingInput.value.path.selected.value);
 assert.equal(adjoint.value,trainingInput.value.path.loss.selectedAdjoint);
 assert.equal(pathContribution.value,trainingInput.value.path.parameterContribution);
+assert.equal(pathContribution.parameterUnitVJP,trainingInput.value.path.parameterUnitVJP);
+assert.equal(pathContribution.lossAdjoint,trainingInput.value.path.loss.selectedAdjoint);
+assert.ok(Math.abs(pathContribution.lossAdjoint*pathContribution.parameterUnitVJP-
+ pathContribution.value)<2e-10);
 assert.equal(pathContribution.nodeId,trainingInput.value.parameterId);
 assert.notEqual(pathContribution.value,trainingInput.value.wholeLossGradient,
  "one native selected route must remain distinct from full-loss gradient");
