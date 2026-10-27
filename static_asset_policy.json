@@ -25,6 +25,7 @@
     "coordinate_drilldown.js",
     "coordinate_focus.js",
     "coordinate_journey.js",
+    "coordinate_journey_canvas.js",
     "coordinate_journey_ui.js",
     "coordinate_vjp_bridge.js",
     "deepinfer_decode_metadata.js",
