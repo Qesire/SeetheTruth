@@ -22,8 +22,10 @@ const order=["graph_readiness.js","element_lineage.js","compute_microscope.js",
  "coordinate_vjp_bridge.js","coordinate_focus.js","learning_experience_core.js","coordinate_drilldown.js","coordinate_journey.js","coordinate_journey_ui.js","coordinate_journey_canvas.js"];
 const positions=Object.fromEntries(order.map(name=>[name,html.indexOf('<script src="'+name+'"></script>')]));
 for(const [name,pos] of Object.entries(positions))assert.ok(pos>=0,"missing runtime "+name);
-for(const name of order.filter(n=>n!=="coordinate_drilldown.js"))
+for(const name of order.slice(0,order.indexOf("coordinate_drilldown.js")))
  assert.ok(positions[name]<positions["coordinate_drilldown.js"],"graph engine must load before drilldown: "+name);
+for(let i=order.indexOf("coordinate_drilldown.js")+1;i<order.length;i++)
+ assert.ok(positions[order[i]]>positions[order[i-1]],"timeline runtime order "+order[i]);
 const before=JSON.stringify(g),run=L.evaluate(g),frame=M.learning(g,run,L);
 const chosen=frame.steps.find(s=>s.id==="out"),coord=[0,1],flat=1;
 const numerical=Focus.fromMicroscope(frame,chosen,coord,chosen.out.values[flat]);
