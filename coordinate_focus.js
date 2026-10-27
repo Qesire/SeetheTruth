@@ -61,6 +61,10 @@
  }
  function compare(a,b){
   for(const s of [a,b])if(!s||s.schema!==SCHEMA)fail("two coordinate selections required");
+  // Only the immutable state-example A/B pair currently has one shared
+  // accepted execution. Graph baseline differences belong to Core.compareRecords.
+  if(a.domain!=="semantic_state"||b.domain!=="semantic_state")
+   fail("graph/other execution comparison requires native compareRecords");
   if(a.domain!==b.domain||a.executionId!==b.executionId||
      JSON.stringify(a.shape)!==JSON.stringify(b.shape)||
      JSON.stringify(a.coordinate)!==JSON.stringify(b.coordinate))
