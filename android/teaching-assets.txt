@@ -20,6 +20,7 @@ compute_microscope.js
 compute_microscope_ui.js
 concept_flow.js
 consensus_knowledge.js
+coordinate_focus.js
 coordinate_vjp_bridge.js
 deepinfer_decode_metadata.js
 deepinfer_kv_lifecycle.js
