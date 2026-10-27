@@ -115,3 +115,46 @@ for(const [pair,name,course,focus] of [
  assert.throws(()=>Handoff.explain(Core,packet,edited),'missing target node must fail source-graph mechanism proof');
 }
 console.log('NATIVE_GRAPH_MECHANISM_PASS real Q/K/V port provenance, numeric replay, edited graph and stale numeric rejection');
+
+for(const [pair,course,kind,heads] of [
+ [worker,'attention','attn',1],
+ [kv,'decode','gqa',2],
+ [scheduler,'decode','gqa',2]
+]){
+ const graph=Learning.preset(course);
+ const record=Core.inspectGraph(graph,{id:course,numeric:true});
+ const packet=Handoff.create(Core,pair.B,pair.A,pair.B.stateTrace.steps[1].id);
+ const first=Handoff.coordinate(Core,packet,graph,record);
+ assert.equal(first.nodeId,kind);
+ assert.equal(first.numericalEvidence,'SYNTHETIC_NUMERIC_REPLAY_VERIFIED');
+ assert.equal(first.headCount,heads);
+ assert.ok(Math.abs(first.probabilitySum-1)<1e-10);
+ assert.ok(first.error<1e-10);
+ assert.ok(first.originalSubstep.replayVerified);
+ assert.ok(first.keyCount>=3);
+ assert.equal(first.terms.length,first.keyCount);
+ assert.ok(first.terms.every(x=>Number.isFinite(x.score)&&Number.isFinite(x.contribution)));
+ for(const head of [0,heads-1]){
+  const result=Handoff.coordinate(Core,packet,graph,record,
+   {queryToken:first.outputShape[0]-1,head,
+    channel:first.outputShape[1]/heads-1});
+  assert.equal(result.queryHead,head);
+  assert.equal(result.outputChannel,head*(first.outputShape[1]/heads)+first.outputShape[1]/heads-1);
+  assert.ok(result.error<1e-10);
+  if(kind==='gqa')assert.ok(result.terms.some(x=>x.masked===false));
+ }
+ if(kind==='gqa'){
+  const observed=Handoff.coordinate(Core,packet,graph,record,{queryToken:0,head:0,channel:0});
+  assert.ok(observed.terms.every(x=>!x.masked || x.probability===0));
+  assert.ok(observed.terms.some(x=>x.masked),'causal decode mask must be visible');
+  assert.equal(observed.kvHead,0);
+ }
+ assert.throws(()=>Handoff.coordinate(Core,packet,graph,record,{queryToken:999}),/out of bounds/);
+ assert.throws(()=>Handoff.coordinate(Core,packet,graph,record,{head:heads}),/out of bounds/);
+ assert.throws(()=>Handoff.coordinate(Core,packet,graph,record,{channel:-1}),/out of bounds/);
+ assert.throws(()=>Handoff.coordinate(Core,packet,graph,record,{channel:0.5}),/out of bounds/);
+ assert.throws(()=>Handoff.coordinate(Core,packet,graph,
+  Core.inspectGraph(Learning.preset('ffn'),{numeric:true,id:'ffn'})),/different or non-executed graph/);
+}
+console.log('NATIVE_GRAPH_COORDINATE_PASS full original P×V evidence, attention/GQA, head sharing, causal mask, bounds and stale-graph rejection');
+
