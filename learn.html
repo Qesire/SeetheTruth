@@ -149,6 +149,27 @@ input[type="file"]{display:none}
 .coordinate-focus-summary small{font:11px/1.5 system-ui,sans-serif;color:#aacbda}
 .coordinate-focus-summary .btn{justify-self:start;min-height:30px}
 .coordinate-focus-drill-result{font:11px/1.6 system-ui,sans-serif;color:#b2efe4;overflow-wrap:anywhere}
+.coordinate-journey{margin-top:12px;padding:12px 0 3px;border-top:1px solid #377480;display:grid;gap:9px}
+.coordinate-journey[hidden]{display:none}
+.coordinate-journey-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.coordinate-journey-head strong{font:700 10px/1.5 ui-monospace,monospace;color:#8aebd7;letter-spacing:.1em}
+.coordinate-journey-head span{font:700 11px/1.5 ui-monospace,monospace;color:#d7eaf2}
+.coordinate-journey-nav{display:flex;gap:8px;align-items:center}
+.coordinate-journey-nav button{border:1px solid #377785;border-radius:7px;background:#154357;color:#e9f8fa;
+ padding:6px 8px;min-height:34px;font:600 11px system-ui;cursor:pointer}
+.coordinate-journey-nav button:disabled{opacity:.38;cursor:default}
+.coordinate-journey-nav input{min-width:50px;flex:1;accent-color:#70dacf}
+.coordinate-journey-body{border:1px solid #36697c;border-radius:9px;background:#09283b;padding:11px}
+.coordinate-journey-body>strong{color:#f0fff8;font-size:12px}
+.coordinate-journey-body p{color:#b7d7e0;font-size:11px;line-height:1.6;margin:6px 0}
+.coordinate-journey-metrics{display:grid;grid-template-columns:minmax(80px,38%) minmax(0,1fr);gap:6px 10px;
+ margin:8px 0 0;overflow-wrap:anywhere;font:11px/1.5 ui-monospace,monospace}
+.coordinate-journey-metrics dt{color:#90b8ca}.coordinate-journey-metrics dd{margin:0;color:#d9f7f3}
+.block.coordinate-journey-current{outline:3px solid #f8c875;outline-offset:4px;box-shadow:0 0 0 5px #ebad4c33}
+.coordinate-journey :is(button,input):focus-visible{outline:3px solid #eccd8b;outline-offset:2px}
+@media(max-width:760px){.coordinate-journey-nav{flex-wrap:wrap}.coordinate-journey-nav input{flex-basis:40%}}
+@media(prefers-reduced-motion:reduce){.coordinate-journey *{transition:none!important}}
+
 .state-handoff-trail{display:none;align-items:center;gap:5px;flex-wrap:wrap;
  padding:4px 0;min-width:0}
 .state-handoff-path-chip{border:1px solid #377e8d;border-radius:6px;background:#102b42;color:#b8e8f2;
@@ -434,6 +455,8 @@ input[type="file"]{display:none}
 <script src="node_timeline.js"></script>
 <script src="training_coordinate_proof.js"></script>\n<script src="learning_experience_core.js"></script>
 <script src="coordinate_drilldown.js"></script>
+<script src="coordinate_journey.js"></script>
+<script src="coordinate_journey_ui.js"></script>
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
@@ -455,6 +478,15 @@ const focusDrillResult=document.createElement("div");focusDrillResult.id="shared
 focusDrillResult.setAttribute("role","status");focusDrillResult.setAttribute("aria-live","polite");
 focusDrillResult.className="coordinate-focus-drill-result";
 focusSummary.append(focusDrill,focusDrillResult);
+const coordinateJourneyUI=window.SeetheTruthCoordinateJourneyUI.mount(focusSummary,{
+ onStep:(stage,position,source)=>{
+  for(const n of document.querySelectorAll("#blocks [data-node]")){
+   n.classList.toggle("coordinate-journey-current",!!stage.nodeId&&
+    source.scope!=="mechanism_correspondence"&&source.scope!=="native_training_transaction"&&
+    n.dataset.node===stage.nodeId);
+  }
+ }
+});
 focusDrill.addEventListener("click",()=>{
  try{
   const focus=coordinateFocusSession.current;
@@ -464,6 +496,7 @@ focusDrill.addEventListener("click",()=>{
    ...(sameRun?{run,frame:microscopeCachedFrame}:{}),
    ...(focus.domain==="unified_observation"?{accepted:window.SeetheTruthUnifiedWorkbench.inspectAccepted()}:{} )};
   const result=window.SeetheTruthCoordinateDrilldown.inspect(focus,context);
+  coordinateJourneyUI.show(result);
   if(!result.lineage){
    focusDrillResult.textContent=result.note;return;
   }
@@ -484,7 +517,9 @@ focusDrill.addEventListener("click",()=>{
 });
 document.querySelector(".inspector")?.prepend(focusSummary);
 coordinateFocusSession.subscribe(focus=>{
- focusSummary.hidden=!focus;focusDrillResult.textContent="";if(!focus)return;
+ focusSummary.hidden=!focus;focusDrillResult.textContent="";coordinateJourneyUI.clear();
+ for(const n of document.querySelectorAll("#blocks .coordinate-journey-current"))n.classList.remove("coordinate-journey-current");
+ if(!focus)return;
  focusType.textContent=focus.evidence===CoordinateFocus.TIERS.STATIC?"STATIC COORDINATE":"OBSERVED COORDINATE";
  const label="["+focus.coordinate.map((v,i)=>focus.axes?.[i]?focus.axes[i]+"="+v:v).join(",")+"]";
  focusValue.textContent=focus.nodeId+" · "+label+(focus.value===undefined?"":" = "+Number(focus.value).toPrecision(7));
