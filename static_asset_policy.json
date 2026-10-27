@@ -97,6 +97,7 @@
     "semantic_state_lab.js",
     "shape_index_rules.js",
     "specialized_learning_adapter.js",
+    "state_learning_handoff.js",
     "state_microscope.css",
     "state_microscope.js",
     "state_microscope_ui.js",
