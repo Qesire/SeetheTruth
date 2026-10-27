@@ -133,9 +133,9 @@
   if(name==="stream"){
    value=(branch==="a"?v.advanced.values:v.fork.values)[index];
    const prefixLen=v.initial.prefix.length,fromPrefix=index<prefixLen;
-   const source=fromPrefix?v.initial.prefix:(branch==="a"?v.advanced.values:v.fork.values);
+   const source=fromPrefix?v.initial.prefix:v.appendChunks[branch];
    const sourceIndex=fromPrefix?index:index-prefixLen;
-   const sourceValue=source[fromPrefix?sourceIndex:index];
+   const sourceValue=source[sourceIndex];
    if(value!==sourceValue)throw Error("stream append coordinate proof mismatch");
    terms=[{role:fromPrefix?"prefix":"append_chunk",index:sourceIndex,value:sourceValue}];
    traceNodes=fromPrefix?["prefix","init"]:["prefix","init",branch==="a"?"chunk_a":"chunk_b"];
@@ -224,7 +224,7 @@
      status.textContent=item.label+" / "+item.field+" = "+JSON.stringify(item.sample)+
       "。当前数值来自状态实验，积木课程使用独立输入。";
      const closure=upstreamPath(name,studio.inspect().graph,item.id);
-     for(const el of doc.querySelectorAll("#blocks [data-node]")){
+     for(const el of (typeof doc.querySelectorAll==="function"?doc.querySelectorAll("#blocks [data-node]"):[])){
       el.classList.toggle("state-evidence-path",closure.includes(el.dataset.node));
      }
     });
