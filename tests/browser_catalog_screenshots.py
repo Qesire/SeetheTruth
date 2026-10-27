@@ -77,6 +77,41 @@ class BlockLibraryVisualAcceptance(unittest.TestCase):
                 "visible_catalog_items":p.locator("#palette [data-add]").count(),
                 "mission":p.locator("#workspaceTitle").inner_text()}
 
+    def test_semantic_ab_evidence_deeplinks_pc_and_phone(self):
+        """Use actual Chromium navigation, pack recipes and A/B-focused graph nodes."""
+        p=self.page
+        p.goto(self.base+"/semantic_state.html?state_case=video",wait_until="domcontentloaded")
+        self.assertIn("五维视频",p.locator("#caseTitle").inner_text())
+        self.assertIn("state_node=join",p.locator("#bGraphLink").get_attribute("href"))
+        p.locator("#bGraphLink").click()
+        p.wait_for_url("**/learn.html?edition=teaching&state_case=video&state_node=join")
+        self.assertEqual(p.locator("#blocks [data-node='join'].selected").count(),1)
+        self.assertEqual(p.locator("#stateHandoff [aria-pressed='true']").count(),1)
+        self.assertIn("独立示例输入",p.locator("#stateHandoff").inner_text())
+        self.assertNotIn("课程关联待检查",p.locator("#stateHandoff").inner_text())
+        self.shot("65-video-ab-graph-handoff-desktop.png")
+        p.locator("#stateHandoff a").click()
+        self.assertIn("state_case=video",p.url)
+        self.assertIn("五维视频",p.locator("#caseTitle").inner_text())
+
+        phone=self.browser.new_page(viewport={"width":390,"height":844},device_scale_factor=1,
+                                    is_mobile=True,has_touch=True)
+        phone_errors=[]
+        phone.on("pageerror",lambda e:phone_errors.append(str(e)))
+        try:
+            phone.goto(self.base+"/semantic_state.html?state_case=axis",wait_until="domcontentloaded")
+            self.assertEqual(phone.locator("#aGraphLink").count(),1)
+            phone.locator("#bGraphLink").click()
+            phone.wait_for_url("**/learn.html?edition=teaching&state_case=axis&state_node=bias")
+            self.assertEqual(phone.locator("#blocks [data-node='bias'].selected").count(),1)
+            self.assertIn("具名轴",phone.locator("#stateHandoff").inner_text())
+            self.assertNotIn("课程关联待检查",phone.locator("#stateHandoff").inner_text())
+            phone.screenshot(path=str(DEST/"66-axis-ab-graph-handoff-phone.png"),
+                             animations="disabled",full_page=True)
+        finally:
+            phone.close()
+        self.assertEqual(phone_errors,[])
+
     def test_trainable_gqa_mqa_nd_adamw_roundtrip_and_loss_curve(self):
         import json
         p=self.page
