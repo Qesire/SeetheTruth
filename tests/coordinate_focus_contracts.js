@@ -71,6 +71,14 @@ assert.equal(training.value,acceptedTraining.value.parameter.after);
 assert.equal(training.transition.before,acceptedTraining.value.parameter.before);
 assert.equal(training.transition.after-training.transition.before,training.transition.delta);
 assert.equal(training.transition.wholeLossGradient,acceptedTraining.value.wholeLossGradient);
+assert.equal(training.transition.selectedRoute.nodeId,acceptedTraining.value.path.selected.nodeId);
+assert.deepEqual(training.transition.selectedRoute.index,acceptedTraining.value.path.selected.index);
+assert.equal(training.transition.selectedRoute.value,acceptedTraining.value.path.selected.value);
+assert.equal(training.transition.selectedRoute.adjoint,acceptedTraining.value.path.loss.selectedAdjoint);
+assert.ok(Object.isFrozen(training.transition.selectedRoute.index));
+assert.throws(()=>Focus.create({...training,transition:{...training.transition,
+ selectedRoute:{...training.transition.selectedRoute,value:NaN}}}),/invalid native selected intermediate route/);
+
 assert.equal(Drill.inspect(training).scope,"native_training_transaction");
 assert.throws(()=>Focus.fromTraining(acceptedTraining,{reproduced:false}),/replay-verified/);
 assert.throws(()=>Focus.create({...training,transition:{...training.transition,delta:500}}),/training coordinate transition/);
