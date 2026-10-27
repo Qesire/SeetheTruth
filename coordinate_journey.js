@@ -76,6 +76,7 @@
     const source=nodes.get(edge.to);
     steps.push(immutable({kind:"edge",title:v.id+" → "+source.id,
      nodeId:source.id,sourceNodeId:v.id,sourceKey:id,targetKey:edge.to,
+     sourceIndex:immutable([...v.index]),
      index:immutable([...source.index]),port:edge.port,term:edge.term,
      rule:edge.rule,upstreamSensitivity:before,localDerivative:edge.localDerivative,
      contribution:term,accumulatedBefore:old===undefined?null:old,
