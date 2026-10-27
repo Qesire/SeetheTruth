@@ -23,7 +23,7 @@
  const fail=why=>{throw Error("coordinate drilldown: "+why);};
  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
  function inspect(input,context={}){
-  if(!d.Focus||!d.E||!d.L||!d.Ready||!d.V||!d.M)fail("native coordinate engines unavailable");
+  if(!d.Focus)fail("coordinate focus engine unavailable");
   if(!input||input.schema!==d.Focus.SCHEMA)fail("a verified focus record is required");
   const focus=d.Focus.create(input);
   // A separate state scenario is paired with a graph at the operator level.
@@ -40,6 +40,10 @@
       "；全 Loss 梯度 "+focus.transition.wholeLossGradient+
       "。局部路径贡献以训练坐标证明面板中的真实 VJP 项为准。"});
   }
+  // Specialist state and training results have already been verified by
+  // their own native engines and do not require a browser graph runtime.
+  if(!d.E||!d.L||!d.Ready||!d.V||!d.M)
+   fail("native graph coordinate engines unavailable");
   const raw=context.graph;
   if(!raw||!Array.isArray(raw.nodes)||!Array.isArray(raw.edges))fail("current graph required");
   const graph=d.L.validateGraph(raw),node=graph.nodes.find(n=>n.id===focus.nodeId);
