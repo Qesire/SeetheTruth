@@ -24,3 +24,13 @@
 ## 后续演进
 
 当前首先落地的是**有来源、可返回的教学导航**。可逐步完善对具体数据依赖与资源事件的结构化关系解释（例如 KV block ownership 与 GQA K/V 读取所面对的不同层次），并将所提出的竞争解释组织为有界课堂问题。任何将机制关系提升为形式等价关系的工作，应提供明确映射函数、条件和对应的独立反例验证。
+
+## 第二阶段：原生事件 ↔ 真实图端口与数值的机制显微镜
+
+`learning_handoff.explain(core, packet, currentGraph, numericRecord?)` 每次调用都会重新验收原生 A/B 来源，然后对**当前正在编辑的** `LearningLab` 图调用 `Core.inspectGraph(..., numeric:false)`。只从实际图的 `GraphLearningPath` 读取 Attention/GQA 的 Q、K、V 上游节点 ID、端口及源张量形状。Worker 关联 `attention/attn`，KV 与 Scheduler 关联 `decode/gqa`；一旦相关节点在当前图中不存在或端口不完整，原有机制关联失效，提示学习者重新选课。其他有效端口重接线被按新图重新分析，不沿用旧端口结论。
+
+选择「运行当前积木图并核验 Q/K/V」会通过已有 `#studyMode` 和 `#run` 运行原生小规模图引擎。数值轨迹由 `SeetheTruthUnifiedWorkbench.inspectAccepted()` 提供，并且必须匹配当前图、`Core.replay` 成功且目标节点有 `SYNTHETIC_NUMERIC` 数值证据。切换课程、修改图或执行无关分支时，原有数值资格随图身份变化而失效。
+
+原生事件帧提供源事件 ID、标题、`dependencies`、原生 `changes` 字段和 A/B 所选事件是否改变。源实验室中的状态先后关系与计算图端口关系并列展示。对于 Worker，可比较资源依赖事件 DAG 与 Q/K/V 数值计算 DAG 的可并行条件；对于 KV，可区分物理缓存所有权与 K/V 逻辑张量内容；对于 Scheduler，可区分准入条件与一次已准入 Attention 的算术。这种对照是**机制层面的教学关系**，不会产生跨域张量等价断言。
+
+测试扩展：`tests/native_ab_guide_contracts.js` 用三个实际实验引擎与 Worker 无效果反例逐一校验 Q/K/V 的实际图端口、数值重放资格、错误图证据与删除目标节点；`tests/browser_state_learning_guide.py` 在桌面和手机上核验端口列表、真实数值按钮、切换 FFN 导致机制关联失效、重选目标课程后按当前图恢复静态解释。
