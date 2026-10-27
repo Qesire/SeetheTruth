@@ -1866,6 +1866,7 @@ locate.addEventListener("click",()=>{try{
    if(event.target.closest(".mission[data-preset],#run,#runBranch,#undo,#redo,#guideAction"))
     refresh();
   });
+  document.getElementById("studyMode").addEventListener("change",refresh);
   const graphNodes=document.getElementById("blocks");
   if(graphNodes)new MutationObserver(refresh).observe(graphNodes,{childList:true});
   renderMechanism();
