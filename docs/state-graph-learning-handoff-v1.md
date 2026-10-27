@@ -67,3 +67,21 @@ P[t,h,k] = 0 (masked); otherwise exp(Score[t,h,k]-max(visible Score)) / Σ_visib
 Learning Studio 通过 `#nativeGraphScoreKey` 指定 Key，通过已有 Query/Head/Channel 控件指定上下文，并在 `#nativeGraphScoreFeatures` 展示逐特征原始值、RoPE 结果及缩放乘积。此界面的证明身份是 `SYNTHETIC_NUMERIC_REPLAY_VERIFIED`，不是来自真实模型权重或生产 GPU 内核的测试结果。
 
 新增 Node 正/反例：原始单头、GQA 分组、RoPE 旋转后坐标、Score 重构、稳定 Softmax 重构、未来 Key 掩码、非整数及越界 Key；浏览器覆盖桌面与手机 Key 下拉、分维贡献、数值模式切换与编辑图后的证据失效。
+
+## 第五阶段：原计算图内的单坐标 Q/K 因果 A/B
+
+新增 `learning_handoff.intervene(core, packet, graph, numericRecord, options)`，对当前已核验且可重放的 Attention/GQA 数值图构造**非破坏性、同拓扑双轨实验**：
+
+1. 先通过 `Core.replay(numericRecord)` 核对来源，定位实际 Attention 的 `q` 或 `k` 输入端口和上游输出矩阵。
+2. 将此矩阵复制进一个已经存在于积木目录、由 `BlockCatalog.execute` 计算的显式二维 `parameter` 节点，修改**仅目标 Attention 端口**的来源连线。构造 A，调用 `Core.inspectGraph(A,numeric:true)`；逐坐标证明目标 Attention 输出与原图严格数值等价（误差至多 `1e-10`）。
+3. 深拷贝 A 为同拓扑 B，只在 `Parameter.values[token][feature]` 加一个有限且幅度不超过 1 的非零 `delta`；调用相同执行器执行 B，并通过 `Core.compareRecords(A,B)` 对原始算子及微型数值轨迹执行重放和差异比较。
+4. 对已选 Query Token、Query Head、Key Token、输出通道分别用 `Handoff.score`、`Handoff.coordinate` 构造 A/B 数值证据；报告 `ΔScore`、`ΔP`、`ΔOut`、全输出最大绝对变化与改变坐标数。A/B 仍保留原生事件来源 ID，但计算图扰动不篡改原 Worker、KV、Scheduler A/B 状态实验。
+
+### 关键因果限定
+
+- 本实验是 **Q/K 投影输出的端口干预**，通过一份显式 `Parameter` 冻结端口输入。它不会更新 Linear 投影的权重，也不会暗示修改了所有共享上游节点的消费者；原始教学图本身保持不变。
+- **局部零效应是正确结果**：例如 Q 的某个特征属于 Hq0，对 Hq1 所选 Score/概率不会产生改变；因果掩码排除的未来 Key 即使原始 Score 改变，也不改变该查询的概率和输出。测试应保留这两类负对照，避免用“所有 Δ 必须非零”替代因果分析。
+- A 和 B 的差别只有显式 Parameter 矩阵中的一个元素；冻结后的 A 必须和原图相等，才能将 B-A 解释为该坐标的受控效应。仅限有界 Float64 CPU 教学模型；不代表原始大模型权重、GPU KV 地址或硬件性能。
+- UI 的干预参数包括端口、投影 Token、投影特征、Δ；结果只在被接受的当前数值图上有效。编辑图、切换课程或离开 numeric 模式会撤销当前结果。
+
+Node 契约扩展到普通 Attention 与 GQA 的 Q/K 单元素实际干预、来源等价、全图数值重放、Head 隔离、掩码负对照、越界与无效 Δ。Chromium 桌面/手机验收扩展到可执行干预 UI、输入校验、A/B 对照和证据撤销。
