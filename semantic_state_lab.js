@@ -2,6 +2,10 @@
 (function(){"use strict";
 const Core=window.SeetheTruthUnifiedCore;
 const Bridge=window.SeetheTruthStateBridge;
+const CoordinateFocus=window.SeetheTruthCoordinateFocus;
+if(!CoordinateFocus)throw Error("coordinate focus protocol unavailable");
+const coordinateFocusSession=CoordinateFocus.store();
+window.SeetheTruthCoordinateFocusSession=coordinateFocusSession;
 if(!Core||!Bridge)throw Error("unified state core or evidence bridge unavailable");
 const $=id=>document.getElementById(id);
 const lessons=Object.freeze({
@@ -44,14 +48,17 @@ function paintCoordinates(name,result){
     for(const {buttons:list} of groups)for(const control of list)
      control.setAttribute("aria-pressed","false");
     button.setAttribute("aria-pressed","true");
+    const native=coordinateFocusSession.select(CoordinateFocus.fromState(item));
     const other=branch==="a"?"b":"a";
     const sibling=Bridge.coordinateList(name,result,other).includes(i)
      ?Bridge.coordinate(name,result,other,i):null;
-    const delta=sibling?item.value-sibling.value:null;
+    const delta=sibling?CoordinateFocus.compare(
+      branch==="a"?native:CoordinateFocus.fromState(sibling),
+      branch==="a"?CoordinateFocus.fromState(sibling):native).delta:null;
     const origin=item.origin===undefined?"":" · 绝对位置 "+item.origin;
     $("coordinateDetail").textContent=branch.toUpperCase()+" ["+item.coordinate.join(",")+"] = "+item.value+
      origin+"\n实际来源："+item.terms.map(t=>t.role+"["+t.index+"]="+t.value).join("；")+
-     (delta===null?"\n对照分支没有可执行的同坐标输出":"\n同坐标 A−B = "+(branch==="a"?delta:-delta))+
+     (delta===null?"\n对照分支没有可执行的同坐标输出":"\n同坐标 A−B = "+delta)+
      "\n"+item.note;
     $("coordinateGraphLink").href=Bridge.href(name,item.nodeId,branch,i);
     $("coordinateGraphLink").textContent="定位 "+item.nodeId+" 的上游计算路径 →";
@@ -117,5 +124,5 @@ for(const b of document.querySelectorAll("[data-scenario]"))
  b.addEventListener("click",()=>run(b.dataset.scenario));
 const requested=new URLSearchParams(window.location.search).get("state_case");
 run(Object.prototype.hasOwnProperty.call(lessons,requested)?requested:"stream");
-window.SeetheTruthStateLab=Object.freeze({run,cases:window.SeetheTruthSemanticExamples.names,comparison});
+window.SeetheTruthStateLab=Object.freeze({run,cases:window.SeetheTruthSemanticExamples.names,comparison,get coordinateFocus(){return coordinateFocusSession.current;}});
 })();
