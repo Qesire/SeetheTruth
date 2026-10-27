@@ -187,7 +187,7 @@
   if(!proof.traceNodes.every(id=>closure.includes(id)))throw Error("坐标依赖不属于实际计算图上游");
   const edges=graph.edges,selected=new Set(proof.traceNodes);
   for(const id of proof.traceNodes.filter(id=>id!==proof.nodeId)){
-   if(id===proof.traceNodes[0])continue;
+   if(id===proof.traceNodes[0]||!edges.some(e=>e.to===id))continue;
    if(!edges.some(e=>e.to===id&&selected.has(e.from)))
     throw Error("坐标依赖在课程中缺少连接："+id);
   }
