@@ -1,7 +1,8 @@
 /* State experiment presentation: A/B views are projections of the single canonical executeLab result. */
 (function(){"use strict";
 const Core=window.SeetheTruthUnifiedCore;
-if(!Core)throw Error("unified semantic-state core unavailable");
+const Bridge=window.SeetheTruthStateBridge;
+if(!Core||!Bridge)throw Error("unified state core or evidence bridge unavailable");
 const $=id=>document.getElementById(id);
 const lessons=Object.freeze({
  stream:{title:"状态分叉 → KV Cache 与时间依赖",reason:"在计算图课程中追踪相同前缀如何流入两条后续路径；比较 append 与 fork 的输出来源。",href:"learn.html?edition=teaching&state_case=stream"},
@@ -33,6 +34,9 @@ function run(name){
   $(prefix+"Values").textContent=JSON.stringify(record[2],null,2);
  }
  $("difference").textContent=ab.difference;
+ const primary=Bridge.caseOf(name).primary;
+ $("aGraphLink").href=Bridge.href(name,primary.a);
+ $("bGraphLink").href=Bridge.href(name,primary.b);
  const lesson=lessons[name];
  $("lessonTitle").textContent=lesson.title;
  $("lessonReason").textContent=lesson.reason;
