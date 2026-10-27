@@ -35,12 +35,14 @@
    return Object.freeze({schema:SCHEMA,kind:"edge",nodeId:step.nodeId,
     coordinate:Object.freeze([...step.index]),downstreamNodeId:step.sourceNodeId,
     downstreamCoordinate:Object.freeze([...step.sourceIndex]),
+    upstreamKey:step.targetKey,downstreamKey:step.sourceKey,
     wire:Object.freeze({from:wire.from,to:wire.to,port:wire.port})});
   }
   if((step.kind==="seed"||step.kind==="merge")&&
      typeof step.nodeId==="string"&&ids.has(step.nodeId)&&coord(step.index))
    return Object.freeze({schema:SCHEMA,kind:"node",nodeId:step.nodeId,
-    coordinate:Object.freeze([...step.index]),wire:null});
+    coordinate:Object.freeze([...step.index]),upstreamKey:step.key||
+     step.nodeId+"@"+step.index.join(","),wire:null});
   fail("selected timeline step is not a graph coordinate");
  }
  function wireEquals(a,b){return !!a&&!!b&&a.from===b.from&&a.to===b.to&&a.port===b.port;}
