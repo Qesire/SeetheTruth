@@ -32,6 +32,14 @@
    return Object.freeze({schema:SCHEMA,scope:"mechanism_correspondence",focus,
     lineage:null,vjp:null,complete:null,
     note:"状态实验与教学计算图是独立数值执行；请在课程图上选择一个真实输出坐标后检验其局部导数。"});
+  if(focus.domain==="training_parameter"){
+   if(!focus.transition)fail("training coordinate requires verified native optimizer transition");
+   return Object.freeze({schema:SCHEMA,scope:"native_training_transaction",focus,
+    lineage:null,vjp:null,complete:null,
+    note:"原生参数更新 "+focus.transition.before+" → "+focus.transition.after+
+      "；全 Loss 梯度 "+focus.transition.wholeLossGradient+
+      "。局部路径贡献以训练坐标证明面板中的真实 VJP 项为准。"});
+  }
   const raw=context.graph;
   if(!raw||!Array.isArray(raw.nodes)||!Array.isArray(raw.edges))fail("current graph required");
   const graph=d.L.validateGraph(raw),node=graph.nodes.find(n=>n.id===focus.nodeId);
