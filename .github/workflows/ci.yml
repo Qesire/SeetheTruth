@@ -26,6 +26,7 @@ jobs:
           node tests/semantic_tensor_ir_contracts.js
           node tests/semantic_state_contracts.js
           node tests/coordinate_focus_contracts.js
+          node tests/coordinate_drilldown_contracts.js
           node tests/state_ab_learning_bridge_contracts.js
           node tests/stream_graph_blocks_contracts.js
           node --check kv_cache_lab.js
