@@ -15,6 +15,14 @@ const g=L.validateGraph({schema:L.SCHEMA,title:"focus drilldown two-route VJP",n
  node("project","matmul"),node("boost","scale",{factor:.4}),node("sum","add"),node("out","square")
 ],edges:[wire("x","project","a"),wire("w","project","b"),wire("project","boost","x"),
  wire("project","sum","a"),wire("boost","sum","b"),wire("sum","out","x")]});
+const fs=require("node:fs"),path=require("node:path");
+const html=fs.readFileSync(path.join(__dirname,"..","learn.html"),"utf8");
+const order=["graph_readiness.js","element_lineage.js","compute_microscope.js",
+ "coordinate_vjp_bridge.js","coordinate_focus.js","learning_experience_core.js","coordinate_drilldown.js"];
+const positions=Object.fromEntries(order.map(name=>[name,html.indexOf('<script src="'+name+'"></script>')]));
+for(const [name,pos] of Object.entries(positions))assert.ok(pos>=0,"missing runtime "+name);
+for(const name of order.filter(n=>n!=="coordinate_drilldown.js"))
+ assert.ok(positions[name]<positions["coordinate_drilldown.js"],"graph engine must load before drilldown: "+name);
 const before=JSON.stringify(g),run=L.evaluate(g),frame=M.learning(g,run,L);
 const chosen=frame.steps.find(s=>s.id==="out"),coord=[0,1],flat=1;
 const numerical=Focus.fromMicroscope(frame,chosen,coord,chosen.out.values[flat]);
