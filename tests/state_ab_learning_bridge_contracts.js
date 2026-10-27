@@ -110,7 +110,7 @@ for(const name of names){
  assert.match(get("coordinateDetail").textContent,/实际来源/);
  assert.match(get("coordinateGraphLink").href,/state_branch=a/);
 }
-function evaluateHandoff(name,node){
+function evaluateHandoff(name,node,branch=null,index=null){
  const selection=[],focus=[],panels=[],studio={};
  const spec=Bridge.caseOf(name),graph=Lab.preset(spec.preset);
  studio.inspect=()=>({graph});
@@ -125,7 +125,8 @@ function evaluateHandoff(name,node){
  const core={executeLab(domain,op,input){
   assert.equal(domain,"semantic_state");assert.equal(op,"scenario");return {value:Examples.run(input.name)};
  },replay:accepted=>{assert.equal(accepted.value.passed,true);}};
- const window={location:{search:"?state_case="+name+"&state_node="+node},
+ const query="?state_case="+name+"&state_node="+node+(branch===null?"":"&state_branch="+branch+"&state_index="+index);
+ const window={location:{search:query},
   SeetheTruthUnifiedCore:core,SeetheTruthUnifiedWorkbench:studio};
  vm.runInNewContext(handoffSource,{window,document,URLSearchParams,JSON,Object,String,Error});
  const panel=panels.at(-1);
@@ -140,12 +141,20 @@ function evaluateHandoff(name,node){
   assert.equal(focus.at(-1),spec.anchors[i].id);
  }
  assert.ok(panel.children[4].textContent.includes("独立示例输入"));
- assert.equal(panel.children[6].href,"semantic_state.html?state_case="+name);
+ if(branch===null)assert.equal(panel.children[6].href,"semantic_state.html?state_case="+name);
+ else{
+  assert.match(panel.children[2].textContent,/实验坐标/);
+  assert.ok(panel.children[6].href.includes("&state_index="+index));
+ }
 }
 for(const name of names){
  const spec=Bridge.caseOf(name);
  evaluateHandoff(name,spec.primary.a);
  evaluateHandoff(name,spec.primary.b);
+ for(const branch of ["a","b"]){
+  const available=Bridge.coordinateList(name,Examples.run(name),branch);
+  if(available.length)evaluateHandoff(name,spec.primary[branch],branch,available.at(-1));
+ }
 }
 for(const name of names){
  const graph=Lab.preset(Bridge.caseOf(name).preset),entry=Bridge.caseOf(name);
