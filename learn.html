@@ -131,6 +131,21 @@ input[type="file"]{display:none}
 .composite-launch:hover{background:#195268}
 @media(max-width:800px){.composite-nav.overview .composite-stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.composite-nav.overview .composite-stages{grid-template-columns:1fr}}
+
+/* Scenario-guided evidence bridge: compact, keyboard-accessible, no blocking overlay. */
+.state-handoff{position:fixed;bottom:14px;left:14px;z-index:40;max-width:min(420px,calc(100vw - 28px));max-height:min(52vh,520px);
+ overflow:auto;padding:15px 17px;background:#102d40;color:#e9faff;border:1px solid #67c9c8;
+ border-radius:13px;box-shadow:0 18px 50px #000a;font-size:12px;line-height:1.65}
+.state-handoff strong{font-size:14px}.state-handoff p{margin:8px 0}
+.state-handoff-caption{color:#b8dbe6}.state-handoff-provenance{color:#a9ced9;border-left:2px solid #5bd7d0;padding-left:10px}
+.state-handoff-links{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.state-handoff-anchor,.state-handoff-close{border:1px solid #477d92;border-radius:8px;color:#deeff7;
+ background:#133c50;cursor:pointer;padding:7px 10px;min-height:35px}
+.state-handoff-anchor:hover,.state-handoff-anchor[aria-pressed=true]{border-color:#82ead6;color:#ebfff9;background:#1c6065}
+.state-handoff a{color:#9de9e7}.state-handoff-close{margin-left:12px}
+.state-handoff :is(button,a):focus-visible{outline:3px solid #f2cc87;outline-offset:2px}
+@media(max-width:760px){.state-handoff{left:9px;right:9px;bottom:9px;max-width:none;max-height:35vh;padding:11px 13px}}
+@media(prefers-reduced-motion:reduce){.state-handoff *{scroll-behavior:auto!important}}
 </style><style>
 #paperHoverInspector{position:fixed;z-index:3000;max-height:calc(100vh - 24px);overflow:auto;background:#10293a;color:#eaf9ff;border:1px solid #56b9c4;border-radius:13px;box-shadow:0 15px 55px #000c;padding:16px 18px;font-size:12px;line-height:1.55}
 #paperHoverInspector[hidden]{display:none}#paperHoverInspector h3{font-size:16px;margin:8px 0 9px}#paperHoverInspector h4{font-size:12px;color:#84e9dc;margin:13px 0 3px}#paperHoverInspector p{margin:0;color:#c7e1ed}#paperHoverInspector code{white-space:normal;overflow-wrap:anywhere;display:block;background:#08202d;border-radius:7px;padding:9px;color:#f1dbaa}
