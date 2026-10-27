@@ -430,6 +430,10 @@ input[type="file"]{display:none}
 const ShapeRules=window.SeetheTruthShapeIndexRules;
 const LearningPath=window.SeetheTruthGraphLearningPath,UnifiedCore=window.SeetheTruthUnifiedCore;
 const Microscope=window.SeetheTruthComputeMicroscope,MicroscopeUI=window.SeetheTruthMicroscopeUI;
+const CoordinateFocus=window.SeetheTruthCoordinateFocus;
+if(!CoordinateFocus)throw Error("coordinate focus protocol not installed");
+const coordinateFocusSession=CoordinateFocus.store();
+window.SeetheTruthCoordinateFocusSession=coordinateFocusSession;
 const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicroscope"),id=>{
  if(!run)return;
  const idx=run.steps.findIndex(x=>x.id===id);
@@ -437,6 +441,9 @@ const microscopeView=MicroscopeUI.mount(document.querySelector("#computeMicrosco
 },({stepId,coordinate,frame})=>{
  if(!run)throw Error("current numerical trace is missing");
  return window.SeetheTruthCoordinateVJP.inspect(runGraph||graph,run,frame,{stepId,coordinate});
+},({stepId,parentId,coordinate,frame,step,detail})=>{
+ const native=CoordinateFocus.fromMicroscope(frame,step,coordinate,detail.value,parentId);
+ coordinateFocusSession.select(native);
 });
 let microscopeCachedRun=null,microscopeCachedGraph=null,microscopeCachedFrame=null,microscopeCacheError=null;
 function syncMicroscope(){
@@ -805,6 +812,9 @@ function renderElementLineage(selectedNode){
   if(!Number.isSafeInteger(v)||v<0||v>=shape[axis]){input.value=coordinate[axis];return;}
   const next=[...coordinate];next[axis]=v;
   shapeCoordsByNode.set(selectedNode.id,next);
+  coordinateFocusSession.select({domain:"guided_graph",executionId:"learning_studio/active_graph",
+   nodeId:selectedNode.id,shape:dims,coordinate:next,evidence:CoordinateFocus.TIERS.STATIC,
+   note:"源自当前图的形状/具名坐标检查；静态选中不生成新的数值证据。"});
   elementLineageState=null;inspect();
  });
  $("#traceGraphElement").onclick=()=>{
@@ -1237,6 +1247,7 @@ window.SeetheTruthUnifiedWorkbench=Object.freeze({
   return record;
  },
  get selectedNode(){return selected;},
+ get coordinateFocus(){return coordinateFocusSession.current;},
  focusNode:id=>{
   if(!graph.nodes.some(n=>n.id===id))throw Error("图中不存在观测对应的积木 "+id);
   selected=id;render();
