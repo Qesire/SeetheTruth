@@ -1724,10 +1724,34 @@ locate.addEventListener("click",()=>{try{
   const probe=document.createElement("button");probe.type="button";
   probe.id="nativeGraphBridgeProbe";probe.className="btn small primary";
   probe.textContent="运行当前积木图并核验 Q/K/V";
-  mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe);
+
+  const coords=document.createElement("section");coords.id="nativeGraphCoordinateLab";
+  coords.hidden=true;coords.style.cssText="border-top:1px solid #527483;padding-top:10px;min-width:0";
+  const coordTitle=document.createElement("strong");coordTitle.textContent="单坐标 Attention 贡献";
+  const selectors=document.createElement("div");selectors.style.cssText="display:flex;flex-wrap:wrap;gap:7px;margin:8px 0";
+  const coordinateControls={};
+  for(const [key,caption] of [["queryToken","Query"],["head","Head"],["channel","Channel"]]){
+   const label=document.createElement("label");label.textContent=caption;
+   label.style.cssText="display:grid;gap:3px;font-size:10px";
+   const select=document.createElement("select");select.id="nativeGraphCoord"+key;
+   select.setAttribute("aria-label",caption);
+   select.style.cssText="color:#e4f9ff;background:#103547;border:1px solid #67949c;padding:5px";
+   label.append(select);selectors.append(label);coordinateControls[key]=select;
+  }
+  const coordSummary=document.createElement("p");coordSummary.id="nativeGraphCoordinateSummary";
+  coordSummary.setAttribute("role","status");coordSummary.setAttribute("aria-live","polite");
+  coordSummary.style.cssText="overflow-wrap:anywhere;font:11px/1.6 ui-monospace,monospace";
+  const tableScroll=document.createElement("div");tableScroll.style.cssText="overflow-x:auto;max-width:100%";
+  const coordTable=document.createElement("table");coordTable.id="nativeGraphCoordinateTerms";
+  coordTable.style.cssText="border-collapse:collapse;width:100%;font:10px/1.6 ui-monospace,monospace;white-space:nowrap";
+  tableScroll.append(coordTable);
+  const coordNote=document.createElement("small");coordNote.textContent=
+   "P×V 来自本次已接受的微型计算；单坐标拆分不等于 KV 物理块或 Worker 时间占用。";
+  coords.append(coordTitle,selectors,coordSummary,tableScroll,coordNote);
+  mechanics.append(nativeDetail,portDetail,comparison,numericStatus,probe,coords);
   panel.insertBefore(mechanics,back);
   const snapshot=H.load(root.sessionStorage);
-  let lastMechanism=null;
+  let lastMechanism=null,lastCoordinate=null;
   function renderMechanism(){
    const editable=root.SeetheTruthUnifiedWorkbench.inspect().graph;
    const numericalMode=document.getElementById("studyMode")?.value==="numeric";
