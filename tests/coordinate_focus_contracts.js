@@ -82,4 +82,19 @@ assert.equal(store.current.domain,"semantic_state");
 assert.equal(events.length,1);
 store.select(x);assert.equal(events.length,2);assert.equal(store.current.value,undefined);
 unsubscribe();store.clear();assert.equal(store.current,null);assert.equal(events.length,2);
+// The observation panel is a separate inline IIFE, not a continuation of
+// the Learning Studio lexical closure. Its invalidation must use the exported
+// shared store rather than silently retaining a stale optimizer witness.
+const fs=require("node:fs"),path=require("node:path");
+const html=fs.readFileSync(path.join(__dirname,"..","learn.html"),"utf8");
+const sections=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)].map(m=>m[1]);
+const studio=sections.find(x=>x.includes("window.SeetheTruthCoordinateFocusSession=coordinateFocusSession"));
+const panel=sections.find(x=>x.includes('const coordinateStatus=document.createElement("p")'));
+assert.ok(studio&&panel&&studio!==panel,"two separate script closures should share the explicit store");
+assert.match(panel,/const coordinateFocusSession=window\\.SeetheTruthCoordinateFocusSession;/);
+assert.match(panel,/field\\.addEventListener\\("input",invalidateTrainingProof\\)/);
+assert.match(panel,/coordinateFocusSession\\.clear\\(\\)/);
+assert.ok(panel.indexOf("coordinateStatus.textContent=\\\"坐标验证未完成") <
+ panel.indexOf("coordinateFocusSession.clear();"),
+ "visible proof must be retracted before clearing the selected coordinate");
 console.log("COORDINATE_FOCUS_PASS native shape/value provenance, same-run A/B, numeric/structural boundary, microscope selection, subscribers");
