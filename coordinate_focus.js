@@ -60,6 +60,9 @@
       Math.abs(transition.after-transition.before-transition.delta)>
        1e-10*Math.max(1,Math.abs(transition.after),Math.abs(transition.before)))
     fail("training coordinate transition must come from a finite native parameter update");
+   if(transition.lossNodeId!==undefined&&
+      (typeof transition.lossNodeId!=="string"||!transition.lossNodeId||transition.lossNodeId.length>160))
+    fail("native loss node identity required");
    if(transition.optimizerKind!==undefined&&(
       typeof transition.optimizerKind!=="string"||!transition.optimizerKind||
       !["adamw","adam","sgd_momentum","rmsprop","adagrad","lion"].includes(transition.optimizerKind)))
@@ -198,6 +201,7 @@
      ...(proof.optimizer.firstMoment?{moment1:proof.optimizer.firstMoment}:{}),
      ...(proof.optimizer.secondMoment?{moment2:proof.optimizer.secondMoment}:{}),
      lossBefore:proof.loss.before,lossAfter:proof.loss.after,
+     lossNodeId:proof.targetId,
      selectedPathStatus:proof.path.status,
      selectedPathContribution:proof.path.parameterContribution??null,
      ...(proof.path.selected?{selectedRoute:{
