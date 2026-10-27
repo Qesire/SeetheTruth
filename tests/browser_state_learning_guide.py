@@ -215,6 +215,12 @@ class GuidedStates(unittest.TestCase):
       coord2=page.evaluate("SeetheTruthNativeGraphBridge.coordinate")
       self.assertEqual(coord2["channel"],options-1)
       self.assertLess(coord2["error"],1e-10)
+      page.locator("#studyMode").select_option("concept")
+      page.wait_for_function("!SeetheTruthNativeGraphBridge.coordinateVerified")
+      self.assertTrue(page.locator("#nativeGraphCoordinateLab").is_hidden())
+      page.locator("#studyMode").select_option("numeric")
+      page.locator("#nativeGraphBridgeProbe").click()
+      page.wait_for_function("SeetheTruthNativeGraphBridge.coordinateVerified")
 
       # The original A/B remains available when a new graph removes the relevant operation.
       page.locator('.mission[data-preset="ffn"]').click()
