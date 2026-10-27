@@ -140,5 +140,116 @@
    status:numeric?"REPLAYED_NATIVE_AND_GRAPH_NUMERIC":"REPLAYED_NATIVE_AND_GRAPH_STATIC"
   });
  }
- return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain});
+
+ // Per-coordinate evidence comes from a *replayed* original graph execution.
+ // We expose P[t,k]*V[k,c] as an output identity check, not another attention
+ // engine. Native scheduler/KV events remain distinct from tensor arithmetic.
+ function coordinate(core,packet,graph,numericRecord,selection={}){
+  if(!numericRecord||numericRecord.kind!=="graph"||numericRecord.numericOk!==true)
+   fail("accepted numeric run required");
+  const lens=explain(core,packet,graph,numericRecord);
+  const nodeId=lens.graph.nodeId,kind=lens.graph.kind;
+  const trace=numericRecord.session?.trace?.steps?.find(x=>x.id===nodeId);
+  if(!trace||!Array.isArray(trace.values)||!trace.internals)
+   fail("original attention intermediate tensors unavailable");
+  const outputShape=lens.graph.numeric.shape;
+  if(!Array.isArray(outputShape)||outputShape.length!==2)fail("rank-2 output expected");
+  const bound=(value,max,label)=>{
+   if(!Number.isSafeInteger(value)||value<0||value>=max)fail(label+" out of bounds");
+   return value;
+  };
+  const get2=(matrix,row,col,label)=>{
+   const value=matrix?.[row]?.[col];
+   if(!Number.isFinite(value))fail(label+" source coordinate unavailable");
+   return value;
+  };
+  let heads=1,kvHeads=1,valueWidth=outputShape[1],keyCount=0,group=1,
+      scoreAt,probAt,valueAt,excluded=()=>false,contextAt=null;
+  if(kind==="attention"){
+   const probs=trace.internals.probabilities?.values;
+   const scores=trace.internals.scores?.values;
+   keyCount=probs?.[0]?.length||0;
+   const valueSource=lens.graph.ports.find(p=>p.port==="v").sourceId;
+   const values=numericRecord.session.trace.steps.find(x=>x.id===valueSource)?.values;
+   if(!Array.isArray(values)||values.length!==keyCount||!Array.isArray(scores)||
+      values[0]?.length!==valueWidth)fail("attention P/V/output shape mismatch");
+   scoreAt=(t,h,k)=>get2(scores,t,k,"score");
+   probAt=(t,h,k)=>get2(probs,t,k,"probability");
+   valueAt=(h,k,c)=>get2(values,k,c,"value");
+  }else if(kind==="gqa"){
+   const probs=trace.internals.probabilities?.tensor;
+   const scores=trace.internals.scores?.tensor;
+   const values=trace.internals.v_heads?.tensor;
+   const context=trace.internals.context_heads?.tensor;
+   const mask=trace.internals.causal_mask?.values||null;
+   if(!probs||!scores||!values||!context||
+      probs.shape?.length!==4||values.shape?.length!==4||
+      context.shape?.length!==4||probs.shape[0]!==1)
+    fail("native GQA head intermediates unavailable");
+   heads=probs.shape[1];keyCount=probs.shape[3];
+   kvHeads=values.shape[1];valueWidth=context.shape[3];group=heads/kvHeads;
+   if(!Number.isSafeInteger(group)||group<1||values.shape[2]!==keyCount||
+      scores.shape.join(",")!==probs.shape.join(",")||
+      context.shape[1]!==heads||context.shape[2]!==outputShape[0]||
+      outputShape[1]!==heads*valueWidth)fail("native GQA grouped-head shape mismatch");
+   const get4=(tensor,h,t,c,label)=>{
+    const idx=((h*tensor.shape[2]+t)*tensor.shape[3])+c;
+    const value=tensor.data?.[idx];
+    if(!Number.isFinite(value))fail(label+" native GQA coordinate unavailable");
+    return value;
+   };
+   scoreAt=(t,h,k)=>get4(scores,h,t,k,"score");
+   probAt=(t,h,k)=>get4(probs,h,t,k,"probability");
+   valueAt=(h,k,c)=>get4(values,Math.floor(h/group),k,c,"Value");
+   contextAt=(t,h,c)=>get4(context,h,t,c,"Context");
+   excluded=(t,k)=>mask?get2(mask,t,k,"causal mask")===0:false;
+  }else fail("unsupported Attention kind");
+  const query=bound(selection.queryToken??0,outputShape[0],"query token");
+  const head=bound(selection.head??0,heads,"query head");
+  const channel=bound(selection.channel??0,valueWidth,"head output channel");
+  if(keyCount<1||keyCount>64||keyCount*valueWidth>4096)
+   fail("bounded original key-token limit exceeded");
+  const outputChannel=head*valueWidth+channel;
+  const observed=get2(trace.values,query,outputChannel,"Attention output");
+  const terms=[];
+  for(let key=0;key<keyCount;key++){
+   const score=scoreAt(query,head,key);
+   const probability=probAt(query,head,key);
+   const value=valueAt(head,key,channel);
+   const masked=excluded(query,key);
+   if(probability<0||probability>1+1e-12||(masked&&probability!==0))
+    fail("source probability / mask mismatch");
+   terms.push(Object.freeze({key,score,probability,value,
+    contribution:probability*value,masked}));
+  }
+  const sum=terms.reduce((x,y)=>x+y.contribution,0);
+  const probabilitySum=terms.reduce((x,y)=>x+y.probability,0);
+  const error=Math.abs(sum-observed);
+  if(Math.abs(probabilitySum-1)>1e-10||
+     error>1e-10*Math.max(1,Math.abs(observed))||
+     (contextAt&&Math.abs(contextAt(query,head,channel)-observed)>1e-10))
+   fail("source P×V decomposition diverges from accepted output");
+  let originalSubstep=null;
+  if(kind==="attention"){
+   const proof=core.inspectObservationStep(numericRecord,{
+    kind:"tensor_computation",stepId:nodeId+":weighted_value",
+    coordinate:[query,channel]});
+   if(!proof.replayVerified||!proof.detail?.reconstructable||
+      Math.abs(proof.detail.value-observed)>1e-12||
+      Math.abs(proof.detail.recomputed-sum)>1e-10)
+    fail("independent original scalar microscope mismatch");
+   originalSubstep=Object.freeze({id:nodeId+":weighted_value",
+    replayVerified:true,error:proof.detail.error});
+  }
+  return Object.freeze({
+   schema:"seethetruth-attention-coordinate-witness-v1",domain:lens.domain,
+   nativeStepId:lens.native.stepId,nodeId,queryToken:query,queryHead:head,
+   kvHead:Math.floor(head/group),headCount:heads,kvHeadCount:kvHeads,
+   outputChannel,headChannel:channel,outputShape:Object.freeze([...outputShape]),
+   keyCount,terms:Object.freeze(terms),observed,recomputed:sum,error,
+   probabilitySum,originalSubstep,sourceEvidence:lens.sourceEvidence,
+   numericalEvidence:"SYNTHETIC_NUMERIC_REPLAY_VERIFIED",
+   note:"Output coordinate decomposed from accepted teaching P and V; physical cache addresses and GPU timing are separate."});
+ }
+ return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain,coordinate});
 });
