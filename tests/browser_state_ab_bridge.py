@@ -42,6 +42,7 @@ class StateABBridgeChromium(unittest.TestCase):
       button.wait_for(timeout=15000)
       button.click()
       self.assertIn("实际来源",page.locator("#coordinateDetail").inner_text())
+      page.screenshot(path=str(SHOTS/f"{name}-{label}-lab.png"),animations="disabled",full_page=True)
       destination=page.locator("#coordinateGraphLink").get_attribute("href")
       self.assertIn(f"state_node={node_id}&state_branch={branch}&state_index={index}",destination)
       page.locator("#coordinateGraphLink").click()
