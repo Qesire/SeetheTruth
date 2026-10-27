@@ -198,6 +198,10 @@
   const name=query.get("state_case"),entry=caseOf(name);
   if(!entry)return null;
   const studio=host.SeetheTruthUnifiedWorkbench,Core=host.SeetheTruthUnifiedCore;
+  const Focus=host.SeetheTruthCoordinateFocus;
+  if(!Focus)throw Error("coordinate focus protocol unavailable");
+  const focusSession=host.SeetheTruthCoordinateFocusSession||Focus.store();
+  host.SeetheTruthCoordinateFocusSession=focusSession;
   const panel=doc.createElement("aside");panel.id="stateHandoff";panel.className="state-handoff";
   panel.setAttribute("aria-label","状态实验与计算图证据对应");
   const title=doc.createElement("strong");title.textContent="实验 → 计算图 · "+entry.title;
@@ -264,6 +268,7 @@
    if(["a","b"].includes(requestedBranch)&&requestedIndex!==null&&/^(0|[1-9]\d*)$/.test(requestedIndex)){
     const proof=coordinate(name,accepted.value,requestedBranch,Number(requestedIndex));
     const actualPath=coordinatePath(name,studio.inspect().graph,proof);
+    focusSession.select(Focus.fromState(proof));
     for(const el of (typeof doc.querySelectorAll==="function"?doc.querySelectorAll("#blocks [data-node]"):[])){
      el.classList.toggle("state-evidence-path",actualPath.includes(el.dataset.node));
     }
