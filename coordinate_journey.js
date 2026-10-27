@@ -141,7 +141,8 @@
   steps.push(immutable({kind:"parameter_after",...base,title:"参数坐标 · 更新后",
    value:tr.after,delta:tr.delta,detail:"参数更新前后差值由原生训练事务提供"}));
   if(tr.lossBefore!==undefined&&tr.lossAfter!==undefined)
-   steps.push(immutable({kind:"loss_transition",...base,title:"训练目标 · 提交前后",
+   steps.push(immutable({kind:"loss_transition",nodeId:tr.lossNodeId||focus.nodeId,
+    title:"训练目标 · 提交前后",
     value:tr.lossAfter,lossBefore:tr.lossBefore,
     detail:"目标值来自完整训练事务，不能归因于单独一个参数坐标的更新"}));
   return immutable({schema:SCHEMA,scope:"native_training_transaction",focus,
