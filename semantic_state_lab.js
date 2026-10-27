@@ -67,6 +67,20 @@ function paintCoordinates(name,result){
  const first=requested||groups[0].buttons[0];
  if(first)first.click();
 }
+function renderMechanismAnchors(name,result){
+ const spec=Bridge.caseOf(name);
+ const root=$("caseFlow");root.replaceChildren();
+ for(const item of spec.anchors){
+  const a=document.createElement("a");a.href=Bridge.href(name,item.id);
+  a.textContent=item.label+" · "+item.kind;
+  a.setAttribute("aria-label","在计算图课程中查看 "+item.label+" 积木");
+  root.append(a);
+ }
+ const countA=Bridge.coordinateList(name,result,"a").length;
+ const countB=Bridge.coordinateList(name,result,"b").length;
+ $("caseQuickFacts").textContent="本次真实数值输出：A "+countA+" 坐标、B "+countB+
+  " 坐标。逐坐标数据来自本次状态实验；以上链接定位已安装课程的对应积木。";
+}
 function run(name){
  const accepted=Core.executeLab("semantic_state","scenario",{name});
  const r=accepted.value;
@@ -90,6 +104,7 @@ function run(name){
  $("aGraphLink").textContent=Bridge.caseOf(name).labels.a+" →";
  $("bGraphLink").textContent=Bridge.caseOf(name).labels.b+" →";
  paintCoordinates(name,r);
+ renderMechanismAnchors(name,r);
  const lesson=lessons[name];
  $("lessonTitle").textContent=lesson.title;
  $("lessonReason").textContent=lesson.reason;
