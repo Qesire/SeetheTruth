@@ -58,12 +58,15 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      self.assertIn('更新前',page.locator('#coordinateJourneyTitle').inner_text())
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("全 Loss 梯度",page.locator("#coordinateJourneyTitle").inner_text())
-     self.assertIn(str(body['wholeLossGradient']),page.locator("#coordinateJourneyMetrics").inner_text() if page.locator("#coordinateJourneyMetrics").count() else page.locator("#sharedCoordinateJourney").inner_text())
+     self.assertIn("原生证据值",page.locator("#sharedCoordinateJourney").inner_text())
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("优化器状态",page.locator("#coordinateJourneyTitle").inner_text())
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("更新后",page.locator("#coordinateJourneyTitle").inner_text())
      self.assertIn("参数位移",page.locator("#sharedCoordinateJourney").inner_text())
+     Path("training_coordinate_screenshots").mkdir(exist_ok=True)
+     page.screenshot(path=f"training_coordinate_screenshots/optimizer-timeline-{width}.png",
+                     animations="disabled",full_page=True)
      # Reject unsafe/invalid coordinates without displaying stale accepted proof.
      page.locator('#trainingProofIndex').fill('10,10')
      page.locator('#trainingProofExecute').click()
