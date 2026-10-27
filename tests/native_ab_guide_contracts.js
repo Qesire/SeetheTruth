@@ -215,7 +215,7 @@ console.log('NATIVE_GRAPH_SCORE_PASS original Q/K rotation pair, scaled feature 
 for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
  [worker,'attention','q',1,0,1,1,0],
  [worker,'attention','k',1,1,0,1,0],
- [kv,'decode','q',0,2,0,1,1],
+ [kv,'decode','q',0,5,0,1,1],
  [scheduler,'decode','k',1,1,0,1,0]
 ]){
  const graph=Learning.preset(course),record=Core.inspectGraph(graph,{id:course,numeric:true});
@@ -253,6 +253,20 @@ for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
   Core.inspectGraph(Learning.preset('ffn'),{id:'ffn',numeric:true}),{
    port,sourceToken,feature,delta:0.1}),/different or non-executed graph/);
 }
+// The same Q feature belongs to Hq=0; asking about Hq=1 should yield
+// zero *selected-head* score/probability/output changes, even though another
+// head's overall output changes. A meaningful localization control.
+const headLocal=Handoff.intervene(Core,
+ Handoff.create(Core,kv.B,kv.A,kv.B.stateTrace.steps[1].id),
+ Learning.preset('decode'),
+ Core.inspectGraph(Learning.preset('decode'),{id:'decode',numeric:true}),{
+ port:'q',sourceToken:0,feature:2,delta:0.125,
+ queryToken:0,keyToken:1,head:1,channel:0
+});
+assert.equal(headLocal.score.delta,0);
+assert.equal(headLocal.probability.delta,0);
+assert.equal(headLocal.output.delta,0);
+assert.ok(headLocal.outputChange.maxAbsolute>0);
 // A future-K score can change while its causal-masked probability and
 // forward output remain unchanged: a necessary negative control.
 const negative=Handoff.intervene(Core,causalPacket,causalGraph,causalRun,{
