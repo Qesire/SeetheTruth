@@ -16,6 +16,7 @@
    summary:"两条分支共享初始化状态；各自的 Append 保留不同后缀。",
    challenge:"比较 append_a / append_b 的上游端口，再查看两个 Read 的输出。实验室以 origin=100、D=2；积木课程以 origin=10、D=3 独立执行。",
    primary:{a:"append_a",b:"append_b"},
+   labels:{a:"定位 A 分支的 Append",b:"定位 B 分支的 Append"},
    anchors:[
     {id:"init",kind:"stream_state_init",label:"共同前缀",field:"initial.next"},
     {id:"append_a",kind:"stream_state_append",label:"A · 追加",field:"advanced.values"},
@@ -29,6 +30,7 @@
    summary:"原视频沿具名时间轴分段，再根据边的顺序拼接；检查输出坐标是否保持一致。",
    challenge:"查看 early、late 的 T 轴范围与 join 的两条输入边，再运行积木图。实验室使用整数 1…24；课程视频源使用独立的确定性正弦样本。",
    primary:{a:"video",b:"join"},
+   labels:{a:"定位原始五维张量",b:"定位重组后的时间张量"},
    anchors:[
     {id:"video",kind:"semantic_video_source",label:"A · 原始视频",field:"shape"},
     {id:"early",kind:"semantic_video_slice",label:"第一段 T 切片",field:"firstFrame"},
@@ -42,6 +44,7 @@
    summary:"按 D 广播是有效计算；Tk 错配来自实验室中的独立失败案例。",
    challenge:"追踪 x、bias → add 的 D 轴输入，在计算图里查看各通道增量。Tk 错误仍由状态实验室的反例执行，不会伪装成成功图节点。",
    primary:{a:"add",b:"bias"},
+   labels:{a:"定位合法 D 轴广播",b:"检查合法偏置轴（Tk 错误见实验室）"},
    anchors:[
     {id:"x",kind:"axis_tensor_source",label:"T×D 数据源",field:"shape"},
     {id:"bias",kind:"axis_feature_bias",label:"B · 具名 D 偏置",field:"axes"},
@@ -54,6 +57,7 @@
    summary:"状态 Append 需要 position = nextPosition；过期写入使执行拒绝。",
    challenge:"当前积木图的合法位置为 12；把 append_a.position 改为 11，再运行并观察拒绝结果。实验室反例使用 nextPosition=6、attemptedPosition=5。",
    primary:{a:"init",b:"append_a"},
+   labels:{a:"定位合法状态源",b:"定位 Append 并手动修改位置"},
    anchors:[
     {id:"init",kind:"stream_state_init",label:"A · 状态起点",field:"nextPosition"},
     {id:"append_a",kind:"stream_state_append",label:"B · 过期写入位置",field:"attemptedPosition"}
