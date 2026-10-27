@@ -168,3 +168,48 @@ assert.ok(maskedProof.terms.some(x=>!x.masked&&x.probability>0));
 assert.ok(maskedProof.error<1e-10);
 console.log('NATIVE_GRAPH_COORDINATE_PASS full original P×V evidence, attention/GQA, head sharing, causal mask, bounds and stale-graph rejection');
 
+for(const [pair,course,expectRoPE,query,key,head] of [
+ [worker,'attention',false,1,2,0],
+ [kv,'decode',true,0,2,1],
+ [scheduler,'decode',true,0,1,0]
+]){
+ const graph=Learning.preset(course),numeric=Core.inspectGraph(graph,{id:course,numeric:true});
+ const packet=Handoff.create(Core,pair.B,pair.A,pair.B.stateTrace.steps[1].id);
+ const proof=Handoff.score(Core,packet,graph,numeric,{
+  queryToken:query,keyToken:key,head,channel:0});
+ assert.equal(proof.rotary,expectRoPE);
+ assert.equal(proof.keyToken,key);assert.equal(proof.queryToken,query);
+ assert.equal(proof.features.length,proof.headWidth);
+ assert.ok(proof.scoreError<1e-10);
+ assert.ok(proof.softmax.error<1e-10);
+ assert.ok(Math.abs(proof.scale-1/Math.sqrt(proof.headWidth))<1e-12);
+ assert.ok(proof.features.every(x=>Number.isFinite(x.scaledContribution)));
+ if(expectRoPE){
+  assert.equal(proof.queryPositionOffset,2);
+  assert.ok(proof.features.some(x=>Math.abs(x.kAngle)>0));
+  assert.ok(proof.features.some(x=>Math.abs(x.rawK-x.positionedK)>1e-7));
+ }else{
+  assert.equal(proof.queryPositionOffset,0);
+  assert.ok(proof.features.every(x=>x.rawQ===x.positionedQ&&x.rawK===x.positionedK));
+ }
+ assert.throws(()=>Handoff.score(Core,packet,graph,numeric,{keyToken:999}),/key token out of bounds/);
+ assert.throws(()=>Handoff.score(Core,packet,graph,numeric,{keyToken:0.25}),/key token out of bounds/);
+ assert.throws(()=>Handoff.score(Core,packet,graph,numeric,{
+  queryToken:999,keyToken:0}),/query token out of bounds/);
+}
+const causalScore=Handoff.score(Core,causalPacket,causalGraph,causalRun,
+ {queryToken:0,head:1,keyToken:2,channel:0});
+assert.equal(causalScore.rotary,true);
+assert.equal(causalScore.masked,true);
+assert.equal(causalScore.probability,0);
+assert.equal(causalScore.softmax.numerator,0);
+assert.equal(causalScore.softmax.recomputed,0);
+assert.ok(Number.isFinite(causalScore.sourceScore)); // raw score is real even if key is masked
+assert.ok(causalScore.scoreError<1e-10);
+const earlyScore=Handoff.score(Core,causalPacket,causalGraph,causalRun,
+ {queryToken:0,head:1,keyToken:0,channel:0});
+assert.equal(earlyScore.masked,false);
+assert.ok(earlyScore.probability>0);
+console.log('NATIVE_GRAPH_SCORE_PASS original Q/K rotation pair, scaled feature dot, masked stable softmax and provenance');
+
+
