@@ -3,7 +3,7 @@ const assert=require("node:assert/strict");
 const L=require("../learning_lab.js"),M=require("../compute_microscope.js"),
  Focus=require("../coordinate_focus.js"),Drill=require("../coordinate_drilldown.js"),
  E=require("../element_lineage.js"),V=require("../coordinate_vjp_bridge.js"),
- Journey=require("../coordinate_journey.js"),
+ Journey=require("../coordinate_journey.js"),Canvas=require("../coordinate_journey_canvas.js"),
  Core=require("../learning_experience_core.js"),Examples=require("../semantic_state_examples.js"),
  Bridge=require("../state_learning_handoff.js");
 const node=(id,kind,params={})=>({id,kind,params,x:20,y:30});
@@ -19,7 +19,7 @@ const g=L.validateGraph({schema:L.SCHEMA,title:"focus drilldown two-route VJP",n
 const fs=require("node:fs"),path=require("node:path");
 const html=fs.readFileSync(path.join(__dirname,"..","learn.html"),"utf8");
 const order=["graph_readiness.js","element_lineage.js","compute_microscope.js",
- "coordinate_vjp_bridge.js","coordinate_focus.js","learning_experience_core.js","coordinate_drilldown.js"];
+ "coordinate_vjp_bridge.js","coordinate_focus.js","learning_experience_core.js","coordinate_drilldown.js","coordinate_journey.js","coordinate_journey_ui.js","coordinate_journey_canvas.js"];
 const positions=Object.fromEntries(order.map(name=>[name,html.indexOf('<script src="'+name+'"></script>')]));
 for(const [name,pos] of Object.entries(positions))assert.ok(pos>=0,"missing runtime "+name);
 for(const name of order.filter(n=>n!=="coordinate_drilldown.js"))
@@ -37,6 +37,23 @@ assert.equal(verified.vjp.selected.value,numerical.value);
 assert.deepEqual(verified.lineage.outputIndex,coord);
 assert.deepEqual(verified.vjp.selected.index,coord);
 const timeline=Journey.fromDrilldown(verified);
+const scalarEdge=timeline.steps.find(step=>step.kind==="edge");
+assert.ok(scalarEdge);
+const mapped=Canvas.resolve(timeline,scalarEdge,g);
+assert.equal(mapped.kind,"edge");
+assert.deepEqual(mapped.coordinate,scalarEdge.index);
+assert.deepEqual(mapped.downstreamCoordinate,scalarEdge.sourceIndex);
+assert.ok(g.edges.some(e=>Canvas.wireEquals(e,mapped.wire)));
+assert.equal(mapped.upstreamKey,scalarEdge.targetKey);
+assert.equal(mapped.downstreamKey,scalarEdge.sourceKey);
+const mismatched=structuredClone(g);
+mismatched.edges=mismatched.edges.filter(e=>!Canvas.wireEquals(e,mapped.wire));
+assert.throws(()=>Canvas.resolve(timeline,scalarEdge,mismatched),/absent/);
+const seeded=Canvas.resolve(timeline,timeline.steps[0],g);
+assert.equal(seeded.kind,"node");
+assert.equal(seeded.nodeId,"out");
+assert.equal(seeded.wire,null);
+
 assert.equal(timeline.schema,Journey.SCHEMA);
 assert.equal(timeline.scope,"native_numeric_graph");
 assert.equal(timeline.complete,true);
@@ -92,6 +109,8 @@ assert.throws(()=>Drill.inspect(Focus.create({...structural,nodeId:"unknown"}),{
 const state=Focus.fromState(Bridge.coordinate("video",Examples.run("video"),"b",22));
 const paired=Drill.inspect(state,{graph:g,run,frame});
 assert.equal(Journey.fromDrilldown(paired).steps[0].kind,"correspondence");
+const correspondence=Journey.fromDrilldown(paired);
+assert.equal(Canvas.resolve(correspondence,correspondence.steps[0],g).kind,"separate_evidence");
 assert.equal(paired.scope,"mechanism_correspondence");
 assert.equal(paired.lineage,null);
 assert.equal(paired.vjp,null);
