@@ -365,5 +365,118 @@
    nativeStepId:witness.nativeStepId,
    note:"Q/K source stages and RoPE transformation verified against original numerical run; not GPU or physical KV cache."});
  }
- return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain,coordinate,score});
+
+ // Controlled Q/K intervention. A and B execute identical graph topology with
+ // an explicit Parameter at precisely one Attention port. A is required to
+ // reproduce the untouched source graph's Attention output. B changes exactly
+ // one Parameter coordinate. This is not a trained projection-weight update.
+ function intervene(core,packet,currentGraph,numericRecord,options={}){
+  if(!numericRecord?.numericOk||numericRecord.kind!=="graph")
+   fail("a replayed numeric graph is required before intervention");
+  const relation=explain(core,packet,currentGraph,numericRecord);
+  const port=options.port;
+  if(port!=="q"&&port!=="k")fail("intervention port must be Q or K");
+  const source=relation.graph.ports.find(p=>p.port===port);
+  const trace=numericRecord.session.trace.steps;
+  const values=trace.find(step=>step.id===source.sourceId)?.values;
+  if(!Array.isArray(values)||!values.length||!Array.isArray(values[0])||
+     values.length>8||values[0].length>16||
+     values.some(row=>!Array.isArray(row)||row.length!==values[0].length||
+      row.some(v=>!Number.isFinite(v)||Math.abs(v)>1000)))
+   fail("Q/K projection output cannot be frozen as a bounded Parameter");
+  const token=options.sourceToken??0,feature=options.feature??0,delta=options.delta;
+  if(!Number.isSafeInteger(token)||token<0||token>=values.length)
+   fail("source token coordinate out of bounds");
+  if(!Number.isSafeInteger(feature)||feature<0||feature>=values[0].length)
+   fail("source feature coordinate out of bounds");
+  if(typeof delta!=="number"||!Number.isFinite(delta)||Math.abs(delta)>1||delta===0)
+   fail("intervention delta must be finite, nonzero, magnitude <= 1");
+  if(Math.abs(values[token][feature]+delta)>1000||
+     values[token][feature]+delta===values[token][feature])
+   fail("intervention cannot be represented in teaching Float64 bounds");
+  const observed=core.replay(numericRecord);
+  if(!observed.reproduced)fail("source graph replay failed");
+  const id="ab_"+port+"_probe";
+  if(currentGraph.nodes.some(n=>n.id===id))
+   fail("reserved intervention Parameter node ID already exists");
+  const originalPortEdges=currentGraph.edges.filter(e=>e.to===relation.graph.nodeId&&e.port===port);
+  if(originalPortEdges.length!==1||originalPortEdges[0].from!==source.sourceId)
+   fail("Q/K incoming source changed");
+  const matrix=values.map(row=>row.slice());
+  const zero=matrix.map(row=>row.map(()=>0));
+  const aGraph=JSON.parse(JSON.stringify(numericRecord.graph));
+  aGraph.title=(aGraph.title||"Attention")+" · 单端口定值 A";
+  aGraph.nodes.push({id,kind:"parameter",x:210,y:750,
+   params:{values:matrix,optimizer:{t:0,m:zero,v:zero.map(row=>row.slice())}}});
+  aGraph.edges=aGraph.edges.map(e=>e.to===relation.graph.nodeId&&e.port===port?
+   {from:id,to:e.to,port:e.port}:e);
+  const bGraph=JSON.parse(JSON.stringify(aGraph));
+  bGraph.title=aGraph.title; // same A/B title to keep changes structural-free
+  const bMatrix=bGraph.nodes.find(n=>n.id===id).params.values;
+  const previous=bMatrix[token][feature];
+  bMatrix[token][feature]=previous+delta;
+  const baseline=core.inspectGraph(aGraph,{numeric:true,id:relation.course});
+  const changed=core.inspectGraph(bGraph,{numeric:true,id:relation.course});
+  if(!baseline.numericOk||!changed.numericOk)
+   fail("intervention A/B graph cannot execute in accepted teaching runtime");
+  const aTrace=baseline.session.trace.steps,bTrace=changed.session.trace.steps;
+  const original=trace.find(step=>step.id===relation.graph.nodeId);
+  const a=aTrace.find(step=>step.id===relation.graph.nodeId);
+  const b=bTrace.find(step=>step.id===relation.graph.nodeId);
+  const distance=(left,right)=>{
+   if(!Array.isArray(left)||!Array.isArray(right)||left.length!==right.length)
+    fail("intervention output shape changed");
+   let max=0,changedCoords=0;
+   for(let t=0;t<left.length;t++){
+    if(!Array.isArray(left[t])||!Array.isArray(right[t])||
+       left[t].length!==right[t].length)fail("intervention output width changed");
+    for(let c=0;c<left[t].length;c++){
+     const diff=Math.abs(left[t][c]-right[t][c]);
+     if(!Number.isFinite(diff))fail("intervention output is nonfinite");
+     max=Math.max(max,diff);if(diff>1e-12)changedCoords++;
+    }
+   }
+   return Object.freeze({maxAbsolute:max,changedCoordinates:changedCoords});
+  };
+  const equivalence=distance(original.values,a.values);
+  if(equivalence.maxAbsolute>1e-10)
+   fail("frozen A input does not reproduce source Attention output");
+  const comparison=core.compareRecords(baseline,changed);
+  if(!comparison.replayVerified||comparison.inputEqual||
+     !comparison.numericCompared)fail("Q/K A/B must be independent replayed numeric graphs");
+  const readOnly=Object.freeze({
+   baselineGraph:baseline,changedGraph:changed,
+   graphChange:comparison,baselineEquivalent:equivalence,
+   outputChange:distance(a.values,b.values),
+   source:Object.freeze({port,from:source.sourceId,parameter:id,
+    token,feature,before:previous,after:previous+delta,delta}),
+   nativeEvent:relation.native.stepId
+  });
+  const selected={
+   queryToken:options.queryToken??0,head:options.head??0,
+   channel:options.channel??0,keyToken:options.keyToken??0
+  };
+  const attentionA=coordinate(core,packet,aGraph,baseline,selected);
+  const attentionB=coordinate(core,packet,bGraph,changed,selected);
+  const scoreA=score(core,packet,aGraph,baseline,selected);
+  const scoreB=score(core,packet,bGraph,changed,selected);
+  return Object.freeze({schema:"seethetruth-coordinate-intervention-v1",
+   evidence:"REPLAYED_GRAPH_PARAMETER_AB",
+   source:readOnly.source,sourceEquivalent:equivalence,
+   graphComparison:Object.freeze({replayVerified:comparison.replayVerified,
+    inputEqual:comparison.inputEqual,changedSteps:comparison.changedSteps,
+    numericCompared:comparison.numericCompared}),
+   outputChange:readOnly.outputChange,
+   selected:Object.freeze({queryToken:selected.queryToken,head:selected.head,
+    channel:selected.channel,keyToken:selected.keyToken}),
+   score:Object.freeze({before:scoreA.sourceScore,after:scoreB.sourceScore,
+    delta:scoreB.sourceScore-scoreA.sourceScore}),
+   probability:Object.freeze({before:scoreA.probability,after:scoreB.probability,
+    delta:scoreB.probability-scoreA.probability}),
+   output:Object.freeze({before:attentionA.observed,after:attentionB.observed,
+    delta:attentionB.observed-attentionA.observed}),
+   sourceEventId:readOnly.nativeEvent,
+   explanation:"Parameter freezes one projected port; A reproduces original Q/K input, B changes one value. Independent native state A/B is unchanged."});
+ }
+ return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain,coordinate,score,intervene});
 });
