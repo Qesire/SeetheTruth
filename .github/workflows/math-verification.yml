@@ -59,4 +59,4 @@ jobs:
           set -euo pipefail
           node tests/portable_operator_runtime_parity.js
           node tests/torch_nd_broadcast_reduction_parity.js
-          node tests/torch_operator_certificate_ledger.js --emit
+          node tests/torch_operator_certificate_ledger.js --check
