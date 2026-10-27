@@ -250,5 +250,120 @@
    numericalEvidence:"SYNTHETIC_NUMERIC_REPLAY_VERIFIED",
    note:"Output coordinate decomposed from accepted teaching P and V; physical cache addresses and GPU timing are separate."});
  }
- return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain,coordinate});
+
+ // Score microscope: use original unpositioned/positioned Q/K evidence from
+ // the same accepted run. All arithmetic below verifies recorded stages,
+ // including RoPE pairs, scaled dot products, mask, and stable Softmax.
+ function score(core,packet,graph,numericRecord,selection={}){
+  const witness=coordinate(core,packet,graph,numericRecord,selection);
+  const key=selection.keyToken??0;
+  if(!Number.isSafeInteger(key)||key<0||key>=witness.keyCount)
+   fail("key token out of bounds");
+  const trace=numericRecord.session.trace.steps;
+  const stage=trace.find(s=>s.id===witness.nodeId);
+  const kind=stage.kind,query=witness.queryToken,head=witness.queryHead;
+  const kvHead=witness.kvHead,params=numericRecord.graph.nodes.find(
+   n=>n.id===witness.nodeId)?.params||{};
+  const originalValue=(matrix,t,d,which)=>{
+   const n=matrix?.[t]?.[d];
+   if(!Number.isFinite(n))fail(which+" original value unavailable");
+   return n;
+  };
+  let dim,qOriginal,kOriginal,qPositioned,kPositioned,rotary=false,qOffset=0;
+  if(kind==="attention"){
+   const ports=Object.fromEntries(graph.edges.filter(e=>e.to===witness.nodeId)
+    .map(e=>[e.port,e.from]));
+   const getSource=(port,t,d)=>originalValue(
+    trace.find(s=>s.id===ports[port])?.values,t,d,port);
+   const q=trace.find(s=>s.id===ports.q)?.values;
+   dim=q?.[0]?.length;
+   if(!Number.isSafeInteger(dim)||dim<1||dim>64)fail("Attention score head width unavailable");
+   const k=trace.find(s=>s.id===ports.k)?.values;
+   if(k?.[0]?.length!==dim)fail("Attention Q/K score width mismatch");
+   qOriginal=d=>getSource("q",query,d);kOriginal=d=>getSource("k",key,d);
+   qPositioned=qOriginal;kPositioned=kOriginal;
+  }else if(kind==="gqa"){
+   const internal=stage.internals;
+   const fetch=name=>{
+    const t=internal?.[name]?.tensor;
+    if(!t||t.shape?.length!==4||t.shape[0]!==1||
+       !Array.isArray(t.data))fail("missing original GQA stage "+name);
+    return t;
+   };
+   const qo=fetch("q_heads"),ko=fetch("k_heads");
+   const qp=fetch("q_positioned"),kp=fetch("k_positioned");
+   dim=qp.shape[3];rotary=params.rope===true;
+   qOffset=params.causal===true?witness.keyCount-witness.outputShape[0]:0;
+   if(!Number.isSafeInteger(dim)||dim<1||dim>64||
+      qo.shape.join(",")!==qp.shape.join(",")||
+      ko.shape.join(",")!==kp.shape.join(",")||
+      qo.shape[1]!==witness.headCount||
+      ko.shape[1]!==witness.kvHeadCount||
+      ko.shape[2]!==witness.keyCount||dim!==kp.shape[3]||
+      qOffset<0)fail("GQA source staged score shape mismatch");
+   const get=(tensor,h,t,d,label)=>{
+    const idx=(h*tensor.shape[2]+t)*dim+d;
+    const val=tensor.data[idx];
+    if(!Number.isFinite(val))fail("GQA "+label+" value unavailable");
+    return val;
+   };
+   qOriginal=d=>get(qo,head,query,d,"original Q");
+   kOriginal=d=>get(ko,kvHead,key,d,"original K");
+   qPositioned=d=>get(qp,head,query,d,"positioned Q");
+   kPositioned=d=>get(kp,kvHead,key,d,"positioned K");
+  }else fail("unsupported score microscope kind");
+  const near=(actual,expected,label)=>{
+   if(!Number.isFinite(actual)||!Number.isFinite(expected)||
+      Math.abs(actual-expected)>1e-10*Math.max(1,Math.abs(expected)))
+    fail("replayed "+label+" differs from source stage");
+  };
+  const scale=1/Math.sqrt(dim),features=[];
+  if(rotary&&dim%2)fail("RoPE requires even head dimension");
+  for(let d=0;d<dim;d++){
+   const rawQ=qOriginal(d),rawK=kOriginal(d);
+   const positionedQ=qPositioned(d),positionedK=kPositioned(d);
+   const pair=d-d%2;
+   const qAngle=rotary?(query+qOffset)/Math.pow(10000,pair/dim):0;
+   const kAngle=rotary?key/Math.pow(10000,pair/dim):0;
+   if(rotary){
+    const q0=qOriginal(pair),q1=qOriginal(pair+1);
+    const k0=kOriginal(pair),k1=kOriginal(pair+1);
+    near(positionedQ,d%2===0?
+     q0*Math.cos(qAngle)-q1*Math.sin(qAngle):
+     q0*Math.sin(qAngle)+q1*Math.cos(qAngle),"Q RoPE pair");
+    near(positionedK,d%2===0?
+     k0*Math.cos(kAngle)-k1*Math.sin(kAngle):
+     k0*Math.sin(kAngle)+k1*Math.cos(kAngle),"K RoPE pair");
+   }else{
+    near(positionedQ,rawQ,"unrotated Q");
+    near(positionedK,rawK,"unrotated K");
+   }
+   features.push(Object.freeze({dimension:d,rawQ,rawK,positionedQ,
+    positionedK,qAngle,kAngle,product:positionedQ*positionedK,
+    scaledContribution:positionedQ*positionedK*scale}));
+  }
+  const recomputed=features.reduce((sum,t)=>sum+t.scaledContribution,0);
+  const selected=witness.terms[key];
+  near(recomputed,selected.score,"QK scaled score");
+  const visible=witness.terms.filter(t=>!t.masked);
+  if(!visible.length)fail("all keys masked");
+  const rowMax=Math.max(...visible.map(t=>t.score));
+  const denominator=visible.reduce((sum,t)=>sum+Math.exp(t.score-rowMax),0);
+  const numerator=selected.masked?0:Math.exp(selected.score-rowMax);
+  const softmaxProbability=numerator/denominator;
+  near(softmaxProbability,selected.probability,"stable Softmax");
+  return Object.freeze({schema:"seethetruth-attention-score-witness-v1",
+   nodeId:witness.nodeId,queryToken:query,keyToken:key,queryHead:head,
+   kvHead,headWidth:dim,queryPositionOffset:qOffset,rotary,scale,
+   sourceScore:selected.score,recomputedScore:recomputed,
+   scoreError:Math.abs(recomputed-selected.score),
+   features:Object.freeze(features),masked:selected.masked,
+   probability:selected.probability,softmax:Object.freeze({rowMax,
+    numerator,denominator,recomputed:softmaxProbability,
+    error:Math.abs(softmaxProbability-selected.probability)}),
+   numericalEvidence:"SYNTHETIC_NUMERIC_REPLAY_VERIFIED",
+   nativeStepId:witness.nativeStepId,
+   note:"Q/K source stages and RoPE transformation verified against original numerical run; not GPU or physical KV cache."});
+ }
+ return Object.freeze({SCHEMA,KEY,LIMIT,create,restore,store,load,explain,coordinate,score});
 });
