@@ -61,6 +61,7 @@ installed_block_packs.js
 kv_cache_lab.js
 learn.html
 learning_experience_core.js
+learning_handoff.js
 learning_lab.js
 loop_consistency.js
 loop_design_tradeoffs.js
