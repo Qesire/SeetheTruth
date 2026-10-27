@@ -100,3 +100,12 @@ Node 契约扩展到普通 Attention 与 GQA 的 Q/K 单元素实际干预、来
 证据类型为 `seethetruth-attention-causal-propagation-v1`，保留数值阈值 `1e-12`（“可观察坐标改变”的 UI 判定）和误差重构阈值 `1e-10`（数值一致性校验）。二者语义不同；微小非零变化不等于可测的实际 GPU 效应。证据可追溯到原 Native event ID，但不构造“Worker/KV 事件等于张量坐标”的跨域连线。
 
 Learning Studio 在 A/B 成功后显示 `#nativeGraphPropagation`：输入→Score→Softmax→输出四阶段、逐 Key 对照、逐特征 RoPE/Score 贡献、全 DAG 节点的变化/保持以及实例坐标。所有单元格使用 textContent；状态切换、无效干预、图结构或数值模式改变时，整体证据撤销。Node 数值契约和 Chromium 桌面/手机测试验证求和一致性、完整步数、GQA Head 隔离、Mask 局部抑制、交互和撤销。
+
+## 第六阶段补强：计算图有向因果锥与原生端口证明
+
+逐阶段 A/B 数值变化另外同 A/B 的实际图连接关系交叉核验：
+
+- 每个 `propagation.graphSteps[i]` 附带真实 `incoming=[{from,port,sourceChanged}]`，取自本次临时 A 图的连接结构，不凭图形位置、用户自然语言或相似节点名称猜测依赖。
+- 从唯一改动的 `ab_q_probe` / `ab_k_probe` Parameter 出发，沿有向输出边顺计算图拓扑传播，构建 `reachable`。所有实际发生数值变化的节点必须属于该集合；一旦因果锥外某个节点变化，实验**拒绝**给出因果结论。
+- 被访问但没有变化的节点报告为“可达但数值保持”；不可达的节点报告为“因果锥外保持”。`causalReachableCount` 和 `changedOutsideCausalCone=0` 的含义明确限定在这次本地 A/B 教学图的数值执行，不构成对真实 GPU 调度或跨 Worker/KV 状态的归因。
+- UI 展示每个节点的输入端口来源与来源节点是否变化，使单次实验同时支持局部算术机制证据与全局 DAG 传播证据的反向查验。静态契约要求所有变动节点在有向后继中，并检查真实 Attention/GQA 端口连线和上游输入未受到其他改动。
