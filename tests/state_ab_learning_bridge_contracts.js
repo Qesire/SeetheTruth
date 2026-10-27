@@ -42,6 +42,9 @@ for(const name of names){
    assert.equal(proof.coordinate.length,proof.shape.length);
    assert.ok(Number.isFinite(proof.value));
    assert.ok(graph.nodes.some(n=>n.id===proof.nodeId));
+   const route=Bridge.coordinatePath(name,graph,proof);
+   assert.equal(route.at(-1),proof.nodeId);
+   assert.ok(route.every(id=>Bridge.upstreamPath(name,graph,proof.nodeId).includes(id)));
    assert.match(Bridge.href(name,proof.nodeId,b,i),/state_index=/);
   }
  }
