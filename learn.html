@@ -166,6 +166,19 @@ input[type="file"]{display:none}
  margin:8px 0 0;overflow-wrap:anywhere;font:11px/1.5 ui-monospace,monospace}
 .coordinate-journey-metrics dt{color:#90b8ca}.coordinate-journey-metrics dd{margin:0;color:#d9f7f3}
 .block.coordinate-journey-current{outline:3px solid #f8c875;outline-offset:4px;box-shadow:0 0 0 5px #ebad4c33}
+.block.coordinate-journey-downstream{outline:2px solid #70e4d9;outline-offset:3px;box-shadow:0 0 0 4px #70e4d92c}
+.block.coordinate-journey-current::after,.block.coordinate-journey-downstream::before{
+ position:absolute;z-index:6;bottom:-15px;max-width:92%;white-space:normal;overflow-wrap:anywhere;
+ background:#1d4a4a;color:#fff5d7;border:1px solid #e4c780;border-radius:6px;
+ padding:4px 7px;font:700 11px/1.4 ui-monospace,monospace;pointer-events:none
+}
+.block.coordinate-journey-current::after{content:"反向坐标 " attr(data-journey-coordinate);left:4px}
+.block.coordinate-journey-downstream::before{content:"目标坐标 " attr(data-journey-downstream);right:4px;bottom:auto;top:-17px;
+ background:#0b4750;border-color:#70e4d9}
+.block .coordinate-journey-port .socket{outline:3px solid #ffd078;outline-offset:3px}
+#wires path.coordinate-journey-wire{stroke:#ffc978;stroke-width:4;stroke-opacity:1;
+ filter:drop-shadow(0 0 5px #ffba6e); }
+#wires path.coordinate-journey-wire-back{stroke:#6b4424;stroke-width:11;stroke-opacity:1}
 .coordinate-journey :is(button,input):focus-visible{outline:3px solid #eccd8b;outline-offset:2px}
 @media(max-width:760px){.coordinate-journey-nav{flex-wrap:wrap}.coordinate-journey-nav input{flex-basis:40%}}
 @media(prefers-reduced-motion:reduce){.coordinate-journey *{transition:none!important}}
@@ -457,6 +470,7 @@ input[type="file"]{display:none}
 <script src="coordinate_drilldown.js"></script>
 <script src="coordinate_journey.js"></script>
 <script src="coordinate_journey_ui.js"></script>
+<script src="coordinate_journey_canvas.js"></script>
 <script>
 (()=>{"use strict";
 const ShapeRules=window.SeetheTruthShapeIndexRules;
@@ -478,13 +492,36 @@ const focusDrillResult=document.createElement("div");focusDrillResult.id="shared
 focusDrillResult.setAttribute("role","status");focusDrillResult.setAttribute("aria-live","polite");
 focusDrillResult.className="coordinate-focus-drill-result";
 focusSummary.append(focusDrill,focusDrillResult);
+let activeJourneyOverlay=null;
+const JourneyCanvas=window.SeetheTruthCoordinateJourneyCanvas;
+function refreshJourneyCanvas(){
+ const overlay=activeJourneyOverlay;
+ for(const el of document.querySelectorAll("#blocks [data-node]")){
+  const current=overlay?.nodeId===el.dataset.node;
+  const downstream=overlay?.downstreamNodeId===el.dataset.node;
+  el.classList.toggle("coordinate-journey-current",current);
+  el.classList.toggle("coordinate-journey-downstream",downstream);
+  if(current&&overlay.coordinate)el.dataset.journeyCoordinate="["+overlay.coordinate.join(",")+"]";
+  else delete el.dataset.journeyCoordinate;
+  if(downstream&&overlay.downstreamCoordinate)
+   el.dataset.journeyDownstream="["+overlay.downstreamCoordinate.join(",")+"]";
+  else delete el.dataset.journeyDownstream;
+  for(const socket of el.querySelectorAll("[data-in][data-port]"))
+   socket.classList.toggle("coordinate-journey-port",
+    !!overlay?.wire&&downstream&&socket.dataset.port===overlay.wire.port);
+ }
+ drawWires();
+}
 const coordinateJourneyUI=window.SeetheTruthCoordinateJourneyUI.mount(focusSummary,{
  onStep:(stage,position,source)=>{
-  for(const n of document.querySelectorAll("#blocks [data-node]")){
-   n.classList.toggle("coordinate-journey-current",!!stage.nodeId&&
-    source.scope!=="mechanism_correspondence"&&source.scope!=="native_training_transaction"&&
-    n.dataset.node===stage.nodeId);
-  }
+  activeJourneyOverlay=source.scope==="native_training_transaction"?{
+   nodeId:graph.nodes.some(n=>n.id===stage.nodeId)?stage.nodeId:null,
+   coordinate:stage.index,wire:null
+  }:JourneyCanvas.resolve(source,stage,graph);
+  refreshJourneyCanvas();
+ },
+ onLocate:(stage,source)=>{
+  if(activeJourneyOverlay?.nodeId)focusGraphNode(activeJourneyOverlay.nodeId);
  }
 });
 focusDrill.addEventListener("click",()=>{
@@ -518,7 +555,7 @@ focusDrill.addEventListener("click",()=>{
 document.querySelector(".inspector")?.prepend(focusSummary);
 coordinateFocusSession.subscribe(focus=>{
  focusSummary.hidden=!focus;focusDrillResult.textContent="";coordinateJourneyUI.clear();
- for(const n of document.querySelectorAll("#blocks .coordinate-journey-current"))n.classList.remove("coordinate-journey-current");
+ activeJourneyOverlay=null;refreshJourneyCanvas();
  if(!focus)return;
  focusType.textContent=focus.evidence===CoordinateFocus.TIERS.STATIC?"STATIC COORDINATE":"OBSERVED COORDINATE";
  const label="["+focus.coordinate.map((v,i)=>focus.axes?.[i]?focus.axes[i]+"="+v:v).join(",")+"]";
