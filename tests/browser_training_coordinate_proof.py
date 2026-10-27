@@ -79,6 +79,10 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      page.locator("#coordinateJourneyNext").click()
      self.assertIn("更新后",page.locator("#coordinateJourneyTitle").inner_text())
      self.assertIn("参数位移",page.locator("#sharedCoordinateJourney").inner_text())
+     page.locator("#coordinateJourneyNext").click()
+     self.assertIn("训练目标",page.locator("#coordinateJourneyTitle").inner_text())
+     self.assertEqual(page.locator("#blocks .coordinate-journey-current").count(),1)
+     self.assertEqual(page.locator("#blocks .coordinate-journey-current").first.get_attribute("data-node"),"loss")
      Path("training_coordinate_screenshots").mkdir(exist_ok=True)
      page.screenshot(path=f"training_coordinate_screenshots/optimizer-timeline-{width}.png",
                      animations="disabled",full_page=True)
