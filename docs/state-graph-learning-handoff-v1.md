@@ -34,3 +34,15 @@
 原生事件帧提供源事件 ID、标题、`dependencies`、原生 `changes` 字段和 A/B 所选事件是否改变。源实验室中的状态先后关系与计算图端口关系并列展示。对于 Worker，可比较资源依赖事件 DAG 与 Q/K/V 数值计算 DAG 的可并行条件；对于 KV，可区分物理缓存所有权与 K/V 逻辑张量内容；对于 Scheduler，可区分准入条件与一次已准入 Attention 的算术。这种对照是**机制层面的教学关系**，不会产生跨域张量等价断言。
 
 测试扩展：`tests/native_ab_guide_contracts.js` 用三个实际实验引擎与 Worker 无效果反例逐一校验 Q/K/V 的实际图端口、数值重放资格、错误图证据与删除目标节点；`tests/browser_state_learning_guide.py` 在桌面和手机上核验端口列表、真实数值按钮、切换 FFN 导致机制关联失效、重选目标课程后按当前图恢复静态解释。
+
+## 第三阶段：逐 Query / Head / Channel 的 P×V 数值证据
+
+`learning_handoff.coordinate(core, packet, graph, numericRecord, selection)` 从当前图经 `Core.inspectGraph` 验证的数值运行记录出发，逐坐标列出 `Score[t,h,k]`、`P[t,h,k]`、`V[kv(h),k,c]` 和乘积 `P×V`。该接口要求已执行 `numericOk=true`、输入图与当前编辑图逐字段一致、所选操作类型与来源端口一致，并调用已有 `Core.replay` 与 `Core.inspectObservationStep` 核验目标输出坐标。
+
+- 普通 Attention 使用原 `LearningLab` trace 的 `scores`、`probabilities` 与图中 `v` 端口来源节点；单头 `h=0`。
+- GQA 使用原 `TensorIR.gqa` 返回的 `probabilities.tensor`、`scores.tensor`、`v_heads.tensor`、`context_heads.tensor` 和源因果掩码。原生 `Hq / Hkv` 整数分组规则决定 Query Head 到 KV Head 的映射；仅从已验证的原始阶段读取，不根据展示数据重造另一套 GQA 引擎。
+- 一个可审计输出元素满足 `Out[t,h*Dv+c] = Σ_k P[0,h,t,k] * V_heads[0,floor(h/group),k,c]`。同时检查 `ΣP≈1`、Mask=0 所在项的 P 严格为零、分头 Context 与合并 Out 一致；超过 1e-10 相对尺度的误差拒绝该见证。该求和只校验观察值，并非又一次完整 Attention forward。
+- 因果 `decode` 预设中只有最后一个 Query，`queryPositionOffset=Tk-Tq`，所以最后查询可读取全部已提供的前缀，可能没有被掩蔽的 Key。另用完整多 Query GQA 预设检验未来 Key 的严格零概率，而不是要求 Decode 场景凭空出现 masked 项。
+- 结果严格标记 `SYNTHETIC_NUMERIC_REPLAY_VERIFIED`。它来自有界微型 CPU 教学计算；没有推断真实 GPU 速度、KV 物理块地址与单坐标值的一一对应关系。原生状态 A/B 仍独立保留和回放。
+
+Learning Studio 的 `#nativeGraphCoordinateLab` 新增三个坐标下拉选择、原始 Score/P/V/P×V 表格、Query Head → KV Head 及核验误差。修改当前计算图或转入非数值模式时，原有坐标见证失效；重新执行后由最新轨迹恢复。浏览器测试覆盖桌面与移动视口、切换 head/token/channel，以及跨课程后失效；Node 测试覆盖普通 Attention、GQA、头共享、真正的 Mask 反例、越界坐标和错误图证据。
