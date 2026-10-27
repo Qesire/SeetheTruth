@@ -1248,6 +1248,17 @@ window.SeetheTruthUnifiedWorkbench=Object.freeze({
  },
  get selectedNode(){return selected;},
  get coordinateFocus(){return coordinateFocusSession.current;},
+ focusCoordinate:(id,coordinate)=>{
+  const accepted=UnifiedCore.inspectGraph(graph,{numeric:false});
+  const step=accepted.path.steps.find(x=>x.id===id);
+  if(!step?.shape)throw Error("目标积木没有有效的形状坐标 "+id);
+  const focus=CoordinateFocus.create({domain:"guided_graph",executionId:"learning_studio/active_graph",
+   nodeId:id,shape:step.shape,coordinate,evidence:CoordinateFocus.TIERS.STATIC,
+   note:"当前已验证计算图的静态坐标定位；数值需由原图执行后独立核验。"});
+  shapeCoordsByNode.set(id,coordinate.slice());
+  selected=id;render();focusGraphNode(id);
+  return coordinateFocusSession.select(focus);
+ },
  focusNode:id=>{
   if(!graph.nodes.some(n=>n.id===id))throw Error("图中不存在观测对应的积木 "+id);
   selected=id;render();
