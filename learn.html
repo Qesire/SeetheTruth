@@ -1626,6 +1626,11 @@ renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.i
 <script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
 <script>
 (function(){
+// The main workbench and this panel are distinct closures. Use the explicit
+// shared session API rather than an out-of-scope lexical variable.
+const coordinateFocusSession=window.SeetheTruthCoordinateFocusSession;
+if(!coordinateFocusSession||typeof coordinateFocusSession.clear!=="function")
+ throw Error("shared coordinate focus session unavailable");
 const control=document.createElement("div");control.id="graphTrainingObservationControls";
 control.style.cssText="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px auto 6px;max-width:1180px;padding:0 12px";
 const label=document.createElement("label");label.textContent="统一观测来源 ";
