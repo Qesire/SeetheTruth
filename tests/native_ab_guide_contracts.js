@@ -212,4 +212,59 @@ assert.equal(earlyScore.masked,false);
 assert.ok(earlyScore.probability>0);
 console.log('NATIVE_GRAPH_SCORE_PASS original Q/K rotation pair, scaled feature dot, masked stable softmax and provenance');
 
+for(const [pair,course,port,sourceToken,feature,queryToken,keyToken,head] of [
+ [worker,'attention','q',1,0,1,1,0],
+ [worker,'attention','k',1,1,0,1,0],
+ [kv,'decode','q',0,2,0,1,1],
+ [scheduler,'decode','k',1,1,0,1,0]
+]){
+ const graph=Learning.preset(course),record=Core.inspectGraph(graph,{id:course,numeric:true});
+ const packet=Handoff.create(Core,pair.B,pair.A,pair.B.stateTrace.steps[1].id);
+ const experiment=Handoff.intervene(Core,packet,graph,record,{
+  port,sourceToken,feature,delta:0.125,queryToken,keyToken,head,channel:0
+ });
+ assert.equal(experiment.schema,'seethetruth-coordinate-intervention-v1');
+ assert.equal(experiment.source.port,port);
+ assert.equal(experiment.source.token,sourceToken);
+ assert.equal(experiment.source.feature,feature);
+ assert.equal(experiment.source.after-experiment.source.before,0.125);
+ assert.equal(experiment.graphComparison.replayVerified,true);
+ assert.equal(experiment.graphComparison.inputEqual,false);
+ assert.equal(experiment.graphComparison.numericCompared,true);
+ assert.equal(experiment.sourceEquivalent.maxAbsolute,0);
+ assert.equal(experiment.sourceEquivalent.changedCoordinates,0);
+ assert.ok(experiment.graphComparison.changedSteps.some(x=>x.stepId===experiment.source.parameter));
+ assert.ok(experiment.outputChange.maxAbsolute>0);
+ assert.ok(Math.abs(experiment.score.delta)>1e-12);
+ assert.ok(Math.abs(experiment.probability.delta)>1e-12);
+ assert.ok(Number.isFinite(experiment.output.delta));
+ assert.notEqual(experiment.source.after,experiment.source.before);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,record,{
+  port:'v',sourceToken,feature,delta:0.1}),/must be Q or K/);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,record,{
+  port,sourceToken:999,feature,delta:0.1}),/source token coordinate out of bounds/);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,record,{
+  port,sourceToken,feature:999,delta:0.1}),/source feature coordinate out of bounds/);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,record,{
+  port,sourceToken,feature,delta:0}),/nonzero/);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,record,{
+  port,sourceToken,feature,delta:Infinity}),/finite/);
+ assert.throws(()=>Handoff.intervene(Core,packet,graph,
+  Core.inspectGraph(Learning.preset('ffn'),{id:'ffn',numeric:true}),{
+   port,sourceToken,feature,delta:0.1}),/different or non-executed graph/);
+}
+// A future-K score can change while its causal-masked probability and
+// forward output remain unchanged: a necessary negative control.
+const negative=Handoff.intervene(Core,causalPacket,causalGraph,causalRun,{
+ port:'k',sourceToken:2,feature:0,delta:0.25,queryToken:0,keyToken:2,head:1,channel:0
+});
+assert.ok(Math.abs(negative.score.delta)>1e-12);
+assert.equal(negative.probability.before,0);
+assert.equal(negative.probability.after,0);
+assert.equal(negative.output.delta,0);
+assert.equal(negative.outputChange.changedCoordinates,0);
+assert.equal(negative.sourceEquivalent.maxAbsolute,0);
+console.log('NATIVE_GRAPH_INTERVENTION_PASS replayed one-element Q/K A/B, numeric cascade, masked negative, provenance and bounds');
+
+
 
