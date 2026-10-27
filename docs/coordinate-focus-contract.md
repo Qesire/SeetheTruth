@@ -85,6 +85,36 @@ Mathematical authority remains with `element_lineage` and `coordinate_vjp_bridge
 
 Validation: `tests/coordinate_drilldown_contracts.js` checks exact port identity and stale/missing-wire rejection. `tests/browser_universal_microscope.py` checks SVG edge identity, highlighted upstream/downstream scalar cells, node/socket styles, and explicit locate navigation in Chromium.
 
+## One native training transaction: forward → backward → optimizer
+
+The coordinate journey now relates an **accepted training parameter** `θ_j` to a selected intermediate activation `y_i`, the full scalar loss `L`, and the optimizer state. All displayed numbers originate from the same replay-verified `training/coordinate_proof` record.
+
+The native engines independently produce three quantities:
+
+```text
+selectedAdjoint      = ∂L/∂y_i                 [whole-loss graph_autodiff]
+parameterUnitVJP     = ∂y_i/∂θ_j               [unit-seed scalar element_lineage]
+selectedContribution = (∂L/∂y_i)(∂y_i/∂θ_j)  [coordinate_vjp_bridge]
+wholeLossGradient    = ∂L/∂θ_j                [whole-loss graph_autodiff]
+```
+
+The source proof checks the factorization numerically. The coordinate-focus adapter checks it again and will reject a record with inconsistent values. A selected contribution can be **zero**, **numerically verified**, or **unavailable**; these states remain distinct. The full parameter gradient need not equal the selected contribution because other intermediate coordinates may contribute.
+
+An accepted selected-output route is stored as immutable `transition.selectedRoute`, with its verified node ID, coordinate, forward value, Loss adjoint, unit VJP, and native status. The training stepper presents these phases in causal order:
+
+1. Parameter before the update.
+2. Native selected intermediate forward value, located on its real graph node.
+3. Native whole-loss adjoint at that intermediate coordinate.
+4. Factorization and contribution through the selected output to the parameter.
+5. Entire Loss gradient at the parameter.
+6. Native optimizer moment changes and update type.
+7. Parameter value after update.
+8. Entire Loss before/after, located on the true source Loss node.
+
+A training proof without a selected intermediate retains a shorter route and does not synthesize missing stages. A missing derivative is reported as *unevaluated* rather than zero. Each phase highlights its authentic graph node; the Loss stage does not reuse the parameter index as though it were a Loss coordinate. Editing the graph, parameter selection or route invalidates previously accepted evidence.
+
+Regression contracts: `tests/training_coordinate_proof_contracts.js`, `tests/coordinate_focus_contracts.js`, `tests/coordinate_drilldown_contracts.js`, and Chromium `tests/browser_training_coordinate_proof.py`.
+
 ## Validations
 
 - `node tests/coordinate_focus_contracts.js`: rank/index/axes/finite value limits, same native A/B delta, replayed graph observation, native training transition and controller notifications.\n- `node tests/coordinate_drilldown_contracts.js`: original static element lineage, numeric unit-seed VJP, stale-graph rejection, and state/optimizer distinctness.
