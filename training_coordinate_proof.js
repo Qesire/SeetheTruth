@@ -69,9 +69,14 @@
     stepId:selectedPath,coordinate:selection.viaIndex,lossId:session.targetId});
    const match=detail.loss.sourceContributions?.find(c=>
      c.nodeId===id&&equal(c.index,idx));
+   const unitSource=detail.backward.sources?.find(c=>
+     c.id===id&&equal(c.index,idx));
    const eligible=detail.backward.complete&&
     detail.loss.status==="VERIFIED_GRAPH_LOSS_VJP"&&
     detail.loss.throughSelectedEligible;
+   if(eligible&&match&&unitSource&&Number.isFinite(unitSource.sensitivity)&&
+      !close(detail.loss.selectedAdjoint*unitSource.sensitivity,match.throughSelected))
+    fail("selected loss adjoint multiplied by unit VJP differs from native path contribution");
    if(eligible&&match&&!close(match.wholeLossGradient,g))
     fail("selected path and full-loss gradient disagree with source autodiff");
    path={status:eligible
@@ -85,6 +90,7 @@
      ?{targetId:detail.loss.targetId,selectedAdjoint:detail.loss.selectedAdjoint,
        throughSelectedEligible:detail.loss.throughSelectedEligible}: {status:detail.loss.status},
     parameterContribution:eligible?(match?match.throughSelected:0):null,
+    parameterUnitVJP:eligible?(unitSource?unitSource.sensitivity:0):null,
     otherPathsMayContribute:true,
     sourceProof:detail.schema};
   }
