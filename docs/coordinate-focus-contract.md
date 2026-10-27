@@ -46,6 +46,30 @@ Two separately accepted graph records are compared through `SeetheTruthUnifiedCo
 
 In the Learning Studio inspector, the user selects a native coordinate and clicks **追踪此坐标的实际依赖 / 局部 VJP**. The existing element-lineage view expands its actual upstream coordinate graph, and an informational report describes supported/truncated VJP frontiers. The button runs graph exploration only on user interaction, not on every mouseover, which avoids needless repeated compute. All display values are derived from the existing engines.
 
+## Native scalar propagation and optimizer timeline
+
+`coordinate_journey.js` receives an **already accepted** `coordinate_drilldown` report. It does not recalculate graph values, numerical derivatives, VJP or optimizer updates. Its step sequence is constructed from the original `element_lineage.vertices/edges`:
+
+1. Seed the selected output coordinate with sensitivity (1).
+2. Traverse the actual coordinate-dependency DAG in reverse computational direction. For every native edge (u\to v), present its port, rule and local derivative (J_{u,v}).
+3. Calculate each displayed path contribution (s_u J_{u,v}), or preserve `null` if a required numerical derivative is not evaluated. Sum the contributions only after all incoming dependencies have arrived at the same upstream element.
+4. Verify every accumulated sensitivity against the **native** `element_lineage` result and check the selected root and edge/node counts against `coordinate_vjp_bridge`. A mismatched report is rejected.
+5. Label each element as an upstream element, a genuine multi-path merge, or an actual source coordinate according to the original dependency graph. Unknown rules and truncated frontiers remain visible.
+
+This is a walk through an authenticated bounded **unit-seed** VJP, not a generic whole-loss gradient or an execution profiler. The timeline can be large for attention and full FFN blocks; the interface renders one step at a time and provides previous/next buttons and an accessible range control.
+
+For native training proof, the same stepper instead displays: parameter before, **whole-loss gradient**, optimizer state (including native first and second moment entries where available), parameter after/delta, full loss before/after, and separately the selected intermediate-path contribution. The loss change is a property of the complete training transaction and is not attributed to the isolated parameter element.
+
+The inspector clears previous selection and timeline when a graph changes, a different recipe is opened, or a parameter-coordinate proof fails. Accepted state experiments are kept distinct from graph numeric samples.
+
+### UI and tests
+
+- `coordinate_journey_ui.js`: bounded single-step detail view using ordinary DOM text, reverse dependency labels, mobile wrapping and reduced-motion preference.
+- `tests/coordinate_drilldown_contracts.js`: topological count, shared-source sum, native sensitivity cross-check, static analytic/unknown derivative separation, optimizer moment and loss evidence.
+- `tests/browser_universal_microscope.py`: real Chromium numerical focus, timeline buttons, range control and screenshots.
+- `tests/browser_unified_observation_ui.py`: static analytical Jacobian and numerical graph stepper on PC/mobile.
+- `tests/browser_training_coordinate_proof.py`: parameter timeline and actual shape-derived invalid coordinate with stale-proof invalidation; screenshots are archived separately.
+
 ## Validations
 
 - `node tests/coordinate_focus_contracts.js`: rank/index/axes/finite value limits, same native A/B delta, replayed graph observation, native training transition and controller notifications.\n- `node tests/coordinate_drilldown_contracts.js`: original static element lineage, numeric unit-seed VJP, stale-graph rejection, and state/optimizer distinctness.
