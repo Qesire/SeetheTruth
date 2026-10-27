@@ -75,6 +75,12 @@ assert.equal(training.transition.selectedRoute.nodeId,acceptedTraining.value.pat
 assert.deepEqual(training.transition.selectedRoute.index,acceptedTraining.value.path.selected.index);
 assert.equal(training.transition.selectedRoute.value,acceptedTraining.value.path.selected.value);
 assert.equal(training.transition.selectedRoute.adjoint,acceptedTraining.value.path.loss.selectedAdjoint);
+assert.equal(training.transition.selectedRoute.unitVJP,acceptedTraining.value.path.parameterUnitVJP);
+assert.ok(Math.abs(training.transition.selectedRoute.adjoint*
+ training.transition.selectedRoute.unitVJP-
+ training.transition.selectedPathContribution)<2e-10);
+assert.throws(()=>Focus.create({...training,transition:{...training.transition,
+ selectedRoute:{...training.transition.selectedRoute,unitVJP:999}}}),/gradient identity/);
 assert.ok(Object.isFrozen(training.transition.selectedRoute.index));
 assert.throws(()=>Focus.create({...training,transition:{...training.transition,
  selectedRoute:{...training.transition.selectedRoute,value:NaN}}}),/invalid native selected intermediate route/);
