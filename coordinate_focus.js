@@ -79,12 +79,19 @@
        !["VERIFIED_SELECTED_PATH_CONTRIBUTION","VERIFIED_ZERO_SELECTED_PATH",
          "PARTIAL_OR_UNAVAILABLE_PATH"].includes(r.status)||
        r.adjoint!==null&&r.adjoint!==undefined&&!Number.isFinite(r.adjoint)||
+       r.unitVJP!==null&&r.unitVJP!==undefined&&!Number.isFinite(r.unitVJP)||
        r.localTermCount!==undefined&&(!Number.isSafeInteger(r.localTermCount)||r.localTermCount<0)||
        r.frontierCount!==undefined&&(!Number.isSafeInteger(r.frontierCount)||r.frontierCount<0)||
        transition.selectedPathStatus!==r.status)
       fail("invalid native selected intermediate route");
-    if(r.status.startsWith("VERIFIED_")&&r.adjoint===null)
-     fail("verified selected route needs native loss adjoint");
+    if(r.status.startsWith("VERIFIED_")&&
+       (!Number.isFinite(r.adjoint)||!Number.isFinite(r.unitVJP)||
+        !Number.isFinite(transition.selectedPathContribution)))
+     fail("verified selected route requires loss adjoint, unit VJP and path contribution");
+    if(r.status.startsWith("VERIFIED_")&&
+      Math.abs(r.adjoint*r.unitVJP-transition.selectedPathContribution)>
+       2e-10+1e-9*Math.max(Math.abs(r.adjoint*r.unitVJP),Math.abs(transition.selectedPathContribution)))
+     fail("native selected gradient identity is inconsistent");
    }
    for(const key of ["lossBefore","lossAfter","selectedPathContribution"]){
     if(transition[key]!==undefined&&transition[key]!==null&&!Number.isFinite(transition[key]))
@@ -197,6 +204,7 @@
       nodeId:proof.path.selected.nodeId,index:[...proof.path.selected.index],
       value:proof.path.selected.value,status:proof.path.status,
       adjoint:proof.path.loss?.selectedAdjoint??null,
+      unitVJP:proof.path.parameterUnitVJP??null,
       localTermCount:proof.path.localTerms?.length??0,
       frontierCount:proof.path.frontiers?.length??0
      }}:{})},
