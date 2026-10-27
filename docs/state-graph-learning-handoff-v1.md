@@ -85,3 +85,18 @@ Learning Studio 通过 `#nativeGraphScoreKey` 指定 Key，通过已有 Query/He
 - UI 的干预参数包括端口、投影 Token、投影特征、Δ；结果只在被接受的当前数值图上有效。编辑图、切换课程或离开 numeric 模式会撤销当前结果。
 
 Node 契约扩展到普通 Attention 与 GQA 的 Q/K 单元素实际干预、来源等价、全图数值重放、Head 隔离、掩码负对照、越界与无效 Δ。Chromium 桌面/手机验收扩展到可执行干预 UI、输入校验、A/B 对照和证据撤销。
+
+## 第六阶段：受控 Q/K 干预的完整因果传播证据
+
+`Handoff.intervene(...).propagation` 把同一次原生图 A/B 回放扩展为严格的数据依赖解释，不另外计算一次 Attention forward。原 `Core.inspectGraph` 产生 A/B 全图 `session.trace.steps`；原 `Handoff.score`、`Handoff.coordinate` 已核验 Q/K、Score、Softmax 和 Value/Context。新结构按图引擎实际执行的拓扑序构造以下证据：
+
+- **数据源**：显式 Parameter 对指定 Q/K 端口的一处数值扰动；本次图 A 在修改前必须重现原图全部已有节点与中间轨迹。A/B 图恢复被改动的坐标后，所有其他字段逐字段完全一致。
+- **特征展开**：对所选 Query–Key、Head 的每一个特征 `d`，比较 RoPE 后 `Q'`、`K'` 与 `Q'[d]K'[d]/sqrt(Dk)` 的 A/B 差值；特征贡献之和必须等于观测的 `ΔScore`。
+- **整行 Score → Softmax**：比较每一个 Key 的原始 Score、概率以及 Mask 可见性。概率的 A/B 行和变化必须约为零（因为每行归一化到 1），被因果掩蔽的未来 Key 始终具有零概率。
+- **每 Key 的 `P×V` 变化**：同时对比 P、V 与其乘积；整行乘积增量和必须等于所选输出坐标的 `ΔOut`。这里绝不把某个 Key 的 Score 变化直接解释为相同量级的 Value 贡献变化。
+- **真实 DAG 执行节点**：逐节点核对 A/B 的 ID、算子类型、形状、实际数值坐标；显示变化坐标数、最大绝对变化和最多六个坐标样本。其它 Query 或 Head 的真实变化由实际节点数值决定，不依据局部结果推断。
+- **负对照**：Q 只影响所属 Query Head 的注意力；某个 Head 的目标 Score 可以完全不变，但全图其它 Head 确实发生变化。对早期 Query 被因果掩蔽的未来 Key，原始 QK Score 可以发生变化，当前 Query 的 P 和输出仍不变；后续能够访问该 Key 的 Query 则仍可能变化。以上被明确标记为局部隔离/掩码抑制，而不是误判为全图无效。
+
+证据类型为 `seethetruth-attention-causal-propagation-v1`，保留数值阈值 `1e-12`（“可观察坐标改变”的 UI 判定）和误差重构阈值 `1e-10`（数值一致性校验）。二者语义不同；微小非零变化不等于可测的实际 GPU 效应。证据可追溯到原 Native event ID，但不构造“Worker/KV 事件等于张量坐标”的跨域连线。
+
+Learning Studio 在 A/B 成功后显示 `#nativeGraphPropagation`：输入→Score→Softmax→输出四阶段、逐 Key 对照、逐特征 RoPE/Score 贡献、全 DAG 节点的变化/保持以及实例坐标。所有单元格使用 textContent；状态切换、无效干预、图结构或数值模式改变时，整体证据撤销。Node 数值契约和 Chromium 桌面/手机测试验证求和一致性、完整步数、GQA Head 隔离、Mask 局部抑制、交互和撤销。
