@@ -44,6 +44,7 @@
    previous.disabled=position<=0;next.disabled=position>=stages.length-1;
    locate.disabled=typeof options.onLocate!=="function"||!step.nodeId;
    slider.max=String(stages.length-1);slider.value=String(position);
+   section.dataset.phase=step.kind;
    title.textContent=step.title||step.kind;
    detail.textContent=step.detail||"已验证原生计算环节";
    metrics.replaceChildren();
@@ -58,6 +59,13 @@
     ["累加方式",step.firstArrival?"第一条进入此元素的依赖":"与此前路径求和"]);
    else if(step.kind==="merge"||step.kind==="seed")rows.push(
     ["元素值",format(step.value)],["累计灵敏度",format(step.sensitivity)]);
+   else if(step.kind==="forward_intermediate")
+    rows.push(["中间节点",step.nodeId],["前向输出",format(step.value)],
+     ["样本阶段","更新前原生执行"]);
+   else if(step.kind==="loss_adjoint")
+    rows.push(["中间节点",step.nodeId],["完整 Loss 伴随量 ∂L/∂y",format(step.value)],
+     ["VJP 状态",step.status],["原生局部项数",step.localTermCount],
+     ["精确边界数",step.frontierCount]);
    else if(step.kind==="optimizer_state"){
     rows.push(["优化器类型",report.focus.transition.optimizerKind]);
     for(const [name,pair]of [["一阶状态",step.moment1],["二阶状态",step.moment2]])
@@ -67,7 +75,8 @@
    else if(step.kind==="parameter_after")
     rows.push(["参数更新后",format(step.value)],["参数位移",format(step.delta)]);
    else if(step.kind==="selected_path")
-    rows.push(["已验证路径状态",step.status],["路径贡献",format(step.value)]);
+    rows.push(["途经输出",step.viaNodeId+"["+step.viaIndex.join(",")+"]"],
+     ["已验证路径状态",step.status],["对参数梯度贡献",format(step.value)]);
    else if(step.value!==undefined)rows.push(["原生证据值",format(step.value)]);
    for(const [label,value]of rows){
     if(value===null||value===undefined||value==="")continue;
