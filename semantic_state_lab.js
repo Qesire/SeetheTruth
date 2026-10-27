@@ -37,6 +37,8 @@ function run(name){
  const primary=Bridge.caseOf(name).primary;
  $("aGraphLink").href=Bridge.href(name,primary.a);
  $("bGraphLink").href=Bridge.href(name,primary.b);
+ $("aGraphLink").textContent=Bridge.caseOf(name).labels.a+" →";
+ $("bGraphLink").textContent=Bridge.caseOf(name).labels.b+" →";
  const lesson=lessons[name];
  $("lessonTitle").textContent=lesson.title;
  $("lessonReason").textContent=lesson.reason;
