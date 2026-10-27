@@ -68,10 +68,13 @@ class TrainingCoordinateProofBrowser(unittest.TestCase):
      page.screenshot(path=f"training_coordinate_screenshots/optimizer-timeline-{width}.png",
                      animations="disabled",full_page=True)
      # Reject unsafe/invalid coordinates without displaying stale accepted proof.
-     page.locator('#trainingProofIndex').fill('10,10')
+     invalid=f"{focus['shape'][0]},0"
+     page.locator('#trainingProofIndex').fill(invalid)
      page.locator('#trainingProofExecute').click()
      self.assertIn('坐标验证未完成',page.locator('#trainingProofStatus').inner_text())
      self.assertEqual(page.locator('#trainingProofDetail').inner_text(),'')
+     self.assertEqual(page.evaluate('window.SeetheTruthCoordinateFocusSession.current'),None)
+     self.assertTrue(page.locator('#sharedCoordinateJourney').is_hidden())
      self.assertEqual(errors,[])
     finally:page.close()
 if __name__=='__main__':unittest.main()
