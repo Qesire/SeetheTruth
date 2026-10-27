@@ -86,6 +86,8 @@ class StateABBridgeChromium(unittest.TestCase):
       self.assertGreater(page.locator("#blocks .state-evidence-path").count(),0)
       handoff_focus=page.evaluate("window.SeetheTruthCoordinateFocusSession.current")
       self.assertEqual(handoff_focus["domain"],"semantic_state")
+      page.locator('#sharedCoordinateDrilldown').click()
+      self.assertIn('独立数值执行',page.locator('#sharedCoordinateDrilldownResult').inner_text())
       self.assertIn("实验原生数值",page.locator("#sharedCoordinateFocus").inner_text())
       self.assertEqual(handoff_focus["executionId"],source_focus["executionId"])
       self.assertEqual(handoff_focus["flatIndex"],source_focus["flatIndex"])
