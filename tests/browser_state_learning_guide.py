@@ -194,8 +194,8 @@ class GuidedStates(unittest.TestCase):
       page.wait_for_function("!!window.SeetheTruthNativeGraphReturn")
       self.assertEqual(page.evaluate("SeetheTruthNativeGraphReturn.selectedStepId"),selected)
       self.assertTrue(page.evaluate("SeetheTruthNativeGraphReturn.hasBaseline"))
-      self.assertEqual(page.evaluate(
-       "SeetheTruthUnifiedStateLab.frame.steps[document.querySelector('#unifiedStateSteps .sm-step[aria-current=step]')?.dataset.index ?? 0]?.id"),selected)
+      self.assertEqual(page.locator("#unifiedStateSteps .sm-step[aria-current=step]").count(),1)
+      self.assertIn(selected,page.locator("#unifiedStateSteps .sm-step[aria-current=step]").inner_text())
       page.locator("#stateGraphReturnToggle").click()
       self.assertIn("A",page.locator("#stateGraphReturnStatus").inner_text())
       page.locator("#stateGraphReturnToggle").click()
