@@ -1898,6 +1898,15 @@ locate.addEventListener("click",()=>{try{
       step.examples.map(x=>"["+x.token+","+x.feature+"] Δ="+x.delta.toExponential(2)).join(" · ");
      li.append(detail);
     }
+    if(step.id!==result.source.parameter&&
+       root.SeetheTruthUnifiedWorkbench.inspect().graph.nodes.some(n=>n.id===step.id)){
+     const focus=document.createElement("button");focus.type="button";
+     focus.className="btn small";focus.dataset.causalNode=step.id;
+     focus.textContent="定位 "+step.id+" 积木";
+     focus.style.cssText="margin-left:6px;font-size:10px";
+     focus.addEventListener("click",()=>root.SeetheTruthUnifiedWorkbench.focusNode(step.id));
+     li.append(focus);
+    }
     pathGraph.append(li);
    }
   }
