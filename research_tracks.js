@@ -57,7 +57,7 @@
    idealMacFraction:scope==="static"?keep/H:(1+keep/H)/2,
    costNote:scope==="static"?
     "假定 W1/W2 都实际进行结构化通道裁剪；理想 MAC 比例不包含选择和访存开销。":
-    "逐 Token 选择依赖完整 W1/GELU 激活；这里只假定 W2 可跳过未选列，因此 W1 仍为 Dense。不是 GPU 加速实测。",
+    "逐 Token 选择依赖完整 W1/GELU 激活；W1 必须 Dense。特别是 gated 评分还读取全部 W2 通道贡献，是诊断 oracle，不是低成本可执行选择器。此比例是假定另有免费 Mask 的反事实 MAC，非可实现加速。",
    note:"真实 Wan FFN 计算拓扑 + 小型合成权重。Token 不是视频帧；输出误差不是视频质量或时序一致性。"
   });
  }
