@@ -95,6 +95,7 @@ paper_lab.html
 paper_patches.js
 portable_operator_rules.js
 python_codegen.js
+research_tracks.js
 semantic_block_pack.js
 semantic_state.html
 semantic_state.js
