@@ -9,7 +9,7 @@ const courses=Core.inventory().courses;
 $("lessonCount").textContent=courses.length+" 个专题";
 const coverage=Core.inventory().counts;
 $("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主题 / "+coverage.labs+" 个专项计算域";
-let selected=courses[0].id,filter="all";
+let selected=C.lookup(params.get("focus"))?params.get("focus"):courses[0].id,filter="all";
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
@@ -28,8 +28,9 @@ function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
  const lessons=courses.filter((l,i)=>{
   if(filter==="fundamentals"&&i>=4)return false;
-  if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")))return false;
+  if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")||l.id.startsWith("research_")))return false;
   if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
+  if(filter==="research"&&!l.id.startsWith("research_"))return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
  });
  const cards=lessons.map(l=>{
@@ -48,9 +49,9 @@ function render(){
  });
  $("cards").replaceChildren(...cards);$("empty").hidden=!!cards.length;
 }
-for(const name of ["all","fundamentals","inference","engineering"]){
+for(const name of ["all","fundamentals","inference","engineering","research"]){
  $(name).addEventListener("click",()=>{filter=name;
-  for(const n of ["all","fundamentals","inference","engineering"])$(n).setAttribute("aria-pressed",String(n===filter));
+  for(const n of ["all","fundamentals","inference","engineering","research"])$(n).setAttribute("aria-pressed",String(n===filter));
   render();
  });
 }
@@ -60,6 +61,68 @@ $("reveal").addEventListener("click",()=>{
  $("reveal").textContent=willReveal?"收起解析":"显示解析";
  $("reveal").setAttribute("aria-expanded",String(willReveal));
 });
+
+/* One compact, executable micro-lab per research track. The numerical sources
+ * are SeetheTruthResearchTracks + existing WanFFNTrace, not UI mock output. */
+const Research=window.SeetheTruthResearchTracks;
+if(!Research)throw Error("research exercises unavailable");
+const fmt=v=>Number(v).toFixed(5);
+const lastResearch={};
+function updateResearch(){
+ const video=Research.videoSparsity({
+  keep:Number($("vKeep").value),scope:$("vScope").value,
+  selection:$("vMetric").value,seed:Number($("vSeed").value)});
+ lastResearch.video=video;
+ $("videoResult").textContent=[
+  "Dense → Sparse · [Token, Channel] = "+video.shape.join(" × "),
+  "保留: "+video.kept.map((s,t)=>"t"+t+"{"+s.join(",")+"}").join("  "),
+  "‖Ydense − Ysparse‖₂ = "+fmt(video.errorL2),
+  "相对 FFN gated delta 误差 = "+fmt(100*video.relativeDeltaError)+"%",
+  "组间误差² / 单通道误差²和 = "+fmt(video.cancellationRatio),
+  "理想 FFN MAC 比例 = "+fmt(100*video.idealMacFraction)+"%",
+  video.costNote].join("\n");
+ const shift=Number($("pShift").value),param=Number($("pParam").value);
+ if($("pObjective").value==="dpo"){
+  const post=Research.dpo({chosen:-1+shift,rejected:-1.4,refChosen:-1,refRejected:-1.4,beta:param});
+  lastResearch.post=post;
+  $("postResult").textContent=[
+   "DPO: −log σ(β [(logπθ+−logπref+)−(logπθ−−logπref−)])",
+   "log-ratio margin = "+fmt(post.margin),
+   "β·margin = "+fmt(post.logit)+" · loss = "+fmt(post.loss),
+   "∂L/∂logπchosen = "+fmt(post.gradChosen),
+   "∂L/∂logπrejected = "+fmt(post.gradRejected),
+   "冻结参考模型；这是 logπ 上的导数，不是参数梯度。"].join("\n");
+ }else{
+  const post=Research.grpo({rewardGap:param,ratioShift:shift,epsilon:0.2});
+  lastResearch.post=post;
+  $("postResult").textContent=[
+   "GRPO: A_i = (r_i − mean(r)) / std(r)",
+   "rewards = ["+post.rewards.map(fmt).join(", ")+"]",
+   "advantages = ["+post.terms.map(t=>fmt(t.advantage)).join(", ")+"]",
+   "ratios = ["+post.terms.map(t=>fmt(t.ratio)).join(", ")+"]",
+   "clip active = ["+post.terms.map(t=>t.clipActive?"yes":"no").join(", ")+"]",
+   "−mean(min(ratio·A, clip(ratio)·A)) = "+fmt(post.loss),
+   "优势视为 stop-gradient；演示没有 KL、Mask 和参数优化。"].join("\n");
+ }
+ const agent=Research.agent({architecture:$("aArchitecture").value,
+  fault:$("aFault").value==="true",approved:$("aApproved").value==="true"});
+ lastResearch.agent=agent;
+ $("agentResult").textContent="模拟任务状态："+agent.status+
+  "\n阶段数："+agent.events.length+" · 已核验："+(agent.verified?"是":"否")+
+  "\n架构："+agent.architecture+
+  "\n最终事件："+agent.events.at(-1).action;
+ $("agentTrace").replaceChildren(...agent.events.map(e=>{
+  const li=document.createElement("li");
+  li.textContent=e.id+" ["+e.actor+"] "+e.action+" · "+e.before+" → "+e.after+
+    (e.ok?"":" [阻断/失败]")+" · "+e.detail;
+  return li;
+ }));
+ window.SeetheTruthLastResearch=lastResearch;
+}
+for(const id of ["vKeep","vScope","vMetric","vSeed","pObjective","pParam","pShift",
+ "aArchitecture","aFault","aApproved"])$(id).addEventListener("change",updateResearch);
+updateResearch();
+
 const V=window.SeetheTruthPrefillPolicy;
 if(!V)throw Error("shared DeepInfer math module not available");
 const rank=(waitingSchedulable,canActuallySchedule=true)=>({waitingSchedulable,canActuallySchedule,cacheUsage:0.2});
