@@ -50,7 +50,23 @@
    level:"进阶 → 研究",theory:"执行 Epoch Shuffle、Microbatch 梯度积累、Clip、Warmup/Cosine、半累积状态 Checkpoint/Restore 和同一模型的推理续接。",
    why:"梯度累计必须按实际样本权重聚合；重放需要保持参数、优化器、采样游标、缓冲梯度与调度器步数一致。",
    check:"在未完成 Gradient Accumulation 时保存的 Checkpoint，只包含 W、m、v 和 Step 足够吗？",
-   answer:"不够，还必须保存或可确定性重建累计梯度、有效样本数、Epoch/Cursor 与相关数据来源，才能精确续训。"}
+   answer:"不够，还必须保存或可确定性重建累计梯度、有效样本数、Epoch/Cursor 与相关数据来源，才能精确续训。"},
+  {id:"research_video_sparse",group:"11 · 研究主线",title:"视频模型稀疏 · FFN 选择、抵消与质量闭环",href:"wan_ffn_lab.html",
+   level:"研究",theory:"基于 Wan2.2 FFN 的真实运算顺序计算 post-GELU 隐通道贡献 e5⊙(W2[:,h]·a_h)，分别比较逐 Token 与静态选择的输出误差和理想 MAC；跨 Block 误差传播、视频时序和语义质量必须另行实测。",
+   why:"输出误差可以受到多通道耦合与抵消影响。逐 Token 后验选通道与执行前可跳过 W1 的计算节省不同，真实生成的视频质量是最终判据。",
+   check:"逐 Token 按完整激活打分，直接声称 W1 与 W2 都减少同样比例的 GEMM 可以吗？",
+   answer:"不可以。若需要先算完整 W1 才能选择 Hidden Channel，则 W1 已付出 Dense 成本；只有 W2 有条件跳过列乘法，除非提前有独立的低成本预测器。"},
+  {id:"research_llm_posttrain",group:"12 · 研究主线",title:"LLM 后训练 · SFT / DPO / GRPO 的梯度与数据流",href:"micro_training.html",
+   level:"进阶 → 研究",theory:"从 SFT 的 token 交叉熵进入偏好对的 DPO 对数概率比值，再对照 GRPO 的组内奖励标准化、重要性比值与剪裁；区分冻结参考策略、采样策略和可训练策略。",
+   why:"不同优化目标消费的数据与梯度边界不同；偏好数据质量、rollout 分布、组内方差、KL 和序列掩码直接影响训练稳定性与可解释性。",
+   check:"GRPO 一组候选的奖励全部相同时，组内标准化会产生可靠的偏好梯度吗？",
+   answer:"不会。这一组没有组内奖励差异；示例把零方差的优势显式置零，实际实现还需明确 epsilon、Mask 和其他目标项。"},
+  {id:"research_agent_arch",group:"13 · 研究主线",title:"Agent 架构 · 编排、工具状态与可恢复执行",href:"semantic_state.html",
+   level:"研究",theory:"把 Agent 表述为状态转移和因果事件：Observe → Plan/Decide → Tool → Verify → Commit；比较 ReAct、Plan-Execute、Supervisor 的审批、故障、重试与委派边界。",
+   why:"Agent 的行为正确性由工具输出、幂等性、审批、状态隔离、恢复与评测共同决定；工作流 DAG 与模型内部张量 DAG 是不同对象。",
+   check:"如果状态机已经标记 Tool Write 成功，但未获得审批或未核验结果，是否应自动进入 Commit？",
+   answer:"不应。写操作必须先通过审批边界，Commit 应依赖可核验的执行结果；同一个状态机转移须能通过注入故障进行反证。"}
+
  ]);
  const ids=new Set(),targets=new Set();
  for(const lesson of lessons){
@@ -59,5 +75,5 @@
   if(!lesson.theory||!lesson.why||!lesson.answer)throw Error("missing teaching explanation");
   ids.add(lesson.id);targets.add(lesson.href);
  }
- return Object.freeze({VERSION:"2026.10.24",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
+ return Object.freeze({VERSION:"2026.11.01",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
 });
