@@ -65,7 +65,7 @@
  function dpo({chosen=-0.7,rejected=-1.5,refChosen=-1,refRejected=-1,beta=0.5}={}){
   for(const [k,v] of Object.entries({chosen,rejected,refChosen,refRejected}))
    finite(v,-30,0,k);
-  finite(beta,0.01,10,"beta");
+  finite(beta,0,10,"beta");
   const margin=(chosen-rejected)-(refChosen-refRejected),z=beta*margin;
   const loss=Math.log1p(Math.exp(-z)),gradChosen=-beta*sigmoid(-z);
   return Object.freeze({objective:"DPO",margin,logit:z,loss,
