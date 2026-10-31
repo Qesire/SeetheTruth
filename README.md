@@ -4,6 +4,8 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+**2026-11-01 三条研究主线：** [视频模型稀疏 / LLM 后训练 / Agent 架构交互入口](teaching.html#researchTracks) 现已提供同源 PC/Android 教学实验。视频方向沿用源码对齐 Wan FFN 合成张量进行静态/动态 Hidden Channel 选择、输出耦合与理想 MAC 对照；后训练方向展示 DPO 解析梯度与 GRPO 组内裁剪；Agent 方向展示编排、故障注入、审批与核验状态。课程从 10 个专题扩展为 **13 个共享专题**。以上是有界教学实验，未运行真实视频生成、LLM 后训练或外部 Agent 工具。研究机制、实验计划及证据边界详见[三条研究路线](docs/three-research-tracks-20261101.md)。
+
 **2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
 
 **2026-10-25 多案例独立证书：** [多图、共享参数与 ReLU 边界验证](docs/operator-multifixture-coverage-v2.md) 将逐算子案例证书升级为按实际图与形状保留多条独立证据，新增非方阵、正负激活、共享参数多支路和 ReLU 零点约定次梯度测试，区分有限差分可验证点与不可微点。
