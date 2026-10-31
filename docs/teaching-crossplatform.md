@@ -22,6 +22,10 @@ Each shared lesson has:
 
 Topics include base tensor graphs, paper rewrites, image/audio/video tokenization, Loop Transformer/MoE/GQA costs, KV caching, DeepInfer Prefill/Decode, Scheduler/KV/Worker and ZOS status updates. All source mathematical engines are existing, separately tested shared web modules; this PR does not claim to have implemented additional DeepInfer GPU kernels.
 
+## 2026-11-01 research-first expansion
+
+The same shared curriculum now includes **13 topics**, including video-model FFN sparsity, LLM DPO/GRPO post-training mathematics, and Agent state/event architecture. The new research lane on teaching.html reuses Wan FFN's pinned-topology synthetic trace and research_tracks.js for bounded numerical and scripted control-flow exercises. PC and offline Android use exactly the same sources and controls. It is not a real video-generation, LLM-training, or tool-execution system. See [three research tracks](three-research-tracks-20261101.md).
+
 ## Compatibility and test gates
 
 - `node tests/teaching_curriculum_contracts.js` checks the shared content, link destinations, source-only APK manifest, native bridge policy and the absence of Android-side output actions.
