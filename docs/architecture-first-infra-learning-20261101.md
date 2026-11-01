@@ -75,6 +75,10 @@ The present Agent demo is a scripted **fault-injection state machine**, not auto
 - [OpenTelemetry GenAI agent spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md): workflow/agent/tool spans provide a telemetry reference, with their standard's evolving status respected.
 - [LangGraph interrupts](https://github.com/langchain-ai/docs/blob/main/src/oss/langgraph/interrupts.mdx): checkpointed interruption and resumed state clarify why durable Agent execution is a system property.
 
+## Semantic granularity: a second, orthogonal axis
+
+The architecture atlas classifies *why* the user is looking; the G0–G4 granularity lens classifies *how deeply* a source object is inspected. The two selectors are independent in the shared teaching home. G0 System → G1 Subsystem → G2 Component → G3 Operator/Action → G4 Coordinate/Event. A granularity step can link to the same existing lab with a finer focus, or to a different source; its source identity and pedagogical relation remain explicit, and numerical equivalence is NOT_CLAIMED until independently validated. The existing 13 canonical lessons are indexed by their primary teaching grain; this does not register any extra model semantics. See [formal granularity design](granularity-semantics-20261101.md).
+
 ## Acceptance and next steps
 
 **Implemented now:** 3 × 5 architecture questions in the existing shared course home, links to real labs, operator role filter and true port labels in Learning Studio, desktop/offline Android resource sharing, deterministic metadata contract tests and browser acceptance covering track/layer/role transitions.
