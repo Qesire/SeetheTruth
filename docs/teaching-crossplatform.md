@@ -28,7 +28,7 @@ The same shared curriculum now includes **13 topics**, including video-model FFN
 
 ## First native source-backed G0–G4 cycle viewer (2026-11-01)
 
-The original Scheduler/KV/Worker specialist's already-mounted `unified_observation_ui.js` now exposes native G0–G4 projections of a replay-verified accepted record. The core only verifies and envelopes the selected projection; `state_microscope.schedulerGrain` performs source-specific readonly mapping. No second scheduler run is created by changing scale. Native cycle steps, KV revisions, actions and Worker Event IDs remain those of the original record, with explicit source paths. Tests: `tests/native_granularity_spine_contracts.js`, `tests/browser_deepinfer_scheduler.py`. The existing conditional browser/UI evidence boundaries remain in effect.
+The original Scheduler/KV/Worker specialist's already-mounted `unified_observation_ui.js` now exposes native G0–G4 projections of a replay-verified accepted record. The core only verifies and envelopes the selected projection; `state_microscope.schedulerGrain` performs source-specific readonly mapping. The shared Core may rerun the same native deterministic engine for replay verification when changing scale, but the projection itself creates neither a second scheduler implementation nor a new KV state. Native cycle steps, KV revisions, actions and Worker Event IDs remain those of the original record, with explicit source paths. Tests: `tests/native_granularity_spine_contracts.js`, `tests/browser_deepinfer_scheduler.py`. The existing conditional browser/UI evidence boundaries remain in effect.
 
 ## G0–G4 semantic drilldown (2026-11-01)
 
