@@ -12,6 +12,10 @@ The default teaching route is **System/SLO → Architecture/Topology → Runtime
 
 Keep **system modules** (Scheduler, Worker, training workflow, Agent tool/event orchestration) distinct from **typed tensor operator bricks** (true registered port/shape/execution contracts). A system-module card may link to an existing specialist lab; it may not be counted as a draggable executable graph brick without its own tested typed system-graph engine. `architecture_perspective.js` is presentation-only, deriving course links from `teaching_curriculum.js` and block roles from the existing operator categories. It must never shadow registries, source engines, observations or capability evidence. See [architecture-first design](docs/architecture-first-infra-learning-20261101.md).
 
+## Semantic granularity contract (G0–G4)
+
+Architecture layers and object granularity are **orthogonal**. Preserve five explicit semantic scales: G0 System, G1 Subsystem, G2 Component, G3 Operator/Action, G4 Coordinate/Event. Course depth is pedagogical; a zoom/decomposition link is not automatically a functional equivalence. Use existing canonical curriculum, lab, composite and operator source IDs. Preserve run/event/state revision when they exist; never fabricate them to satisfy a UI hierarchy. For actual parent-child equivalence demand tested output/state correspondence on a declared domain; preserve action side effects, resource ownership and causal order in stateful cases. See [granularity design](docs/granularity-semantics-20261101.md). Graph object kinds differ: a tool action, KV allocation and tensor MatMul are not one operator family.
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.
