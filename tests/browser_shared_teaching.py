@@ -130,6 +130,13 @@ class SharedTeachingBrowser(unittest.TestCase):
         p.locator('[data-role-filter="all"]').click()
         self.assertGreater(p.locator("#palette button[data-add]").count(),100)
 
+        self.assertEqual(p.goto(self.base+"/learn.html?edition=teaching&block=opt_adamw").status,200)
+        p.wait_for_function('document.querySelector("[data-grain-focus=true]") !== null')
+        self.assertEqual(p.locator('[data-grain-focus="true"]').get_attribute("data-add"),"opt_adamw")
+        self.assertEqual(p.goto(self.base+"/learn.html?edition=teaching&composite=ffn").status,200)
+        p.wait_for_function('!document.querySelector("#compositeNavigator").hidden')
+        self.assertIn("FFN",p.locator("#compositeTitle").inner_text())
+
         p.screenshot(path=str(OUT/"shared-graph-learning-android.png"),
                      full_page=True,animations="disabled")
         p.close()
