@@ -1659,7 +1659,16 @@ window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
 $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
-renderArchitectureRoles();renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
+renderArchitectureRoles();renderCategoryButtons();renderPalette();render();
+const grainFocus=new URLSearchParams(location.search);
+const focusBlock=grainFocus.get("block"),focusComposite=grainFocus.get("composite");
+if(focusComposite&&A.get(focusComposite)){openComposite(focusComposite,[]);}
+else if(focusBlock&&L.KINDS.includes(focusBlock)){
+ filterText=focusBlock;$("#blockSearch").value=focusBlock;renderPalette();
+ const tile=[...document.querySelectorAll("#palette button[data-add]")].find(el=>el.dataset.add===focusBlock);
+ if(tile){tile.setAttribute("data-grain-focus","true");tile.title+=" · G3 语义粒度定位：点击添加到真实可执行图";tile.scrollIntoView({block:"nearest"});}
+}
+window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script>
 <script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
