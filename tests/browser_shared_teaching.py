@@ -35,6 +35,13 @@ class SharedTeachingBrowser(unittest.TestCase):
         for p in (normal,phone):
             p.wait_for_function("window.SeetheTruthTeachingHub && window.SeetheTruthTeachingHub.lessons===13")
             self.assertEqual(p.locator("#cards button.card").count(),13)
+            p.locator("#courseGrain").select_option("system")
+            self.assertEqual(p.locator("#cards button.card").count(),4)
+            p.locator("#courseGrain").select_option("operation")
+            self.assertEqual(p.locator("#cards button.card").count(),1)
+            self.assertIn("G3",p.locator("#cards button.card .course-grain-meta").inner_text())
+            p.locator("#courseGrain").select_option("all")
+            self.assertEqual(p.locator("#cards button.card").count(),13)
             self.assertEqual(p.locator("#architectureSteps button").count(),5)
             self.assertEqual(p.locator("#granularitySteps button").count(),5)
             self.assertEqual(p.evaluate("window.SeetheTruthGranularityExplorer.current().sourceId"),"course:research_video_sparse")
