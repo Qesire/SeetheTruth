@@ -4,6 +4,7 @@ adaptive_token_depth.js
 android_teaching.html
 android_teaching_mode.js
 architecture_tradeoffs.js
+architecture_perspective.js
 architecture_why.js
 axis_block_pack.js
 block_capabilities.js
