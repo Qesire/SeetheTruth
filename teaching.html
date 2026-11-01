@@ -51,6 +51,21 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
 .arch-inspector .arch-tag{color:#9bcacb;font:700 11px ui-monospace,monospace;overflow-wrap:anywhere}
 @media(max-width:950px){.arch-shell{grid-template-columns:1fr}.arch-step{min-height:126px}}
 @media(max-width:640px){.arch-path{grid-template-columns:1fr}.arch-step{min-height:0;flex-direction:row;align-items:center}.arch-step small{margin-left:auto;max-width:42%}}
+/* Independent granularity axis: do not confuse zoom with architecture plane or evidence. */
+.grain-head{margin:22px 0 11px}
+.grain-head p{max-width:960px;margin:6px 0;color:#a7cada;font-size:13px}
+.grain-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,.9fr);gap:12px}
+.grain-map{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.grain-map button{display:flex;flex-direction:column;gap:7px;background:#0f2a3e;border:1px solid #416079;color:#e8fbfc;border-radius:11px;text-align:left;padding:12px;min-height:138px;cursor:pointer;font:inherit}
+.grain-map button[aria-selected=true]{outline:2px solid #81e1d1;background:#1a4d5a}
+.grain-map button .grain-code{color:#8ad5df;font:700 11px ui-monospace,monospace}
+.grain-map button strong{font-size:14px}.grain-map button small{font-size:11px;line-height:1.5}
+.grain-detail{display:flex;flex-direction:column;gap:8px;min-width:0}
+.grain-detail p{margin:3px 0;font-size:12px}
+.grain-detail .action{margin-top:auto}
+.grain-proof{font:700 10px ui-monospace,monospace;color:#85bac8;overflow-wrap:anywhere}
+@media(max-width:930px){.grain-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.grain-map{grid-template-columns:1fr}.grain-map button{min-height:0;display:grid;grid-template-columns:45px 74px 1fr;align-items:center}}
 </style></head><body>
 <header><div><strong>SEETHE<em>TRUTH</em></strong><div class="muted">共享教学内容 · PC / Android</div></div><nav><a href="learn.html?edition=teaching">积木工作台</a><a href="engineering_journey.html">工程入门 12 关</a><a href="engineering_pipeline.html">训练流水线 6 关</a><a href="wan_ffn_lab.html?edition=teaching">Wan2.2 FFN 源码显微镜</a><a href="deepinfer_prefill_lab.html">DeepInfer Prefill</a><a href="capabilities.html">积木能力审计</a><a href="semantic_state.html">张量与状态实验室</a></nav></header>
 <main><div class="eyebrow">ONE CURRICULUM · BOTH PLATFORMS</div><h1>AI 架构与基础设施 · 可执行学习工作台</h1>
@@ -77,6 +92,24 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
    <p id="architectureArtifact" class="reason">—</p>
    <p id="architectureEvidence" class="muted">—</p>
    <a id="architectureLaunch" class="action" href="teaching.html">打开对应可执行课程</a>
+  </aside>
+ </div>
+</section>
+<section id="granularityExplorer" aria-label="语义粒度导航">
+ <div class="grain-head">
+  <div class="eyebrow">SEMANTIC DRILL-DOWN · G0—G4</div>
+  <h2 style="margin:7px 0">第二条独立维度：对象的展开粒度</h2>
+  <p>同一研究方向在系统、子系统、组件、算子/动作及坐标/事件之间切换。<strong>粒度切换只改变关注对象，绝不自动证明数学等价、计算加速或真实系统执行。</strong></p>
+ </div>
+ <div class="grain-layout">
+  <div id="granularitySteps" class="grain-map" role="group" aria-label="选择展开粒度"></div>
+  <aside class="panel grain-detail" aria-live="polite">
+   <div id="granularityLabel" class="grain-proof">—</div>
+   <h3 id="granularityTitle" style="margin:0">—</h3>
+   <p id="granularityObjective" class="reason">—</p>
+   <p id="granularityIdentity" class="muted">—</p>
+   <p id="granularityProof" class="grain-proof">—</p>
+   <a id="granularityLaunch" class="action" href="teaching.html">打开对应对象</a>
   </aside>
  </div>
 </section>
@@ -148,4 +181,4 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
 <p id="voteExplanation" class="muted">—</p>
 </section>
 </main>
-<script src="deepinfer_prefill_policy.js"></script><script src="teaching_curriculum.js"></script><script src="learning_experience_core.js"></script><script src="wan_ffn_trace.js"></script><script src="research_tracks.js"></script><script src="architecture_perspective.js"></script><script src="teaching_hub.js"></script></body></html>
+<script src="deepinfer_prefill_policy.js"></script><script src="teaching_curriculum.js"></script><script src="learning_experience_core.js"></script><script src="wan_ffn_trace.js"></script><script src="research_tracks.js"></script><script src="architecture_perspective.js"></script><script src="block_catalog.js"></script><script src="granularity_lens.js"></script><script src="teaching_hub.js"></script></body></html>
