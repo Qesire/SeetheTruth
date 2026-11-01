@@ -4,6 +4,8 @@ SeetheTruth 是一个 **架构与基础设施优先（Architecture / Infra-first
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+**2026-11-01 Architecture / Infra 优先展示：** [系统五层学习地图与类型化积木库](docs/architecture-first-infra-learning-20261101.md) 已进入候选 PR：新首页可按「系统目标 → 架构权衡 → 运行时/状态 → 算子 → 观测/证据」定位课程；Learning Studio 明确区分链接到既有状态机的系统模块和真正支持自由连线的可执行算子。算子保留原注册身份、端口与代码导出，不额外宣称系统模块已成为可执行张量图，也不把解析计算成本当作硬件实测。
+
 **2026-11-01 三条研究主线：** [视频模型稀疏 / LLM 后训练 / Agent 架构交互入口](teaching.html#researchTracks) 现已提供同源 PC/Android 教学实验。视频方向沿用源码对齐 Wan FFN 合成张量进行静态/动态 Hidden Channel 选择、输出耦合与理想 MAC 对照；后训练方向展示 DPO 解析梯度与 GRPO 组内裁剪；Agent 方向展示编排、故障注入、审批与核验状态。课程从 10 个专题扩展为 **13 个共享专题**。以上是有界教学实验，未运行真实视频生成、LLM 后训练或外部 Agent 工具。研究机制、实验计划及证据边界详见[三条研究路线](docs/three-research-tracks-20261101.md)。
 
 **2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
