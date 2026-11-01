@@ -34,7 +34,7 @@ for(const track of G.rootTracks){
     const lab=Core.inspectLab(item.sourceId.slice(4));
     assert.equal(lab.href,item.href);
     assert.equal(lab.evidence,'NOT_EXECUTED');
-  }else if(item.targetKind==='course')assert.equal(C.lookup(item.sourceId.slice(7)).href,item.href);
+  }else if(item.targetKind==='course')assert.equal(item.href,'teaching.html?focus='+item.sourceId.slice(7)+'#cards');
   else if(item.targetKind==='operator')assert.ok(L.defs[item.sourceId.slice(9)]);
   else assert.equal(item.targetKind,'research');
   const nav=G.navigation(track,item.grain,C,Core,extras);
