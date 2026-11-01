@@ -50,7 +50,7 @@ assert.ok(studio.includes('roleFilter==="all"'));
 assert.ok(studio.includes('data-role-filter'));
 assert.ok(studio.includes('data-add='));
 assert.ok(studio.includes('这些入口连接已有状态机与专家实验室'));
-assert.ok(studio.indexOf('src="architecture_perspective.js"')<studio.indexOf('(()=>{"use strict";'));
+assert.ok(studio.indexOf('src="learning_experience_core.js"')<studio.indexOf('src="architecture_perspective.js"'));
 const policy=JSON.parse(read('static_asset_policy.json'));
 const assets=read('android/teaching-assets.txt');
 const server=read('atlas_server.py');
