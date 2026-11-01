@@ -41,7 +41,32 @@ function mount(options={}){
  detail.style.cssText='white-space:pre-wrap;word-break:break-word;padding:12px;border:1px solid #36566a;border-radius:8px;max-height:440px;overflow:auto';
  const comparison=tag('pre');comparison.id='unifiedObservationDiff';
  comparison.style.cssText=detail.style.cssText;
- host.replaceChildren(h,hint,tools,importer,sourceLink,status,menu,coords,check,detail,comparison);
+ // Cross-grain view uses this panel's exact accepted source record.
+ // It never executes another Scheduler, allocates KV, or invents a trace.
+ const grainHost=tag('section');grainHost.id='nativeGranularityView';grainHost.hidden=true;
+ grainHost.style.cssText='margin-top:14px;padding:12px;border:1px solid #426b70;border-radius:10px;background:#102d3d';
+ const grainHeading=tag('h3','Scheduler / KV / Worker · 原生 G0–G4 粒度');
+ grainHeading.style.margin='0 0 7px';
+ const grainHint=tag('p','仅投影已核验的统一执行记录；细化视角不代表新的子执行器或硬件实测。');
+ grainHint.style.fontSize='12px';
+ const grainControls=tag('div');
+ grainControls.style.cssText='display:flex;gap:9px;flex-wrap:wrap;align-items:center';
+ const grainScale=tag('select'),grainCycle=tag('select'),grainLeaf=tag('select');
+ for(const [value,label] of [['G0','G0 · 系统摘要'],['G1','G1 · 来源子系统'],
+  ['G2','G2 · Scheduler Cycle'],['G3','G3 · KV 操作集合'],['G4','G4 · 原始事件/动作']]){
+   const option=tag('option',label);option.value=value;grainScale.append(option);
+ }
+ for(const [title,sel] of [['粒度',grainScale],['Cycle',grainCycle],['G4 来源',grainLeaf]]){
+  const label=tag('label',title+' ');sel.style.cssText='max-width:100%;padding:7px;border:1px solid #587e90;border-radius:7px;background:#143346;color:white';
+  label.append(sel);grainControls.append(label);
+ }
+ grainScale.id='nativeGrainScale';grainCycle.id='nativeGrainCycle';grainLeaf.id='nativeGrainLeaf';
+ const grainResult=tag('pre');
+ grainResult.id='nativeGrainResult';
+ grainResult.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:350px;overflow:auto;font-size:11px;background:#081b28;border-radius:8px;padding:12px';
+ grainHost.append(grainHeading,grainHint,grainControls,grainResult);
+
+ host.replaceChildren(h,hint,tools,importer,sourceLink,status,menu,coords,check,detail,comparison,grainHost);
  let current=null,inventory=null,baseline=null,foreignSnapshot=null,checkpointSource=null,sourceIndex=0,stepIndex=0;
  const HANDOFF_KEY='SeetheTruthObservationHandoffV1';
  function setStatus(message,failed=false){status.textContent=message;status.style.color=failed?'#ffb1a7':'#a5e9d9';}
@@ -78,13 +103,52 @@ function mount(options={}){
   group.steps.forEach((s,i)=>step.append(item(i,(i+1)+'. '+s.id)));
   step.value=String(stepIndex);renderAxes();detail.textContent='选择步骤后执行坐标/状态核验。';
  }
+ function renderGrainProjection(){
+  if(!current||current.id!=='deepinfer_scheduler'||current.operation!=='simulate'){
+   grainHost.hidden=true;return;
+  }
+  grainHost.hidden=false;
+  const cycles=current.value.decisions;
+  const previous=grainCycle.value;
+  grainCycle.replaceChildren(...cycles.map((decision,i)=>{
+   const option=tag('option','Cycle '+i+' · KV rev '+decision.kvRevision);
+   option.value=String(i);return option;
+  }));
+  grainCycle.value=[...grainCycle.options].some(o=>o.value===previous)?previous:'0';
+  const cycle=Number(grainCycle.value),selected=grainLeaf.value;
+  grainLeaf.replaceChildren();
+  const nativeForward=current.value.executionProof[cycle].forwardEvent;
+  const forward=tag('option','Worker Forward · '+nativeForward);
+  forward.value='forward';grainLeaf.append(forward);
+  for(const [i,action] of cycles[cycle].actions.entries()){
+   const o=tag('option',(i+1)+'. '+action.op+' · '+(action.id||'—')+' · KV rev '+action.revision);
+   o.value='action:'+i;grainLeaf.append(o);
+  }
+  grainLeaf.value=[...grainLeaf.options].some(o=>o.value===selected)?selected:'forward';
+  const grain=grainScale.value;
+  grainCycle.parentElement.hidden=grain==='G0'||grain==='G1';
+  grainLeaf.parentElement.hidden=grain!=='G4';
+  const opts={grain,cycle};
+  if(grain==='G4'&&grainLeaf.value.startsWith('action:'))
+   opts.actionIndex=Number(grainLeaf.value.slice(7));
+  try{
+   const result=core.projectExecutionGrain(current,opts);
+   grainResult.textContent=JSON.stringify(result,null,2);
+   grainResult.dataset.sourcePath=result.sourcePath;
+   grainResult.dataset.replayVerified=String(result.replayVerified);
+  }catch(error){
+   grainResult.textContent='原生粒度投影不可用：'+error.message;
+   grainResult.dataset.replayVerified='false';
+  }
+ }
+
  function refresh(){
   const record=readAccepted();if(!record)throw Error('当前页面没有已接受的执行记录');
   core.replay(record);
   const frame=core.observe(record);
   current=freezeClone(record);inventory=frame;sourceIndex=0;stepIndex=0;
   checkpointSource=null;resumeButton.disabled=true;trainingButton.disabled=true;
-  renderSources();comparison.textContent='';
+  renderSources();renderGrainProjection();comparison.textContent='';
   setStatus('已核验 '+(record.id||'execution')+' · '+frame.evidence+' · '+frame.sources.reduce((n,s)=>n+s.steps.length,0)+' 个原生步骤'+(baseline?' · 已固定基线':''));
   return frame;
  }
@@ -289,6 +353,9 @@ function mount(options={}){
    store.setItem(HANDOFF_KEY,JSON.stringify(foreignSnapshot));}
   catch(error){event.preventDefault();setStatus('跨页面交接失败：'+error.message,true);}
  });
+ grainScale.addEventListener('change',renderGrainProjection);
+ grainCycle.addEventListener('change',()=>{grainLeaf.value='forward';renderGrainProjection();});
+ grainLeaf.addEventListener('change',renderGrainProjection);
  source.addEventListener('change',()=>{sourceIndex=Number(source.value);stepIndex=0;renderSteps();});
  step.addEventListener('change',()=>{stepIndex=Number(step.value);renderAxes();});
  menu.hidden=true;check.disabled=true;restoreHandoff();
