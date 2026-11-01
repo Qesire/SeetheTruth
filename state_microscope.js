@@ -318,5 +318,74 @@ function scalar(run){
  return validate({schema:SCHEMA,title:'标量训练 · 前向/反向/梯度缓冲/Optimizer',evidenceTier:TIERS.SCALAR,steps,
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
-return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,prefill,cache,training,scalar,graphTraining,delta});
+/* Source-owning projection of verified native Scheduler / KV / Worker structures.
+ * NO execution, mutable state, fabricated event identity or second graph runtime.
+ * UnifiedCore handles replay verification and envelopes the projection. */
+function schedulerGrain(v,frame,options={}){
+ if(!options||typeof options!=="object"||Array.isArray(options))
+  fail("granularity options must be an object");
+ const grain=options.grain??"G0";
+ if(!["G0","G1","G2","G3","G4"].includes(grain))fail("unknown execution granularity");
+ if(Object.keys(options).some(key=>!["grain","cycle","actionIndex","eventId"].includes(key)))
+  fail("unknown granularity option");
+ validate(frame);
+ if(!v||!Array.isArray(v.decisions)||!Array.isArray(v.snapshots)||
+    !Array.isArray(v.executionProof)||!Array.isArray(v.worker?.events)||
+    frame.steps.length!==v.decisions.length+1||frame.evidenceTier!==TIERS.SCHEDULER)
+  fail("granularity requires native verified Scheduler/KV/Worker lineage");
+ const n=options.cycle??0;
+ if(!Number.isSafeInteger(n)||n<0||n>=v.decisions.length)
+  fail("granularity cycle outside accepted execution");
+ if(options.actionIndex!==undefined&&
+    (!Number.isSafeInteger(options.actionIndex)||options.actionIndex<0))
+  fail("granularity actionIndex must be a nonnegative integer");
+ if(options.eventId!==undefined&&(typeof options.eventId!=="string"||!options.eventId))
+  fail("granularity eventId must be a native event identifier");
+ if(options.eventId!==undefined&&options.actionIndex!==undefined)
+  fail("choose Worker event or KV action, not both");
+ const d=v.decisions[n],p=v.executionProof[n],step=frame.steps[n+1],s=v.snapshots[n+1];
+ if(d.cycle!==n||p.cycle!==n||step.id!=="scheduler:"+(n+1)||
+    d.kvRevision!==s.revision||p.forwardEvent!==step.after.forwardEvent||
+    JSON.stringify(d.scheduled)!==JSON.stringify(p.batch)||
+    JSON.stringify(d.dispatchBlocks)!==JSON.stringify(p.physicalBlockTables))
+  fail("granularity source lineage mismatch");
+ const response=(sourcePath,selected,meta={})=>Object.freeze({
+   grain,cycle:n,parentStepId:step.id,sourcePath,...meta,
+   value:JSON.parse(JSON.stringify(selected))
+ });
+ if(grain==="G0")return response("value.summary",v.summary,{
+  scope:"system",parentStepId:null,nativeStepIds:frame.steps.map(x=>x.id),
+  note:"原生摘要与总步骤；不是硬件性能或整个在线服务 SLO"});
+ if(grain==="G1")return response("value",[
+  {component:"Scheduler",path:"value.decisions",count:v.decisions.length},
+  {component:"KV BlockManager",path:"value.snapshots",count:v.snapshots.length},
+  {component:"Worker",path:"value.worker.events",count:v.worker.events.length}
+ ],{scope:"subsystem",parentStepId:null,
+   note:"只读来源索引，不是新增的组件执行器，也不是三份重复轨迹"});
+ if(grain==="G2")return response("stateTrace.steps["+(n+1)+"]",step,{
+  scope:"cycle",kvRevision:s.revision,sourceDecisionPath:"value.decisions["+n+"]",
+  sourceSnapshotPath:"value.snapshots["+(n+1)+"]",
+  forwardEventId:p.forwardEvent,
+  note:"原生显微镜步骤与原始 KV 修订号，非 GPU 时间"});
+ if(grain==="G3")return response("value.decisions["+n+"].actions",d.actions,{
+  scope:"kv_actions",kvRevision:s.revision,sourceDecisionPath:"value.decisions["+n+"]",
+  forwardEventId:p.forwardEvent,
+  note:"每个操作保留原始物理 KV 变更 revision；操作不是新的虚构事件"});
+ if(options.eventId!==undefined||options.actionIndex===undefined){
+  const id=options.eventId??p.forwardEvent;
+  const idx=v.worker.events.findIndex(e=>e.id===id);
+  if(idx<0||v.worker.events[idx].step!==n)
+   fail("Worker event is not in the selected native cycle");
+  return response("value.worker.events["+idx+"]",v.worker.events[idx],{
+   scope:"native_worker_event",nativeEventId:id,kvRevision:s.revision,
+   note:"保留原始 Worker 事件 ID、因果依赖与假设时长；不是设备 Profiler"});
+ }
+ const index=options.actionIndex,action=d.actions[index];
+ if(!action)fail("KV action outside accepted decision");
+ return response("value.decisions["+n+"].actions["+index+"]",action,{
+  scope:"native_kv_action",kvRevision:action.revision,
+  originalRequestId:action.id,
+  note:"KV 操作原始来源路径与修订号；与 Worker event 为同轮不同分支"});
+}
+return Object.freeze({SCHEMA,TIERS,validate,kv,worker,scheduler,schedulerGrain,prefill,cache,training,scalar,graphTraining,delta});
 });
