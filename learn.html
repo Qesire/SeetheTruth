@@ -206,6 +206,19 @@ input[type="file"]{display:none}
 @media(max-width:1250px){.state-handoff-jump{display:inline-flex;align-items:center}.state-handoff-trail{display:flex;flex-basis:100%}}
 @media(max-width:760px){.state-handoff{max-height:290px;padding:12px 13px}.state-handoff-docked{margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){.state-handoff *{scroll-behavior:auto!important}}
+
+/* Architecture-first navigation over existing graph bricks; no fake system kernels. */
+.arch-shelf{margin:11px 0;padding:12px;border:1px solid #3b6e7b;border-radius:12px;background:linear-gradient(150deg,#123849,#0b2234)}
+.arch-shelf strong{display:block;font-size:12px;color:#daf9f5}
+.arch-shelf p{margin:5px 0 9px;font-size:10px;color:#a3c3d2}
+.arch-shelf a{display:block;border:1px solid #426176;border-radius:8px;padding:8px;margin:5px 0;color:#bcf6f2;font-size:11px}
+.arch-roles{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0}
+.arch-roles button{border:1px solid #3e6176;border-radius:9px;padding:7px 9px;min-height:34px;background:#143147;color:#cce8f1;font-size:10px;cursor:pointer}
+.arch-roles button[aria-pressed=true]{border-color:#76e5d1;background:#20565a;color:white}
+#architectureRoleHint{margin:5px 0;font-size:10px;color:#97c1d4;line-height:1.65}
+.palette button{min-height:104px}
+.palette .arch-operator-role{font:700 9px ui-monospace,monospace;color:#a3d9d8;line-height:1.25}
+.palette .arch-operator-ports{color:#8fb7c9;font-size:9px;line-height:1.4;overflow-wrap:anywhere}
 </style><style>
 #paperHoverInspector{position:fixed;z-index:3000;max-height:calc(100vh - 24px);overflow:auto;background:#10293a;color:#eaf9ff;border:1px solid #56b9c4;border-radius:13px;box-shadow:0 15px 55px #000c;padding:16px 18px;font-size:12px;line-height:1.55}
 #paperHoverInspector[hidden]{display:none}#paperHoverInspector h3{font-size:16px;margin:8px 0 9px}#paperHoverInspector h4{font-size:12px;color:#84e9dc;margin:13px 0 3px}#paperHoverInspector p{margin:0;color:#c7e1ed}#paperHoverInspector code{white-space:normal;overflow-wrap:anywhere;display:block;background:#08202d;border-radius:7px;padding:9px;color:#f1dbaa}
@@ -235,14 +248,25 @@ input[type="file"]{display:none}
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
-  <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+  <div class="sub">从系统与资源问题深入运行时和算子 · 可执行数学 / 无需 GPU</div></div>
+ <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="teaching.html#researchTracks">◈ 视频稀疏 / 后训练 / Agent</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
 </header>
 <div class="app">
  <aside class="rail">
   <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
-  <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
-  <p class="hint">先搜索或按类别筛选，再拖动到画布。积木优先展示数学含义、形状约束和计算逻辑；小矩阵数值可选。</p>
+  <h2>可执行算子积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
+  <p class="hint">默认从系统模块进入，再展开运行时与具体计算。这里仅列出已注册的张量图积木；状态机与 Worker 是不同执行域。</p>
+  <section class="arch-shelf" aria-label="系统级构件">
+   <strong>SYSTEM MODULES · 控制面 / 数据面</strong>
+   <p>这些入口连接已有状态机与专家实验室，不能拖入 Tensor DAG 冒充可执行算子。</p>
+   <a href="deepinfer_scheduler_lab.html">Scheduler → KV → Worker · 调度与资源</a>
+   <a href="engineering_pipeline.html">Training Pipeline · 累积 / Checkpoint</a>
+   <a href="teaching.html#track-agent">Agent Workflow · 审批 / 故障 / 状态</a>
+   <a href="teaching.html#track-video">Video Sparse · FFN / 成本 / 质量</a>
+  </section>
+  <div class="kicker">OPERATOR ROLES · 以下过滤不改变计算语义</div>
+  <div id="architectureBlockRoles" class="arch-roles" role="group" aria-label="按系统角色筛选已有张量积木"></div>
+  <p id="architectureRoleHint" aria-live="polite">—</p>
   <input id="blockSearch" type="search" placeholder="搜索：GELU、Mask、Embedding…" aria-label="搜索可执行积木">
   <div id="catalogCategories" class="catalog-categories" role="group" aria-label="按计算类别筛选"></div>
   <div class="palette" id="palette"></div>
@@ -471,6 +495,7 @@ input[type="file"]{display:none}
 <script src="gradient_inspection.js"></script>
 <script src="node_timeline.js"></script>
 <script src="training_coordinate_proof.js"></script>\n<script src="learning_experience_core.js"></script>
+<script src="architecture_perspective.js"></script>
 <script src="coordinate_drilldown.js"></script>
 <script src="coordinate_journey.js"></script>
 <script src="coordinate_journey_ui.js"></script>
@@ -612,6 +637,10 @@ const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={tensor:"▥",memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
 const categoryNames={tensor:"具名轴张量",memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const ArchitecturePerspective=window.SeetheTruthArchitecturePerspective;
+if(!ArchitecturePerspective)throw Error("architecture block lens unavailable");
+const roleForKind=(kind,def)=>ArchitecturePerspective.roleFor(kind,def);
+let roleFilter="all";
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
@@ -734,16 +763,26 @@ function addBlock(kind,x=480,y=360){
 function renderPalette(){
  const matches=L.KINDS.filter(k=>{
   const d=L.defs[k],term=(k+" "+d.title+" "+d.en+" "+d.formula+" "+d.why+" "+categoryNames[d.category]).toLowerCase();
-  return (filterCategory==="all"||d.category===filterCategory)&&term.includes(filterText.toLowerCase());
+  return (filterCategory==="all"||d.category===filterCategory)&&(roleFilter==="all"||roleForKind(k,d)===roleFilter)&&term.includes(filterText.toLowerCase());
  });
  $("#blockCount").textContent=matches.length+" / "+L.KINDS.length;
  $("#palette").innerHTML=matches.length?matches.map(k=>{
   const d=L.defs[k];
-  return '<button type="button" draggable="true" data-add="'+esc(k)+'" data-kind="'+esc(k)+'" title="'+esc(d.why)+'"><span class="glyph">'+(categories[d.category]||"◇")+'</span><span class="name">'+esc(d.title)+'</span><span class="block-mini-id">'+esc(d.en)+'</span></button>';
+  return '<button type="button" draggable="true" data-add="'+esc(k)+'" data-kind="'+esc(k)+'" data-role="'+esc(roleForKind(k,d))+'" title="'+esc(d.why)+'"><span class="arch-operator-role">'+esc(roleForKind(k,d).toUpperCase())+' · '+esc(categoryNames[d.category]||d.category)+'</span><span class="glyph">'+(categories[d.category]||"◇")+'</span><span class="name">'+esc(d.title)+'</span><span class="arch-operator-ports">IN · '+esc(d.ports.length?d.ports.join(" / "):"参数或常量")+'</span><span class="block-mini-id">'+esc(d.en)+'</span></button>';
  }).join(""):'<p class="hint">没有匹配的积木。试着清除搜索或切换全部分类。</p>';
  document.querySelectorAll("[data-add]").forEach(b=>{
   b.addEventListener("click",()=>addBlock(b.dataset.add,380+Math.random()*80,350+Math.random()*80));
   b.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",b.dataset.add);e.dataTransfer.effectAllowed="copy";});
+ });
+}
+function renderArchitectureRoles(){
+ const group=$("#architectureBlockRoles");
+ group.innerHTML=ArchitecturePerspective.roles.map(r=>
+  '<button type="button" data-role-filter="'+esc(r.id)+'" aria-pressed="'+(r.id===roleFilter?'true':'false')+'">'+esc(r.name)+'</button>').join("");
+ const current=ArchitecturePerspective.roles.find(r=>r.id===roleFilter);
+ $("#architectureRoleHint").textContent=current.explain;
+ group.querySelectorAll("[data-role-filter]").forEach(b=>b.onclick=()=>{
+  roleFilter=b.dataset.roleFilter;renderArchitectureRoles();renderPalette();
  });
 }
 function renderCategoryButtons(){
@@ -1620,7 +1659,16 @@ window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
 $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
-renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
+renderArchitectureRoles();renderCategoryButtons();renderPalette();render();
+const grainFocus=new URLSearchParams(location.search);
+const focusBlock=grainFocus.get("block"),focusComposite=grainFocus.get("composite");
+if(focusComposite&&A.get(focusComposite)){openComposite(focusComposite,[]);}
+else if(focusBlock&&L.KINDS.includes(focusBlock)){
+ filterText=focusBlock;$("#blockSearch").value=focusBlock;renderPalette();
+ const tile=[...document.querySelectorAll("#palette button[data-add]")].find(el=>el.dataset.add===focusBlock);
+ if(tile){tile.setAttribute("data-grain-focus","true");tile.title+=" · G3 语义粒度定位：点击添加到真实可执行图";tile.scrollIntoView({block:"nearest"});}
+}
+window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script>
 <script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>

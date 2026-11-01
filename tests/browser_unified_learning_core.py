@@ -41,7 +41,7 @@ class UnifiedLearningBrowser(unittest.TestCase):
      return new Set(all).size;
    }""")
    self.assertEqual(counts["graphLessons"],registered)
-   self.assertEqual(counts["courses"],10)
+   self.assertEqual(counts["courses"],13)
    self.assertEqual(counts["labs"],17)
    evidence=page.evaluate("window.SeetheTruthUnifiedWorkbench.inspect().evidence")
    self.assertEqual(evidence,"STATIC_ONLY")

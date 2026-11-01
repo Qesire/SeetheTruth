@@ -1,8 +1,14 @@
-# SeetheTruth — 用积木理解并执行大模型计算
+# SeetheTruth — AI Architecture & Infrastructure 可执行学习工作台
 
-SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy 前向程序或 PyTorch CPU 可训练程序**。
+SeetheTruth 是一个 **架构与基础设施优先（Architecture / Infra-first）的 AI 系统学习工作台**。默认从系统目标、架构权衡、运行时状态进入，再深入具体张量与内核数学；在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy 前向程序或 PyTorch CPU 可训练程序**。
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
+
+**2026-11-01 分层粒度语义导航：** [G0–G4 粒度、语义展开及父子等价合同](docs/granularity-semantics-20261101.md) 已加入共享课程首页：架构问题与展开尺度保持正交；13 门课程可按主讲解粒度筛选；每个研究方向从系统级深入到算子/事件时会保留 canonical source ID、证据级别和 NOT_CLAIMED 等价边界。Learning Studio 支持原生算子和 Composite 的深链接。此功能是有界教学导航，并非新建 System IR 或模拟真实 GPU 加速。
+
+**2026-11-01 Architecture / Infra 优先展示：** [系统五层学习地图与类型化积木库](docs/architecture-first-infra-learning-20261101.md) 已进入候选 PR：新首页可按「系统目标 → 架构权衡 → 运行时/状态 → 算子 → 观测/证据」定位课程；Learning Studio 明确区分链接到既有状态机的系统模块和真正支持自由连线的可执行算子。算子保留原注册身份、端口与代码导出，不额外宣称系统模块已成为可执行张量图，也不把解析计算成本当作硬件实测。
+
+**2026-11-01 三条研究主线：** [视频模型稀疏 / LLM 后训练 / Agent 架构交互入口](teaching.html#researchTracks) 现已提供同源 PC/Android 教学实验。视频方向沿用源码对齐 Wan FFN 合成张量进行静态/动态 Hidden Channel 选择、输出耦合与理想 MAC 对照；后训练方向展示 DPO 解析梯度与 GRPO 组内裁剪；Agent 方向展示编排、故障注入、审批与核验状态。课程从 10 个专题扩展为 **13 个共享专题**。以上是有界教学实验，未运行真实视频生成、LLM 后训练或外部 Agent 工具。研究机制、实验计划及证据边界详见[三条研究路线](docs/three-research-tracks-20261101.md)。
 
 **2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
 

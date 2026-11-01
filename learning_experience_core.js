@@ -360,6 +360,23 @@
  function replay(record){
   return record?.kind==="graph"?replayGraph(record):replayLab(record);
  }
+ // Single shared observation entrypoint: only auth/replay/envelope are global.
+ // Domain projection stays in the existing validated state microscope.
+ function projectExecutionGrain(accepted,options={}){
+  if(!accepted||accepted.id!=="deepinfer_scheduler"||accepted.operation!=="simulate")
+   fail("granularity source adapter unavailable for this execution");
+  const replay=replayLab(accepted);
+  if(!replay.reproduced||!deps.state||typeof deps.state.schedulerGrain!=="function")
+   fail("source replay/state granularity projector unavailable");
+  const projected=deps.state.schedulerGrain(accepted.value,accepted.stateTrace,options);
+  return Object.freeze({schema:OBS_SCHEMA,kind:"grain_projection",
+   id:accepted.id,operation:accepted.operation,
+   evidence:accepted.evidence,stateEvidence:accepted.stateTrace.evidenceTier,
+   sourceEngine:accepted.engine,replayVerified:true,
+   numericalReinterpretation:false,equivalence:"NOT_CLAIMED",
+   ...copy(projected)});
+ }
+
  function inspectObservationStep(accepted,options={}){
   // Re-run first: never inspect a stale controller state under a valid source label.
   const isGraph=accepted?.kind==="graph";
@@ -496,5 +513,5 @@
  }
  return Object.freeze({SCHEMA,labs,inspectGraph,openPreset,presetIds,activateGraphLessons,inspectLab,
   executeLab,describeActions,replayLab,observeExecution,replayGraph,observeGraph,observe,replay,
-  inspectObservationStep,compareExecutions,compareRecords,inspectEvidence,inspectCourse,inventory});
+  inspectObservationStep,projectExecutionGrain,compareExecutions,compareRecords,inspectEvidence,inspectCourse,inventory});
 });

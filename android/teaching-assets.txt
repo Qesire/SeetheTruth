@@ -3,6 +3,7 @@ adamw_micro.js
 adaptive_token_depth.js
 android_teaching.html
 android_teaching_mode.js
+architecture_perspective.js
 architecture_tradeoffs.js
 architecture_why.js
 axis_block_pack.js
@@ -51,6 +52,7 @@ engineering_training_pipeline.js
 execution_ir.js
 expert_ffn_vjp.js
 gradient_inspection.js
+granularity_lens.js
 graph_autodiff.js
 graph_cost_report.js
 graph_layout.js
@@ -95,6 +97,7 @@ paper_lab.html
 paper_patches.js
 portable_operator_rules.js
 python_codegen.js
+research_tracks.js
 semantic_block_pack.js
 semantic_state.html
 semantic_state.js
