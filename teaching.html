@@ -51,6 +51,8 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
 .arch-inspector .arch-tag{color:#9bcacb;font:700 11px ui-monospace,monospace;overflow-wrap:anywhere}
 @media(max-width:950px){.arch-shell{grid-template-columns:1fr}.arch-step{min-height:126px}}
 @media(max-width:640px){.arch-path{grid-template-columns:1fr}.arch-step{min-height:0;flex-direction:row;align-items:center}.arch-step small{margin-left:auto;max-width:42%}}
+.controls select{min-height:42px;background:#173449;color:#def6fc;border:1px solid #50758d;border-radius:10px;padding:9px;font:inherit}
+.course-grain-meta{color:#a5d5d7;font:700 10px ui-monospace,monospace;letter-spacing:.02em}
 /* Independent granularity axis: do not confuse zoom with architecture plane or evidence. */
 .grain-head{margin:22px 0 11px}
 .grain-head p{max-width:960px;margin:6px 0;color:#a7cada;font-size:13px}
@@ -160,7 +162,7 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
  </div>
 </section>
 
-<div class="controls"><input id="search" type="search" placeholder="搜索：调度、状态、系统、算子、后训练…" aria-label="搜索课程">
+<div class="controls"><label for="courseGrain" class="muted" style="font-size:12px">课程主粒度</label><select id="courseGrain" aria-label="按课程粒度筛选"><option value="all">全部粒度</option><option value="system">G0 · 系统</option><option value="subsystem">G1 · 子系统</option><option value="component">G2 · 组件</option><option value="operation">G3 · 算子</option></select><input id="search" type="search" placeholder="搜索：调度、状态、系统、算子、后训练…" aria-label="搜索课程">
 <button id="all" aria-pressed="true">全部</button><button id="fundamentals" aria-pressed="false">基础 / 多模态</button><button id="inference" aria-pressed="false">前沿 / 推理</button><button id="engineering" aria-pressed="false">工程实战</button><button id="research" aria-pressed="false">研究主线</button></div>
 <div class="eyebrow" style="margin:25px 0 9px">COURSE LIBRARY · ARCHITECTURE → RUNTIME → OPERATOR</div><div class="layout"><section><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除筛选后查看全部。</p></section>
 <aside id="deepDive" class="panel" aria-live="polite"><div class="label">选择一门课程</div><h2 id="detailTitle">—</h2><small id="level">—</small>
