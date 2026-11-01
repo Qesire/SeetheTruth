@@ -41,6 +41,26 @@
    ["atomic","事件 ID / 依赖 / 结果","检查确定性事件序列与阻断条件；不虚构张量坐标","research","agent","SCRIPTED_STATE_MACHINE","SAME_SIMULATION_REFOCUS","SCRIPTED_MODEL"]
   ])
  });
+ const COURSE_FOCUS=Object.freeze({
+  building:"operation",papers:"subsystem",multimodal:"component",loop:"subsystem",
+  cache:"component",prefill:"component",scheduler:"subsystem",worker:"component",
+  engineering_journey:"system",engineering_pipeline:"subsystem",
+  research_video_sparse:"system",research_llm_posttrain:"system",research_agent_arch:"system"
+ });
+ function curriculumIndex(curriculum){
+  if(!curriculum||!Array.isArray(curriculum.lessons)||typeof curriculum.lookup!=="function")
+   throw Error("granularity course index requires canonical curriculum");
+  if(Object.keys(COURSE_FOCUS).length!==curriculum.lessons.length)
+   throw Error("curriculum granularity coverage mismatch");
+  return Object.freeze(curriculum.lessons.map(course=>{
+   const grain=COURSE_FOCUS[course.id];
+   if(!GRAINS.some(g=>g.id===grain)||!curriculum.lookup(course.id))
+    throw Error("course missing granularity classification "+course.id);
+   return Object.freeze({id:course.id,grain,code:GRAINS.find(g=>g.id===grain).code,
+    title:course.title,sourceId:"course:"+course.id,href:course.href,
+    note:"主讲解粒度；课程中可以跨层观察，不限制工作台探索"});
+  }));
+ }
  const nameKinds=Object.freeze({course:1,lab:1,operator:1,composite:1,research:1});
  const rootTracks=Object.freeze(["video","posttrain","agent"]);
  function resolve(track,grain,curriculum,core,extra={}){
@@ -88,5 +108,5 @@
    identityPreserved:all[idx].sourceId===all[0].sourceId,
    numericallyEquivalent:"NOT_CLAIMED"});
  }
- return Object.freeze({SCHEMA,GRAINS,rootTracks,resolve,inspectTrack,navigation});
+ return Object.freeze({SCHEMA,GRAINS,rootTracks,COURSE_FOCUS,curriculumIndex,resolve,inspectTrack,navigation});
 });
