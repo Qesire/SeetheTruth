@@ -76,6 +76,8 @@ jobs:
           node tests/research_tracks_contracts.js
           node --check architecture_perspective.js
           node tests/architecture_perspective_contracts.js
+          node --check granularity_lens.js
+          node tests/granularity_lens_contracts.js
           node tests/architecture_extension_spine_contracts.js
           node tests/unified_observation_contracts.js
           node tests/observation_snapshots_contracts.js
