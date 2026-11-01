@@ -26,6 +26,10 @@ Topics include base tensor graphs, paper rewrites, image/audio/video tokenizatio
 
 The same shared curriculum now includes **13 topics**, including video-model FFN sparsity, LLM DPO/GRPO post-training mathematics, and Agent state/event architecture. The new research lane on teaching.html reuses Wan FFN's pinned-topology synthetic trace and research_tracks.js for bounded numerical and scripted control-flow exercises. PC and offline Android use exactly the same sources and controls. It is not a real video-generation, LLM-training, or tool-execution system. See [three research tracks](three-research-tracks-20261101.md).
 
+## First native source-backed G0–G4 cycle viewer (2026-11-01)
+
+The original Scheduler/KV/Worker specialist's already-mounted `unified_observation_ui.js` now exposes native G0–G4 projections of a replay-verified accepted record. The core only verifies and envelopes the selected projection; `state_microscope.schedulerGrain` performs source-specific readonly mapping. No second scheduler run is created by changing scale. Native cycle steps, KV revisions, actions and Worker Event IDs remain those of the original record, with explicit source paths. Tests: `tests/native_granularity_spine_contracts.js`, `tests/browser_deepinfer_scheduler.py`. The existing conditional browser/UI evidence boundaries remain in effect.
+
 ## G0–G4 semantic drilldown (2026-11-01)
 
 The shared teaching center now has an independent five-step granularity selector with canonical course/lab/operator links; the entire 13-course library can be filtered by its declared primary scale. G4 is a coordinate/event observation scope, not a separate fake math course. The desktop/Android source is granularity_lens.js, and real links can deep-link the studio to an existing operator or composite without changing the native execution semantics. Test contracts: tests/granularity_lens_contracts.js and tests/browser_shared_teaching.py. See [granularity semantic contract](granularity-semantics-20261101.md).
