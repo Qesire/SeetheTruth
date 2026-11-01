@@ -1,4 +1,4 @@
-# SeetheTruth — 用积木理解并执行大模型计算
+# SeetheTruth — AI Architecture & Infrastructure 可执行学习工作台
 
 SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自由画布中连接张量积木，检查端口、形状和计算依赖，逐步追踪数学运算，查看对应论文与工程惯例；对于支持的计算子图，还可以运行微型数值计算、反向传播和参数更新，并**导出独立运行的 NumPy 前向程序或 PyTorch CPU 可训练程序**。
 
