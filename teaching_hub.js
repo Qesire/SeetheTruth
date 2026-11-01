@@ -36,6 +36,8 @@ const architectureEvidenceLabels={
 /* Granularity is orthogonal to architecture and the evidence plane.
  * Every link reuses a canonical course, specialist lab, or registered operator. */
 const Grain=window.SeetheTruthGranularityLens;
+const courseGrains=window.SeetheTruthGranularityLens.curriculumIndex(C);
+const grainByCourse=new Map(courseGrains.map(x=>[x.id,x]));
 const BlockCatalog=window.SeetheTruthBlockCatalog;
 if(!Grain||!BlockCatalog)throw Error("shared granularity source/registry unavailable");
 let grainId="system";
@@ -105,7 +107,9 @@ function detail(){
 }
 function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
+ const courseGrain=$("courseGrain").value;
  const lessons=courses.filter((l,i)=>{
+  if(courseGrain!=="all"&&grainByCourse.get(l.id)?.grain!==courseGrain)return false;
   if(filter==="fundamentals"&&i>=4)return false;
   if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")||l.id.startsWith("research_")))return false;
   if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
@@ -118,8 +122,11 @@ function render(){
   const group=document.createElement("div");group.className="topic";group.textContent=l.group;
   const h=document.createElement("h3");h.textContent=l.title;
   const p=document.createElement("p");p.textContent=l.theory;
-  const footer=document.createElement("span");footer.className="open";footer.textContent="展开数学 / 设计依据 →";
-  b.append(group,h,p,footer);
+  const gran=document.createElement("span");gran.className="course-grain-meta";
+  const grainInfo=grainByCourse.get(l.id);
+  gran.textContent=grainInfo.code+" · "+Grain.GRAINS.find(g=>g.id===grainInfo.grain).name;
+  const footer=document.createElement("span");footer.className="open";footer.textContent="架构权衡 / 机制 / 反例 →";
+  b.append(group,gran,h,p,footer);
   b.addEventListener("click",()=>{
    selected=l.id;detail();render();
    if(window.matchMedia("(max-width: 880px)").matches)$("deepDive").scrollIntoView({behavior:"smooth",block:"start"});
@@ -135,6 +142,7 @@ for(const name of ["all","fundamentals","inference","engineering","research"]){
  });
 }
 $("search").addEventListener("input",render);
+$("courseGrain").addEventListener("change",render);
 $("reveal").addEventListener("click",()=>{
  const willReveal=$("answer").hidden;$("answer").hidden=!willReveal;
  $("reveal").textContent=willReveal?"收起解析":"显示解析";
