@@ -54,7 +54,7 @@
   let href,sourceId;
   if(targetKind==="course"){
    const c=curriculum.lookup(id);if(!c)throw Error("missing course "+id);
-   href=c.href;sourceId="course:"+c.id;
+   href="teaching.html?focus="+encodeURIComponent(c.id)+"#cards";sourceId="course:"+c.id;
   }else if(targetKind==="lab"){
    const l=core.inspectLab(id);if(l.kind!=="specialized"||!l.href||l.executable!==null)
     throw Error("invalid lab contract "+id);
