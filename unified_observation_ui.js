@@ -42,7 +42,8 @@ function mount(options={}){
  const comparison=tag('pre');comparison.id='unifiedObservationDiff';
  comparison.style.cssText=detail.style.cssText;
  // Cross-grain view uses this panel's exact accepted source record.
- // It never executes another Scheduler, allocates KV, or invents a trace.
+ // UnifiedCore replay may rerun the SAME source for validation; it does not
+ // add a second implementation, mutate live KV, or invent a trace.
  const grainHost=tag('section');grainHost.id='nativeGranularityView';grainHost.hidden=true;
  grainHost.style.cssText='margin-top:14px;padding:12px;border:1px solid #426b70;border-radius:10px;background:#102d3d';
  const grainHeading=tag('h3','Scheduler / KV / Worker · 原生 G0–G4 粒度');
