@@ -6,6 +6,12 @@ SeetheTruth is an **architecture and infrastructure-first AI system learning wor
 
 Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: actual computation reconstruction → minimal equivalent mathematics → decisive counterexample/test → code/teaching change → independent evidence. Begin with the strongest new mechanism or useful implementation. Avoid bureaucratic gate proliferation; the gates below are actual release evidence, not barriers to exploration.
 
+## Architecture / Infra learning and block presentation
+
+The default teaching route is **System/SLO → Architecture/Topology → Runtime/State → Kernel/Math → Observability/Evidence**. For each new lesson, state the workload, competing architectural choices, resource/state ownership, failure counterexample and falsifiable end-to-end outcome before the detailed operator proof. The five levels are drilldown views, not five numerical engines.
+
+Keep **system modules** (Scheduler, Worker, training workflow, Agent tool/event orchestration) distinct from **typed tensor operator bricks** (true registered port/shape/execution contracts). A system-module card may link to an existing specialist lab; it may not be counted as a draggable executable graph brick without its own tested typed system-graph engine. `architecture_perspective.js` is presentation-only, deriving course links from `teaching_curriculum.js` and block roles from the existing operator categories. It must never shadow registries, source engines, observations or capability evidence. See [architecture-first design](docs/architecture-first-infra-learning-20261101.md).
+
 ## Extension target
 
 `learning_experience_core.js` provides the versioned *learning identity/observation contract*. Do not add a fresh incompatible registry, duplicate operator semantics, separate Android lesson database or ad-hoc fake numerical trace.
