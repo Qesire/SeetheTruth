@@ -26,6 +26,10 @@ Topics include base tensor graphs, paper rewrites, image/audio/video tokenizatio
 
 The same shared curriculum now includes **13 topics**, including video-model FFN sparsity, LLM DPO/GRPO post-training mathematics, and Agent state/event architecture. The new research lane on teaching.html reuses Wan FFN's pinned-topology synthetic trace and research_tracks.js for bounded numerical and scripted control-flow exercises. PC and offline Android use exactly the same sources and controls. It is not a real video-generation, LLM-training, or tool-execution system. See [three research tracks](three-research-tracks-20261101.md).
 
+## G0–G4 semantic drilldown (2026-11-01)
+
+The shared teaching center now has an independent five-step granularity selector with canonical course/lab/operator links; the entire 13-course library can be filtered by its declared primary scale. G4 is a coordinate/event observation scope, not a separate fake math course. The desktop/Android source is granularity_lens.js, and real links can deep-link the studio to an existing operator or composite without changing the native execution semantics. Test contracts: tests/granularity_lens_contracts.js and tests/browser_shared_teaching.py. See [granularity semantic contract](granularity-semantics-20261101.md).
+
 ## Architecture / Infra-first learning (2026-11-01)
 
 The shared PC and offline Android landing now begins with a **three-track, five-level architecture atlas**: System/SLO → Architecture/Topology → Runtime/State → Kernel/Math → Observability/Evidence. Each layer resolves through the existing shared curriculum and explicitly declares whether the example is a design prompt, synthetic numeric exercise, scripted state machine or real evaluation proposal. It does not create a second graph executor or simulator.
