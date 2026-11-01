@@ -54,6 +54,7 @@
     "execution_ir.js",
     "expert_ffn_vjp.js",
     "gradient_inspection.js",
+    "granularity_lens.js",
     "graph_autodiff.js",
     "graph_cost_report.js",
     "graph_layout.js",
