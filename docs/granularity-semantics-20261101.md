@@ -72,7 +72,7 @@
 - **G3** 展示 `value.decisions[cycle].actions` 的真实 KV 操作、请求 ID、修订号；不构造新的事件 ID。
 - **G4** 可选择同一轮真实的 Worker Event ID 或某个原生 KV 操作来源路径，两者是兄弟观察分支而非假定的函数等价父子。
 
-统一观察面板复用当前已经核验的执行对象，粒度切换不执行另一份 Scheduler、不编辑 KV 状态。现有 `state_microscope.validate`、`replayLab` 和原生事件校验承担可信边界。G4 的 Worker 时间数据仍是**假设的逻辑时间，不是 GPU Profiler**。
+统一观察面板复用当前被接受的执行对象；统一 Core 为核验来源一致性，可以重新执行**同一套** Scheduler 源引擎的确定性回放。粒度投影自身不运行 Scheduler、不编辑 KV 状态，也没有第二套独立的实现。现有 `state_microscope.validate`、`replayLab` 和原生事件校验承担可信边界。G4 的 Worker 时间数据仍是**假设的逻辑时间，不是 GPU Profiler**。
 
 已有 `tests/native_granularity_spine_contracts.js`、`tests/browser_deepinfer_scheduler.py` 对三个真实源引擎场景、完整来源映射、跨粒度状态一致性、篡改拒绝和 Chromium 界面进行回归；CI 结果需以最新提交检查。
 
