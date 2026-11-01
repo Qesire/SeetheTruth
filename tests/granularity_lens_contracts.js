@@ -61,6 +61,9 @@ assert.throws(()=>G.resolve('posttrain','operation',C,Core),/unknown registered 
 assert.throws(()=>G.resolve('posttrain','system',null,Core,extras),/canonical curriculum/);
 assert.throws(()=>G.resolve('posttrain','system',C,null,extras),/unified learning core/);
 const html=read('teaching.html'),hub=read('teaching_hub.js'),studio=read('learn.html');
+assert.ok(html.includes('id="courseGrain"'));
+assert.ok(hub.includes('Grain.GRAINS.find'));
+assert.ok(hub.includes('grainByCourse.get(l.id)'));
 for(const id of ['granularityExplorer','granularitySteps','granularityLaunch','granularityProof','granularityIdentity'])
  assert.ok(html.includes('id="'+id+'"'));
 assert.ok(html.indexOf('src="block_catalog.js"')<html.indexOf('src="granularity_lens.js"'));
