@@ -13,7 +13,7 @@ let selected=C.lookup(params.get("focus"))?params.get("focus"):courses[0].id,fil
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
- return u.pathname.split("/").at(-1)+u.search;
+ return u.pathname.split("/").at(-1)+u.search+u.hash;
 };
 
 /* Same curriculum identity, another projection: architecture / infrastructure
@@ -33,11 +33,41 @@ const architectureEvidenceLabels={
  TOY_ANALYTIC:"解析目标函数 · 无模型参数更新",
  PROPOSED_REAL_EVALUATION:"真实评测尚待完成"
 };
+/* Granularity is orthogonal to architecture and the evidence plane.
+ * Every link reuses a canonical course, specialist lab, or registered operator. */
+const Grain=window.SeetheTruthGranularityLens;
+const BlockCatalog=window.SeetheTruthBlockCatalog;
+if(!Grain||!BlockCatalog)throw Error("shared granularity source/registry unavailable");
+let grainId="system";
+function renderGranularity(){
+ const records=Grain.inspectTrack(architectureTrack.id,C,Core,{operators:BlockCatalog});
+ const nav=Grain.navigation(architectureTrack.id,grainId,C,Core,{operators:BlockCatalog});
+ $("granularitySteps").replaceChildren(...records.map(record=>{
+  const button=document.createElement("button");button.type="button";
+  button.dataset.grain=record.grain;button.dataset.source=record.sourceId;
+  button.setAttribute("aria-selected",String(record.grain===grainId));
+  const code=document.createElement("span");code.className="grain-code";code.textContent=record.code;
+  const name=document.createElement("strong");name.textContent=Grain.GRAINS.find(g=>g.id===record.grain).name;
+  const objective=document.createElement("small");objective.textContent=record.title;
+  button.append(code,name,objective);
+  button.addEventListener("click",()=>{grainId=record.grain;renderGranularity();});
+  return button;
+ }));
+ const item=nav.current;
+ $("granularityLabel").textContent=item.code+" · "+item.targetKind.toUpperCase()+" · "+item.evidence;
+ $("granularityTitle").textContent=item.title;
+ $("granularityObjective").textContent=item.objective;
+ $("granularityIdentity").textContent="真实来源："+item.sourceId+" · 展开关系："+item.relation;
+ $("granularityProof").textContent="父级覆盖："+item.containment+" · 数值等价："+nav.numericallyEquivalent;
+ $("granularityLaunch").href=safeTarget({href:item.href});
+ $("granularityLaunch").textContent="打开 "+Grain.GRAINS.find(g=>g.id===grainId).name+"对象";
+}
+
 function renderArchitecture(){
  $("architectureTracks").replaceChildren(...architecturePaths.map(path=>{
   const b=document.createElement("button");b.type="button";b.textContent=path.name;
   b.dataset.track=path.id;b.setAttribute("aria-pressed",String(architectureTrack.id===path.id));
-  b.addEventListener("click",()=>{architectureTrack=path;architectureIndex=0;renderArchitecture();});
+  b.addEventListener("click",()=>{architectureTrack=path;architectureIndex=0;renderArchitecture();renderGranularity();});
   return b;
  }));
  $("architectureGoal").textContent="SYSTEM GOAL · "+architectureTrack.goal;
@@ -196,11 +226,16 @@ function runVote(){
 }
 $("voteCase").addEventListener("change",runVote);
 runVote();
-detail();render();renderArchitecture();
+detail();render();renderArchitecture();renderGranularity();
+window.SeetheTruthGranularityExplorer={select(track,grain){
+ const t=architecturePaths.find(p=>p.id===track);if(!t)throw Error("unknown research track");
+ if(!Grain.GRAINS.some(g=>g.id===grain))throw Error("unknown granularity");
+ architectureTrack=t;grainId=grain;renderArchitecture();renderGranularity();
+},current(){return Grain.resolve(architectureTrack.id,grainId,C,Core,{operators:BlockCatalog});}};
 window.SeetheTruthArchitectureAtlas={paths:architecturePaths,select(track,level){
  const next=architecturePaths.find(p=>p.id===track);if(!next)throw Error("unknown architecture track");
  const index=next.steps.findIndex(s=>s.level===level);if(index<0)throw Error("unknown architecture level");
- architectureTrack=next;architectureIndex=index;renderArchitecture();
+ architectureTrack=next;architectureIndex=index;renderArchitecture();renderGranularity();
 },current(){return {track:architectureTrack.id,level:architectureTrack.steps[architectureIndex].level};}};
 window.SeetheTruthTeachingHub={version:C.VERSION,lessons:courses.length,coreSchema:Core.SCHEMA,select(id){
  if(!C.lookup(id))throw Error("unknown lesson");selected=id;detail();render();
