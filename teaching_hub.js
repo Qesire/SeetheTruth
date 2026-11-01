@@ -15,6 +15,55 @@ const safeTarget=l=>{
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
  return u.pathname.split("/").at(-1)+u.search;
 };
+
+/* Same curriculum identity, another projection: architecture / infrastructure
+ * questions lead to existing real labs; atlas navigation never executes a lab. */
+const Architecture=window.SeetheTruthArchitecturePerspective;
+if(!Architecture)throw Error("shared architecture perspective unavailable");
+const architecturePaths=Architecture.paths(C);
+let architectureTrack=architecturePaths.find(p=>p.id===params.get("track"))||architecturePaths[0];
+let architectureIndex=0;
+const architectureEvidenceLabels={
+ DESIGN_ONLY:"设计问题 · 尚未执行",
+ ANALYTICAL_ONLY:"解析成本模型 · 非硬件测速",
+ SOURCE_PINNED_SYNTHETIC:"源码约束 + 合成数值 · 非真实视频",
+ SYNTHETIC_NUMERIC:"有界 CPU 数值 / 状态模拟",
+ SCRIPTED_STATE_MACHINE:"确定性状态机 · 无真实工具调用",
+ STATIC_GRAPH:"静态图结构与可组合算子",
+ TOY_ANALYTIC:"解析目标函数 · 无模型参数更新",
+ PROPOSED_REAL_EVALUATION:"真实评测尚待完成"
+};
+function renderArchitecture(){
+ $("architectureTracks").replaceChildren(...architecturePaths.map(path=>{
+  const b=document.createElement("button");b.type="button";b.textContent=path.name;
+  b.dataset.track=path.id;b.setAttribute("aria-pressed",String(architectureTrack.id===path.id));
+  b.addEventListener("click",()=>{architectureTrack=path;architectureIndex=0;renderArchitecture();});
+  return b;
+ }));
+ $("architectureGoal").textContent="SYSTEM GOAL · "+architectureTrack.goal;
+ $("architectureMetrics").textContent="关键验收："+architectureTrack.metrics;
+ $("architectureSteps").replaceChildren(...architectureTrack.steps.map((step,i)=>{
+  const b=document.createElement("button");b.type="button";b.className="arch-step";
+  b.dataset.layer=step.level;b.dataset.course=step.course;
+  b.setAttribute("aria-selected",String(i===architectureIndex));
+  const level=Architecture.LEVELS.find(l=>l.id===step.level);
+  const head=document.createElement("span");head.className="arch-id";head.textContent=level.en;
+  const strong=document.createElement("strong");strong.textContent=level.name;
+  const small=document.createElement("small");small.textContent=step.question;
+  b.append(head,strong,small);
+  b.addEventListener("click",()=>{architectureIndex=i;renderArchitecture();});
+  return b;
+ }));
+ const selectedStep=architectureTrack.steps[architectureIndex];
+ const layer=Architecture.LEVELS.find(l=>l.id===selectedStep.level);
+ $("architectureSelectedLevel").textContent=layer.en+" / "+layer.name;
+ $("architectureQuestion").textContent=selectedStep.question;
+ $("architectureArtifact").textContent="探索对象："+selectedStep.artifact;
+ $("architectureEvidence").textContent="当前证据："+(architectureEvidenceLabels[selectedStep.evidence]||selectedStep.evidence);
+ $("architectureLaunch").href=safeTarget({href:selectedStep.href});
+ $("architectureLaunch").textContent="打开 "+C.lookup(selectedStep.course).title;
+}
+
 function detail(){
  const l=Core.inspectCourse(selected);if(!l)return;
  $("detailTitle").textContent=l.title;$("level").textContent=l.level;
@@ -147,7 +196,12 @@ function runVote(){
 }
 $("voteCase").addEventListener("change",runVote);
 runVote();
-detail();render();
+detail();render();renderArchitecture();
+window.SeetheTruthArchitectureAtlas={paths:architecturePaths,select(track,level){
+ const next=architecturePaths.find(p=>p.id===track);if(!next)throw Error("unknown architecture track");
+ const index=next.steps.findIndex(s=>s.level===level);if(index<0)throw Error("unknown architecture level");
+ architectureTrack=next;architectureIndex=index;renderArchitecture();
+},current(){return {track:architectureTrack.id,level:architectureTrack.steps[architectureIndex].level};}};
 window.SeetheTruthTeachingHub={version:C.VERSION,lessons:courses.length,coreSchema:Core.SCHEMA,select(id){
  if(!C.lookup(id))throw Error("unknown lesson");selected=id;detail();render();
 }};
