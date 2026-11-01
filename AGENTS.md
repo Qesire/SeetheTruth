@@ -2,7 +2,7 @@
 
 ## North star
 
-A learner can build **any well-typed runnable graph**, inspect each actual tensor/operator computation and its mathematical reason, then enter source-pinned guided lessons on PC or offline Android without learning a second incompatible abstraction. Explore creatively; use exact source and numerical proof before asserting an implementation is correct.
+SeetheTruth is an **architecture and infrastructure-first AI system learning workbench**, serving video generation sparsity, LLM post-training and Agent architecture. Begin with the workload, system SLO, architectural tradeoff, component/state ownership and failure mode; then drill into the actual operator mathematics and return to end-to-end evidence. A learner can still build **any well-typed runnable graph** and inspect its computation without a second incompatible abstraction. Be exact about what is a source-pinned runtime, a bounded simulation, an operator graph, or a hardware measurement.
 
 Apply [AutoResearcher](https://github.com/Qesire/AutoResearcher) selectively: actual computation reconstruction → minimal equivalent mathematics → decisive counterexample/test → code/teaching change → independent evidence. Begin with the strongest new mechanism or useful implementation. Avoid bureaucratic gate proliferation; the gates below are actual release evidence, not barriers to exploration.
 
