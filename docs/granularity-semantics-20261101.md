@@ -62,6 +62,20 @@
 
 **Agent：** 任务成功率、权限、时延 → Planner/Executor/Verifier → 状态与 Tool Gateway → Tool Call → eventId、attempt、checkpoint revision。当前各粒度主要指向同一可注入故障的脚本状态机；不是四种不同的真实 Agent Runtime。Agent 的 G4 是事件而不是张量坐标。
 
+## 5.5 首个可核验的跨粒度执行闭环：Scheduler/KV/Worker
+
+新增的 G0–G4 **不是一套 System IR**。在已有统一 `learning_experience_core.js` 中，`projectExecutionGrain` 只验证被接受的 `deepinfer_scheduler/simulate` 执行可按原输入无损回放，再把任务委派给原 `state_microscope.js` 的纯只读 `schedulerGrain` 投影。
+
+- **G0** 读取原 `value.summary` 和 `stateTrace.steps[].id`。
+- **G1** 读取原 `value.decisions`、`value.snapshots`、`value.worker.events` 的范围和数量；三条来源并不是额外启动的执行器。
+- **G2** 使用原 `stateTrace.steps[cycle+1]`、`value.snapshots[cycle+1].revision` 和 `value.executionProof[cycle].forwardEvent`。
+- **G3** 展示 `value.decisions[cycle].actions` 的真实 KV 操作、请求 ID、修订号；不构造新的事件 ID。
+- **G4** 可选择同一轮真实的 Worker Event ID 或某个原生 KV 操作来源路径，两者是兄弟观察分支而非假定的函数等价父子。
+
+统一观察面板复用当前已经核验的执行对象，粒度切换不执行另一份 Scheduler、不编辑 KV 状态。现有 `state_microscope.validate`、`replayLab` 和原生事件校验承担可信边界。G4 的 Worker 时间数据仍是**假设的逻辑时间，不是 GPU Profiler**。
+
+已有 `tests/native_granularity_spine_contracts.js`、`tests/browser_deepinfer_scheduler.py` 对三个真实源引擎场景、完整来源映射、跨粒度状态一致性、篡改拒绝和 Chromium 界面进行回归；CI 结果需以最新提交检查。
+
 ## 6. 已落实与后续工程边界
 
 本轮 G0–G4 由 granularity_lens.js 组织成三轨道、每轨五级的轻量视图：课程用原 Curriculum.lookup、实验室用 UnifiedCore.inspectLab、注册算子用 BlockCatalog 检查；相同来源的重复下钻标 SAME_LAB_REFOCUS / SAME_SIMULATION_REFOCUS，跨来源仅标 PEDAGOGICAL_ZOOM。所有导航的数值等价默认 NOT_CLAIMED，显示来源、覆盖关系和证据等级。
