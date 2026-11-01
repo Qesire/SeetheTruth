@@ -26,6 +26,14 @@ Topics include base tensor graphs, paper rewrites, image/audio/video tokenizatio
 
 The same shared curriculum now includes **13 topics**, including video-model FFN sparsity, LLM DPO/GRPO post-training mathematics, and Agent state/event architecture. The new research lane on teaching.html reuses Wan FFN's pinned-topology synthetic trace and research_tracks.js for bounded numerical and scripted control-flow exercises. PC and offline Android use exactly the same sources and controls. It is not a real video-generation, LLM-training, or tool-execution system. See [three research tracks](three-research-tracks-20261101.md).
 
+## Architecture / Infra-first learning (2026-11-01)
+
+The shared PC and offline Android landing now begins with a **three-track, five-level architecture atlas**: System/SLO → Architecture/Topology → Runtime/State → Kernel/Math → Observability/Evidence. Each layer resolves through the existing shared curriculum and explicitly declares whether the example is a design prompt, synthetic numeric exercise, scripted state machine or real evaluation proposal. It does not create a second graph executor or simulator.
+
+In Learning Studio, a dedicated **system-module shelf** links to the actual Scheduler/KV/Worker, Training Pipeline and research exercises; only registered tensor operators appear as draggable graph blocks. Four architecture-role filters derive directly from the underlying block category and reveal actual input port names without changing source semantics, free composition, backward/coding eligibility or hardware-evidence boundaries. The PC and Android app share the same architecture_perspective.js and static asset policy. New checks live in tests/architecture_perspective_contracts.js and expanded tests/browser_shared_teaching.py.
+
+See [architecture-first product architecture](architecture-first-infra-learning-20261101.md) and [three research tracks](three-research-tracks-20261101.md). This is a presentation and curriculum slice; a generic executable typed System IR is a separate future engineering milestone.
+
 ## Compatibility and test gates
 
 - `node tests/teaching_curriculum_contracts.js` checks the shared content, link destinations, source-only APK manifest, native bridge policy and the absence of Android-side output actions.
