@@ -319,7 +319,7 @@ function scalar(run){
   disclaimer:'Actual scalar analytic derivative and SGD/AdamW state arithmetic; not PyTorch autograd or GPU training'});
 }
 /* Source-owning projection of verified native Scheduler / KV / Worker structures.
- * NO execution, mutable state, fabricated event identity or second graph runtime.
+ * NO execution here, mutable state, fabricated event identity or second graph runtime.
  * UnifiedCore handles replay verification and envelopes the projection. */
 function schedulerGrain(v,frame,options={}){
  if(!options||typeof options!=="object"||Array.isArray(options))
