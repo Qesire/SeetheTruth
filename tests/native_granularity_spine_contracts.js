@@ -4,6 +4,7 @@
 const assert=require('node:assert/strict');
 const Core=require('../learning_experience_core.js');
 const Source=require('../deepinfer_scheduler_workflow.js');
+const State=require('../state_microscope.js');
 const clone=x=>JSON.parse(JSON.stringify(x));
 const schema='seethetruth-observation-v1';
 const cases=[['pressure',Source.EXAMPLES.pressure],['structured',Source.EXAMPLES.structured],['ample',Source.EXAMPLES.ample]];
@@ -33,6 +34,12 @@ for(const [name,spec] of cases){
   const decision=native.decisions[cycle],proof=native.executionProof[cycle],
    rawStep=accepted.stateTrace.steps[cycle+1],snapshot=native.snapshots[cycle+1];
   const g2=Core.projectExecutionGrain(accepted,{grain:'G2',cycle});
+  const raw=State.schedulerGrain(accepted.value,accepted.stateTrace,{grain:'G2',cycle});
+  assert.deepEqual(g2.value,raw.value);
+  assert.equal(g2.sourcePath,raw.sourcePath);
+  assert.equal(g2.parentStepId,raw.parentStepId);
+  assert.deepEqual(State.schedulerGrain(accepted.value,accepted.stateTrace,{grain:'G3',cycle}).value,decision.actions);
+
   assert.deepEqual(g2.value,rawStep);
   assert.equal(g2.parentStepId,rawStep.id);
   assert.equal(g2.kvRevision,snapshot.revision);
