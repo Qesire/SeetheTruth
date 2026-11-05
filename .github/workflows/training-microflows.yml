@@ -147,6 +147,10 @@ on:
       - 'concept_flow.js'
       - 'tests/**'
       - '.github/workflows/training-microflows.yml'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   numerical-contracts:
     runs-on: ubuntu-latest
