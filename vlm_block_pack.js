@@ -156,12 +156,12 @@
    N("value","linear",1100,355,{out:4}),
    N("key_transpose","transpose2d",1350,200),
    N("scores","matmul",1570,80),
-   N("scaled","scale",1785,80,{factor:0.5}),
+   N("scaled","scale",1810,80,{factor:0.5}),
    N("mask","causal_mask",1785,335),
-   N("probabilities","masked_softmax",2010,110),
-   N("context","weighted_sum",2250,155),
-   N("text_context","vlm_text_tail",2490,155,{prefixTokens:compressed?2:4}),
-   N("language_head","linear",2730,155,{out:8})
+   N("probabilities","masked_softmax",2050,110),
+   N("context","weighted_sum",2290,155),
+   N("text_context","vlm_text_tail",2530,155,{prefixTokens:compressed?2:4}),
+   N("language_head","linear",2770,155,{out:8})
   ];
   const edges=[
    E("pixels","patches","x"),E("patches","vision_projector","x"),

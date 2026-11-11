@@ -20,6 +20,13 @@ const names=['extension_vlm_early_fusion','extension_vlm_compressed_prefix','ext
 const graphs=names.map(id=>L.preset(id));
 // Guided graphs must start entirely inside the visible coordinate plane;
  // negative positions used to hide the visual pool/dense comparison at y<0.
+// Native Learning Studio blocks occupy at least 220px width and 124px height.
+// Use a conservative 150px vertical review budget to avoid clipped overlaps.
+for(const graph of graphs)for(let i=0;i<graph.nodes.length;i++)for(let j=i+1;j<graph.nodes.length;j++){
+ const x=graph.nodes[i],y=graph.nodes[j];
+ assert.ok(Math.abs(x.x-y.x)>=220||Math.abs(x.y-y.y)>=150,
+  'overlapping guided VLM blocks: '+graph.title+'/'+x.id+'/'+y.id);
+}
 for(const graph of graphs)for(const node of graph.nodes){
  assert.ok(Number.isFinite(node.x)&&Number.isFinite(node.y)&&node.x>=0&&node.y>=0,
   'guided VLM node outside initial visible graph plane: '+graph.title+'/'+node.id);
