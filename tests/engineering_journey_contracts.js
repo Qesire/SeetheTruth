@@ -58,7 +58,14 @@ assert.ok(script.includes('state.done.add(i)')&&script.includes('Number(selected
 for(const id of ['engineering_journey.html','engineering_journey_engine.js','engineering_journey_ui.js']){
  assert.ok(fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/).includes(id),'Android asset missing '+id);
 }
-assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('href="engineering_journey.html"'));
-assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('href="engineering_pipeline.html"'));
+const Core=require('../learning_experience_core.js');
+for(const [id,href] of [['engineering_journey','engineering_journey.html'],
+                        ['engineering_pipeline','engineering_pipeline.html']]){
+ const lab=Core.labs.find(x=>x.id===id);
+ assert.ok(lab&&lab.href===href,'engineering route missing from canonical specialist manifest '+id);
+}
+assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('id="allLabLinks"'));
+assert.ok(fs.readFileSync(path.join(root,'teaching_hub.js'),'utf8').includes('link.href=lab.href'),
+ 'course navigation must derive the engineering links from Core.labs');
 assert.ok(fs.readFileSync(path.join(root,'learn.html'),'utf8').includes('href="engineering_journey.html"'));
 console.log('ENGINEERING_JOURNEY_PASS reproducible init, independent split, finite differences, AdamW training, checkpoint, deterministic decode, invalid cases, PC/Android assets');
