@@ -24,7 +24,7 @@ const graphs=names.map(id=>L.preset(id));
 // Use a conservative 150px vertical review budget to avoid clipped overlaps.
 for(const graph of graphs)for(let i=0;i<graph.nodes.length;i++)for(let j=i+1;j<graph.nodes.length;j++){
  const x=graph.nodes[i],y=graph.nodes[j];
- assert.ok(Math.abs(x.x-y.x)>=220||Math.abs(x.y-y.y)>=150,
+ assert.ok(Math.abs(x.x-y.x)>=220||Math.abs(x.y-y.y)>=200,
   'overlapping guided VLM blocks: '+graph.title+'/'+x.id+'/'+y.id);
 }
 for(const graph of graphs)for(const node of graph.nodes){
