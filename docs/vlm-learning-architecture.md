@@ -46,7 +46,7 @@ p_{ij}=\frac{\mathbf1[j\le i]\exp(s_{ij})}
 O_i=\sum_{j\le i}p_{ij}U_j.
 \]
 
-`vlm_text_tail(prefixTokens=4)` 取出 \(O\) 的最后两行，再由 `language_head` 得到 \([2,8]\) 的 Logits。因果分数矩阵为 \(6\times6\)，允许读取的位置有 21 个。此 Mask 只规定教学融合序列的一层注意力可见性；真实视觉编码器中的图像 Self-Attention、位置编码与多层解码结构尚未由本课程复刻。
+`vlm_text_tail(prefixTokens=4)` 从视觉分支额外读取 Token 数作一致性校验，再取出 \(O\) 的最后两行，再由 `language_head` 得到 \([2,8]\) 的 Logits。因果分数矩阵为 \(6\times6\)，允许读取的位置有 21 个。此 Mask 只规定教学融合序列的一层注意力可见性；真实视觉编码器中的图像 Self-Attention、位置编码与多层解码结构尚未由本课程复刻。
 
 ### 独立 Cross-Attention：文本查询视觉记忆
 
@@ -99,7 +99,7 @@ o_t=\sum_jp_{tj}V_j,\qquad
 
 Top-K **不保证**随 \(k\) 增大而单调减少读出误差。例如 \(p=(0.5,0.3,0.2)\)，Value \(=(0,100,-100)\) 时，全量输出为 \(10\)；Top-1 输出为 \(0\)，误差 \(10\)；Top-2 输出为 \(37.5\)，误差增加到 \(27.5\)。此反例和全量 Top-K 恢复 Dense 的等价性均有可运行测试。
 
-`vlm_patch_grid_lookup` 将行优先编号 \(j\) 还原为 \(y=\lfloor j/W_p\rfloor,\ x=j\bmod W_p\)，观测记录保留 Query 行、选择排名、Patch ID 和坐标。它回答“选择了哪一块”，无法单独回答“选中的物体是否正确”。
+`vlm_patch_grid_lookup` 先验证网格面积与实际视觉 Token 数相同，再将行优先编号 \(j\) 还原为 \(y=\lfloor j/W_p\rfloor,\ x=j\bmod W_p\)，观测记录保留 Query 行、选择排名、Patch ID 和坐标。它回答“选择了哪一块”，无法单独回答“选中的物体是否正确”。
 
 `readout_error` 的 \([1,1]\) MSE 是 \([2,4]\) 读出向量的均方差，**不是语言交叉熵、Grounding 准确率或视频画质**。目前的 Top-K 实验还先计算全部 QK 分数、再运行稀疏路径，并额外运行 Dense 路径作为对照，属于机制验证而非实测加速。
 
