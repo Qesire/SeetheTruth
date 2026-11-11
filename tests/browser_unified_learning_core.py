@@ -64,6 +64,32 @@ class UnifiedLearningBrowser(unittest.TestCase):
   finally:
    phone.close()
 
+ def test_vlm_course_opens_the_actual_guided_computation_graph(self):
+  page=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True)
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?edition=teaching").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   page.evaluate("window.SeetheTruthTeachingHub.select('vlm')")
+   href=page.locator("#openLesson").get_attribute("href")
+   self.assertIn("mission=extension_vlm_early_fusion",href)
+   self.assertIn("edition=teaching",href)
+   self.assertEqual(page.goto(self.base+"/"+href).status,200)
+   page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+   opened=page.evaluate("""() => {
+     const s=window.SeetheTruthUnifiedWorkbench.inspect();
+     return {title:s.graph.title, kinds:s.graph.nodes.map(n=>n.kind),
+       active:document.querySelector('[data-preset="extension_vlm_early_fusion"]').classList.contains('active')};
+   }""")
+   self.assertIn("VLM",opened["title"])
+   self.assertIn("vlm_token_concat",opened["kinds"])
+   self.assertIn("vlm_text_tail",opened["kinds"])
+   self.assertTrue(opened["active"])
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
  def test_restored_engineering_journeys_share_actual_core(self):
   for route,id,global_name,count in [
    ("engineering_journey.html","engineering_journey","SeetheTruthEngineeringJourney",12),
