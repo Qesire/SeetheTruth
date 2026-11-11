@@ -29,28 +29,28 @@ The single substrate is the existing graph runtime. Source/state traces and impo
 
 ## 2. Minimal mathematics and axis identity
 
-For an image with height (H), width (W), patch sizes (P_h,P_w), and model feature width (d):
+For an image with height \(H\), width \(W\), patch sizes \(P_h,P_w\), and model feature width \(d\):
 
-[
-N_v={Hover P_h}{Wover P_w},qquad
-R=operatorname{Patchify}(I)inmathbb{R}^{N_v	imes P_hP_wC},qquad
-V=P(R)inmathbb{R}^{N_v	imes d}.
-]
+\[
+N_v=\frac{H}{P_h}\frac{W}{P_w},\qquad
+R=\operatorname{Patchify}(I)\in\mathbb{R}^{N_v\times P_hP_wC},\qquad
+V=P(R)\in\mathbb{R}^{N_v\times d}.
+\]
 
 Here `P` is a bounded synthetic learned-style `linear` operator in the existing graph. The present lesson **does not execute a pretrained vision encoder** or its real weights. Full ViT/SigLIP/ConvNeXt style image towers would require pinned checkpoint source, preprocessing, learned weights and independent numerical parity.
 
-For prompt token IDs (z), `embedding` yields (T=E(z)inmathbb{R}^{N_t	imes d}). The visual-prefix route concatenates in **token** order:
+For prompt token IDs \(z\), `embedding` yields \(T=E(z)\in\mathbb{R}^{N_t\times d}\). The visual-prefix route concatenates in **token** order:
 
-[
-X=[V;T]inmathbb{R}^{(N_v+N_t)	imes d},quad
-Q=XW_Q, K=XW_K, U=XW_V,
-]
-[
-A_{ij}=operatorname{softmax}_{jle i}left(
- {Q_iK_j^	opoversqrt d}ight),qquad
-O=AU,qquad
+\[
+X=[V;T]\in\mathbb{R}^{(N_v+N_t)\times d},\qquad
+Q=XW_Q,\ K=XW_K,\ U=XW_V,
+\]
+\[
+A_{ij}=\operatorname{softmax}_{j\le i}\left(
+ \frac{Q_iK_j^\top}{\sqrt d}\right),\qquad
+O=AU,\qquad
 Y=O[N_v:N_v+N_t,:].
-]
+\]
 
 The teaching graph explicitly constructs the Q, K, V paths, scaled score matrix, lower-triangular `causal_mask`, `masked_softmax`, weighted sum, text-only readout and language-logit projection. `vlm_text_tail(prefixTokens=N_v)` locates text rows in the *post-attention* context, preserving absolute source-row indices. The teaching version has a single attention stage, not a full multi-layer autoregressive VLM decoder, tokenizer, or generation sampler.
 
@@ -60,10 +60,10 @@ The teaching graph explicitly constructs the Q, K, V paths, scaled score matrix,
 
 The cross-attention lesson keeps independent text queries and image keys/values:
 
-[
-Q_t=TW_Q,quad K_v=VW_K,quad U_v=VW_V,qquad
-T'=T+operatorname{softmax}left({Q_tK_v^	opoversqrt d}ight)U_v.
-]
+\[
+Q_t=TW_Q,\quad K_v=VW_K,\quad U_v=VW_V,\qquad
+T'=T+\operatorname{softmax}\left(\frac{Q_tK_v^\top}{\sqrt d}\right)U_v.
+\]
 
 The **executed** graph calls the existing `attention` operator directly on preprojected token matrices; it is a minimal two-modality cross-attention and residual, **not** an assertion that it implements Flamingo, BLIP-2 Q-Former or any checkpoint-specific gating. Unlike visual-prefix self-attention, cross-attention does not automatically make image tokens part of the autoregressive KV stream. That difference is the teaching comparison.
 
@@ -71,8 +71,8 @@ The **executed** graph calls the existing `attention` operator directly on prepr
 
 | Identifier | Mathematical contract | Direct source trace |
 |---|---|---|
-| `vlm_token_concat` | `concat(visual,text,axis=T)` with matching (D); (N_v+N_tle8) | Every output element points to its original visual/text element |
-| `vlm_visual_pair_pool` | ((V_{2j,d}+V_{2j+1,d})/2) for even (N_v) | Pooled source pairs and coefficients (1/2) |
+| `vlm_token_concat` | `concat(visual,text,axis=T)` with matching \(D\); \(N_v+N_t\le8\) | Every output element points to its original visual/text element |
+| `vlm_visual_pair_pool` | \((V_{2j,d}+V_{2j+1,d})/2\) for even \(N_v\) | Pooled source pairs and coefficients (1/2) |
 | `vlm_text_tail` | `context[prefixTokens:,:]`, leaving at least one text token | Every output element points to the original context row |
 
 All use finite Float64 arrays and the existing trusted block-pack interface (`defs/validate/infer/execute/trace`). Unrecognized shapes, mismatched visual/text widths, odd pooling length, impossible prefix boundary and nonfinite values are rejected. No extra executor, exporter allowlist or permanent graph-template restriction is created.
@@ -107,11 +107,11 @@ For visual-prefix attention, the probability matrix is exactly lower triangular 
 
 The toy graph compresses adjacent visual tokens:
 
-[
+\[
 V'_j=(V_{2j}+V_{2j+1})/2.
-]
+\]
 
-For fixed text length (N_t=2), visual token count changes from 4 to 2, making total length (L) change from 6 to 4. An ordinary dense attention score matrix shrinks from (36) to (16) elements, and the lower triangular causal region from (21) to (10) elements. This is an **analytical teaching comparison**, not a demonstrated (36/16) wall-clock speedup: projections, data movement, KV traffic, kernels and token scheduling affect real latency. Pair pooling can destroy fine-grained spatial information; quality retention needs image-grounded evaluation.
+For fixed text length \(N_t=2\), visual token count changes from 4 to 2, making total length \(L\) change from 6 to 4. An ordinary dense attention score matrix shrinks from 36 to 16 elements, and the lower triangular causal region from 21 to 10 elements. This is an **analytical teaching comparison**, not a demonstrated wall-clock speedup: projections, data movement, KV traffic, kernels and token scheduling affect real latency. Pair pooling can destroy fine-grained spatial information; quality retention needs image-grounded evaluation.
 
 ### C. Fusion topologies
 
