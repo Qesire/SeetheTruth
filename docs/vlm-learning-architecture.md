@@ -1,4 +1,4 @@
-# VLM in SeetheTruth: one computation spine, three executable graph lessons
+# VLM in SeetheTruth: one computation spine, four executable graph lessons
 
 **Status (2026-11-11):** A bounded, synthetic-Float64 visual-language teaching extension is installed in the **existing** graph engine. This document separates the executed mechanisms from future checkpoint- and task-dependent VLM research.
 
@@ -17,9 +17,9 @@ image → Patchify → projection → visual tokens ─┐     │
                                                 ├─ fusion → decoder → text logits
 token IDs → embedding → text tokens ───────────┘     │
      │                                              │
-     ├─ installed vlm_block_pack (3 operators)      │
+     ├─ installed vlm_block_pack (4 operators)      │
      ├─ native operators: matmul, attention, mask    │
-     ├─ three guided graph recipes                  │
+     ├─ four guided graph recipes                  │
      └─ unified coordinate/math observation         │
                              │
          shared PC/Android teaching curriculum
@@ -74,6 +74,7 @@ The **executed** graph calls the existing `attention` operator directly on prepr
 | `vlm_token_concat` | `concat(visual,text,axis=T)` with matching \(D\); \(N_v+N_t\le8\) | Every output element points to its original visual/text element |
 | `vlm_visual_pair_pool` | \((V_{2j,d}+V_{2j+1,d})/2\) for even \(N_v\) | Pooled source pairs and coefficients (1/2) |
 | `vlm_text_tail` | `context[prefixTokens:,:]`, leaving at least one text token | Every output element points to the original context row |
+| `vlm_patch_grid_lookup` | Flattened selected Patch IDs → zero-based grid `(y,x)` in known `[H_p,W_p]` | Exact selected IDs and spatial grid; no semantic-label assertion |
 
 All use finite Float64 arrays and the existing trusted block-pack interface (`defs/validate/infer/execute/trace`). Unrecognized shapes, mismatched visual/text widths, odd pooling length, impossible prefix boundary and nonfinite values are rejected. No extra executor, exporter allowlist or permanent graph-template restriction is created.
 
@@ -82,6 +83,7 @@ All use finite Float64 arrays and the existing trusted block-pack interface (`de
 | `extension_vlm_early_fusion` | Visual-prefix causal language computation | 4 visual + 2 text → 6-token QKV / masked attention → 2-row language logits |
 | `extension_vlm_compressed_prefix` | Lossy visual-token reduction | 4 visual tokens → 2 pooled visual + 2 text → 4-token attention → 2-row logits |
 | `extension_vlm_cross_attention` | Text queries read separate visual memory | 2 text queries, 4 visual keys/values → text residual → logits |
+| `extension_vlm_query_patch_selection` | Text-conditioned visual patch selection and readout loss | 2 Query × 4 visual Patch, Top-K=2; original sparse-attention and dense-attention implementations → delta/MSE, selected 2×2 Patch grid positions |
 
 These recipes appear in the regular **Learning Studio** via the trusted extension manifest and the dynamic recipe list. Any operator can still be used in arbitrary well-typed graphs; recipes are suggestions, not a whitelist. The new `vlm` curriculum topic in the PC/Android teaching center deep-links to `extension_vlm_early_fusion`. The teaching center's guided-graph link also respects its existing `edition=teaching` mode.
 
@@ -117,6 +119,48 @@ For fixed text length \(N_t=2\), visual token count changes from 4 to 2, making 
 
 Run both prefix and cross-attention graphs under the same synthetic shapes. The former lets causal text positions attend to preceding image and text positions; the latter uses text Query to read a distinct visual K/V bank. Observe exact shapes and source paths, then introduce separate architecture-specific real weight checks only when available.
 
+### C2. Text-conditioned Patch selection: an actual composition, not another Attention kernel
+
+The fourth VLM lesson wires **existing source-tested operators** in the same LearningLab graph:
+
+\`\`\`text
+image → Patchify → projector → V ───────┬── DenseAttention ← text Q
+                                        │
+ text IDs → Embedding → Q ─→ QKᵀ/√d ─→ TopK indices ─→ SparseAttention(Q,V,V,indices)
+                                        │                      │
+                                        └→ PatchGridLookup      ├→ MSE vs Dense
+                                                               └→ Text Residual → logits
+\`\`\`
+
+The visual tokens are numbered in row-major order by the existing Patchify, so a selected Patch number \(j\) in a grid of width \(W_p\) maps to \((\lfloor j/W_p\rfloor,\ j\bmod W_p)\). The coordinate shows **which patch was selected**, not a validated bounding box or proof of the feature's semantic relevance. The integer index contract rejects negative, fractional or out-of-grid positions.
+
+For each text Query \(t\), the existing \`matmul\` and \`scale\` produce exactly
+
+\[
+s_{tj}=\frac{q_t^\top k_j}{\sqrt d},\quad S_t=\operatorname{TopK}_k(s_t),
+\quad p_{tj}=\frac{e^{s_{tj}}}{\sum_{\ell}e^{s_{t\ell}}}.
+\]
+
+The native \`inference_sparse_attention\` takes the selected indices and computes
+\[
+\widehat o_t=\frac{\sum_{j\in S_t}p_{tj}v_j}{1-m_t},
+\qquad
+m_t=\sum_{j\notin S_t}p_{tj}.
+\]
+
+The full \`attention\` block independently computes \(o_t=\sum_j p_{tj}v_j\). With the weighted mean \(\mu_{S_t}=\widehat o_t\) of selected Values and \(\mu_{\overline S_t}\) of excluded Values, the **exact error decomposition** is
+
+\[
+o_t-\widehat o_t=m_t(\mu_{\overline S_t}-\mu_{S_t}),
+\qquad
+\|o_t-\widehat o_t\|_2\le 2m_t R,\quad
+R=\max_j\|v_j\|_2.
+\]
+
+The first identity explains the competing hypotheses: small discarded attention mass can preserve the readout, but high discarded mass need not imply large error if selected and excluded Values are close. This holds for the single attention readout under the stated common Q/K/V and mask conditions. Downstream language accuracy remains a separate question.
+
+**Computational interpretation:** the teaching Top-K indexer first computes all \(T_qN_v\) scores; the sparse attention block then independently computes selected QK/PV again. This source-defined implementation is **not a speedup** and actually performs extra work in a comparison graph containing both branches. A production saving would require a measured indexer whose cost is outweighed by reduced selected-Value traffic or later layers, plus downstream semantic quality tests. This experiment validates operator semantics, token selection and local error—not latency.
+
 ### D. Aligned evidence for VLM research
 
 Future modules can reuse the same graph plus evidence contracts for:
@@ -130,7 +174,7 @@ The VLM addition therefore links video-model sparsity, LLM post-training and Age
 ## 6. Acceptance and evidence boundaries
 
 The repository test `tests/vlm_learning_contracts.js` checks:
-- three genuinely executable graph recipes and independent symbolic shape agreement;
+- four genuinely executable graph recipes and independent symbolic shape agreement;
 - every output's finite numeric values, visual/text source ordering and text-row location;
 - token-compression arithmetic against a separately constructed pairwise-mean oracle;
 - causal probability zeros and a deliberate future-token mutation counterexample;

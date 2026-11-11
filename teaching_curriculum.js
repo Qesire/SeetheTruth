@@ -17,7 +17,7 @@
    check:"视频 Tubelet 和逐帧图像 Patch 会自动拥有相同的时间信息吗？",
    answer:"不会。Tubelet 会直接编码局部时间块；逐帧 Patch 需要额外的位置编码或时间混合机制。"},
   {id:"vlm",group:"03B · 视觉语言",title:"VLM：视觉编码、对齐和语言解码",href:"learn.html",
-   level:"进阶 → 研究",theory:"先将图像变成 Patch Token，经视觉投影对齐隐藏维度，再与文本 Embedding 组成有序序列。展开 Q/K/V、因果 Mask、文本位置读出；对照独立 Cross-Attention 和视觉 Token 压缩。",
+   level:"进阶 → 研究",theory:"先将图像变成 Patch Token，经视觉投影对齐隐藏维度，再与文本 Embedding 组成有序序列。展开 Q/K/V、因果 Mask、文本位置读出；对照 Cross-Attention、视觉 Token 压缩及文本条件 Top-K Patch 选择和误差。",
    why:"VLM 的感知依赖视觉编码，语言推理依赖连接器、序列位置与注意力可见性。视觉 Token 数直接改变 Prefill 规模，训练对齐和空间定位还需要各自证据。",
    check:"把四个视觉 Token 压缩成两个、维度仍然相同，就一定保留同样的信息并得到相同的答案吗？",
    answer:"不能。均值池化减少序列长度，却可能抹去位置信息与细节；需比较被抹去的视觉特征、解码结果、任务正确率和实际设备耗时。"},

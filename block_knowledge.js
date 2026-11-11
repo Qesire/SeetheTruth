@@ -6,6 +6,7 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ torch_unravel_index:["PyTorch unravel_index: flat indices mapped to coordinates in a known shape","https://docs.pytorch.org/docs/stable/generated/torch.unravel_index.html"],
  visual_instruction_tuning:["LLaVA: visual instruction tuning and an aligned vision-language projector","https://arxiv.org/abs/2304.08485"],
  torch_cat:["PyTorch: tensor concatenation along an explicitly selected axis","https://docs.pytorch.org/docs/stable/generated/torch.cat.html"],
  stream_torch_autograd:["PyTorch autograd: automatic differentiation and graph semantics","https://docs.pytorch.org/docs/stable/autograd.html"],

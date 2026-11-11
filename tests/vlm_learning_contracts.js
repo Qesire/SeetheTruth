@@ -8,13 +8,13 @@ const L=require('../learning_lab.js'),R=require('../graph_readiness.js');
 const C=require('../concept_flow.js'),Core=require('../learning_experience_core.js');
 const flatten=a=>a.flat(Infinity), vals=run=>Object.fromEntries(run.steps.map(s=>[s.id,s.values]));
 assert.equal(Pack.name,'vlm');
-assert.equal(Pack.recipes.length,3);
+assert.equal(Pack.recipes.length,4);
 for(const kind of Object.keys(Pack.defs)){
  assert.ok(X.isKind(kind),'VLM kind must be installed in common extension registry');
  assert.ok(L.KINDS.includes(kind),'VLM kind must participate in unrestricted graph composition');
  assert.ok(Pack.defs[kind].source.startsWith('https://'));
 }
-const names=['extension_vlm_early_fusion','extension_vlm_compressed_prefix','extension_vlm_cross_attention'];
+const names=['extension_vlm_early_fusion','extension_vlm_compressed_prefix','extension_vlm_cross_attention','extension_vlm_query_patch_selection'];
 const graphs=names.map(id=>L.preset(id));
 const runs=graphs.map((graph,i)=>{
  const readiness=R.check(graph,{numeric:true});
@@ -69,6 +69,62 @@ for(const [number,run] of [[6,runs[0]],[4,runs[1]]]){
   }
  }
 }
+// Independent dense-vs-TopK visual readout oracle, spatial indices and a bound.
+const routed=vals(runs[3]);
+assert.deepEqual([routed.top_patches.length,routed.top_patches[0].length],[2,2]);
+assert.deepEqual(routed.patch_coordinates,routed.top_patches.flat().map(id=>
+ [Math.floor(id/2),id%2]));
+const scoreOracle=(q,k)=>q.map(query=>k.map(key=>
+ query.reduce((sum,x,d)=>sum+x*key[d],0)/Math.sqrt(query.length)));
+const rawScores=scoreOracle(routed.text_embedding,routed.visual_projector);
+for(let t=0;t<routed.text_embedding.length;t++){
+ const scores=rawScores[t],indices=scores.map((value,index)=>({value,index}))
+  .sort((a,b)=>b.value-a.value||a.index-b.index).slice(0,2).map(x=>x.index);
+ assert.deepEqual(routed.top_patches[t],indices,'Top-K must select the original visual Patch IDs');
+ for(let j=0;j<scores.length;j++)
+  assert.ok(Math.abs(routed.scale_scores[t][j]-scores[j])<1e-12,'real QK score should agree with independent scalar dot product');
+ const max=Math.max(...scores),exp=scores.map(x=>Math.exp(x-max)),Z=exp.reduce((a,b)=>a+b,0);
+ const weights=exp.map(x=>x/Z);
+ const value=routed.visual_projector;
+ const dense=value[0].map((_,d)=>weights.reduce((sum,w,j)=>sum+w*value[j][d],0));
+ const included=new Set(indices),keptMass=weights.reduce((sum,w,j)=>sum+(included.has(j)?w:0),0);
+ const dropped=1-keptMass;
+ assert.ok(dropped>0&&dropped<1);
+ const sparse=value[0].map((_,d)=>indices.reduce((sum,j)=>sum+weights[j]*value[j][d],0)/keptMass);
+ const complement=value[0].map((_,d)=>weights.reduce((sum,w,j)=>
+  sum+(included.has(j)?0:w*value[j][d]),0)/dropped);
+ let squaredError=0;
+ for(let d=0;d<dense.length;d++){
+  assert.ok(Math.abs(routed.dense_visual[t][d]-dense[d])<1e-12,'dense operator must match independent oracle');
+  assert.ok(Math.abs(routed.sparse_visual[t][d]-sparse[d])<1e-12,'native sparse operator must match independent oracle');
+  assert.ok(Math.abs(routed.readout_delta[t][d]-(dense[d]-sparse[d]))<1e-12);
+  assert.ok(Math.abs((dense[d]-sparse[d])-dropped*(complement[d]-sparse[d]))<1e-12,
+   'exact discarded-attention-mass decomposition must hold');
+  squaredError+=(dense[d]-sparse[d])**2;
+ }
+ const R=Math.max(...value.map(v=>Math.hypot(...v)));
+ assert.ok(Math.sqrt(squaredError)<=2*dropped*R+1e-12,'bounded value norm implies rigorous readout error bound');
+}
+const localMse=routed.readout_delta.flat().reduce((sum,v)=>sum+v*v,0)/routed.readout_delta.flat().length;
+assert.ok(Math.abs(routed.readout_error[0][0]-localMse)<1e-12);
+// The complete selected set must reproduce the dense attention result.
+const fullSelection=JSON.parse(JSON.stringify(graphs[3]));
+fullSelection.nodes.find(n=>n.id==='top_patches').params.topk=4;
+const fullValues=vals(L.evaluate(fullSelection));
+assert.deepEqual(fullValues.top_patches.map(r=>r.slice().sort((a,b)=>a-b)),[[0,1,2,3],[0,1,2,3]]);
+assert.ok(fullValues.readout_delta.flat().every(x=>Math.abs(x)<1e-12));
+assert.ok(Math.abs(fullValues.readout_error[0][0])<1e-20);
+// Wrong patch-grid indices / overbudget routing are independently rejected.
+assert.throws(()=>Pack.execute('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
+ {indices:[[0,4]]}),/outside selected image Patch grid/);
+assert.throws(()=>Pack.execute('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
+ {indices:[[0,1.5]]}),/Patch index/);
+assert.throws(()=>Pack.infer('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
+ {indices:[5,2]}),/eight teaching rows/);
+const badTopK=JSON.parse(JSON.stringify(graphs[3]));
+badTopK.nodes.find(n=>n.id==='top_patches').params.topk=5;
+assert.equal(R.check(badTopK,{numeric:true}).executable,false);
+assert.throws(()=>L.evaluate(badTopK),/topk|vocab width/);
 function verifyTrace(run){
  for(const step of run.steps.filter(s=>X.isKind(s.kind))){
   const item=step.extensionSubsteps?.[0];
@@ -103,4 +159,4 @@ assert.ok(read('android/teaching-assets.txt').split(/\r?\n/).includes('vlm_block
 assert.ok(read('atlas_server.py').includes('"/vlm_block_pack.js":"vlm_block_pack.js"'));
 assert.ok(read('teaching_hub.js').includes('l.target.id')&&read('learn.html').includes('requestedMission'),
  'curriculum route must deep-link to its actual graph preset');
-console.log('VLM_LEARNING_PASS three source-bound graph recipes, visual/text alignment, prefix causal mask, compressed tokens, negative contracts and PC/Android routes');
+console.log('VLM_LEARNING_PASS four source-bound graph recipes, query-selected Patch indices and dense/sparse error bound, visual/text alignment, prefix causal mask, compressed tokens, negative contracts and PC/Android routes');

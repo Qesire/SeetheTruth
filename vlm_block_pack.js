@@ -9,6 +9,7 @@
  const SRC_CAT="https://pytorch.org/docs/stable/generated/torch.cat.html";
  const SRC_POOL="https://pytorch.org/docs/stable/generated/torch.nn.AvgPool1d.html";
  const SRC_VIEW="https://pytorch.org/docs/stable/tensor_view.html";
+ const SRC_GRID="https://docs.pytorch.org/docs/stable/generated/torch.unravel_index.html";
  const def=(title,en,ports,params,formula,why,lesson,caution,source)=>({
   title,en,category:"multimodal",ports,params,formula,why,lesson,caution,source,
   outputAxes:["T","D"],
@@ -32,7 +33,20 @@
    ["context"],{prefixTokens:4},"Y[t,d]=X[prefixTokens+t,d]",
    "按视觉前缀长度提取对应文本位置的上下文表示；让语言 Head 只消费文本行。",
    "移动前缀边界，检查输出行的原始绝对位置是否同步变化。",
-   "必须显式提供视觉前缀长度，严格小于序列长度；不自动识别多模态特殊 Token。",SRC_VIEW)
+   "必须显式提供视觉前缀长度，严格小于序列长度；不自动识别多模态特殊 Token。",SRC_VIEW),
+  vlm_patch_grid_lookup:{
+   ...def("视觉 Patch 序号还原二维坐标","Patch Index to Spatial Grid",["indices"],{gridHeight:2,gridWidth:2},
+    "id=y·gridWidth+x; y=floor(id/gridWidth), x=id mod gridWidth",
+    "把每个文本 Query 选中的 Patch 行号转换成二维网格位置，保持 Patchify 的行优先顺序。",
+    "改变文本 Token 与 Top-K 预算，观察所选 Patch 的二维位置如何变化。",
+    "坐标基于已知 Patchify 网格，而不是检测框或语义定位证明；必须保持原始行优先 Patch 排列。",SRC_GRID),
+   outputAxes:["Selection","Coordinate"],
+   knowledge:{flow:"Top-K 的行是文本 Query，列是命中的视觉 Patch 序号；输出按 Query→选中位置次序展开 [y,x]。",
+    practice:"将 2×2 Patch 网格对应的四个 Patch 编号映射回 y 和 x，再通过换 Query 观察选择位置的变化。",
+    trap:"这些坐标只表示被模型注意力选中的 Patch；语义是否正确必须有独立的 Grounding 标注。",
+    exercise:"人为置换输入 Patch 次序，保持网格标注不变，核验错误位置或重新建立合法索引映射。",
+    refs:"vit_patch,torch_unravel_index"}
+  }
  });
  const must=(ok,why)=>{if(!ok)throw Error("VLM block: "+why);};
  function validShape(s,name){must(Array.isArray(s)&&s.length===2&&
@@ -42,8 +56,16 @@
   if(kind==="vlm_text_tail")
    must(Number.isSafeInteger(p.prefixTokens)&&p.prefixTokens>=1&&p.prefixTokens<=7,
     "prefixTokens must be integer 1..7");
+  if(kind==="vlm_patch_grid_lookup"){
+   must(Number.isSafeInteger(p.gridHeight)&&p.gridHeight>=1&&p.gridHeight<=8,
+    "gridHeight must be an integer 1..8");
+   must(Number.isSafeInteger(p.gridWidth)&&p.gridWidth>=1&&p.gridWidth<=8,
+    "gridWidth must be an integer 1..8");
+   must(p.gridHeight*p.gridWidth<=8,"grid exceeds eight visual Patch tokens");
+  }
  }
  function infer(kind,p,inputs){
+  validate(kind,p);
   if(kind==="vlm_token_concat"){
    const v=inputs.visual,t=inputs.text;validShape(v,"visual");validShape(t,"text");
    must(v[1]===t[1],"visual/text feature widths must match");
@@ -53,6 +75,11 @@
   if(kind==="vlm_visual_pair_pool"){
    const v=inputs.visual;validShape(v,"visual");must(v[0]%2===0,"visual pooling needs even token count");
    return [v[0]/2,v[1]];
+  }
+  if(kind==="vlm_patch_grid_lookup"){
+   const indices=inputs.indices;validShape(indices,"indices");
+   must(indices[0]*indices[1]<=8,"selected Patch coordinates exceed eight teaching rows");
+   return [indices[0]*indices[1],2];
   }
   const x=inputs.context;validShape(x,"context");
   must(p.prefixTokens<x[0],"prefixTokens must leave at least one text token");
@@ -70,6 +97,15 @@
    values=Array.from({length:expected[0]},(_,i)=>inputs.visual[2*i].map((v,d)=>
     (v+inputs.visual[2*i+1][d])/2));
    internals={groups:Array.from({length:expected[0]},(_,i)=>[2*i,2*i+1]),weights:[0.5,0.5]};
+  }else if(kind==="vlm_patch_grid_lookup"){
+   const ids=inputs.indices.flat();
+   values=ids.map(id=>{
+    must(Number.isSafeInteger(id)&&id>=0&&id<p.gridHeight*p.gridWidth,
+     "Patch index outside selected image Patch grid");
+    return [Math.floor(id/p.gridWidth),id%p.gridWidth];
+   });
+   internals={grid:[p.gridHeight,p.gridWidth],selectedPatchIds:ids.slice(),
+    layout:"row-major image Patch grid, zero-based [y,x]"};
   }else{
    values=inputs.context.slice(p.prefixTokens).map(row=>row.slice());
    internals={prefixTokens:p.prefixTokens,sourceRows:Array.from({length:values.length},(_,i)=>p.prefixTokens+i)};
@@ -144,6 +180,45 @@
    E("visual_projector","cross_attention","k"),E("visual_projector","cross_attention","v"),
    E("cross_attention","text_residual","a"),E("text_embedding","text_residual","b"),
    E("text_residual","language_head","x")]};
+ const patchSelection={
+  title:"VLM · 文本条件视觉 Patch 选择与 Dense 读出误差",
+  nodes:[
+   N("pixels","input",20,40,{rows:4,width:4,seed:3}),
+   N("patches","vision_patchify",280,40),
+   N("visual_projector","linear",540,40,{out:4}),
+   N("prompt_ids","token_ids",20,370,{rows:2,vocab:8,seed:7}),
+   N("text_embedding","embedding",285,370,{width:4,vocab:8}),
+   N("visual_transpose","transpose2d",790,20),
+   N("query_patch_scores","matmul",1010,170),
+   N("scale_scores","scale",1240,170,{factor:0.5}),
+   N("top_patches","inference_topk",1470,170,{topk:2}),
+   N("patch_coordinates","vlm_patch_grid_lookup",1730,455,{gridHeight:2,gridWidth:2}),
+   N("dense_visual","attention",1330,-105),
+   N("sparse_visual","inference_sparse_attention",1760,130,{causal:false,queryOffset:0}),
+   N("readout_delta","subtract",2010,-85),
+   N("readout_error","mse",2260,95),
+   N("text_residual","add",2000,340),
+   N("language_head","linear",2260,340,{out:8})
+  ],
+  edges:[
+   E("pixels","patches","x"),E("patches","visual_projector","x"),
+   E("prompt_ids","text_embedding","ids"),
+   E("visual_projector","visual_transpose","x"),
+   E("text_embedding","query_patch_scores","a"),E("visual_transpose","query_patch_scores","b"),
+   E("query_patch_scores","scale_scores","x"),
+   E("scale_scores","top_patches","scores"),
+   E("top_patches","patch_coordinates","indices"),
+   E("text_embedding","dense_visual","q"),
+   E("visual_projector","dense_visual","k"),E("visual_projector","dense_visual","v"),
+   E("text_embedding","sparse_visual","q"),
+   E("visual_projector","sparse_visual","k"),E("visual_projector","sparse_visual","v"),
+   E("top_patches","sparse_visual","indices"),
+   E("dense_visual","readout_delta","a"),E("sparse_visual","readout_delta","b"),
+   E("sparse_visual","readout_error","prediction"),E("dense_visual","readout_error","target"),
+   E("sparse_visual","text_residual","a"),E("text_embedding","text_residual","b"),
+   E("text_residual","language_head","x")
+  ]
+ };
  const recipes=Object.freeze([
   {id:"extension_vlm_early_fusion",title:"VLM · 视觉前缀与因果语言解码",
    summary:"Patchify → Projector → [Image, Text] → QK/Mask/PV → 文本行 Logits；逐 Token 检查来源和因果性",
@@ -153,7 +228,10 @@
    graph:early(true)},
   {id:"extension_vlm_cross_attention",title:"VLM · 文本到图像 Cross-Attention",
    summary:"文本 Query 读取独立视觉 Key/Value，再与原文本残差相加；与视觉前缀路径对照",
-   graph:cross}
+   graph:cross},
+  {id:"extension_vlm_query_patch_selection",title:"VLM · 文本条件视觉 Patch 选择",
+   summary:"真实 QK 分数 → Top-K Patch → 二维坐标 → 稀疏 / Dense 注意力差分及 Loss；保留数学误差证据",
+   graph:patchSelection}
  ]);
  return Object.freeze({name:"vlm",defs,validate,infer,execute,trace,recipes});
 });

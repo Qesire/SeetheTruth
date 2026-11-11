@@ -90,6 +90,40 @@ class UnifiedLearningBrowser(unittest.TestCase):
   finally:
    page.close()
 
+ def test_vlm_query_patch_selection_renders_and_runs_in_chromium(self):
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/learn.html?mission=extension_vlm_query_patch_selection").status,200)
+   page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+   self.assertTrue(page.locator('[data-preset="extension_vlm_query_patch_selection"]').get_attribute("class").find("active")>=0)
+   source=page.evaluate("""() => {
+     const graph=window.SeetheTruthUnifiedWorkbench.inspect().graph;
+     return {kinds:graph.nodes.map(n=>n.kind),nodes:graph.nodes.length};
+   }""")
+   self.assertIn("vlm_patch_grid_lookup",source["kinds"])
+   self.assertIn("inference_sparse_attention",source["kinds"])
+   self.assertIn("attention",source["kinds"])
+   page.locator("#studyMode").select_option("numeric")
+   page.locator("#run").click()
+   self.assertIn("已运行",page.locator("#status").inner_text())
+   values=page.evaluate("""() => {
+     const graph=window.SeetheTruthUnifiedWorkbench.inspect().graph;
+     const run=window.SeetheTruthLearning.evaluate(graph);
+     const entries=Object.fromEntries(run.steps.map(s=>[s.id,s.values]));
+     return {indices:entries.top_patches,coordinates:entries.patch_coordinates,
+       delta:entries.readout_delta,loss:entries.readout_error[0][0]};
+   }""")
+   self.assertEqual(len(values["indices"]),2)
+   self.assertEqual(len(values["coordinates"]),4)
+   self.assertGreaterEqual(values["loss"],0)
+   for index,coordinate in zip(sum(values["indices"],[]),values["coordinates"]):
+    self.assertEqual(coordinate,[index//2,index%2])
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
  def test_restored_engineering_journeys_share_actual_core(self):
   for route,id,global_name,count in [
    ("engineering_journey.html","engineering_journey","SeetheTruthEngineeringJourney",12),
