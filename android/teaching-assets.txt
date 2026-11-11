@@ -125,6 +125,7 @@ training_timeline_lab_ui.js
 unified_observation_ui.js
 unified_state_lab_ui.js
 video_causal_conv3d.js
+vlm_block_pack.js
 wan_ffn_coordinate_vjp.js
 wan_ffn_lab.html
 wan_ffn_lab.js
