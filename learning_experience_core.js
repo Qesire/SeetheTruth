@@ -475,7 +475,7 @@
   if(!lesson)fail("unknown curriculum lesson "+id);
   const domain=byHref.get(lesson.href)||null;
   if(lesson.href!=="learn.html"&&!domain)fail("course has no registered executable-domain destination "+lesson.href);
-  const defaultPresets={building:"ffn",multimodal:"image_vit_patch"};
+  const defaultPresets={building:"ffn",multimodal:"image_vit_patch",vlm:"extension_vlm_early_fusion"};
   return Object.freeze({schema:SCHEMA,id,kind:"curriculum",
    title:lesson.title,href:lesson.href,group:lesson.group,level:lesson.level,
    theory:lesson.theory,why:lesson.why,check:lesson.check,answer:lesson.answer,
