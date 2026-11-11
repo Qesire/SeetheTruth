@@ -12,6 +12,7 @@ $("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主
 let selected=courses[0].id,filter="all";
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
+ if(u.pathname.endsWith("/learn.html")&&l.target?.kind==="guided_graph")u.searchParams.set("mission",l.target.id);
  if(teachingMode&&u.pathname.endsWith("/learn.html"))u.searchParams.set("edition","teaching");
  return u.pathname.split("/").at(-1)+u.search;
 };
