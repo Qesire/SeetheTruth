@@ -47,3 +47,7 @@ The shape contracts ensure Q and K widths agree and Key/Value token counts agree
 ## Subsequent expansion
 
 The next architecture boundary is an explicitly typed, rank-agnostic tensor IR with axis labels and storage/stride semantics. On that foundation, introduce reusable Conv2d/Conv3d, resampling, Mel filters, VAE encode/decode, diffusion scheduler/noise prediction, audio token codec quantization and joint/spatial/temporal attention. Each should have a documented paper-source distinction and actual CPU execution plus native NumPy/PyTorch parity before being called an executable block.
+
+## VLM 视觉语言扩展（2026-11-11）
+
+沿用同一 LearningLab DAG、扩展积木契约和教学观测；新增的视觉前缀、Cross-Attention 和 Token 平均压缩见 [VLM 计算与工程课程](vlm-learning-architecture.md)。相关实验仅使用有界教学数值，不表示真实模型权重或推理加速。
