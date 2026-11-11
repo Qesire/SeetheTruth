@@ -31,7 +31,9 @@ jobs:
       - name: Install headless Chromium
         run: |
           python -m pip install 'playwright==1.55.0'
-          python -m playwright install --with-deps chromium
+          # Ubuntu hosted runners already provide browser shared libraries. Avoid
+          # network-dependent apt font packages that can fail on mirror DNS.
+          python -m playwright install chromium
       - name: Verify state A/B exact coordinate round trip in Chromium (PC and phone)
         run: python tests/browser_state_ab_bridge.py
       - name: Archive state A/B coordinate and graph path screenshots
