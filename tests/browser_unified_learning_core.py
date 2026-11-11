@@ -155,6 +155,32 @@ class UnifiedLearningBrowser(unittest.TestCase):
   finally:
    page.close()
 
+ def test_vlm_guided_bricks_have_no_visible_overlap(self):
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   for mission in ["extension_vlm_early_fusion","extension_vlm_compressed_prefix",
+                   "extension_vlm_cross_attention","extension_vlm_query_patch_selection"]:
+    self.assertEqual(page.goto(self.base+"/learn.html?mission="+mission).status,200)
+    page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+    bounds=page.evaluate("""() => [...document.querySelectorAll('#blocks [data-node]')].map(el=>{
+      const r=el.getBoundingClientRect();
+      return {id:el.dataset.node,x:r.left,y:r.top,w:r.width,h:r.height};
+    })""")
+    self.assertGreater(len(bounds),5)
+    for i,a in enumerate(bounds):
+     self.assertGreater(a["w"],0)
+     self.assertGreater(a["h"],0)
+     for b in bounds[i+1:]:
+      overlap=min(a["x"]+a["w"],b["x"]+b["w"])-max(a["x"],b["x"])
+      height=min(a["y"]+a["h"],b["y"]+b["h"])-max(a["y"],b["y"])
+      self.assertFalse(overlap>1 and height>1,
+       f"{mission}: visible bricks overlap: {a['id']}/{b['id']} by {overlap:.1f}x{height:.1f}")
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
  def test_restored_engineering_journeys_share_actual_core(self):
   for route,id,global_name,count in [
    ("engineering_journey.html","engineering_journey","SeetheTruthEngineeringJourney",12),
