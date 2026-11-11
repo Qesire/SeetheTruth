@@ -129,7 +129,8 @@ class SitewideHumanInterface(unittest.TestCase):
             self.assertFalse(menu.locator('a[href="cache.html"]').is_visible())
             menu.locator("summary").click()
             self.assertTrue(menu.locator('a[href="cache.html"]').is_visible())
-            self.assertIn("课程中心",page.locator(".head-actions").inner_text())
+            self.assertEqual(page.locator('.head-actions a[href="teaching.html"]').count(),1,
+                "primary teaching entry must link to the canonical shared course route")
             self.assertEqual(page.locator("#blocks .block").count()>0,True)
             self.assertEqual(page.goto(self.base+"/index.html").status,200)
             indexMenu=page.locator(".header-right .stt-lab-menu")
