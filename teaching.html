@@ -14,23 +14,96 @@ main{max-width:1280px;margin:auto;padding:24px 20px 50px}h1{font-size:clamp(27px
 #empty{color:#c4dbe7}.meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#a9c7d7;font-size:12px;margin:16px 0}
 @media(max-width:880px){.layout{grid-template-columns:1fr}#deepDive{position:static}.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:580px){main{padding:20px 14px 48px}.cards{grid-template-columns:1fr}.card{padding:15px}.controls{gap:8px}.controls input{width:100%}header{padding:14px}.panel{padding:16px}}
+
+/* Learning surface: one clear entry, expandable destinations and readable course cards. */
+header{padding:14px clamp(16px,3vw,32px);align-items:center}
+.site-brand{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.site-brand strong{font-size:17px;letter-spacing:.09em}
+.site-brand strong span{color:var(--accent)}
+.site-brand small{font-size:12px;letter-spacing:0;color:var(--muted)}
+.primary-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.primary-nav>a,.more-nav>summary{display:flex;align-items:center;justify-content:center;min-height:44px;padding:9px 13px;border:1px solid var(--border);border-radius:10px;background:#102b3c;color:var(--text);font-size:13px;cursor:pointer;text-decoration:none}
+.primary-nav>a:hover,.more-nav>summary:hover{border-color:#75dccc;text-decoration:none}
+.primary-nav>a[aria-current="page"]{background:#1b5a67;border-color:#78ddd0}
+.more-nav{position:relative}
+.more-nav>summary{list-style:none;user-select:none}
+.more-nav>summary::-webkit-details-marker{display:none}
+.more-nav>summary::after{content:" ▾";padding-left:5px;color:var(--accent)}
+.more-nav[open]>summary::after{content:" ▴"}
+.more-nav-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:4;min-width:235px;display:grid;gap:3px;background:#102b3b;border:1px solid #456e84;padding:7px;border-radius:12px;box-shadow:0 14px 35px #0008}
+.more-nav-menu a{display:block;min-height:40px;padding:10px;border-radius:7px;color:var(--text)}
+.more-nav-menu a:hover{background:#1d4355;text-decoration:none}
+a:focus-visible,summary:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f1bd77;outline-offset:2px}
+main{padding-top:29px}
+h1{margin-bottom:10px}
+.intro{max-width:720px;margin-bottom:13px}
+.meta{margin:13px 0 19px}
+.controls{margin:16px 0 20px}
+.section-title{font-size:15px;margin:0 0 12px;color:#c4e2ef}
+.card{gap:7px;padding:16px;min-height:132px}
+.card h3{font-size:16px;line-height:1.35;margin:3px 0}
+.card p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.55}
+.card .topic{font-size:11px}
+#deepDive{gap:12px}
+#deepDive .label{font-size:11px}
+#deepDive p{margin:0}
+#deepDive h2{font-size:21px;margin:0}
+#deepDive .action{margin-top:4px}
+#deepDive .action:focus-visible{outline:3px solid #f1bd77;outline-offset:3px}
+#prefillMiniLab{margin-top:22px}
+@media(max-width:880px){
+ .layout{display:flex;flex-direction:column}
+ #deepDive{position:static;order:0}
+ .layout>section{order:1}
+ .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .more-nav-menu{left:0;right:auto}
+}
+@media(max-width:580px){
+ header{gap:8px}
+ .site-brand{width:100%}
+ .primary-nav{width:100%;gap:7px}
+ .primary-nav>a,.more-nav>summary{font-size:12px;min-height:44px;padding:9px 11px}
+ .more-nav-menu{position:static;min-width:0;width:100%;margin-top:6px}
+ main{padding:21px 14px 40px}
+ .cards{grid-template-columns:1fr}
+ .card{min-height:auto;padding:15px}
+ .card p{-webkit-line-clamp:2}
+ #deepDive{padding:17px}
+}
 </style></head><body>
-<header><div><strong>SEETHE<em>TRUTH</em></strong><div class="muted">共享教学内容 · PC / Android</div></div><nav><a href="learn.html?edition=teaching">积木工作台</a><a href="teaching.html?course=vlm">视觉语言 VLM</a><a href="engineering_journey.html">工程入门 12 关</a><a href="engineering_pipeline.html">训练流水线 6 关</a><a href="wan_ffn_lab.html?edition=teaching">Wan2.2 FFN 源码显微镜</a><a href="deepinfer_prefill_lab.html">DeepInfer Prefill</a><a href="capabilities.html">积木能力审计</a><a href="semantic_state.html">张量与状态实验室</a></nav></header>
-<main><div class="eyebrow">ONE CURRICULUM · BOTH PLATFORMS</div><h1>从基础算子到真实推理系统</h1>
-<p class="intro">每门课程回答三个问题：<strong>实际发生什么计算？为什么设计成这样？最小的反证或对照实验是什么？</strong> 这里的解释、源码链接和练习与 PC 使用同一组版本化内容，Android 离线打包同一份教学源文件。</p>
+<header>
+ <div class="site-brand"><strong>SEETHE<span>TRUTH</span></strong><small>模型机制学习中心</small></div>
+ <nav class="primary-nav" aria-label="主要入口">
+  <a href="learn.html?edition=teaching">积木工作台</a>
+  <a href="teaching.html?course=vlm" id="vlmNavLink">视觉语言 VLM</a>
+  <details class="more-nav">
+   <summary>更多实验室</summary>
+   <div class="more-nav-menu">
+    <a href="engineering_journey.html">工程入门 12 关</a>
+    <a href="engineering_pipeline.html">训练流水线 6 关</a>
+    <a href="wan_ffn_lab.html?edition=teaching">Wan2.2 FFN 源码显微镜</a>
+    <a href="deepinfer_prefill_lab.html">DeepInfer Prefill</a>
+    <a href="capabilities.html">积木能力审计</a>
+    <a href="semantic_state.html">张量与状态实验室</a>
+   </div>
+  </details>
+ </nav>
+</header>
+<main><div class="eyebrow">LEARN / BUILD / VERIFY</div><h1>从计算积木理解模型</h1>
+<p class="intro">选择一个机制，查看张量如何流动，并在对应实验里运行数值。PC 与 Android 使用同一份课程内容。</p>
 <div class="meta"><span id="editionLabel">教学中心</span><span id="version">—</span><span id="lessonCount">—</span><span id="coreCoverage">—</span><span>不要求 GPU / 后端</span></div>
 <div class="controls"><input id="search" type="search" placeholder="搜索：VLM、多模态、Loop、Prefill、KV…" aria-label="搜索课程">
 <button id="all" aria-pressed="true">全部</button><button id="fundamentals" aria-pressed="false">基础 / 多模态</button><button id="inference" aria-pressed="false">前沿 / 推理</button><button id="engineering" aria-pressed="false">工程实战</button></div>
-<div class="layout"><section><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除筛选后查看全部。</p></section>
-<aside id="deepDive" class="panel" aria-live="polite"><div class="label">选择一门课程</div><h2 id="detailTitle">—</h2><small id="level">—</small>
-<div><div class="label">数学 / 计算流</div><p id="theory">—</p></div><div><div class="label">工业界为什么这样设计</div><p id="why" class="reason">—</p></div>
-<div class="quiz"><div class="label">最小机制自检</div><p id="question">—</p><button id="reveal" aria-expanded="false">显示解析</button><p id="answer" class="answer" hidden></p></div>
-<a id="openLesson" class="action" href="learn.html?edition=teaching">打开可交互课程 →</a>
+<div class="layout"><section aria-label="课程目录"><h2 class="section-title">课程目录</h2><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除搜索或切换类别。</p></section>
+<aside id="deepDive" class="panel" aria-live="polite"><div class="label">当前课程</div><h2 id="detailTitle">—</h2><small id="level">—</small>
+<div><div class="label">数学 / 计算流</div><p id="theory">—</p></div><div><div class="label">作用机制与设计依据</div><p id="why" class="reason">—</p></div>
+<div class="quiz"><div class="label">检验理解</div><p id="question">—</p><button id="reveal" aria-expanded="false">显示解析</button><p id="answer" class="answer" hidden></p></div>
+<a id="openLesson" class="action" href="learn.html?edition=teaching">进入计算实验</a>
 </aside></div>
 <section class="panel" style="margin-top:16px" id="prefillMiniLab">
-<div class="eyebrow">LIVE SOURCE-MATH · DeepInfer PREFILL</div>
-<h2 style="margin-top:8px">同一份源码计算：ALL / ANY / 第二轮回退</h2>
-<p>选择一个 Rank 情况，通过仓库已验证的 <code>SeetheTruthPrefillPolicy.vote()</code> 直接计算每个 Rank 的步型。它不是预设的文字标签，更不代表真实 c10d 通信耗时。</p>
+<div class="eyebrow">DEEPINFER · SOURCE-DERIVED MATH</div>
+<h2 style="margin-top:8px">Prefill 投票：ALL、ANY 与回退</h2>
+<p>选择 Rank 条件，观察调度步型的 CPU 参考运算结果。</p>
 <div class="controls"><label for="voteCase" class="muted">机制对照</label>
 <select id="voteCase" style="min-height:44px;background:#173449;color:#def6fc;border:1px solid #50758d;border-radius:10px;padding:9px">
 <option value="all">ALL：两个 Rank 都有可执行 Prefill</option>

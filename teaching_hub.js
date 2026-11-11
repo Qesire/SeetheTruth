@@ -8,7 +8,7 @@ $("version").textContent="课程版本 "+C.VERSION;
 const courses=Core.inventory().courses;
 $("lessonCount").textContent=courses.length+" 个专题";
 const coverage=Core.inventory().counts;
-$("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主题 / "+coverage.labs+" 个专项计算域";
+$("coreCoverage").textContent=coverage.labs+" 个专项计算域";
 // A course deep link resolves through the canonical shared curriculum.
 const requested=params.get("course");
 let selected=(requested&&C.lookup(requested)?requested:courses[0].id),filter="all";
@@ -27,6 +27,8 @@ function detail(){
  $("answer").hidden=true;$("reveal").setAttribute("aria-expanded","false");
  $("reveal").textContent="显示解析";
  $("openLesson").href=safeTarget(l);
+ $("openLesson").textContent=l.target?.kind==="guided_graph"?"打开积木实验":"进入交互实验";
+ $("vlmNavLink").setAttribute("aria-current",selected==="vlm"?"page":"false");
 }
 function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
@@ -36,16 +38,19 @@ function render(){
   if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
  });
+ if(lessons.length&&!lessons.some(l=>l.id===selected)){selected=lessons[0].id;detail();}
  const cards=lessons.map(l=>{
   const b=document.createElement("button");b.className="card";b.type="button";
   b.dataset.lesson=l.id;b.setAttribute("aria-selected",String(l.id===selected));
+  b.setAttribute("aria-pressed",String(l.id===selected));
   const group=document.createElement("div");group.className="topic";group.textContent=l.group;
   const h=document.createElement("h3");h.textContent=l.title;
   const p=document.createElement("p");p.textContent=l.theory;
-  const footer=document.createElement("span");footer.className="open";footer.textContent="展开数学 / 设计依据 →";
-  b.append(group,h,p,footer);
+  b.append(group,h,p);
   b.addEventListener("click",()=>{
    selected=l.id;detail();render();
+   const focused=[...document.querySelectorAll("#cards .card")].find(card=>card.dataset.lesson===l.id);
+   focused?.focus({preventScroll:true});
    if(window.matchMedia("(max-width: 880px)").matches)$("deepDive").scrollIntoView({behavior:"smooth",block:"start"});
   });
   return b;
