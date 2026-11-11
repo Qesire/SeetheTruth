@@ -125,9 +125,16 @@
    const D=out.shape[1];
    indexMap=out.values.map((_,i)=>({port:"context",index:p.prefixTokens*D+i}));
   }
+  // Provenance of the selected grid position: Query row, rank, original Patch.
+  // A spatial index is an observed choice, not evidence of semantic grounding.
+  const selectedRows=kind==="vlm_patch_grid_lookup"
+   ?run.values.map(([y,x],flatIndex)=>{
+     const k=inputs.indices[0].length,query=Math.floor(flatIndex/k),rank=flatIndex%k;
+     return {query,rank,patchId:inputs.indices[query][rank],y,x};
+   }):null;
   return [{id:node.id+":vlm",kind:"multimodal_token_transform",title:defs[kind].title,
    formula:defs[kind].formula,why:defs[kind].why,
-   out,operands,outputIsParent:true,...(indexMap?{indexMap}:{})}];
+   out,operands,outputIsParent:true,...(selectedRows?{selectedRows}:{}),...(indexMap?{indexMap}:{})}];
  }
  const N=(id,kind,x,y,params={})=>({id,kind,x,y,params});
  const E=(from,to,port)=>({from,to,port});

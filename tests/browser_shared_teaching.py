@@ -56,6 +56,32 @@ class SharedTeachingBrowser(unittest.TestCase):
         normal.close();phone.close()
         self.assertEqual(errors,[])
 
+    def test_selected_course_precedes_mobile_catalogue(self):
+        page=self.browser.new_page(viewport={"width":390,"height":844},
+            is_mobile=True,has_touch=True)
+        errors=[]
+        page.on("pageerror",lambda e:errors.append(str(e)))
+        try:
+            self.assertEqual(page.goto(self.base+"/teaching.html?course=vlm&edition=teaching").status,200)
+            page.wait_for_function("!!window.SeetheTruthTeachingHub")
+            position=page.evaluate("""() => ({
+                panel:document.querySelector('#deepDive').getBoundingClientRect().top,
+                courses:document.querySelector('#cards').getBoundingClientRect().top
+            })""")
+            self.assertLess(position["panel"],position["courses"])
+            self.assertIn("VLM",page.locator("#detailTitle").inner_text())
+            self.assertEqual(page.locator(".more-nav-menu a").count(),6)
+            self.assertFalse(page.locator(".more-nav-menu a").first.is_visible())
+            page.locator(".more-nav summary").click()
+            self.assertTrue(page.locator(".more-nav-menu a").first.is_visible())
+            page.locator(".more-nav summary").click()
+            page.locator('[data-lesson="building"]').click()
+            self.assertEqual(page.evaluate("document.activeElement.dataset.lesson"),"building")
+            self.assertEqual(page.locator('[data-lesson="building"]').get_attribute("aria-pressed"),"true")
+            self.assertEqual(errors,[])
+        finally:
+            page.close()
+
     def test_mobile_teaching_hides_generated_artifacts_but_keeps_math(self):
         p=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True,
                                 device_scale_factor=2)

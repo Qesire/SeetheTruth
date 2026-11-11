@@ -107,6 +107,30 @@ for(let t=0;t<routed.text_embedding.length;t++){
  const R=Math.max(...value.map(v=>Math.hypot(...v)));
  assert.ok(Math.sqrt(squaredError)<=2*dropped*R+1e-12,'bounded value norm implies rigorous readout error bound');
 }
+// Source-aligned Cross-Attention: Q=text Embedding, K=V=visual projector.
+// There are no separate trainable Wq/Wk/Wv nodes on this lesson graph.
+const crossGraph=graphs[2];
+assert.equal(crossGraph.nodes.some(n=>["query","key","value"].includes(n.id)),false);
+for(let t=0;t<cross.text_embedding.length;t++){
+ const q=cross.text_embedding[t],vision=cross.visual_projector;
+ const score=vision.map(v=>q.reduce((acc,x,d)=>acc+x*v[d],0)/Math.sqrt(q.length));
+ const m=Math.max(...score),exp=score.map(v=>Math.exp(v-m)),z=exp.reduce((a,b)=>a+b,0);
+ const probabilities=exp.map(v=>v/z);
+ for(let d=0;d<q.length;d++){
+  const context=vision.reduce((acc,v,j)=>acc+probabilities[j]*v[d],0);
+  assert.ok(Math.abs(cross.cross_attention[t][d]-context)<1e-12,
+   "actual Cross-Attention must use text Query and shared visual K/V");
+  assert.ok(Math.abs(cross.text_residual[t][d]-q[d]-context)<1e-12,
+   "Cross-Attention residual must add the original text embedding");
+ }
+}
+const coordinates=runs[3].steps.find(step=>step.id==="patch_coordinates").extensionSubsteps?.[0];
+assert.ok(coordinates&&Array.isArray(coordinates.selectedRows),
+ "Patch coordinate trace must declare its actual selected-Query origin");
+assert.deepEqual(coordinates.selectedRows,
+ routed.top_patches.flatMap((ids,query)=>ids.map((patchId,rank)=>({
+  query,rank,patchId,y:Math.floor(patchId/2),x:patchId%2
+ }))));
 const localMse=routed.readout_delta.flat().reduce((sum,v)=>sum+v*v,0)/routed.readout_delta.flat().length;
 assert.ok(Math.abs(routed.readout_error[0][0]-localMse)<1e-12);
 // The complete selected set must reproduce the dense attention result.
