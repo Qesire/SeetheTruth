@@ -39,6 +39,12 @@ for(const page of ['learn.html','capabilities.html']){
            page+' must load stream types before the Learning registry');
 }
 assert.ok(read('atlas_server.py').includes('"/capabilities.html":"capabilities.html"'));
-assert.ok(read('teaching.html').includes('href="capabilities.html"'));
+const Core=require('../learning_experience_core.js');
+const caps=Core.labs.find(l=>l.id==='capabilities');
+assert.ok(caps&&caps.href==='capabilities.html','capability lab is a canonical specialist');
+assert.ok(read('teaching.html').includes('id="allLabLinks"'));
+assert.ok(read('teaching_hub.js').includes('for(const lab of Core.labs)') &&
+ read('teaching_hub.js').includes('link.href=lab.href'),
+ 'teaching lab navigation must resolve href from canonical specialist registry');
 assert.ok(read('README.md').includes('node scripts/report_capabilities.js'));
 console.log('CAPABILITY_AUDIT_PASS '+A.counts.registered+' blocks / '+A.counts.numpyEligible+' NumPy / '+A.counts.torchEligible+' PyTorch eligible');
