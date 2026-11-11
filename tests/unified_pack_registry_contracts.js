@@ -2,8 +2,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const X=require('../block_extension_registry.js'),L=require('../learning_lab.js');
 const C=require('../concept_flow.js'),R=require('../graph_readiness.js'),P=require('../graph_learning_path.js');
-assert.deepEqual(X.packs,['semantic_video','named_axis']);
-assert.equal(X.kinds.length,8);
+assert.deepEqual(X.packs,['semantic_video','named_axis','vlm']);
+assert.equal(X.kinds.length,12);
 for(const kind of X.kinds)assert.ok(L.KINDS.includes(kind),'registered in actual free graph: '+kind);
 const named=L.preset('extension_named_axis_composition');
 const trace=L.evaluate(named),concept=C.evaluate(named),check=R.check(named,{numeric:true}),learning=P.build(named,{numeric:true});
@@ -75,4 +75,4 @@ for(const step of run.steps.filter(x=>X.isKind(x.kind)))verifyMappedSubstep(step
 const capabilityPage=read('capabilities.html');
 for(const f of ['semantic_block_pack.js','axis_block_pack.js','block_extension_registry.js'])
  assert.ok(capabilityPage.includes('src="'+f+'"'),f+' must load in every capability catalogue runtime');
-console.log('UNIFIED_PACK_RUNTIME_PASS two independent packs, 8 kinds, 5D/2D, named axes, mixed native graph, graph learning route, negative contracts');
+console.log('UNIFIED_PACK_RUNTIME_PASS three independent packs, 12 kinds, 5D/2D, named axes, VLM, mixed native graph, graph learning route, negative contracts');

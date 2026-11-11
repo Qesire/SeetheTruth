@@ -41,7 +41,7 @@ class UnifiedLearningBrowser(unittest.TestCase):
      return new Set(all).size;
    }""")
    self.assertEqual(counts["graphLessons"],registered)
-   self.assertEqual(counts["courses"],10)
+   self.assertEqual(counts["courses"],11)
    self.assertEqual(counts["labs"],17)
    evidence=page.evaluate("window.SeetheTruthUnifiedWorkbench.inspect().evidence")
    self.assertEqual(evidence,"STATIC_ONLY")
@@ -63,6 +63,123 @@ class UnifiedLearningBrowser(unittest.TestCase):
    self.assertEqual(errors,[])
   finally:
    phone.close()
+
+ def test_vlm_course_opens_the_actual_guided_computation_graph(self):
+  page=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True)
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?edition=teaching").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   page.evaluate("window.SeetheTruthTeachingHub.select('vlm')")
+   href=page.locator("#openLesson").get_attribute("href")
+   self.assertIn("mission=extension_vlm_early_fusion",href)
+   self.assertIn("edition=teaching",href)
+   self.assertEqual(page.goto(self.base+"/"+href).status,200)
+   page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+   page.wait_for_function("""() =>
+     document.querySelector(".stage").getBoundingClientRect().top < window.innerHeight
+     && document.querySelector(".stage").getBoundingClientRect().top >= -60""")
+   opened=page.evaluate("""() => {
+     const s=window.SeetheTruthUnifiedWorkbench.inspect();
+     return {title:s.graph.title, kinds:s.graph.nodes.map(n=>n.kind),
+       active:document.querySelector('[data-preset="extension_vlm_early_fusion"]').classList.contains('active')};
+   }""")
+   self.assertIn("VLM",opened["title"])
+   self.assertIn("vlm_token_concat",opened["kinds"])
+   self.assertIn("vlm_text_tail",opened["kinds"])
+   self.assertTrue(opened["active"])
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
+ def test_vlm_query_patch_selection_renders_and_runs_in_chromium(self):
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/learn.html?mission=extension_vlm_query_patch_selection").status,200)
+   page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+   self.assertTrue(page.locator('[data-preset="extension_vlm_query_patch_selection"]').get_attribute("class").find("active")>=0)
+   source=page.evaluate("""() => {
+     const graph=window.SeetheTruthUnifiedWorkbench.inspect().graph;
+     return {kinds:graph.nodes.map(n=>n.kind),nodes:graph.nodes.length};
+   }""")
+   self.assertIn("vlm_patch_grid_lookup",source["kinds"])
+   self.assertIn("inference_sparse_attention",source["kinds"])
+   self.assertIn("attention",source["kinds"])
+   page.locator("#studyMode").select_option("numeric")
+   page.locator("#run").click()
+   self.assertIn("已运行",page.locator("#status").inner_text())
+   values=page.evaluate("""() => {
+     const graph=window.SeetheTruthUnifiedWorkbench.inspect().graph;
+     const run=window.SeetheTruthLearning.evaluate(graph);
+     const entries=Object.fromEntries(run.steps.map(s=>[s.id,s.values]));
+     return {indices:entries.top_patches,coordinates:entries.patch_coordinates,
+       delta:entries.readout_delta,loss:entries.readout_error[0][0]};
+   }""")
+   self.assertEqual(len(values["indices"]),2)
+   self.assertEqual(len(values["coordinates"]),4)
+   self.assertGreaterEqual(values["loss"],0)
+   for index,coordinate in zip(sum(values["indices"],[]),values["coordinates"]):
+    self.assertEqual(coordinate,[index//2,index%2])
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+
+ def test_vlm_first_visit_course_deep_link_and_filters(self):
+  page=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True)
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?course=vlm&edition=teaching").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   self.assertIn("VLM",page.locator("#detailTitle").inner_text())
+   self.assertIn("mission=extension_vlm_early_fusion",page.locator("#openLesson").get_attribute("href"))
+   page.locator("#fundamentals").click()
+   self.assertEqual(page.locator('[data-lesson="vlm"]').count(),1)
+   self.assertEqual(page.locator('[data-lesson="cache"]').count(),0)
+   page.locator("#inference").click()
+   self.assertEqual(page.locator('[data-lesson="vlm"]').count(),0)
+   self.assertEqual(page.locator('[data-lesson="cache"]').count(),1)
+   self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth+2'))
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?course=not-a-lesson").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   self.assertIn("积木",page.locator("#detailTitle").inner_text(),
+    "unknown course link must fall back to a valid first lesson")
+  finally:
+   page.close()
+
+ def test_vlm_guided_bricks_have_no_visible_overlap(self):
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   for mission in ["extension_vlm_early_fusion","extension_vlm_compressed_prefix",
+                   "extension_vlm_cross_attention","extension_vlm_query_patch_selection"]:
+    self.assertEqual(page.goto(self.base+"/learn.html?mission="+mission).status,200)
+    page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+    bounds=page.evaluate("""() => [...document.querySelectorAll('#blocks [data-node]')].map(el=>{
+      const r=el.getBoundingClientRect();
+      return {id:el.dataset.node,x:r.left,y:r.top,w:r.width,h:r.height};
+    })""")
+    self.assertGreater(len(bounds),5)
+    for i,a in enumerate(bounds):
+     self.assertGreater(a["w"],0)
+     self.assertGreater(a["h"],0)
+     for b in bounds[i+1:]:
+      overlap=min(a["x"]+a["w"],b["x"]+b["w"])-max(a["x"],b["x"])
+      height=min(a["y"]+a["h"],b["y"]+b["h"])-max(a["y"],b["y"])
+      self.assertFalse(overlap>1 and height>1,
+       f"{mission}: visible bricks overlap: {a['id']}/{b['id']} by {overlap:.1f}x{height:.1f}")
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
 
  def test_restored_engineering_journeys_share_actual_core(self):
   for route,id,global_name,count in [

@@ -16,6 +16,11 @@
    why:"模态转换不仅是通道数变化，还可能引入重采样、时间对齐、非均匀序列长度与专用 Mask。",
    check:"视频 Tubelet 和逐帧图像 Patch 会自动拥有相同的时间信息吗？",
    answer:"不会。Tubelet 会直接编码局部时间块；逐帧 Patch 需要额外的位置编码或时间混合机制。"},
+  {id:"vlm",group:"03B · 视觉语言",title:"VLM：视觉 Token、融合与语言 Logits",href:"learn.html",
+   level:"进阶 → 研究",theory:"先将图像变成 Patch Token，经视觉投影对齐隐藏维度，再与文本 Embedding 组成有序序列。展开 Q/K/V、因果 Mask、文本位置读出；对照 Cross-Attention、视觉 Token 压缩及文本条件 Top-K Patch 选择和误差。",
+   why:"VLM 的感知依赖视觉编码，语言推理依赖连接器、序列位置与注意力可见性。视觉 Token 数直接改变 Prefill 规模；特征宽度一致只满足连接条件，语义对齐、空间定位与任务正确率仍需要独立证据。",
+   check:"把四个视觉 Token 压缩成两个、维度仍然相同，就一定保留同样的信息并得到相同的答案吗？",
+   answer:"不能。均值池化减少序列长度，却可能抹去位置信息与细节；需比较被抹去的视觉特征、解码结果、任务正确率和实际设备耗时。"},
   {id:"loop",group:"04 · 前沿架构",title:"GQA / MoE / Loop Transformer 的成本权衡",href:"tradeoffs.html",
    level:"进阶 → 研究",theory:"把参数量、KV Cache、单 Token 激活专家数、共享参数重复使用次数分别列式，区分参数存储与实际计算。",
    why:"更少参数或更少激活并不自动产生更低延迟，访存、调度、Token 分布和通信也会决定性能。",
@@ -59,5 +64,5 @@
   if(!lesson.theory||!lesson.why||!lesson.answer)throw Error("missing teaching explanation");
   ids.add(lesson.id);targets.add(lesson.href);
  }
- return Object.freeze({VERSION:"2026.10.24",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
+ return Object.freeze({VERSION:"2026.11.11",lessons,targets:Object.freeze([...targets]),lookup:id=>lessons.find(x=>x.id===id)||null});
 });

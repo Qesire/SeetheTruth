@@ -33,8 +33,8 @@ class SharedTeachingBrowser(unittest.TestCase):
         self.assertEqual(normal.goto(self.base+"/teaching.html").status,200)
         self.assertEqual(phone.goto(self.base+"/teaching.html?edition=teaching").status,200)
         for p in (normal,phone):
-            p.wait_for_function("window.SeetheTruthTeachingHub && window.SeetheTruthTeachingHub.lessons===10")
-            self.assertEqual(p.locator("#cards button.card").count(),10)
+            p.wait_for_function("window.SeetheTruthTeachingHub && window.SeetheTruthTeachingHub.lessons===11")
+            self.assertEqual(p.locator("#cards button.card").count(),11)
             p.locator("#voteCase").select_option("any")
             self.assertEqual(p.evaluate("window.SeetheTruthLastSharedVote.point"),"ANY")
             self.assertEqual(p.evaluate("window.SeetheTruthLastSharedVote.perRank"),["prompt","empty-prompt"])
@@ -56,6 +56,38 @@ class SharedTeachingBrowser(unittest.TestCase):
         normal.close();phone.close()
         self.assertEqual(errors,[])
 
+    def test_selected_course_precedes_mobile_catalogue(self):
+        page=self.browser.new_page(viewport={"width":390,"height":844},
+            is_mobile=True,has_touch=True)
+        errors=[]
+        page.on("pageerror",lambda e:errors.append(str(e)))
+        try:
+            self.assertEqual(page.goto(self.base+"/teaching.html?course=vlm&edition=teaching").status,200)
+            page.wait_for_function("!!window.SeetheTruthTeachingHub")
+            position=page.evaluate("""() => ({
+                panel:document.querySelector('#deepDive').getBoundingClientRect().top,
+                courses:document.querySelector('#cards').getBoundingClientRect().top
+            })""")
+            self.assertLess(position["panel"],position["courses"])
+            self.assertIn("VLM",page.locator("#detailTitle").inner_text())
+            page.screenshot(path=str(OUT/"vlm-first-visit-mobile.png"),full_page=True,animations="disabled")
+            allowed=page.evaluate("""() => window.SeetheTruthUnifiedCore.labs
+                .filter(l=>!['index.html','real_model_lab.html','telemetry.html'].includes(l.href))
+                .length""")
+            self.assertEqual(page.locator(".more-nav-menu a").count(),allowed)
+            self.assertEqual(page.locator(".more-nav-menu [data-lab]").count(),allowed)
+            self.assertEqual(page.locator(".more-nav-menu a[href='index.html']").count(),0)
+            self.assertFalse(page.locator(".more-nav-menu a").first.is_visible())
+            page.locator(".more-nav summary").click()
+            self.assertTrue(page.locator(".more-nav-menu a").first.is_visible())
+            page.locator(".more-nav summary").click()
+            page.locator('[data-lesson="building"]').click()
+            self.assertEqual(page.evaluate("document.activeElement.dataset.lesson"),"building")
+            self.assertEqual(page.locator('[data-lesson="building"]').get_attribute("aria-pressed"),"true")
+            self.assertEqual(errors,[])
+        finally:
+            page.close()
+
     def test_mobile_teaching_hides_generated_artifacts_but_keeps_math(self):
         p=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True,
                                 device_scale_factor=2)
@@ -64,7 +96,7 @@ class SharedTeachingBrowser(unittest.TestCase):
         self.assertEqual(p.goto(self.base+"/teaching.html?edition=teaching").status,200)
         p.locator('[data-lesson="building"]').click()
         p.locator("#openLesson").click()
-        p.wait_for_url("**/learn.html?edition=teaching")
+        p.wait_for_url("**/learn.html?*edition=teaching")
         p.wait_for_function("document.body.classList.contains('teaching-edition')")
         self.assertTrue(p.locator("#run").is_visible())
         self.assertTrue(p.locator("#blockSearch").is_visible())

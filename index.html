@@ -47,12 +47,14 @@
 .consensus-links a:hover{border-color:#91eaff}
 .consensus-note{border-left:2px solid #b3a4ff;padding-left:9px;color:#bccbdf;font-size:10px;line-height:1.65;margin-top:9px}
 </style>
+<link rel="stylesheet" href="ui_accessibility.css">
 </head>
 <body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <div class="app">
 <header class="header">
   <div class="brand"><div class="brandmark"><svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="#82def4" stroke-width="1.3"><path d="M20 3 35 12v17L20 38 5 29V12Z"/><path d="m5 12 15 9 15-9M20 21v17M12 8l16 25M28 8 12 33"/></svg></div><div><h1>MODEL ATLAS <span style="color:#58d9ed">/ HOLOGRAPH</span></h1><p>神经网络计算结构 · 数学机制 · 学习工作流</p></div></div>
-  <div class="header-right"><span class="pill"><i class="circle"></i> 本地运行 · 不上传数据</span><a class="btn" href="cache.html" style="text-decoration:none;white-space:nowrap">◷ KV 时间线</a><a class="btn primary" href="learn.html" style="text-decoration:none;white-space:nowrap">▦ Scratch 式模型实验台</a><a class="btn" href="telemetry.html" style="text-decoration:none;white-space:nowrap">◉ 性能 · 张量显微镜</a><label class="btn" for="telemetryFile" style="cursor:pointer;white-space:nowrap">▣ 映射统计</label><input id="telemetryFile" type="file" accept=".json,application/json" style="display:none"><button id="analyzeOpen" class="btn">⌘ 解析源码仓库</button><button id="importOpen" class="btn primary">＋ 导入 Config / Graph</button><button id="shot" class="icon-button" title="保存 3D 视图 PNG">↧</button></div>
+  <div class="header-right"><a class="btn" href="teaching.html" style="text-decoration:none;white-space:nowrap">课程中心</a><a class="btn primary" href="learn.html" style="text-decoration:none;white-space:nowrap">▦ Scratch 式模型实验台</a><details class="stt-lab-menu"><summary>数据与工具</summary><div class="stt-lab-menu-items"><span class="pill"><i class="circle"></i> 本地运行 · 不上传数据</span><a class="btn" href="cache.html" style="text-decoration:none;white-space:nowrap">◷ KV 时间线</a><a class="btn" href="telemetry.html" style="text-decoration:none;white-space:nowrap">◉ 性能 · 张量显微镜</a><label class="btn" for="telemetryFile" style="cursor:pointer;white-space:nowrap">▣ 映射统计</label><input id="telemetryFile" type="file" accept=".json,application/json" style="display:none"><button id="analyzeOpen" class="btn">⌘ 解析源码仓库</button><button id="importOpen" class="btn primary">＋ 导入 Config / Graph</button><button id="shot" class="icon-button" title="保存 3D 视图 PNG">↧</button></div></details></div>
 </header>
 <nav class="modebar" aria-label="学习场景">
  <div class="mode-left"><span class="mode-overline">EXPLORE / LEARN / EXPERIMENT</span><strong>模型机制全息图谱</strong><span class="mode-sep">/</span><span id="currentCourse">架构剖析</span></div>
@@ -69,7 +71,7 @@
  <div class="divider"></div>
  <div class="rail-foot"><strong style="color:#c4e8f5">结构来源</strong><div id="sourceInfo">教学模板（演示），非特定模型的官方计算图。</div><div style="margin-top:8px;color:#70bfd3">注意：config 只表达声明的超参数；无法恢复真实源码中的分支、张量变换或融合算子。</div></div>
 </aside>
-<main class="stage">
+<main id="stt-main" class="stage">
  <div class="stage-head"><div><div class="eyebrow" id="breadcrumb">GLOBAL / COMPUTATION GRAPH</div><h2 id="stageTitle">全息总览 · 立体树</h2></div><div class="stage-actions"><div class="seg" role="tablist" aria-label="查看层级"><button class="seg-btn active" data-level="macro">整体</button><button class="seg-btn" data-level="block">Block</button><button class="seg-btn" data-level="operator">算子</button><button class="seg-btn" data-level="matrix">矩阵</button><button class="seg-btn" data-level="tensor">张量</button></div><button id="toggleAnimation" class="btn" title="暂停或播放数据流">Ⅱ 暂停</button></div></div>
  <div class="stage-body" id="stageBody"><canvas id="scene" aria-label="可拖拽旋转、滚轮缩放、点击节点的三维模型计算图"></canvas><div class="canvas-gradient"></div><div class="scope-path" id="scopePath" aria-live="polite"></div><div class="hover-hud" id="hoverInfo" hidden></div><div class="hud"><span class="hud-chip" id="modelChip">GQA Decoder</span><span class="hud-chip" id="shapeChip">B1 · S128 · H4096</span></div><div class="canvas-hint">左键拖拽旋转 · 滚轮缩放 · 单击聚焦 · <b>双击飞入</b><br>树枝表示<strong>结构隶属</strong>，发光数据线表示计算流</div><div class="view-tools"><button id="fitAll" title="全景复位">◎</button><button id="zoomIn" title="放大">＋</button><button id="zoomOut" title="缩小">−</button><button id="resetCam" title="复位视角">⟳</button></div></div>
  <div class="footer"><div class="foot-meta"><span id="chainLabel">STRUCTURAL FLOW / 教学模型</span><span id="nodeCount">—</span></div><div class="pipeline" id="pipeline"></div></div>

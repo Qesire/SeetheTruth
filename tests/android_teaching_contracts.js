@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const shared=require('../teaching_curriculum.js');
-assert.equal(shared.lessons.length,10,'mobile APK shares all ten PC learning tracks');
+assert.equal(shared.lessons.length,11,'mobile APK shares all eleven PC learning tracks');
 const home=read('android_teaching.html'),policy=read('android_teaching_mode.js'),
  activity=read('android/app/src/main/java/io/github/qesire/seethetruth/TeachingActivity.java'),
  manifest=read('android/app/src/main/AndroidManifest.xml'),
@@ -17,6 +17,7 @@ for(const name of expected){
 }
 assert.match(home,/纯教学版/);
 assert.match(home,/不生成 Python 程序/);
+assert.match(home,/href="teaching\.html\?edition=teaching"/,'canonical shared curriculum entry');
 assert.match(policy,/#exportPython/);
 assert.match(policy,/#pythonExportPanel/);
 assert.match(policy,/#save/);

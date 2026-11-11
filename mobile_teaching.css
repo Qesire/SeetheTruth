@@ -23,3 +23,14 @@ body.teaching-edition .header:after{content:"离线教学 · 不导出产物";co
  body.teaching-edition .playbar .row{min-width:max-content}
  body.teaching-edition .btn{touch-action:manipulation}
 }
+
+/* Hide only inert advanced controls in the narrow education workbench. */
+@media(max-width:700px){
+ body.teaching-edition .stage-top .row > button:disabled,
+ body.teaching-edition .stage-top .row > select:disabled{display:none}
+ body.teaching-edition .stage-top .row > button:focus-visible,
+ body.teaching-edition .stage-top .row > select:focus-visible{outline:3px solid #f1bd77;outline-offset:2px}
+}
+
+/* The global experiment menu must not be clipped by the mobile action row. */
+@media(max-width:700px){body.teaching-edition .head-actions{max-height:none;overflow:visible;}}

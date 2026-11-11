@@ -40,7 +40,11 @@ class CapabilityPageAcceptance(unittest.TestCase):
             page.wait_for_function("window.SeetheTruthCapabilities && document.querySelectorAll('#rows tr').length===window.SeetheTruthCapabilities.audit().counts.registered")
             counts=page.evaluate("window.SeetheTruthCapabilities.audit().counts")
             extension_count=page.evaluate("window.SeetheTruthBlockExtensions.kinds.length")
-            self.assertEqual(extension_count,8)
+            installed_count=page.evaluate("""() =>
+                window.SeetheTruthInstalledBlockPacks.entries.reduce((total,entry) =>
+                    total+Object.keys(window[entry.global].defs).length,0)""")
+            self.assertEqual(extension_count,installed_count,
+                "browser extension inventory must match the installed pack manifest")
             core_native=page.evaluate("window.SeetheTruthBlockCatalog.KINDS.length")
             stream_native=page.evaluate("window.SeetheTruthStreamGraph.kinds.length")
             self.assertEqual(counts["registered"],11+core_native+stream_native+extension_count)

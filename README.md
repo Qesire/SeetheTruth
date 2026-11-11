@@ -4,6 +4,19 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+## 当前项目与 VLM 课程
+
+**Learning Studio** 是自由计算图工作台；**教学中心**将算子机制、计算路径和自检问题组织为可操作课程。当前注册 **154 种积木**，每种积木的数值、自动微分、NumPy/PyTorch 导出和模型对应能力由 [能力矩阵](capabilities.html) 单独标示。
+
+VLM 课程使用合成图像 Patch 和文本 Token，依次探索视觉前缀、文本读取视觉 K/V、视觉 Token 压缩，以及 Text Query 选择 Patch 后的 Dense/稀疏误差。这些都是可以运行的**微型数学图**；预训练模型推理、语义识别质量和 GPU 性能需要另外验证。可以直接打开 [VLM 课程](teaching.html?course=vlm)、[Patch Top-K 实验](learn.html?mission=extension_vlm_query_patch_selection) 或阅读 [数学机制](docs/vlm-learning-architecture.md)。
+
+**发行状态：** VLM 扩展仍在 [PR #105](https://github.com/Qesire/SeetheTruth/pull/105) 的审查分支中。当前目标是内部教学 Alpha 候选；仓库尚未合并本 PR、选择正式再分发许可证或创建 GitHub Release。具体门槛见 [发布审查](docs/vlm-release-candidate-20261111.md)。
+
+<details>
+<summary>按时间展开既有研发记录与证据</summary>
+
+**2026-11-11 VLM 视觉语言课程扩展：** [VLM 计算框架与验证方案](docs/vlm-learning-architecture.md) 将视觉前缀和跨模态注意力接入原有 LearningLab DAG：新增 4 个可信扩展积木（视觉/文本 Token 拼接、视觉 Token 平均池化、文本行读出、Patch 二维坐标映射）、4 个真实数值计算图；新增文本条件 Patch Top-K、稀疏/Dense 对照和误差分析，并在统一 PC/Android 教学中心增设 VLM 专题。可对照 6 Token 与 4 Token 的因果 Mask、逐坐标来源和压缩的信息损失；仍为有界 Float64 教学计算，尚未实现实际预训练 VLM 权重、独立 NumPy/PyTorch 导出或 GPU 加速。新增的数学和错误用例由 [VLM 测试](tests/vlm_learning_contracts.js) 审核，另有独立 NumPy/PyTorch CPU 小图比对。可从 [VLM 教学入口](teaching.html?course=vlm) 进入；涉及 VLM 的代码导出仍会明确拒绝不支持的算子。最新发布评估见 [RC 审查记录](docs/vlm-release-candidate-20261111.md)，最终成功状态以该分支最新 CI 为准。
+
 **2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
 
 **2026-10-25 多案例独立证书：** [多图、共享参数与 ReLU 边界验证](docs/operator-multifixture-coverage-v2.md) 将逐算子案例证书升级为按实际图与形状保留多条独立证据，新增非方阵、正负激活、共享参数多支路和 ReLU 零点约定次梯度测试，区分有限差分可验证点与不可微点。
@@ -30,6 +43,9 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 **DeepInfer Prefill 源码教学：** [ALL/ANY Prefill 投票与图片 Token Chunk 边界实验室](deepinfer_prefill_lab.html) 根据官方 Scheduler 的 NORMAL 引擎投票、资源不足后的第二轮回退、Chunked Prefill 的 CP 对齐预算和 IMG + PAD 保护规则进行确定性计算；不执行实际分布式 AllReduce、GPU Prefill 或图片特征计算。教学页面自动进入 Android 离线 APK。参见 [计算合同与源码对照](docs/deepinfer-prefill-policy.md)。
 
+
+</details>
+
 ## 可审计的积木能力表
 
 [完整积木能力矩阵](capabilities.html) 从注册表、逐积木论文知识卡和两种 CPU 编译器的白名单实时计算能力，不把积木注册误认为任意图可训练。仓库内运行 `node scripts/report_capabilities.js`，或使用 `--json` 导出机器可读明细；`node tests/block_capability_contracts.js` 校验一致性。
@@ -44,7 +60,7 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 ## PC / Android 同一份教学内容
 
-新的 [跨平台教学中心](teaching.html) 将 10 个专题（计算积木、论文、多模态、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS，以及工程入门与训练流水线）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
+新的 [跨平台教学中心](teaching.html) 将 11 个专题（计算积木、论文、多模态、VLM、Loop/GQA/MoE、KV 缓存、DeepInfer Prefill、Scheduler/KV/Worker、ZOS，以及工程入门与训练流水线）整理为**计算流 → 工程设计动机 → 可检验问题 → 可交互实验**。两个平台共享 `teaching_curriculum.js`，Prefill 机制对照直接调用同一 `deepinfer_prefill_policy.js`，不维护独立的 Android 理论副本。PC 完整工作台 `learn.html` 继续支持研究和导出；Android 教学模式隐藏产物导出，但保留算子解释与微型数值演示。已有 `android/` APK 工程重新使用此首页，构建工件见 [Android Actions](.github/workflows/android-teaching-apk.yml)。完整双端一致性与限制见 [教学同步合同](docs/teaching-crossplatform.md)。
 
 ## 立即体验
 
@@ -56,7 +72,7 @@ cd SeetheTruth
 python atlas_server.py --port 8765
 ```
 
-浏览器打开 **http://127.0.0.1:8765/learn.html**。当前完整学习工作台已进入 main；涉及新多模态积木的功能请以对应 PR 的合并状态和 CI 为准。
+浏览器打开 **http://127.0.0.1:8765/learn.html**。VLM 课程可从 `http://127.0.0.1:8765/teaching.html?course=vlm` 开始；在 PR #105 合并前，先切换到该 PR 的 `feat/vlm-unified-learning-20261111` 分支。基础工作台仍以 `main` 为准。
 
 1. 选择一门引导课程，或从空白画布自由连线；端口、DAG、形状和参数有效性会进行验证，**不会因为不符合某种模型模板而禁止连接**。
 2. 默认使用**原理推演**，只追踪运算意义、形状和依赖，不执行矩阵计算。
@@ -73,7 +89,7 @@ NumPy 导出另外需要 `python -m pip install numpy`；PyTorch CPU 导出需�
 
 | 能力 | 已实现范围 | 明确限制 |
 | --- | --- | --- |
-| 积木库 | **150 种积木**：11 种基本积木 + 127 种目录原生/高级计算积木 + 4 种显式流状态积木 + 8 种独立扩展积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
+| 积木库 | **154 种积木**：11 种基本积木 + 127 种目录原生/高级计算积木 + 4 种显式流状态积木 + 12 种独立扩展积木 | 新算子需先注册正确的执行合同；不是每种积木都支持所有后端 |
 | 学习内容 | **64 门引导课程**：工业 Qwen3 风格 GQA、第 39/40 课 2/3 次共享参数 Looped Transformer、第 41 课逐轮 CE 加权监督／保留优化器状态的深度切换，以及第 42 课 LoopFormer 启发的短深度学生/长深度 Detach 教师一致性实验，第 43 课 Loop 残差缩放 1 / 1/√N / 1/N 的真实 Loss、梯度范数和计算量对照；第 44 课 MoR 启发的逐 Token 深度预算（硬停止状态、密集计算语义）；第 45 课 Huginn/xLLM-Loop 源码启发的共享 Linear 输入注入与函数保持消融；另有空白自由画布 | 第 44 课仅控制数学状态是否更新，仍执行全部候选 Attention/FFN；不包含 MoR 学习式 Token Router、真实活跃行打包或 KV 稀疏内核，也不能据此声称加速 |
 | DeepInfer 推理调度 | 按官方 Reference 数学实现 MTP remap+累积置信度+稳定排名+固定预算；YoCo SWA mask/compact 保留后缀可执行数学示例及 Query 行数对照 | YoCo 尚未实现 DeepInfer 的真实多 Chunk metadata、Yoco Pivots、ZOS Worker/GPU Kernel；不能据此推断线上部署吞吐 |\n| 推理系统基础 | 真实 CPU Top-K、Top-K 稀疏 QK/PV、Paged KV 逻辑到物理地址映射、贪心推测解码验收；四门新的可自由编辑课程可组合 FlashMLA/DeepSelect/DeepSpec 相关机制 | 属于源码机制教学抽象，不提供 DeepSeek 旧 vLLM Fork、FP8/FP4 GPU kernels、实际分布式 EP 通信、目标/草稿模型权重或 GPU 性能 |\n| 原生视频计算 | 真 5D [B,T,H,W,C] 与 [O,Kt,Kh,Kw,I] 因果 Conv3D、左侧时间补零和历史帧流式状态；逐节点 JS/NumPy/PyTorch 比较及可训练卷积核权重梯度 | 不是完整 Wan VAE；空间 valid、时间 stride=1、无完整归一化、上下采样或实际视频文件解码 |\n| 进阶多模态 | 可执行 HWC Conv2D（独立可训练 Parameter 权重）、HTK Mel 三角滤波与两步确定性 ε-DDIM；NumPy/PyTorch CPU 支持，卷积参数的真实 autograd 可单独验证 | 无完整视频 VAE、卷积填充/膨胀、真实 Whisper Slaney 滤波权重、去噪神经网络或生成质量指标 |\n| 多模态 | 图像 Patchify、音频真实 Hann-STFT 功率谱与对数压缩、视频 Tubelet，另有图像/音频/视频三路交叉注意力的可执行积木图；NumPy、PyTorch CPU 代码导出 | 采用受限二维载体、合成数据和明确轴映射；尚无真实图片/音频/视频解码、ViT/ViViT 权重、Whisper Mel 滤波及 Wan VAE 3D 因果缓存 |\n| 原理解释 | 详细数学/论文知识卡；第 38 课支持按积木悬停查看 Qwen3 真实源码、张量形状、公式、差异及最小证伪实验；可执行 LoRA 真实图重写 | 模型源引用不等于 checkpoint 复现；代码与硬件性能结论需独立验证 |
 | 计算与训练 | 有界二维/四维微型数值、显式 KV Cache、GQA/MQA、MoE、next-token 对齐/可训练 Embedding/交叉熵、GRPO/PPO、局部和组合 VJP、多步优化器状态 | 不是任意算子的通用 PyTorch Autograd 或 GPU 训练 |
@@ -134,7 +150,7 @@ node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python Nu
 
 ## 发布状态和文档
 
-截至 **2026-10-19**，新功能仍在 [Draft PR #21](https://github.com/Qesire/SeetheTruth/pull/21)，尚未创建正式 Release。清晰的 Alpha/Beta 发布门槛、尚未通过的条目与证据见 **[发布准备清单](docs/release-readiness.md)**。发布前还需要确定并提交开源许可证；仓库当前尚无 LICENSE。
+截至 **2026-11-11**，VLM 扩展位于 [PR #105（已就绪供代码审查）](https://github.com/Qesire/SeetheTruth/pull/105)。该分支上一轮已通过全部 8 项必需 GitHub Actions；最新代码仍须在最终提交上再次验收。仓库尚未创建 GitHub Release，也没有由项目所有者确认并提交根目录 `LICENSE`。这两项是公开发布阻塞项；当前 Android 是 debug 签名教学 APK。见 [RC 审查记录](docs/vlm-release-candidate-20261111.md) 与 [发布准备清单](docs/release-readiness.md)。
 
 
 **新增可执行源码对齐实验（2026-10-24）**：Wan2.2 固定提交 `1ea34ff` 的 F/H/W 三维视频 RoPE 现在是第 147 种可组合积木，另有第 60 门引导图 `nd_wan_video_rope_attention`。它真实计算三维复数对旋转、QK 及 PV，并有独立有限差分 VJP 证据；输入为合成、已完成投影和 QK 归一化的 Q/K/V，小型 CPU 张量不代表执行官方权重、FlashAttention GPU 或 Wan 完整 Transformer Block。详情：[通用显微镜的 Wan F/H/W 规则](docs/universal-compute-microscope.md)。

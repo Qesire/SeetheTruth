@@ -231,15 +231,21 @@ input[type="file"]{display:none}
 .lineage-node,.lineage-details{border:1px solid #335467;border-radius:7px;margin-top:6px;padding:7px;background:#0d2839}
 .lineage-node summary,.lineage-details summary{cursor:pointer;font-size:12px}
 .lineage-element{padding:5px;margin-top:5px;border-left:2px solid #4c958d;background:#122d3a;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace}
-</style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"></head><body>
+</style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"><style>
+#jumpToGraph{display:none}
+@media(max-width:700px){#jumpToGraph{display:inline-flex;align-items:center;min-height:40px}}
+</style>
+<link rel="stylesheet" href="ui_accessibility.css">
+</head><body class="stt-learning-studio">
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
- <div><div class="brand">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></div>
+ <div><h1 class="brand" style="margin:0">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></h1>
   <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <div class="head-actions"><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><span class="badge warning">TEACHING SIMULATION · 非真实模型</span><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div>
+ <nav class="head-actions" aria-label="学习与实验室导航"><a id="jumpToGraph" class="btn ghost" href="#stt-main">查看当前计算图</a><a id="jumpToCatalog" class="btn ghost" href="#stt-catalog">选择课程／积木</a><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><details class="stt-lab-menu"><summary>其他实验室</summary><div class="stt-lab-menu-items"><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div></details><span class="badge warning">TEACHING SIMULATION · 非真实模型</span></nav>
 </header>
 <div class="app">
- <aside class="rail">
+ <aside class="rail" id="stt-catalog">
   <div class="kicker">01 / EXECUTABLE BLOCK CATALOG</div>
   <h2>计算积木库 <span id="blockCount" class="catalog-count">45 blocks</span></h2>
   <p class="hint">先搜索或按类别筛选，再拖动到画布。积木优先展示数学含义、形状约束和计算逻辑；小矩阵数值可选。</p>
@@ -321,7 +327,7 @@ input[type="file"]{display:none}
   <div class="rule"></div>
   <p class="hint">支持本地 JSON 保存、导入、撤销和重做。教学模拟不代表真实模型性能。</p>
  </aside>
- <main class="stage">
+ <main id="stt-main" class="stage">
   <div class="stage-top">
    <div><div class="kicker">03 / MODEL WORKBENCH</div><div class="stage-title" id="workspaceTitle">任务 01 · 从 FFN 开始</div><div class="help">拖拽积木排列 · 点击插口连线 · <span id="fitLabel">画布自适配</span></div></div>
    <div class="row">
@@ -411,6 +417,7 @@ input[type="file"]{display:none}
 <script src="stream_graph_blocks.js"></script>
 <script src="semantic_block_pack.js"></script>
 <script src="axis_block_pack.js"></script>
+<script src="vlm_block_pack.js"></script>
 <script src="installed_block_packs.js"></script>
 <script src="block_extension_registry.js"></script>
 <script src="learning_lab.js"></script>
@@ -611,7 +618,7 @@ const L=window.SeetheTruthLearning,C=window.SeetheTruthConceptFlow,
 const studyMode=()=>$("#studyMode").value;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const categories={tensor:"▥",memory:"▤",inference:"⇥",data:"◫",vision:"▦",audio:"♫",video:"▣",generative:"✧",compute:"⊞",norm:"◉",activate:"ƒ",combine:"⊕",attention:"✣",loss:"∑",position:"⟳",shape:"▦",reduce:"Σ",gated:"⌘",sampling:"◇",regularize:"◧",routing:"⇢",training:"∂"};
-const categoryNames={tensor:"具名轴张量",memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
+const categoryNames={tensor:"具名轴张量",memory:"逻辑缓存状态",inference:"推理系统",data:"数据",vision:"图像",multimodal:"视觉语言",audio:"音频",video:"视频",generative:"扩散生成",compute:"计算",norm:"归一化",activate:"激活",combine:"组合",attention:"注意力",loss:"损失",position:"位置",shape:"张量变换",reduce:"聚合",gated:"门控",sampling:"采样前处理",regularize:"正则化",routing:"路由",training:"训练语义"};
 let filterCategory="all",filterText="";
 let graph=L.preset("ffn"),selected="x",from=null,run=null,step=-1,seq=0,undo=[],redo=[],dragging=null;
 let activeComposite=null,compositeHistory=[],zoomOverride=null,zoomMode="readable",backwardTrace=null,trainStatus=null,timelineStepIndex=0,timelinePhase="backward",readinessSnapshot=null,runGraph=null,runScope=null;
@@ -1620,7 +1627,14 @@ window.addEventListener("resize",drawWires);
 $("#viewport").addEventListener("scroll",drawWires,{passive:true});
 $("#blockSearch").addEventListener("input",e=>{filterText=e.target.value.trim();renderPalette();});
 $("#stateGraphExample").onclick=()=>setPreset("stream_state_branches");
-renderCategoryButtons();renderPalette();render();window.SeetheTruthPaperHover?.install(document);
+renderCategoryButtons();renderPalette();render();
+ const requestedMission=new URLSearchParams(location.search).get("mission");
+ if(requestedMission){
+  const chosen=[...document.querySelectorAll("[data-preset]")].find(b=>b.dataset.preset===requestedMission);
+  if(chosen)setPreset(requestedMission);
+  else say("不存在或未安装的课程任务："+requestedMission,true);
+ }
+ window.SeetheTruthPaperHover?.install(document);
 })();
 </script><script src="teaching_edition.js"></script>
 <script src="observation_snapshots.js"></script><script src="unified_observation_ui.js"></script>
