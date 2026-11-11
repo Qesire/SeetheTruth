@@ -36,7 +36,7 @@ small.note{color:#aec9d8}#related{display:flex;gap:9px;flex-wrap:wrap;margin-top
 <h1>亲手走通一次模型开发的完整生命周期</h1><p class="intro">逐关检查环境、数据来源与隔离、Tokenizer、参数形状、Forward、CE、Backward、AdamW、验证集、检查点和 Decode。不是播放预设动画：每次实验都在本机 JavaScript 中执行真实的 8 词表 <strong>Bigram next-token 模型</strong>的数值运算，并将训练权重用于后续生成。它用于理解工程操作，不是 Transformer、LLM 权重或实际部署性能测试。</p>
 <span class="badge" id="scope">SYNTHETIC · Float64 · CPU · 无 GPU / 无网络 / 不产生文件</span>
 <div class="layout"><aside class="panel"><div class="eyebrow">12 CHECKPOINTS</div><h3>工程关卡</h3><div id="progress"><div id="progressFill"></div></div><small id="progressText">0 / 12 已验证</small><div id="stages"></div>
-<div class="block"><button class="btn" id="reset">重置训练与所有关卡</button><p><small class="note">离线教学：状态仅存内存，刷新后清空；Android 不提供代码或文件输出。</small></p></div></aside>
+<div class="block"><button class="btn" id="reset">重置训练与所有关卡</button><p class="note">将清除本次会话的全部关卡进度和内存训练状态，无法撤销。</p><p><small class="note">离线教学：状态仅存内存，刷新后清空；Android 不提供代码或文件输出。</small></p></div></aside>
 <section class="panel"><div class="eyebrow" id="category">—</div><h2 id="title">—</h2><div class="block"><div class="caption">本关可检验目标</div><p id="goal"></p></div>
 <div class="block"><div class="caption">学员操作</div><p id="operations"></p><div id="configForm" class="row" style="margin:12px 0">
 <label class="field">初始化种子<input id="seed" type="number" min="1" max="2147483647" value="7"></label>

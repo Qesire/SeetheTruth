@@ -108,6 +108,10 @@ class SitewideHumanInterface(unittest.TestCase):
         page.on("pageerror",lambda e:errors.append(str(e)))
         try:
             self.assertEqual(page.goto(self.base+"/learn.html").status,200)
+            self.assertTrue(page.locator("#jumpToGraph").is_visible())
+            page.locator("#jumpToGraph").click()
+            page.wait_for_function("""() => document.querySelector('#stt-main')
+                .getBoundingClientRect().top < window.innerHeight""")
             menu=page.locator(".head-actions .stt-lab-menu")
             self.assertEqual(menu.count(),1)
             self.assertFalse(menu.locator('a[href="cache.html"]').is_visible())
