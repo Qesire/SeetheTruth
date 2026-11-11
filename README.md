@@ -136,7 +136,7 @@ node tests/numpy_stream_codegen_contracts.js    # 4 状态积木独立 Python Nu
 
 ## 发布状态和文档
 
-截至 **2026-11-11**，VLM 扩展位于 [Draft PR #105](https://github.com/Qesire/SeetheTruth/pull/105)。该分支上一轮已通过全部 8 项必需 GitHub Actions；最新代码仍须在最终提交上再次验收。仓库尚未创建 GitHub Release，也没有由项目所有者确认并提交根目录 `LICENSE`。这两项是公开发布阻塞项；当前 Android 是 debug 签名教学 APK。见 [RC 审查记录](docs/vlm-release-candidate-20261111.md) 与 [发布准备清单](docs/release-readiness.md)。
+截至 **2026-11-11**，VLM 扩展位于 [PR #105（已就绪供代码审查）](https://github.com/Qesire/SeetheTruth/pull/105)。该分支上一轮已通过全部 8 项必需 GitHub Actions；最新代码仍须在最终提交上再次验收。仓库尚未创建 GitHub Release，也没有由项目所有者确认并提交根目录 `LICENSE`。这两项是公开发布阻塞项；当前 Android 是 debug 签名教学 APK。见 [RC 审查记录](docs/vlm-release-candidate-20261111.md) 与 [发布准备清单](docs/release-readiness.md)。
 
 
 **新增可执行源码对齐实验（2026-10-24）**：Wan2.2 固定提交 `1ea34ff` 的 F/H/W 三维视频 RoPE 现在是第 147 种可组合积木，另有第 60 门引导图 `nd_wan_video_rope_attention`。它真实计算三维复数对旋转、QK 及 PV，并有独立有限差分 VJP 证据；输入为合成、已完成投影和 QK 归一化的 Q/K/V，小型 CPU 张量不代表执行官方权重、FlashAttention GPU 或 Wan 完整 Transformer Block。详情：[通用显微镜的 Wan F/H/W 规则](docs/universal-compute-microscope.md)。
