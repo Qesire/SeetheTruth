@@ -141,12 +141,15 @@ assert.deepEqual(fullValues.top_patches.map(r=>r.slice().sort((a,b)=>a-b)),[[0,1
 assert.ok(fullValues.readout_delta.flat().every(x=>Math.abs(x)<1e-12));
 assert.ok(Math.abs(fullValues.readout_error[0][0])<1e-20);
 // Wrong patch-grid indices / overbudget routing are independently rejected.
+const gridVisual=Array.from({length:4},()=>[1,2,3,4]);
 assert.throws(()=>Pack.execute('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
- {indices:[[0,4]]}),/outside selected image Patch grid/);
+ {indices:[[0,4]],visual:gridVisual}),/outside selected image Patch grid/);
 assert.throws(()=>Pack.execute('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
- {indices:[[0,1.5]]}),/Patch index/);
+ {indices:[[0,1.5]],visual:gridVisual}),/Patch index/);
 assert.throws(()=>Pack.infer('vlm_patch_grid_lookup',{gridHeight:2,gridWidth:2},
- {indices:[5,2]}),/eight teaching rows/);
+ {indices:[5,2],visual:[4,4]}),/eight teaching rows/);
+assert.throws(()=>Pack.infer('vlm_patch_grid_lookup',{gridHeight:1,gridWidth:3},
+ {indices:[2,2],visual:[4,4]}),/match actual visual token count/);
 const badTopK=JSON.parse(JSON.stringify(graphs[3]));
 badTopK.nodes.find(n=>n.id==='top_patches').params.topk=5;
 assert.equal(R.check(badTopK,{numeric:true}).executable,false);
@@ -165,12 +168,23 @@ runs.forEach(verifyTrace);
 assert.throws(()=>Pack.infer('vlm_token_concat',{}, {visual:[3,4],text:[2,3]}),/feature widths/);
 assert.throws(()=>Pack.infer('vlm_token_concat',{}, {visual:[7,4],text:[2,4]}),/length/);
 assert.throws(()=>Pack.infer('vlm_visual_pair_pool',{}, {visual:[3,4]}),/even/);
-assert.throws(()=>Pack.infer('vlm_text_tail',{prefixTokens:4}, {context:[4,4]}),/leave/);
+assert.throws(()=>Pack.infer('vlm_text_tail',{prefixTokens:4},
+ {context:[4,4],visual:[4,4]}),/leave/);
+assert.throws(()=>Pack.infer('vlm_text_tail',{prefixTokens:4},
+ {context:[5,4],visual:[3,4]}),/must match connected visual token count/);
 assert.throws(()=>Pack.validate('vlm_text_tail',{prefixTokens:0}),/prefixTokens/);
 const mutated=JSON.parse(JSON.stringify(graphs[0]));
 mutated.nodes.find(n=>n.id==='text_context').params.prefixTokens=7;
 assert.equal(R.check(mutated,{numeric:true}).executable,false);
 assert.throws(()=>L.evaluate(mutated),/prefixTokens|text token/);
+const wrongPrefix=JSON.parse(JSON.stringify(graphs[0]));
+wrongPrefix.nodes.find(n=>n.id==='text_context').params.prefixTokens=3;
+assert.equal(R.check(wrongPrefix,{numeric:true}).executable,false);
+assert.throws(()=>L.evaluate(wrongPrefix),/must match connected visual token count/);
+const wrongGrid=JSON.parse(JSON.stringify(graphs[3]));
+wrongGrid.nodes.find(n=>n.id==='patch_coordinates').params.gridWidth=3;
+assert.equal(R.check(wrongGrid,{numeric:true}).executable,false);
+assert.throws(()=>L.evaluate(wrongGrid),/match actual visual token count/);
 const badMerge=JSON.parse(JSON.stringify(graphs[0]));
 badMerge.edges.find(e=>e.to==='prefix'&&e.port==='text').from='prompt_ids';
 assert.equal(R.check(badMerge,{numeric:true}).executable,false,'nonembedded text ids cannot silently align with visual width');

@@ -30,12 +30,12 @@
    "改变同一对 Token 中的两个值，观察均值保留什么、抹去什么。",
    "要求偶数视觉 Token；固定顺序平均不是训练过的 Token 剪枝、动态分辨率或信息无损压缩。",SRC_POOL),
   vlm_text_tail:def("从多模态上下文提取文本行","Text Readout After Visual Prefix",
-   ["context"],{prefixTokens:4},"Y[t,d]=X[prefixTokens+t,d]",
+   ["context","visual"],{prefixTokens:4},"Y[t,d]=X[prefixTokens+t,d]",
    "按视觉前缀长度提取对应文本位置的上下文表示；让语言 Head 只消费文本行。",
    "移动前缀边界，检查输出行的原始绝对位置是否同步变化。",
    "必须显式提供视觉前缀长度，严格小于序列长度；不自动识别多模态特殊 Token。",SRC_VIEW),
   vlm_patch_grid_lookup:{
-   ...def("视觉 Patch 序号还原二维坐标","Patch Index to Spatial Grid",["indices"],{gridHeight:2,gridWidth:2},
+   ...def("视觉 Patch 序号还原二维坐标","Patch Index to Spatial Grid",["indices","visual"],{gridHeight:2,gridWidth:2},
     "id=y·gridWidth+x; y=floor(id/gridWidth), x=id mod gridWidth",
     "把每个文本 Query 选中的 Patch 行号转换成二维网格位置，保持 Patchify 的行优先顺序。",
     "改变文本 Token 与 Top-K 预算，观察所选 Patch 的二维位置如何变化。",
@@ -77,12 +77,17 @@
    return [v[0]/2,v[1]];
   }
   if(kind==="vlm_patch_grid_lookup"){
-   const indices=inputs.indices;validShape(indices,"indices");
+   const indices=inputs.indices,v=inputs.visual;
+   validShape(indices,"indices");validShape(v,"visual");
+   must(v[0]===p.gridHeight*p.gridWidth,
+    "Patch grid dimensions must match actual visual token count");
    must(indices[0]*indices[1]<=8,"selected Patch coordinates exceed eight teaching rows");
    return [indices[0]*indices[1],2];
   }
-  const x=inputs.context;validShape(x,"context");
+  const x=inputs.context,v=inputs.visual;validShape(x,"context");validShape(v,"visual");
   must(p.prefixTokens<x[0],"prefixTokens must leave at least one text token");
+  must(v[0]===p.prefixTokens,"prefixTokens must match connected visual token count");
+  must(v[1]===x[1],"visual/context feature widths must match");
   return [x[0]-p.prefixTokens,x[1]];
  }
  const dims=v=>[v.length,v[0].length],flatten=v=>v.flat();
@@ -170,8 +175,10 @@
   ];
   if(compressed){
    nodes.push(N("visual_pool","vlm_visual_pair_pool",780,-70));
-   edges.push(E("vision_projector","visual_pool","visual"),E("visual_pool","prefix","visual"));
-  }else edges.push(E("vision_projector","prefix","visual"));
+   edges.push(E("vision_projector","visual_pool","visual"),
+    E("visual_pool","prefix","visual"),E("visual_pool","text_context","visual"));
+  }else edges.push(E("vision_projector","prefix","visual"),
+   E("vision_projector","text_context","visual"));
   return {title:compressed?"VLM · 视觉 Token 平均压缩后的单序列 Prefill":"VLM · 视觉前缀 + 文本 Token 的因果 Prefill",
    nodes,edges};
  }
@@ -214,7 +221,7 @@
    E("text_embedding","query_patch_scores","a"),E("visual_transpose","query_patch_scores","b"),
    E("query_patch_scores","scale_scores","x"),
    E("scale_scores","top_patches","scores"),
-   E("top_patches","patch_coordinates","indices"),
+   E("top_patches","patch_coordinates","indices"),E("visual_projector","patch_coordinates","visual"),
    E("text_embedding","dense_visual","q"),
    E("visual_projector","dense_visual","k"),E("visual_projector","dense_visual","v"),
    E("text_embedding","sparse_visual","q"),
