@@ -18,10 +18,12 @@ main{max-width:1440px;margin:auto;padding:22px 16px 55px}h1{font-size:clamp(25px
 #weights{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}#weights span{aspect-ratio:1;border-radius:3px;min-width:0;border:1px solid #36566e}#links{display:flex;gap:9px;flex-wrap:wrap}#links a{border-bottom:1px dashed #91cece;font-size:12px}
 .progress{height:6px;background:#2b5262;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:var(--mint)}
 @media(max-width:1120px){.layout{grid-template-columns:220px 1fr}.right{grid-column:2;position:static}}@media(max-width:730px){main{padding:16px 12px 35px}.layout{display:flex;flex-direction:column}.panel,.side{position:static;width:100%}.stage-list{grid-template-columns:repeat(2,minmax(0,1fr))}.stage{font-size:12px}.row{gap:8px}.field{min-width:94px}}
-</style></head><body>
+</style><link rel="stylesheet" href="ui_accessibility.css">
+</head><body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <header><div><div class="brand">SEETHE TRUTH</div><div class="tagline">ENGINEERING DEPTH · OPTIMIZER STATE MACHINE</div></div>
 <nav><a href="engineering_journey.html">12 关基础工程</a><a href="teaching.html">课程中心</a><a href="learn.html?edition=teaching">积木工作台</a><a href="training.html">训练数学</a></nav></header>
-<main><div class="tagline">DATALOADER → MICROBATCH → GRADIENT BUFFER → OPTIMIZER → CHECKPOINT → INFERENCE</div>
+<main id="stt-main"><div class="tagline">DATALOADER → MICROBATCH → GRADIENT BUFFER → OPTIMIZER → CHECKPOINT → INFERENCE</div>
 <h1>把训练循环拆成真正可操作的工程状态机</h1>
 <p class="intro muted">本实验室承接 12 关基础课程，使用同一套 8-token Bigram 数值引擎，进一步亲自检查 Shuffle/Epoch、梯度累积、学习率 Warmup/Cosine、梯度裁剪以及<strong>在一个优化器更新的中途被迫停止</strong>后的精确续训。所有数值在本机 JavaScript Float64 执行；不声称 GPU 速度、Transformer 完整训练或实际集群调度。</p>
 <div class="layout"><aside class="panel side"><div class="caption">6 个递进实验 · 答对再运行</div><div class="progress"><div id="progressFill"></div></div><div class="muted" id="progressText">0 / 6</div><div class="stage-list" id="stages"></div>
