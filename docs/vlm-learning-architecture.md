@@ -123,32 +123,32 @@ Run both prefix and cross-attention graphs under the same synthetic shapes. The 
 
 The fourth VLM lesson wires **existing source-tested operators** in the same LearningLab graph:
 
-\`\`\`text
+```text
 image → Patchify → projector → V ───────┬── DenseAttention ← text Q
                                         │
  text IDs → Embedding → Q ─→ QKᵀ/√d ─→ TopK indices ─→ SparseAttention(Q,V,V,indices)
                                         │                      │
                                         └→ PatchGridLookup      ├→ MSE vs Dense
                                                                └→ Text Residual → logits
-\`\`\`
+```
 
 The visual tokens are numbered in row-major order by the existing Patchify, so a selected Patch number \(j\) in a grid of width \(W_p\) maps to \((\lfloor j/W_p\rfloor,\ j\bmod W_p)\). The coordinate shows **which patch was selected**, not a validated bounding box or proof of the feature's semantic relevance. The integer index contract rejects negative, fractional or out-of-grid positions.
 
-For each text Query \(t\), the existing \`matmul\` and \`scale\` produce exactly
+For each text Query \(t\), the existing `matmul` and `scale` produce exactly
 
 \[
 s_{tj}=\frac{q_t^\top k_j}{\sqrt d},\quad S_t=\operatorname{TopK}_k(s_t),
 \quad p_{tj}=\frac{e^{s_{tj}}}{\sum_{\ell}e^{s_{t\ell}}}.
 \]
 
-The native \`inference_sparse_attention\` takes the selected indices and computes
+The native `inference_sparse_attention` takes the selected indices and computes
 \[
 \widehat o_t=\frac{\sum_{j\in S_t}p_{tj}v_j}{1-m_t},
 \qquad
 m_t=\sum_{j\notin S_t}p_{tj}.
 \]
 
-The full \`attention\` block independently computes \(o_t=\sum_j p_{tj}v_j\). With the weighted mean \(\mu_{S_t}=\widehat o_t\) of selected Values and \(\mu_{\overline S_t}\) of excluded Values, the **exact error decomposition** is
+The full `attention` block independently computes \(o_t=\sum_j p_{tj}v_j\). With the weighted mean \(\mu_{S_t}=\widehat o_t\) of selected Values and \(\mu_{\overline S_t}\) of excluded Values, the **exact error decomposition** is
 
 \[
 o_t-\widehat o_t=m_t(\mu_{\overline S_t}-\mu_{S_t}),
@@ -203,3 +203,7 @@ node tests/unified_learning_core_contracts.js
 - Source of exact `torch.cat` behavior: https://pytorch.org/docs/stable/generated/torch.cat.html
 
 Each anchor gives a model-family mechanism to compare, not proof that the teaching blocks reproduce those models.
+
+## 7. Independent CPU cross-backend witness
+
+The heavy math CI executes tests/vlm_cross_backend.js. It passes actual LearningLab graph intermediates into independent NumPy and PyTorch CPU Float64 programs for both TopK=2 and TopK=4 arms. Each independently computes scaled QK, stable indices, image-grid coordinates, Dense/Sparse softmax readout, error and MSE. All numerical coordinates are compared against actual JS graph results and across both Python engines at tolerance 2e-11. This is a bounded numerical oracle, not arbitrary-graph Python exporter support for the VLM extension, pretrained checkpoint evidence, nor a GPU latency test.
