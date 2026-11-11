@@ -13,10 +13,12 @@ input{width:100%;background:#071826;border:1px solid #527387;border-radius:8px;c
 .metric{padding:14px;background:#071c2c;border-radius:10px;border:1px solid #31566b}.metric strong{display:block;color:#70e5d5;font-size:22px;overflow-wrap:anywhere}
 .note{color:#b4ccdc;line-height:1.7}code{color:#e1c3f5}
 .error{color:#ffc3aa}nav{display:flex;gap:12px;flex-wrap:wrap}
-</style></head><body>
+</style><link rel="stylesheet" href="ui_accessibility.css">
+</head><body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <header><div><small>MODEL ATLAS / EXPERIMENTS / COST MODELS</small><h1>Architecture Trade-off Lab</h1><div class="muted">手动改参数，直接计算设计取舍，而不是把论文结论当作真实测速。</div></div>
-<nav><a href="learn.html">学习工作台</a><a href="index.html">模型图谱</a></nav></header>
-<main>
+<nav><a class="stt-home-link" href="teaching.html">课程中心</a><a href="learn.html">学习工作台</a><a href="index.html">模型图谱</a></nav></header>
+<main id="stt-main">
 <section class="panel" data-model="gqa"><h2>01 · GQA / MHA：KV Cache 成本</h2>
 <p class="note">GQA 让多个 Query Head 共享 KV Head。存储量 = 2 × 层数 × Batch × 历史 token 数 × KV Heads × Head Dim × 每元素字节。Head 个数改变的是 KV 存储，不自动证明推理延迟会成比例下降。</p>
 <div class="grid">

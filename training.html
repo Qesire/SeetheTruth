@@ -85,10 +85,12 @@ h1,h2,h3,p{margin:0}h2{font-size:17px}p{line-height:1.7}
 }
 @media(max-width:1190px){.page{grid-template-columns:240px minmax(420px,1fr)}.details{grid-column:1/-1;max-height:520px;border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:690px){.header{padding:12px}.page{display:flex;flex-direction:column;height:auto}.sidebar,.details{max-height:none}.workspace{overflow:visible;padding:16px}.state{grid-template-columns:1fr}.hero h1{font-size:21px}}
-</style></head><body>
+</style><link rel="stylesheet" href="ui_accessibility.css">
+</head><body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <header class="header"><div><div class="brand">SEE<strong>THE</strong>TRUTH <span style="color:#83b9cb;font-size:13px;font-weight:400">/ TRAINING STUDIO</span></div>
 <div class="sub">LEARN HOW A GRADIENT BECOMES AN UPDATE · no GPU needed</div></div>
-<div class="links"><span class="pill">CONCEPT FIRST · 14 BLOCKS</span><a class="link" href="learn.html">← 计算积木库</a><a class="link" href="index.html">全息模型图谱</a></div></header>
+<div class="links"><span class="pill">CONCEPT FIRST · 14 BLOCKS</span><a class="link" href="learn.html">← 计算积木库</a><a class="link" href="index.html">全息模型图谱</a></div><div class="stt-aux-home"><a class="stt-home-link" href="teaching.html">课程中心</a></div></header>
 <div class="page">
 <aside class="sidebar">
  <div class="kicker">01 / TRAINING PARAMETERS</div><h2>训练实验条件</h2>
@@ -107,7 +109,7 @@ h1,h2,h3,p{margin:0}h2{font-size:17px}p{line-height:1.7}
  <p class="help">点击积木跳到本轮首次出现的步骤，并阅读其数学定义、工程惯例和常见误区。</p>
  <nav class="catalog" id="catalog" aria-label="14 种训练计算与状态积木"></nav>
 </aside>
-<main class="workspace">
+<main id="stt-main" class="workspace">
  <section class="hero">
   <div class="kicker">03 / SCALAR TRAINING TIMELINE</div>
   <h1>Forward → Loss → Backward → Optimizer</h1>

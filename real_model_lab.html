@@ -14,8 +14,10 @@ input[type=file]{max-width:100%}#status{padding:10px 12px;background:#0b2331;bor
 .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.metric{border:1px solid #355366;padding:11px;border-radius:8px;min-width:0}.metric label{display:block;color:var(--dim);font-size:11px}.metric b{font:700 17px/1.4 ui-monospace,monospace}
 .sample{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px}.cell{font:10px/1.4 ui-monospace,monospace;border:1px solid #456076;border-radius:2px;padding:4px 2px;text-align:center;overflow:hidden;white-space:nowrap}.sampleNote{font-size:12px;margin-bottom:8px}
 pre{white-space:pre-wrap;word-break:break-all;background:#0b1a27;border:1px solid var(--line);padding:12px;border-radius:8px;font:12px/1.7 ui-monospace,monospace}code{color:#a7ecdb}
-</style></head><body><main>
-<header><div><div class="kicker">SOURCE-LEVEL TENSOR OBSERVATORY / NO FABRICATED EVIDENCE</div><h1>真实小模型 · 张量证据实验室</h1><p>严格区分真实采集声明、数学派生与合成教学示例。这个页面仅读取本地文件，不运行上传的模型源码。</p></div><nav><a href="learn.html">← 积木工作台</a>　<a href="index.html">源码图谱</a></nav></header>
+</style><link rel="stylesheet" href="ui_accessibility.css">
+</head><body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a><main id="stt-main">
+<header><div><div class="kicker">SOURCE-LEVEL TENSOR OBSERVATORY / NO FABRICATED EVIDENCE</div><h1>真实小模型 · 张量证据实验室</h1><p>严格区分真实采集声明、数学派生与合成教学示例。这个页面仅读取本地文件，不运行上传的模型源码。</p></div><nav><a class="stt-home-link" href="teaching.html">课程中心</a><a href="learn.html">← 积木工作台</a>　<a href="index.html">源码图谱</a></nav></header>
 <div class="guide"><section class="panel"><h2>1 · 生成真实模型证据</h2><p>在装有 CPU PyTorch / Transformers 与模型文件的环境运行可审计的采集脚本。</p>
 <pre>python scripts/capture_model_trace.py \
   --model roneneldan/TinyStories-1M \

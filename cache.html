@@ -79,8 +79,10 @@ h1{font-size:27px;line-height:1.15;letter-spacing:-.035em;margin:7px 0 8px;font-
 footer{padding:0 30px 25px;color:#637f95;font-size:10px}
 @media(max-width:1210px){.layout{grid-template-columns:235px minmax(430px,1fr)}.notes{grid-column:1/-1}.notes .pane-body{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:730px){.header,.metrics,.layout{padding-left:12px;padding-right:12px}.layout{display:flex;flex-direction:column}.controls,.notes{width:100%}.nav-right .chip{display:none}.pipeline{grid-template-columns:1fr}.cache-slots{gap:2px}.slot{height:42px}.slot .txt{font-size:8px}}
-</style></head><body>
-<nav><div class="brand">SEETHE<b>TRUTH</b> <small> / STATEFUL LAB</small></div>
+</style><link rel="stylesheet" href="ui_accessibility.css">
+</head><body>
+<a class="stt-skip" href="#stt-main">跳到主要内容</a>
+<nav><a class="stt-home-link" href="teaching.html">课程中心</a><div class="brand">SEETHE<b>TRUTH</b> <small> / STATEFUL LAB</small></div>
 <div class="nav-right"><span class="chip yellow">DETERMINISTIC MICRO-MODEL · NOT GPU</span><a href="learn.html">◈ 积木工作台</a><a href="index.html">↗ 源码图谱</a></div></nav>
 <section class="header"><div><div class="label">07 / MODEL RUNTIME STATE</div>
 <h1>KV Cache · 状态机实验室</h1><p class="lede">用真正追加到缓存中的 Key / Value，逐步执行 Prefill 与 Decode。观察每个 token 如何改变缓存、Attention 和计算量。</p></div>
@@ -105,7 +107,7 @@ footer{padding:0 30px 25px;color:#637f95;font-size:10px}
 <ul class="timeline" id="timeline"><li><span class="hint">无记录 · 点击执行 Prefill</span></li></ul>
 <p class="hint">时间轴可回看已执行的步骤，回看不会再次追加 K/V。继续运行从当前最新状态推进。</p>
 </div></aside>
-<main class="panel"><div class="panel-header"><div class="label">03 / DATAFLOW OBSERVATORY</div><h2>投影 → 缓存 → 注意力</h2></div><div class="workspace">
+<main id="stt-main" class="panel"><div class="panel-header"><div class="label">03 / DATAFLOW OBSERVATORY</div><h2>投影 → 缓存 → 注意力</h2></div><div class="workspace">
 <div class="workspace-title"><h3>输入与投影 <span id="selectedPhase">· 尚未执行</span></h3><span class="chip">B=1 · Float64</span></div>
 <div class="pipeline">
 <div class="tensor-card"><div class="title">Q · 当前 Query</div><div class="shape" id="qShape">[1, Hq, Tq, Dk]</div><div class="tag">每次重新投影</div></div>
