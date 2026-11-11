@@ -6,6 +6,8 @@
  root.SeetheTruthBlockKnowledge=api;
 })(typeof window!=="undefined"?window:{},function(L){"use strict";
 const sources=Object.freeze({
+ visual_instruction_tuning:["LLaVA: visual instruction tuning and an aligned vision-language projector","https://arxiv.org/abs/2304.08485"],
+ torch_cat:["PyTorch: tensor concatenation along an explicitly selected axis","https://docs.pytorch.org/docs/stable/generated/torch.cat.html"],
  stream_torch_autograd:["PyTorch autograd: automatic differentiation and graph semantics","https://docs.pytorch.org/docs/stable/autograd.html"],
  stream_init_ref:["Hugging Face Transformers: logical KV Cache position and update","https://huggingface.co/docs/transformers/cache_explanation"],
  deepinfer_schedule_ref:["DeepInfer official reference: stable-rank cumprod MTP remap and total_q budget","https://github.com/deepseek-ai/DeepInfer/blob/main/deepinfer/model_executor/layers/tilelang_ops/schedule_mtp_varlen.py"],
