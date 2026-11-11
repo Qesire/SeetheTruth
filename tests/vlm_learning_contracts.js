@@ -6,6 +6,8 @@ const fs=require('node:fs'),path=require('node:path');
 const Pack=require('../vlm_block_pack.js'), X=require('../block_extension_registry.js');
 const L=require('../learning_lab.js'),R=require('../graph_readiness.js');
 const C=require('../concept_flow.js'),Core=require('../learning_experience_core.js');
+const Numpy=require('../python_codegen.js'),Torch=require('../torch_codegen.js');
+const Inference=require('../inference_ops.js');
 const flatten=a=>a.flat(Infinity), vals=run=>Object.fromEntries(run.steps.map(s=>[s.id,s.values]));
 assert.equal(Pack.name,'vlm');
 assert.equal(Pack.recipes.length,4);
@@ -148,6 +150,28 @@ assert.throws(()=>L.evaluate(mutated),/prefixTokens|text token/);
 const badMerge=JSON.parse(JSON.stringify(graphs[0]));
 badMerge.edges.find(e=>e.to==='prefix'&&e.port==='text').from='prompt_ids';
 assert.equal(R.check(badMerge,{numeric:true}).executable,false,'nonembedded text ids cannot silently align with visual width');
+// Release contract: VLM extension operators remain fail-closed in arbitrary Python exporters.
+for(const kind of Object.keys(Pack.defs)){
+ assert.equal(Numpy.supportedKinds.includes(kind),false,kind+' must not claim NumPy export');
+ assert.equal(Torch.supportedKinds.includes(kind),false,kind+' must not claim Torch export');
+}
+assert.throws(()=>Numpy.compile(graphs[0]),/vlm_token_concat/,
+ 'unsupported VLM graph must not be silently compiled to NumPy');
+assert.throws(()=>Torch.compile(graphs[0]),/vlm_token_concat/,
+ 'unsupported VLM graph must not be silently compiled to PyTorch');
+
+// Counterexample: retaining one more high-probability visual Patch can increase readout error.
+const weights=[0.5,0.3,0.2],values=[[0],[100],[-100]],k=weights.map(w=>[Math.log(w)]);
+const dense=weights.reduce((sum,p,j)=>sum+p*values[j][0],0);
+const sparse1=Inference.execute('inference_sparse_attention',
+ {q:[[1]],k,v:values,indices:[[0]]},{causal:false,queryOffset:0})[0][0];
+const sparse2=Inference.execute('inference_sparse_attention',
+ {q:[[1]],k,v:values,indices:[[0,1]]},{causal:false,queryOffset:0})[0][0];
+assert.ok(Math.abs(dense-10)<1e-12 && Math.abs(sparse1)<1e-12);
+assert.ok(Math.abs(sparse2-37.5)<1e-12);
+assert.ok(Math.abs(dense-sparse2)>Math.abs(dense-sparse1),
+ 'Top-K cardinality does not guarantee monotonic readout error under normalized Softmax');
+
 const route=Core.inspectCourse('vlm');
 assert.equal(route.target.kind,'guided_graph');
 assert.equal(route.target.id,names[0]);

@@ -9,7 +9,10 @@ const courses=Core.inventory().courses;
 $("lessonCount").textContent=courses.length+" 个专题";
 const coverage=Core.inventory().counts;
 $("coreCoverage").textContent="统一教学内核 · "+coverage.courses+" 门主题 / "+coverage.labs+" 个专项计算域";
-let selected=courses[0].id,filter="all";
+// A course deep link resolves through the canonical shared curriculum.
+const requested=params.get("course");
+let selected=(requested&&C.lookup(requested)?requested:courses[0].id),filter="all";
+const fundamentals=new Set(["building","papers","multimodal","vlm"]);
 const safeTarget=l=>{
  const u=new URL(l.href,location.href);
  if(u.pathname.endsWith("/learn.html")&&l.target?.kind==="guided_graph")u.searchParams.set("mission",l.target.id);
@@ -27,9 +30,9 @@ function detail(){
 }
 function render(){
  const query=$("search").value.toLocaleLowerCase().trim();
- const lessons=courses.filter((l,i)=>{
-  if(filter==="fundamentals"&&i>=4)return false;
-  if(filter==="inference"&&(i<4||l.id.startsWith("engineering_")))return false;
+ const lessons=courses.filter(l=>{
+  if(filter==="fundamentals"&&!fundamentals.has(l.id))return false;
+  if(filter==="inference"&&(fundamentals.has(l.id)||l.id.startsWith("engineering_")))return false;
   if(filter==="engineering"&&!l.id.startsWith("engineering_"))return false;
   return [l.title,l.theory,l.why,l.group].join(" ").toLocaleLowerCase().includes(query);
  });

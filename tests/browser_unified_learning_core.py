@@ -124,6 +124,34 @@ class UnifiedLearningBrowser(unittest.TestCase):
   finally:
    page.close()
 
+ def test_vlm_first_visit_course_deep_link_and_filters(self):
+  page=self.browser.new_page(viewport={"width":390,"height":844},is_mobile=True,has_touch=True)
+  errors=[]
+  page.on("pageerror",lambda e:errors.append(str(e)))
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?course=vlm&edition=teaching").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   self.assertIn("VLM",page.locator("#detailTitle").inner_text())
+   self.assertIn("mission=extension_vlm_early_fusion",page.locator("#openLesson").get_attribute("href"))
+   page.locator("#fundamentals").click()
+   self.assertEqual(page.locator('[data-lesson="vlm"]').count(),1)
+   self.assertEqual(page.locator('[data-lesson="cache"]').count(),0)
+   page.locator("#inference").click()
+   self.assertEqual(page.locator('[data-lesson="vlm"]').count(),0)
+   self.assertEqual(page.locator('[data-lesson="cache"]').count(),1)
+   self.assertFalse(page.evaluate('document.documentElement.scrollWidth > window.innerWidth+2'))
+   self.assertEqual(errors,[])
+  finally:
+   page.close()
+  page=self.browser.new_page(viewport={"width":1366,"height":900})
+  try:
+   self.assertEqual(page.goto(self.base+"/teaching.html?course=not-a-lesson").status,200)
+   page.wait_for_function("!!window.SeetheTruthTeachingHub")
+   self.assertIn("积木",page.locator("#detailTitle").inner_text(),
+    "unknown course link must fall back to a valid first lesson")
+  finally:
+   page.close()
+
  def test_restored_engineering_journeys_share_actual_core(self):
   for route,id,global_name,count in [
    ("engineering_journey.html","engineering_journey","SeetheTruthEngineeringJourney",12),
