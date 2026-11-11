@@ -1,0 +1,34 @@
+/* Shared keyboard/touch discoverability for all SeetheTruth screens.
+   This layer never changes tensor layout, measurements, or runtime behavior. */
+:where(a,button,input,select,textarea,summary,[role="button"],[tabindex]):focus-visible {
+  outline:3px solid #f4c77a;outline-offset:3px;
+}
+.stt-skip{position:fixed;top:8px;left:12px;z-index:10000;padding:10px 15px;
+  border:2px solid #f4c77a;border-radius:9px;background:#0b2437;color:#fff;
+  font:600 14px/1.5 system-ui,"Microsoft YaHei",sans-serif;text-decoration:none;
+  transform:translateY(-180%);}
+.stt-skip:focus{transform:translateY(0);}
+#stt-main{scroll-margin-top:12px;}
+.stt-lab-menu{position:relative;z-index:25;}
+.stt-lab-menu>summary{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:38px;padding:8px 12px;cursor:pointer;list-style:none;
+  border:1px solid #45677b;border-radius:9px;background:#142b3f;color:#daeffa;
+  font:600 12px/1.4 system-ui,"Microsoft YaHei",sans-serif;}
+.stt-lab-menu>summary::-webkit-details-marker{display:none;}
+.stt-lab-menu>summary::after{content:"▾";color:#80dfd4;}
+.stt-lab-menu[open]>summary::after{content:"▴";}
+.stt-lab-menu-items{position:absolute;top:calc(100% + 5px);right:0;z-index:100;
+  width:min(320px,calc(100vw - 24px));max-height:min(65vh,520px);overflow:auto;
+  display:grid;gap:4px;padding:8px;border:1px solid #3b6078;
+  border-radius:12px;box-shadow:0 18px 38px #0009;background:#102334;}
+.stt-lab-menu-items :where(a,button,label){display:flex;align-items:center;min-height:38px;
+  padding:8px 10px;border-radius:7px;color:#d7effa;text-decoration:none;font-size:12px;}
+.stt-lab-menu-items :where(a,button,label):hover{background:#20445a;}
+.stt-lab-menu-items :where(a,button,label):focus-visible{
+  outline:3px solid #f4c77a;outline-offset:0;}
+.stt-home-link{white-space:nowrap;}
+@media(max-width:680px){
+  .stt-lab-menu-items{position:fixed;left:12px;right:12px;top:auto;bottom:12px;
+    width:auto;max-height:min(60vh,500px);}
+}
+@media(prefers-reduced-motion:reduce){.stt-skip{transition:none;}}

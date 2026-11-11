@@ -122,6 +122,7 @@ training_flow.js
 training_objective.js
 training_session.js
 training_timeline_lab_ui.js
+ui_accessibility.css
 unified_observation_ui.js
 unified_state_lab_ui.js
 video_causal_conv3d.js
