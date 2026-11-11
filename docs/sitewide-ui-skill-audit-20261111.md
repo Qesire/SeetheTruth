@@ -68,3 +68,7 @@
 ### 移动端工作台的实际滚动距离
 
 直接渲染 390px Chromium 首屏时，原有 `learn.html` 的 `.stage` 位于页面约 **11,060px** 纵坐标；点击补充的“查看当前计算图”才能跳过长目录。按界面设计技能的主任务优先原则，现将手机布局改成 **当前计算图 → 课程/积木目录 → 数值检查器**，既有 DOM 节点、课程注册和数值算法不变。桌面维持原三栏。手机标题栏新增“选择课程／积木”，允许从图返回目录。离线 Chromium CSS 验证新 `.stage` 起始纵坐标约 **229px**，页面宽度仍为 390px；最终真实 HTTP 页面交互由 CI 的 390px 浏览器测试证实。
+
+### 展开菜单的真实点击验证
+
+在源码快照的 Chromium 渲染中，模型图谱的 `数据与工具` 虽然能展开，但 `#importOpen` 的真实鼠标点击被 `.layout .mechanism-section` 拦截，Playwright 等待超时。该问题源自菜单可见性与父级 stacking context 的顺序不同；新 `ui_accessibility.css` 仅在 `details[open]` 时提升 `.header` 和菜单层级。修复后本地 Chromium 对模型图谱 `#importOpen` 与学习工作台 `cache.html` 链接均完成真实点击；CI 将用实际模态弹窗出现判定可操作性。已有的首页导入测试更新为先展开“数据与工具”，然后点击原 `#importOpen`，仍执行原来的导入及错误输入测试。

@@ -137,6 +137,9 @@ class SitewideHumanInterface(unittest.TestCase):
             indexMenu.locator("summary").click()
             self.assertTrue(page.locator("#analyzeOpen").is_visible())
             self.assertTrue(page.locator("#importOpen").is_visible())
+            page.locator("#importOpen").click()
+            self.assertTrue(page.locator("#modal").evaluate("(el)=>el.classList.contains('open')"),
+                "opening tools must allow an actual import-dialog click, not just visibility")
             self.assertEqual(errors,[])
         finally:
             page.close()

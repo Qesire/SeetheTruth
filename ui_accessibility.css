@@ -59,3 +59,8 @@
  body.stt-learning-studio #jumpToCatalog{display:inline-flex;align-items:center;min-height:40px}
  body.stt-learning-studio #stt-catalog{scroll-margin-top:12px}
 }
+
+/* An expanded menu must be in the top stacking context. In the Source Atlas
+   the 3D layout otherwise intercepts import/analyzer clicks despite visibility. */
+.header:has(.stt-lab-menu[open]){position:relative;z-index:1000}
+.stt-lab-menu[open]{z-index:1200}

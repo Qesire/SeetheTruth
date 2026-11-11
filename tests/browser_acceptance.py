@@ -98,6 +98,14 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertFalse(self.errors, f"JavaScript runtime errors: {self.errors}")
         self.page.close()
 
+    def open_atlas_import(self):
+        # The import operation is intentionally secondary to model learning.
+        # Reopen its native HTML details menu before operating on the button.
+        target=self.page.locator("#importOpen")
+        if not target.is_visible():
+            self.page.locator(".header-right .stt-lab-menu summary").click()
+        target.click()
+
     def attach(self, selector, name, data):
         self.page.locator(selector).set_input_files({
             "name": name, "mimeType": "application/json",
@@ -297,7 +305,7 @@ class BrowserAcceptance(unittest.TestCase):
         unknown["meta"]["analysis"] = "static-python-ast"
         unknown["meta"]["entry"] = "GenericBlock.forward"
         unknown["nodes"][0]["callee"] = "self.mysterious_transform"
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(unknown))
         self.page.locator("#importApply").click()
         self.assertEqual(self.page.locator("#academicConsensus").count(), 0)
@@ -306,7 +314,7 @@ class BrowserAcceptance(unittest.TestCase):
         known["meta"]["entry"] = "GenericBlock.forward"
         known["nodes"][0]["callee"] = "self.proj"
         known["nodes"][0]["module_constructor"] = "Linear"
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(known))
         self.page.locator("#importApply").click()
         self.assertIn("线性投影", self.page.locator("#academicConsensus").inner_text())
@@ -332,7 +340,7 @@ class BrowserAcceptance(unittest.TestCase):
 
     def test_config_rejects_invalid_head_count_and_accepts_valid(self):
         self.load_atlas()
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps({
             "model_type": "llama", "hidden_size": 96, "num_hidden_layers": 2,
             "num_attention_heads": 7, "num_key_value_heads": 1,
@@ -369,7 +377,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertFalse(graph["meta"]["shape_verified"])
         self.assertTrue(any(n["label"] == "MatMult" for n in graph["nodes"]))
         self.load_atlas()
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
         self.page.locator("#importApply").click()
         self.assertFalse(self.page.locator('[data-level="matrix"]').is_disabled())
@@ -392,7 +400,7 @@ class BrowserAcceptance(unittest.TestCase):
 
     def test_hierarchy_and_cycle_rejection(self):
         self.load_atlas()
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         fixture = synthetic_graph()
         self.page.locator("#jsonText").fill(json.dumps(fixture))
         self.page.locator("#importApply").click()
@@ -401,7 +409,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertIn("Root", self.page.locator("#stageTitle").inner_text())
         self.page.locator('[data-nav="back"]').click()
         self.assertIn("Known structure", self.page.locator("#stageTitle").inner_text())
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         corrupt = synthetic_graph()
         corrupt["nodes"][0]["parent"] = "inner"
         self.page.locator("#jsonText").fill(json.dumps(corrupt))
@@ -410,11 +418,11 @@ class BrowserAcceptance(unittest.TestCase):
 
     def test_failed_import_is_transactional(self):
         self.load_atlas()
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(synthetic_graph()))
         self.page.locator("#importApply").click()
         self.assertIn("Known structure", self.page.locator("#stageTitle").inner_text())
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps({
             "model_type": "llama", "hidden_size": 96,
             "num_hidden_layers": 2, "num_attention_heads": 7,
@@ -435,13 +443,13 @@ class BrowserAcceptance(unittest.TestCase):
             "static_source": {"file": "toy.py", "line": 8, "sha256": "a" * 64},
             "evidence": "exact_file_sha256_line_and_module_type",
         }
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
         self.page.locator("#importApply").click()
         self.assertIn("源码映射已核验", self.page.locator("#inspectContent").inner_text())
         self.assertIn("toy.py:8", self.page.locator("#inspectContent").inner_text())
         graph["nodes"][0]["source_attribution"] = {"status": "source_mismatch"}
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(graph, ensure_ascii=False))
         self.page.locator("#importApply").click()
         self.assertIn("源码尚未核验", self.page.locator("#inspectContent").inner_text())
@@ -478,7 +486,7 @@ class BrowserAcceptance(unittest.TestCase):
             "exclusive_operator_events": 2, "inclusive_operator_events": 8,
             "host_wall_ms": 1.2, "exclusive_self_device_ms": None,
         }
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(fixture))
         self.page.locator("#importApply").click()
         displayed = self.page.locator("#inspectContent").inner_text()
@@ -488,7 +496,7 @@ class BrowserAcceptance(unittest.TestCase):
         self.assertIn("不", displayed)
         fixture["nodes"][0]["same_pass_profile"] = {
             "status": "tensor_signature_mismatch"}
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(fixture))
         self.page.locator("#importApply").click()
         displayed = self.page.locator("#inspectContent").inner_text()
@@ -497,7 +505,7 @@ class BrowserAcceptance(unittest.TestCase):
 
     def test_runtime_module_exact_join(self):
         self.load_atlas()
-        self.page.locator("#importOpen").click()
+        self.open_atlas_import()
         self.page.locator("#jsonText").fill(json.dumps(synthetic_graph()))
         self.page.locator("#importApply").click()
         self.attach("#telemetryFile", "known.json", synthetic_telemetry())
