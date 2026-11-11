@@ -32,3 +32,18 @@
     width:auto;max-height:min(60vh,500px);}
 }
 @media(prefers-reduced-motion:reduce){.stt-skip{transition:none;}}
+
+/* Source Atlas: narrow viewport header must wrap its primary actions.
+   Avoid widening the whole document beyond the phone screen. */
+@media(max-width:700px){
+  .header:has(.header-right){height:auto;min-height:70px;flex-wrap:wrap;
+    gap:8px;padding:8px 12px;align-items:center}
+  .header:has(.header-right) .brand{min-width:0;flex:1 1 auto}
+  .header .header-right{width:100%;min-width:0;display:flex;flex-wrap:wrap;
+    justify-content:flex-start;align-items:center;gap:7px}
+  .header .header-right>.btn{min-height:40px;white-space:normal!important;
+    padding:7px 10px;font-size:11px}
+  .header .header-right .stt-lab-menu{flex:0 0 auto}
+  .header .header-right .stt-lab-menu-items{box-sizing:border-box;
+    max-width:calc(100vw - 24px)}
+}

@@ -97,6 +97,8 @@ class SitewideHumanInterface(unittest.TestCase):
                         page.screenshot(path=str(OUT/(name.replace(".html","")+
                             ("-desktop.png" if width==1440 else "-phone.png"))),
                             full_page=False,animations="disabled")
+                        self.assertLessEqual(data["horizontalOverflow"],2,
+                            name+" phone/desktop screen has unintended whole-document overflow")
                         self.assertEqual(errors,[],name+" page scripts failed")
                     finally:
                         page.close()
