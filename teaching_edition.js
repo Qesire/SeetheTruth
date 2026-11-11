@@ -21,6 +21,16 @@ document.querySelectorAll(".head-actions a").forEach(a=>{
  if(a.getAttribute("href")==="index.html")a.hidden=true;
 });
 const stage=document.querySelector(".stage");
+// A guided-lesson deep link should open the *loaded graph*, not strand the
+// phone learner above the long catalogue. Free exploration keeps normal scroll.
+const requestedMission=u.searchParams.get("mission");
+if(requestedMission&&/^[a-z0-9_-]+$/.test(requestedMission)&&matchMedia("(max-width:700px)").matches){
+ requestAnimationFrame(()=>{
+  const selected=document.querySelector("[data-preset].active");
+  if(selected?.dataset.preset===requestedMission)
+   stage?.scrollIntoView({block:"start",behavior:"auto"});
+ });
+}
 document.querySelectorAll(".mission").forEach(button=>{
  button.addEventListener("click",()=>{if(matchMedia("(max-width:700px)").matches)stage?.scrollIntoView({block:"start",behavior:"smooth"});});
 });

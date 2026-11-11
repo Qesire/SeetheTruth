@@ -77,6 +77,9 @@ class UnifiedLearningBrowser(unittest.TestCase):
    self.assertIn("edition=teaching",href)
    self.assertEqual(page.goto(self.base+"/"+href).status,200)
    page.wait_for_function("!!window.SeetheTruthUnifiedWorkbench")
+   page.wait_for_function("""() =>
+     document.querySelector(".stage").getBoundingClientRect().top < window.innerHeight
+     && document.querySelector(".stage").getBoundingClientRect().top >= -60""")
    opened=page.evaluate("""() => {
      const s=window.SeetheTruthUnifiedWorkbench.inspect();
      return {title:s.graph.title, kinds:s.graph.nodes.map(n=>n.kind),
