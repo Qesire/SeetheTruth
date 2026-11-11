@@ -47,3 +47,15 @@
   .header .header-right .stt-lab-menu-items{box-sizing:border-box;
     max-width:calc(100vw - 24px)}
 }
+
+/* Phone: the runnable experiment is the primary destination. Move the
+   enormous course catalogue after the current graph without DOM duplication. */
+#jumpToCatalog{display:none}
+@media(max-width:680px){
+ body.stt-learning-studio .app{display:flex;flex-direction:column}
+ body.stt-learning-studio .app>.stage{order:0}
+ body.stt-learning-studio .app>.rail{order:1}
+ body.stt-learning-studio .app>.inspector{order:2}
+ body.stt-learning-studio #jumpToCatalog{display:inline-flex;align-items:center;min-height:40px}
+ body.stt-learning-studio #stt-catalog{scroll-margin-top:12px}
+}

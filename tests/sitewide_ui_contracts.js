@@ -31,6 +31,9 @@ for(const p of PAGES){
 }
 const studio=read('learn.html'),source=read('teaching_hub.js');
 assert.ok(studio.includes('id="jumpToGraph"')&&studio.includes('href="#stt-main"'));
+assert.ok(studio.includes('class="stt-learning-studio"'));
+assert.ok(studio.includes('id="jumpToCatalog"')&&studio.includes('id="stt-catalog"'));
+assert.ok(read('ui_accessibility.css').includes('body.stt-learning-studio .app>.stage{order:0}'));
 assert.ok(studio.includes('class="stt-lab-menu"')&&studio.includes('其他实验室'));
 assert.ok(read('index.html').includes('数据与工具'));
 assert.ok(read('android_teaching.html').includes('href="teaching.html?edition=teaching"'));

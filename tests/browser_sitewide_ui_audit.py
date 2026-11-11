@@ -110,6 +110,16 @@ class SitewideHumanInterface(unittest.TestCase):
         page.on("pageerror",lambda e:errors.append(str(e)))
         try:
             self.assertEqual(page.goto(self.base+"/learn.html").status,200)
+            first=page.evaluate("""() => ({
+                stage:document.querySelector('.stage').getBoundingClientRect().top,
+                catalog:document.querySelector('#stt-catalog').getBoundingClientRect().top
+            })""")
+            self.assertLess(first["stage"],first["catalog"],
+                "mobile runnable graph must appear before the long catalogue")
+            self.assertTrue(page.locator("#jumpToCatalog").is_visible())
+            page.locator("#jumpToCatalog").click()
+            page.wait_for_function("""() => document.querySelector('#stt-catalog')
+                .getBoundingClientRect().top < window.innerHeight""")
             self.assertTrue(page.locator("#jumpToGraph").is_visible())
             page.locator("#jumpToGraph").click()
             page.wait_for_function("""() => document.querySelector('#stt-main')
