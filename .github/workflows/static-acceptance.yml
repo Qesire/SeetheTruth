@@ -31,6 +31,16 @@ jobs:
           retention-days: 14
       - name: Real-browser UI behavior and adversarial imports
         run: python tests/browser_acceptance.py
+      - name: Audit all twenty site surfaces on desktop and phone
+        run: python tests/browser_sitewide_ui_audit.py
+      - name: Archive sitewide interaction and first-viewport screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-sitewide-human-interface-audit
+          path: sitewide_ui_screenshots/*
+          if-no-files-found: warn
+          retention-days: 14
       - name: Verify cross-graph scalar lineage and VJP in Chromium
         run: python tests/browser_element_lineage.py
       - name: Verify graph-derived learning route in Chromium
