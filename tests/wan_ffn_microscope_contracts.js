@@ -118,7 +118,11 @@ for(const id of ['steps','diagram','mainMatrix','extraMatrices','selected','dotB
 for(const file of ['wan_ffn_trace.js','wan_ffn_lab.js','wan_ffn_coordinate_vjp.js','activation_math.js','compute_microscope.js','compute_microscope_ui.js'])assert.ok(html.includes('src="'+file+'"'),file);
 assert.ok(html.includes('id="wanSharedMicroscope"'));
 assert.ok(js.includes('commonMicroscope.wan(d)')&&js.includes('sharedMicroscope.show(commonFrame,step.id)'));
-assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('wan_ffn_lab.html'));
+const Core=require('../learning_experience_core.js');
+assert.ok(Core.labs.some(l=>l.id==='wan_ffn'&&l.href==='wan_ffn_lab.html'),
+ 'Wan FFN lab must be discoverable from canonical specialist metadata');
+assert.ok(fs.readFileSync(path.join(root,'teaching.html'),'utf8').includes('id="allLabLinks"'));
+assert.ok(fs.readFileSync(path.join(root,'teaching_hub.js'),'utf8').includes('link.href=lab.href'));
 const allow=fs.readFileSync(path.join(root,'android/teaching-assets.txt'),'utf8').split(/\r?\n/);
 for(const f of ['wan_ffn_lab.html','wan_ffn_lab.js','wan_ffn_trace.js'])assert.ok(allow.includes(f),f+' not staged');
 console.log('WAN_FFN_MICROSCOPE_PASS pinned official C/H/FFN computation order; independent Float64 reference; all 9 stage shapes; GEMM dot reconstruct; LayerNorm; GELU tanh; gate/residual interventions; mobile asset contracts');
