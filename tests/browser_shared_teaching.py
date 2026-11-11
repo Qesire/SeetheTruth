@@ -70,6 +70,7 @@ class SharedTeachingBrowser(unittest.TestCase):
             })""")
             self.assertLess(position["panel"],position["courses"])
             self.assertIn("VLM",page.locator("#detailTitle").inner_text())
+            page.screenshot(path=str(OUT/"vlm-first-visit-mobile.png"),full_page=True,animations="disabled")
             self.assertEqual(page.locator(".more-nav-menu a").count(),6)
             self.assertFalse(page.locator(".more-nav-menu a").first.is_visible())
             page.locator(".more-nav summary").click()
