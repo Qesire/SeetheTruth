@@ -1,209 +1,120 @@
-# VLM in SeetheTruth: one computation spine, four executable graph lessons
+# VLM 计算课程：视觉信息如何进入语言读出
 
-**Status (2026-11-11):** A bounded, synthetic-Float64 visual-language teaching extension is installed in the **existing** graph engine. This document separates the executed mechanisms from future checkpoint- and task-dependent VLM research.
+SeetheTruth 的 VLM 课程让学习者从输入数据开始，沿着实际执行的计算图追踪视觉 Token、文本 Query、注意力权重和最终读出。四个示例使用确定性生成的小型 Float64 张量；它们用于解释与检验**计算机制**，真实图片语义理解与模型性能属于后续模型验证。
 
-## 1. Where VLM belongs
+四条课程构成递进关系：**如何融合信息 → 如何减少视觉 Token → 如何判断哪些 Token 值得保留**。每一步都由已注册算子执行，复用现有 `LearningLab`、`SeetheTruthUnifiedCore`、知识卡与 PC/Android 课程，而非另建 VLM 引擎。
 
-SeetheTruth already exposes typed graph execution, native attention, visual patchification, token embedding, graph-to-backend identity, numerical inspection and a PC/Android curriculum. VLM connects those capabilities, rather than requiring an independent tensor interpreter or lesson database.
+## 1. 输入对象与形状
+
+图像张量按通道在后的行优先顺序存为 \([H,WC]\)，`vision_patchify` 将 \(P_h\times P_w\) 像素展平成一个 Patch：
+
+\[
+R=\operatorname{Patchify}(I)\in\mathbb R^{N_v\times P_hP_wC},
+\qquad N_v=\frac{H}{P_h}\frac{W}{P_w}.
+\]
+
+`vision_projector` 是原生 `linear`，产生 \(V\in\mathbb R^{N_v\times d}\)。文本分支由 `token_ids` 与 `embedding` 产生 \(T\in\mathbb R^{N_t\times d}\)。线性权重由教学运行时确定性生成，文本 ID 也不是自然语言分词器输出；特征维度相等允许张量连接，却不证明跨模态语义对齐。
+
+默认输入取 \(H=W=4,\ C=1,\ P_h=P_w=2\)，所以四个 \(2\times2\) Patch 对应四个视觉 Token，另有两个文本 Token，隐藏宽度 \(d=4\)。所有计数与下文的分数矩阵均由这些配置推导。
+
+## 2. 两种融合方式，两个实际计算
+
+### 视觉前缀：共同序列中的因果注意力
+
+`extension_vlm_early_fusion` 的节点顺序为：
 
 ```text
-                 SeetheTruthUnifiedCore
-              identity / evidence / replay
-                             │
-     ┌───────────────────────┴───────────────────────┐
-     │             existing LearningLab DAG          │
-     │                                              │
-image → Patchify → projection → visual tokens ─┐     │
-                                                ├─ fusion → decoder → text logits
-token IDs → embedding → text tokens ───────────┘     │
-     │                                              │
-     ├─ installed vlm_block_pack (4 operators)      │
-     ├─ native operators: matmul, attention, mask    │
-     ├─ four guided graph recipes                  │
-     └─ unified coordinate/math observation         │
-                             │
-         shared PC/Android teaching curriculum
+图像 → Patchify → vision_projector ──┐
+                                      ├─ vlm_token_concat → Q/K/V → Masked Softmax → 读出文本行 → Logits
+Token IDs → text_embedding ──────────┘
 ```
 
-The single substrate is the existing graph runtime. Source/state traces and imported real checkpoints continue to have independent evidence semantics. A lesson card is **PEDAGOGICAL_DESCRIPTION** until the learner actually executes the graph.
-
-## 2. Minimal mathematics and axis identity
-
-For an image with height \(H\), width \(W\), patch sizes \(P_h,P_w\), and model feature width \(d\):
+拼接结果 \(X=[V;T]\in\mathbb R^{6\times4}\)。该课程**确实包含三个独立的线性节点**：
 
 \[
-N_v=\frac{H}{P_h}\frac{W}{P_w},\qquad
-R=\operatorname{Patchify}(I)\in\mathbb{R}^{N_v\times P_hP_wC},\qquad
-V=P(R)\in\mathbb{R}^{N_v\times d}.
+Q=\operatorname{Linear}_{query}(X),\quad
+K=\operatorname{Linear}_{key}(X),\quad
+U=\operatorname{Linear}_{value}(X).
 \]
 
-Here `P` is a bounded synthetic learned-style `linear` operator in the existing graph. The present lesson **does not execute a pretrained vision encoder** or its real weights. Full ViT/SigLIP/ConvNeXt style image towers would require pinned checkpoint source, preprocessing, learned weights and independent numerical parity.
-
-For prompt token IDs \(z\), `embedding` yields \(T=E(z)\in\mathbb{R}^{N_t\times d}\). The visual-prefix route concatenates in **token** order:
+随后由 `matmul`、`scale`、`causal_mask`、`masked_softmax`、`weighted_sum` 实现
 
 \[
-X=[V;T]\in\mathbb{R}^{(N_v+N_t)\times d},\qquad
-Q=XW_Q,\ K=XW_K,\ U=XW_V,
-\]
-\[
-A_{ij}=\operatorname{softmax}_{j\le i}\left(
- \frac{Q_iK_j^\top}{\sqrt d}\right),\qquad
-O=AU,\qquad
-Y=O[N_v:N_v+N_t,:].
+s_{ij}=\frac{Q_iK_j^\top}{\sqrt d},\quad
+p_{ij}=\frac{\mathbf1[j\le i]\exp(s_{ij})}
+{\sum_{\ell\le i}\exp(s_{i\ell})},\quad
+O_i=\sum_{j\le i}p_{ij}U_j.
 \]
 
-The teaching graph explicitly constructs the Q, K, V paths, scaled score matrix, lower-triangular `causal_mask`, `masked_softmax`, weighted sum, text-only readout and language-logit projection. `vlm_text_tail(prefixTokens=N_v)` locates text rows in the *post-attention* context, preserving absolute source-row indices. The teaching version has a single attention stage, not a full multi-layer autoregressive VLM decoder, tokenizer, or generation sampler.
+`vlm_text_tail(prefixTokens=4)` 取出 \(O\) 的最后两行，再由 `language_head` 得到 \([2,8]\) 的 Logits。因果分数矩阵为 \(6\times6\)，允许读取的位置有 21 个。此 Mask 只规定教学融合序列的一层注意力可见性；真实视觉编码器中的图像 Self-Attention、位置编码与多层解码结构尚未由本课程复刻。
 
-**Important axis distinction:** the visual prefix and text suffix have different provenance despite both having `[T,D]` carriers; connecting them requires the same feature width, not identity of meaning. Trace metadata records visual and text source ranges and element-wise index maps.
+### 独立 Cross-Attention：文本查询视觉记忆
 
-### A second way to connect image and text
+`extension_vlm_cross_attention` 使用另一组边：`text_embedding` 直接接入 `attention.q`，`visual_projector` 同时接入 `attention.k` 和 `attention.v`，之后把结果与文本 Embedding 相加。
 
-The cross-attention lesson keeps independent text queries and image keys/values:
+**这里没有额外的 Q/K/V 线性节点。** 因此精确的执行公式是：
 
 \[
-Q_t=TW_Q,\quad K_v=VW_K,\quad U_v=VW_V,\qquad
-T'=T+\operatorname{softmax}\left(\frac{Q_tK_v^\top}{\sqrt d}\right)U_v.
+Q=T,\qquad K=V,\qquad U=V,\qquad
+A=\operatorname{softmax}\left(\frac{TV^\top}{\sqrt d}\right),\qquad
+T'=T+AV.
 \]
 
-The **executed** graph calls the existing `attention` operator directly on preprojected token matrices; it is a minimal two-modality cross-attention and residual, **not** an assertion that it implements Flamingo, BLIP-2 Q-Former or any checkpoint-specific gating. Unlike visual-prefix self-attention, cross-attention does not automatically make image tokens part of the autoregressive KV stream. That difference is the teaching comparison.
+注意力矩阵大小为 \(2\times4\)，最后由 `language_head` 得到 \([2,8]\) Logits。与视觉前缀不同，文本 Query 读取独立的视觉 Key/Value；但这只是基本 Cross-Attention 与残差，不含 Flamingo 的门控、BLIP-2 Q-Former 的查询训练或特定模型的预训练权重。
 
-## 3. Installed blocks and runnable lessons
+## 3. 压缩视觉前缀：减少了什么
 
-| Identifier | Mathematical contract | Direct source trace |
-|---|---|---|
-| `vlm_token_concat` | `concat(visual,text,axis=T)` with matching \(D\); \(N_v+N_t\le8\) | Every output element points to its original visual/text element |
-| `vlm_visual_pair_pool` | \((V_{2j,d}+V_{2j+1,d})/2\) for even \(N_v\) | Pooled source pairs and coefficients (1/2) |
-| `vlm_text_tail` | `context[prefixTokens:,:]`, leaving at least one text token | Every output element points to the original context row |
-| `vlm_patch_grid_lookup` | Flattened selected Patch IDs → zero-based grid `(y,x)` in known `[H_p,W_p]` | Exact selected IDs and spatial grid; no semantic-label assertion |
-
-All use finite Float64 arrays and the existing trusted block-pack interface (`defs/validate/infer/execute/trace`). Unrecognized shapes, mismatched visual/text widths, odd pooling length, impossible prefix boundary and nonfinite values are rejected. No extra executor, exporter allowlist or permanent graph-template restriction is created.
-
-| Guided graph ID | Purpose | Actual working path |
-|---|---|---|
-| `extension_vlm_early_fusion` | Visual-prefix causal language computation | 4 visual + 2 text → 6-token QKV / masked attention → 2-row language logits |
-| `extension_vlm_compressed_prefix` | Lossy visual-token reduction | 4 visual tokens → 2 pooled visual + 2 text → 4-token attention → 2-row logits |
-| `extension_vlm_cross_attention` | Text queries read separate visual memory | 2 text queries, 4 visual keys/values → text residual → logits |
-| `extension_vlm_query_patch_selection` | Text-conditioned visual patch selection and readout loss | 2 Query × 4 visual Patch, Top-K=2; original sparse-attention and dense-attention implementations → delta/MSE, selected 2×2 Patch grid positions |
-
-These recipes appear in the regular **Learning Studio** via the trusted extension manifest and the dynamic recipe list. Any operator can still be used in arbitrary well-typed graphs; recipes are suggestions, not a whitelist. The new `vlm` curriculum topic in the PC/Android teaching center deep-links to `extension_vlm_early_fusion`. The teaching center's guided-graph link also respects its existing `edition=teaching` mode.
-
-## 4. G0–G4: reusable granularity, not another microscope
-
-This progression uses the established level-of-explanation convention while retaining the original graph/node/port identities.
-
-- **G0 — user task:** image + question → text prediction. State the task and the actual test fixture.
-- **G1 — architecture:** vision encoder / projector / fusion / causal decoder / output head. Distinguish prefix fusion and cross-attention.
-- **G2 — module:** Patchify, Linear, token concatenation, QKV, mask, softmax, weighted sum, text readout. Navigate to the original graph nodes.
-- **G3 — tensor and axis:** `[N_v,d]`, `[N_t,d]`, score shape `[L,L]`, exact causal visibility; compare 6-token and 4-token prefill representations.
-- **G4 — coordinate:** selected input pixel/visual feature → projected token → concatenated offset → attention weight → text context. Where the computation supports index maps, follow actual numeric source elements; for learned mixing, follow the actual computation and its independent mathematical oracle rather than inventing a direct copy lineage.
-
-The current VLM pack directly supplies coordinate source maps for concatenation and text tail. Future projector/attention derivative attribution should reuse existing coordinate/VJP machinery, with independent finite-difference or PyTorch checks when a new claim is introduced. A schematic does not provide evidence of causal relevance, semantic grounding or checkpoint fidelity.
-
-## 5. The main experiments
-
-### A. Test the causal boundary
-
-For visual-prefix attention, the probability matrix is exactly lower triangular after `masked_softmax`. Mutating a future value token must leave earlier output rows unchanged. This distinguishes a real causal mask from a screen that merely draws one. Probe both the `[6,6]` uncompressed and `[4,4]` compressed masks.
-
-### B. Compression and prefill cost
-
-The toy graph compresses adjacent visual tokens:
+`extension_vlm_compressed_prefix` 在视觉投影之后执行相邻两行均值：
 
 \[
-V'_j=(V_{2j}+V_{2j+1})/2.
+V'_j=\frac{V_{2j}+V_{2j+1}}{2},\quad j=0,1.
 \]
 
-For fixed text length \(N_t=2\), visual token count changes from 4 to 2, making total length \(L\) change from 6 to 4. An ordinary dense attention score matrix shrinks from 36 to 16 elements, and the lower triangular causal region from 21 to 10 elements. This is an **analytical teaching comparison**, not a demonstrated wall-clock speedup: projections, data movement, KV traffic, kernels and token scheduling affect real latency. Pair pooling can destroy fine-grained spatial information; quality retention needs image-grounded evaluation.
+视觉 Token 从 4 减为 2，文本 Token 仍为 2；融合序列长度从 6 变成 4。分数矩阵从 36 项缩为 16 项，因果允许位置从 21 变成 10。均值会合并不同的输入细节，所以信息保持与长度降低是两个不同的问题。上述数字是**数学运算规模**，不是推理延迟或视频质量的实测提升。
 
-### C. Fusion topologies
+## 4. 文本条件 Patch 选择：建立误差与选择条件的关系
 
-Run both prefix and cross-attention graphs under the same synthetic shapes. The former lets causal text positions attend to preceding image and text positions; the latter uses text Query to read a distinct visual K/V bank. Observe exact shapes and source paths, then introduce separate architecture-specific real weight checks only when available.
-
-### C2. Text-conditioned Patch selection: an actual composition, not another Attention kernel
-
-The fourth VLM lesson wires **existing source-tested operators** in the same LearningLab graph:
+`extension_vlm_query_patch_selection` 复用原生 `matmul`、`inference_topk`、`attention`、`inference_sparse_attention`、`subtract` 和 `mse`，并由 `vlm_patch_grid_lookup` 将选中 Patch 编号转回空间网格：
 
 ```text
-image → Patchify → projector → V ───────┬── DenseAttention ← text Q
-                                        │
- text IDs → Embedding → Q ─→ QKᵀ/√d ─→ TopK indices ─→ SparseAttention(Q,V,V,indices)
-                                        │                      │
-                                        └→ PatchGridLookup      ├→ MSE vs Dense
-                                                               └→ Text Residual → logits
+文本 T ── QKᵀ/√d ─→ Top-K 索引 ──────→ 稀疏 Attention ─┐
+   │                     └→ 原图 Patch 坐标              ├→ 差分 / MSE
+   └─────────── 读取全部视觉 Key/Value → Dense Attention ┘
 ```
 
-The visual tokens are numbered in row-major order by the existing Patchify, so a selected Patch number \(j\) in a grid of width \(W_p\) maps to \((\lfloor j/W_p\rfloor,\ j\bmod W_p)\). The coordinate shows **which patch was selected**, not a validated bounding box or proof of the feature's semantic relevance. The integer index contract rejects negative, fractional or out-of-grid positions.
-
-For each text Query \(t\), the existing `matmul` and `scale` produce exactly
+每个文本 Query \(t\) 对视觉 Patch \(j\) 的分数为 \(s_{tj}=T_t^\top V_j/\sqrt d\)，Softmax 权重为 \(p_{tj}\)。令 \(S_t\) 为 Top-K 集合，\(m_t=\sum_{j\notin S_t}p_{tj}\) 为丢弃的注意力质量。完整与稀疏读出分别是
 
 \[
-s_{tj}=\frac{q_t^\top k_j}{\sqrt d},\quad S_t=\operatorname{TopK}_k(s_t),
-\quad p_{tj}=\frac{e^{s_{tj}}}{\sum_{\ell}e^{s_{t\ell}}}.
+o_t=\sum_jp_{tj}V_j,\qquad
+\hat o_t=\frac{\sum_{j\in S_t}p_{tj}V_j}{1-m_t}.
 \]
 
-The native `inference_sparse_attention` takes the selected indices and computes
-\[
-\widehat o_t=\frac{\sum_{j\in S_t}p_{tj}v_j}{1-m_t},
-\qquad
-m_t=\sum_{j\notin S_t}p_{tj}.
-\]
-
-The full `attention` block independently computes \(o_t=\sum_j p_{tj}v_j\). With the weighted mean \(\mu_{S_t}=\widehat o_t\) of selected Values and \(\mu_{\overline S_t}\) of excluded Values, the **exact error decomposition** is
+对保留与排除的 Value 分别求加权均值 \(\mu_{S_t}\)、\(\mu_{\overline S_t}\)，将完整读出分为两组便有
 
 \[
-o_t-\widehat o_t=m_t(\mu_{\overline S_t}-\mu_{S_t}),
-\qquad
-\|o_t-\widehat o_t\|_2\le 2m_t R,\quad
-R=\max_j\|v_j\|_2.
+\boxed{o_t-\hat o_t=m_t(\mu_{\overline S_t}-\mu_{S_t})}.
 \]
 
-The first identity explains the competing hypotheses: small discarded attention mass can preserve the readout, but high discarded mass need not imply large error if selected and excluded Values are close. This holds for the single attention readout under the stated common Q/K/V and mask conditions. Downstream language accuracy remains a separate question.
+若 \(\|V_j\|_2\le R\)，可直接推出 \(\|o_t-\hat o_t\|_2\le 2m_tR\)。因而决定误差的不仅是丢失多少注意力质量，还包括被保留与排除的 Value 是否具有不同方向或幅值。
 
-**Computational interpretation:** the teaching Top-K indexer first computes all \(T_qN_v\) scores; the sparse attention block then independently computes selected QK/PV again. This source-defined implementation is **not a speedup** and actually performs extra work in a comparison graph containing both branches. A production saving would require a measured indexer whose cost is outweighed by reduced selected-Value traffic or later layers, plus downstream semantic quality tests. This experiment validates operator semantics, token selection and local error—not latency.
+Top-K **不保证**随 \(k\) 增大而单调减少读出误差。例如 \(p=(0.5,0.3,0.2)\)，Value \(=(0,100,-100)\) 时，全量输出为 \(10\)；Top-1 输出为 \(0\)，误差 \(10\)；Top-2 输出为 \(37.5\)，误差增加到 \(27.5\)。此反例和全量 Top-K 恢复 Dense 的等价性均有可运行测试。
 
-### D. Aligned evidence for VLM research
+`vlm_patch_grid_lookup` 将行优先编号 \(j\) 还原为 \(y=\lfloor j/W_p\rfloor,\ x=j\bmod W_p\)，观测记录保留 Query 行、选择排名、Patch ID 和坐标。它回答“选择了哪一块”，无法单独回答“选中的物体是否正确”。
 
-Future modules can reuse the same graph plus evidence contracts for:
-- **Visual grounding:** object references, patches, bounding boxes and answer tokens; track coordinate provenance separately from genuine learned spatial alignment.
-- **Training/post-training:** frozen visual tower, trainable projector, instruction SFT, multimodal preference/reward optimization; display parameters, masks, loss tokens and gradient flow with valid cross-backend oracles.
-- **Video/efficient inference:** multiple frames, temporal stamps, high-resolution patch counts, adaptive pruning and token budgeting; link motion/temporal score to visual representation without assuming quality.
-- **Visual Agent:** observation → perception/grounding → action proposal → tool step → new observation. Treat action/state transitions as stateful evidence domains; do not force them into a tensor operator.
+`readout_error` 的 \([1,1]\) MSE 是 \([2,4]\) 读出向量的均方差，**不是语言交叉熵、Grounding 准确率或视频画质**。目前的 Top-K 实验还先计算全部 QK 分数、再运行稀疏路径，并额外运行 Dense 路径作为对照，属于机制验证而非实测加速。
 
-The VLM addition therefore links video-model sparsity, LLM post-training and Agent architecture through **shared vision-language representation and observation**, while keeping their distinct execution/state semantics.
+## 5. 观察、验证和研究延伸
 
-## 6. Acceptance and evidence boundaries
+| 需要判断什么 | 在程序中观察 | 目前证据 |
+| --- | --- | --- |
+| 视觉/文本来源是否对应 | `patches`、`text_embedding`、`prefix` | 形状、拼接顺序和元素来源 |
+| 未来 Token 是否泄漏 | `mask`、`probabilities` | Masked Softmax 的严格零值与反例 |
+| Cross-Attention 是否按图执行 | `cross_attention`、`text_residual` | 独立标量 QK/PV 与文本残差 |
+| 视觉压缩改变了什么 | `visual_pool`、`text_context` | 有损均值、长度和数值输出 |
+| Patch 选择和误差关系 | `top_patches`、`patch_coordinates`、`readout_delta`、`readout_error` | Dense/稀疏读出、误差分解、Top-K 反例 |
 
-The repository test `tests/vlm_learning_contracts.js` checks:
-- four genuinely executable graph recipes and independent symbolic shape agreement;
-- every output's finite numeric values, visual/text source ordering and text-row location;
-- token-compression arithmetic against a separately constructed pairwise-mean oracle;
-- causal probability zeros and a deliberate future-token mutation counterexample;
-- elementwise source-index maps for exact concatenation and text slicing;
-- negative contracts (mismatched width, oversized sequence, odd pool, illegal prefix, wrong source edge);
-- shared course identity, studio deep link and approved PC/Android static routes.
+`tests/vlm_learning_contracts.js` 运行四条图并核验数值、来源、Mask、错误连接和算子边界；`tests/vlm_cross_backend.js` 把真实 JavaScript 中间张量交给**独立 NumPy 与 PyTorch CPU Float64** 参考程序，对 TopK=2、TopK=4 的分数、索引、读出和 MSE 进行比对。独立固定案例对照并不意味着四个 VLM 扩展积木已经支持任意图的 NumPy/PyTorch 代码导出；不支持的 VLM 图必须明确报错。
 
-The CI workflow invokes this alongside existing trusted-pack and unified-learning contracts. Publishing scripts remain the sole source for deriving installed modules, offline Android assets and static routes. To regenerate deterministically after changes, use:
+下一步有明确依赖：先固定一份轻量真实 VLM 的预处理、视觉编码器、投影与位置 Mask 源码和权重，再以图像—问题对为独立实验单元评测 Token 选择的 Grounding/QA 质量。相同图像里的多 Token 是相关观测，不能重复计作独立样本。之后才值得测设备延迟、视频时序和与 LLM 后训练、视觉 Agent 状态循环的实际组合。Agent 的工具执行和状态变化沿用既有状态/事件接口，不混入普通张量算子。
 
-```bash
-node scripts/sync_installed_block_packs.js --check
-node scripts/sync_runtime_assets.js --check
-node tests/vlm_learning_contracts.js
-node tests/unified_pack_registry_contracts.js
-node tests/unified_learning_core_contracts.js
-```
-
-**Current proof scope:** installed contract + small synthetic deterministic CPU graph when tests run. No visual file decoding, actual pretrained VLM weights, independent NumPy/PyTorch export parity for the three new extension operators, cross-modal semantic accuracy, GPU benchmark, end-to-end training or production agent actions. Do not mark these capabilities verified without their respective results.
-
-## Source anchors
-
-- LLaVA visual instruction tuning and visual-prefix projector: https://arxiv.org/abs/2304.08485 and https://llava-vl.github.io/
-- BLIP-2 bootstrapped language-image pre-training with a Q-Former bridge: https://arxiv.org/abs/2301.12597
-- Flamingo interleaved visual-language cross-attention design: https://arxiv.org/abs/2204.14198
-- Qwen2.5-VL multimodal processing and dynamic-resolution modeling: https://github.com/QwenLM/Qwen2.5-VL
-- Source of exact `torch.cat` behavior: https://pytorch.org/docs/stable/generated/torch.cat.html
-
-Each anchor gives a model-family mechanism to compare, not proof that the teaching blocks reproduce those models.
-
-## 7. Independent CPU cross-backend witness
-
-The heavy math CI executes tests/vlm_cross_backend.js. It passes actual LearningLab graph intermediates into independent NumPy and PyTorch CPU Float64 programs for both TopK=2 and TopK=4 arms. Each independently computes scaled QK, stable indices, image-grid coordinates, Dense/Sparse softmax readout, error and MSE. All numerical coordinates are compared against actual JS graph results and across both Python engines at tolerance 2e-11. This is a bounded numerical oracle, not arbitrary-graph Python exporter support for the VLM extension, pretrained checkpoint evidence, nor a GPU latency test.
+相关来源用于辨认架构差异：[LLaVA](https://arxiv.org/abs/2304.08485)、[BLIP-2](https://arxiv.org/abs/2301.12597)、[Flamingo](https://arxiv.org/abs/2204.14198) 及 [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL)。数值等价与功能覆盖则只以当前仓库的实际节点和验收结果为依据。
