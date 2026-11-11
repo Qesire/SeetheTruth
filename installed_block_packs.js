@@ -10,7 +10,8 @@
  const SCHEMA='seethetruth-installed-block-packs-v1';
  const entries=Object.freeze([
   Object.freeze({id:'semantic_video',module:'semantic_block_pack.js',global:'SeetheTruthSemanticBlockPack'}),
-  Object.freeze({id:'named_axis',module:'axis_block_pack.js',global:'SeetheTruthAxisBlockPack'})
+  Object.freeze({id:'named_axis',module:'axis_block_pack.js',global:'SeetheTruthAxisBlockPack'}),
+  Object.freeze({id:'vlm',module:'vlm_block_pack.js',global:'SeetheTruthVLMBlockPack'})
  ]);
  function fail(message){throw Error('installed block packs: '+message);}
  function validate(items){
