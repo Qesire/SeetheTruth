@@ -4,6 +4,17 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 
 > 当前是公开测试版候选，不是完整大模型训练平台。无需 GPU，也不强制要求构建特定 Transformer 模板。模型源码分析、真实运行轨迹和 Profiler 是独立的可选研究功能。
 
+## 当前项目与 VLM 课程
+
+**Learning Studio** 是自由计算图工作台；**教学中心**将算子机制、计算路径和自检问题组织为可操作课程。当前注册 **154 种积木**，每种积木的数值、自动微分、NumPy/PyTorch 导出和模型对应能力由 [能力矩阵](capabilities.html) 单独标示。
+
+VLM 课程使用合成图像 Patch 和文本 Token，依次探索视觉前缀、文本读取视觉 K/V、视觉 Token 压缩，以及 Text Query 选择 Patch 后的 Dense/稀疏误差。这些都是可以运行的**微型数学图**；预训练模型推理、语义识别质量和 GPU 性能需要另外验证。可以直接打开 [VLM 课程](teaching.html?course=vlm)、[Patch Top-K 实验](learn.html?mission=extension_vlm_query_patch_selection) 或阅读 [数学机制](docs/vlm-learning-architecture.md)。
+
+**发行状态：** VLM 扩展仍在 [PR #105](https://github.com/Qesire/SeetheTruth/pull/105) 的审查分支中。当前目标是内部教学 Alpha 候选；仓库尚未合并本 PR、选择正式再分发许可证或创建 GitHub Release。具体门槛见 [发布审查](docs/vlm-release-candidate-20261111.md)。
+
+<details>
+<summary>按时间展开既有研发记录与证据</summary>
+
 **2026-11-11 VLM 视觉语言课程扩展：** [VLM 计算框架与验证方案](docs/vlm-learning-architecture.md) 将视觉前缀和跨模态注意力接入原有 LearningLab DAG：新增 4 个可信扩展积木（视觉/文本 Token 拼接、视觉 Token 平均池化、文本行读出、Patch 二维坐标映射）、4 个真实数值计算图；新增文本条件 Patch Top-K、稀疏/Dense 对照和误差分析，并在统一 PC/Android 教学中心增设 VLM 专题。可对照 6 Token 与 4 Token 的因果 Mask、逐坐标来源和压缩的信息损失；仍为有界 Float64 教学计算，尚未实现实际预训练 VLM 权重、独立 NumPy/PyTorch 导出或 GPU 加速。新增的数学和错误用例由 [VLM 测试](tests/vlm_learning_contracts.js) 审核，另有独立 NumPy/PyTorch CPU 小图比对。可从 [VLM 教学入口](teaching.html?course=vlm) 进入；涉及 VLM 的代码导出仍会明确拒绝不支持的算子。最新发布评估见 [RC 审查记录](docs/vlm-release-candidate-20261111.md)，最终成功状态以该分支最新 CI 为准。
 
 **2026-10-26 真实 4D 广播与梯度聚合：** [N-D 广播／归约计算与独立 PyTorch 校验](docs/nd-broadcast-reduction-oracles-v1.md) 补齐此前遗漏的 `nd_broadcast_mul` NumPy/PyTorch 实际导出映射；通过不同 Batch/Head/Token 形状的源图进行端到端前向、Loss 路径梯度和逐参数有限差分对照，并显式检查单例通道参数的反向梯度求和。独立可执行案例按测试图和源码摘要登记，不能自动证明所有 N-D 张量形状。
@@ -31,6 +42,9 @@ SeetheTruth 是一个 **Scratch 式的大模型原理学习工作台**。在自�
 **Android 教学版 APK：** 正在以离线 WebView 形式提供独立移动课堂，仅保留积木、论文解析、多模态与推理课程交互，不含代码生成、文件下载、模型训练/部署或实验产物。源代码在 [android/](android/)，工作流 [Android teaching APK](.github/workflows/android-teaching-apk.yml) 编译并发布签名的测试版 APK 工件；构建状态以 GitHub Actions 为准。独立教学入口为 [android_teaching.html](android_teaching.html)。
 
 **DeepInfer Prefill 源码教学：** [ALL/ANY Prefill 投票与图片 Token Chunk 边界实验室](deepinfer_prefill_lab.html) 根据官方 Scheduler 的 NORMAL 引擎投票、资源不足后的第二轮回退、Chunked Prefill 的 CP 对齐预算和 IMG + PAD 保护规则进行确定性计算；不执行实际分布式 AllReduce、GPU Prefill 或图片特征计算。教学页面自动进入 Android 离线 APK。参见 [计算合同与源码对照](docs/deepinfer-prefill-policy.md)。
+
+
+</details>
 
 ## 可审计的积木能力表
 
