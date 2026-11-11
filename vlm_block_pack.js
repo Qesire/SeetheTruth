@@ -174,7 +174,7 @@
    E("context","text_context","context"),E("text_context","language_head","x")
   ];
   if(compressed){
-   nodes.push(N("visual_pool","vlm_visual_pair_pool",780,-70));
+   nodes.push(N("visual_pool","vlm_visual_pair_pool",780,0));
    edges.push(E("vision_projector","visual_pool","visual"),
     E("visual_pool","prefix","visual"),E("visual_pool","text_context","visual"));
   }else edges.push(E("vision_projector","prefix","visual"),
@@ -207,9 +207,9 @@
    N("scale_scores","scale",1240,170,{factor:0.5}),
    N("top_patches","inference_topk",1470,170,{topk:2}),
    N("patch_coordinates","vlm_patch_grid_lookup",1730,455,{gridHeight:2,gridWidth:2}),
-   N("dense_visual","attention",1330,-105),
+   N("dense_visual","attention",1330,0),
    N("sparse_visual","inference_sparse_attention",1760,130,{causal:false,queryOffset:0}),
-   N("readout_delta","subtract",2010,-85),
+   N("readout_delta","subtract",2010,0),
    N("readout_error","mse",2260,95),
    N("text_residual","add",2000,340),
    N("language_head","linear",2260,340,{out:8})

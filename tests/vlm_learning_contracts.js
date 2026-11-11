@@ -18,6 +18,12 @@ for(const kind of Object.keys(Pack.defs)){
 }
 const names=['extension_vlm_early_fusion','extension_vlm_compressed_prefix','extension_vlm_cross_attention','extension_vlm_query_patch_selection'];
 const graphs=names.map(id=>L.preset(id));
+// Guided graphs must start entirely inside the visible coordinate plane;
+ // negative positions used to hide the visual pool/dense comparison at y<0.
+for(const graph of graphs)for(const node of graph.nodes){
+ assert.ok(Number.isFinite(node.x)&&Number.isFinite(node.y)&&node.x>=0&&node.y>=0,
+  'guided VLM node outside initial visible graph plane: '+graph.title+'/'+node.id);
+}
 const runs=graphs.map((graph,i)=>{
  const readiness=R.check(graph,{numeric:true});
  assert.equal(readiness.executable,true,names[i]+' not a connected runnable graph');
