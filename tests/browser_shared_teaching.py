@@ -71,7 +71,12 @@ class SharedTeachingBrowser(unittest.TestCase):
             self.assertLess(position["panel"],position["courses"])
             self.assertIn("VLM",page.locator("#detailTitle").inner_text())
             page.screenshot(path=str(OUT/"vlm-first-visit-mobile.png"),full_page=True,animations="disabled")
-            self.assertEqual(page.locator(".more-nav-menu a").count(),6)
+            allowed=page.evaluate("""() => window.SeetheTruthUnifiedCore.labs
+                .filter(l=>!['index.html','real_model_lab.html','telemetry.html'].includes(l.href))
+                .length""")
+            self.assertEqual(page.locator(".more-nav-menu a").count(),allowed)
+            self.assertEqual(page.locator(".more-nav-menu [data-lab]").count(),allowed)
+            self.assertEqual(page.locator(".more-nav-menu a[href='index.html']").count(),0)
             self.assertFalse(page.locator(".more-nav-menu a").first.is_visible())
             page.locator(".more-nav summary").click()
             self.assertTrue(page.locator(".more-nav-menu a").first.is_visible())
