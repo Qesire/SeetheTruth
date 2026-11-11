@@ -13,6 +13,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Capture reviewed source tree for offline browser reproduction
+        if: github.event_name == 'pull_request'
+        run: git archive --format=tar.gz -o "$RUNNER_TEMP/seethetruth-ui-reviewed-tree.tar.gz" HEAD
+      - name: Archive source snapshot for independent visual QA
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: seethetruth-ui-reviewed-source-tree
+          path: ${{ runner.temp }}/seethetruth-ui-reviewed-tree.tar.gz
+          retention-days: 2
+          if-no-files-found: error
       - name: Deterministic source and graph contracts
         run: python -m unittest discover -s tests -p 'test_static_contracts.py' -v
       - name: Site-wide navigation, accessibility and screen contracts
