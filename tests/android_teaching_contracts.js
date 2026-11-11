@@ -17,6 +17,7 @@ for(const name of expected){
 }
 assert.match(home,/纯教学版/);
 assert.match(home,/不生成 Python 程序/);
+assert.match(home,/href="teaching\.html\?edition=teaching"/,'canonical shared curriculum entry');
 assert.match(policy,/#exportPython/);
 assert.match(policy,/#pythonExportPanel/);
 assert.match(policy,/#save/);
