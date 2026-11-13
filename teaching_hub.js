@@ -36,6 +36,13 @@ for(const [group,labs] of groups){
   link.dataset.lab=lab.id;labHome.append(link);
  }
 }
+const lessonActions=Object.freeze({
+ building:"打开 FFN 计算图",papers:"打开论文机制实验",multimodal:"打开图像 Patch 计算图",
+ vlm:"打开 VLM 视觉前缀计算图",loop:"比较架构成本",cache:"打开 KV Cache 实验",
+ prefill:"打开 Prefill 投票实验",scheduler:"打开 Scheduler / KV / Worker 实验",
+ worker:"打开 Worker 时序实验",engineering_journey:"开始十二阶段工程实践",
+ engineering_pipeline:"打开训练流水线"
+});
 const courses=Core.inventory().courses;
 $("lessonCount").textContent=courses.length+" 个专题";
 const coverage=Core.inventory().counts;
@@ -58,7 +65,7 @@ function detail(){
  $("answer").hidden=true;$("reveal").setAttribute("aria-expanded","false");
  $("reveal").textContent="显示解析";
  $("openLesson").href=safeTarget(l);
- $("openLesson").textContent=l.target?.kind==="guided_graph"?"打开积木实验":"进入交互实验";
+ $("openLesson").textContent=lessonActions[l.id]||"打开交互实验";
  $("vlmNavLink").setAttribute("aria-current",selected==="vlm"?"page":"false");
 }
 function render(){

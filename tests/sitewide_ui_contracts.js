@@ -31,6 +31,12 @@ for(const p of PAGES){
 }
 const studio=read('learn.html'),source=read('teaching_hub.js');
 assert.ok(studio.includes('id="jumpToGraph"')&&studio.includes('href="#stt-main"'));
+assert.ok(studio.includes('id="executionMode"')&&studio.includes('id="executionStep"'),
+    'learning studio lacks source-bound execution context');
+assert.ok(read('teaching_hub.js').includes('lessonActions[l.id]'),
+    'course actions must identify their real destinations');
+assert.ok(read('teaching_curriculum.js').includes('图像信息怎样改变文本预测'),
+    'VLM course should frame the research question');
 assert.ok(studio.includes('class="stt-learning-studio"'));
 assert.ok(studio.includes('id="jumpToCatalog"')&&studio.includes('id="stt-catalog"'));
 assert.ok(read('ui_accessibility.css').includes('body.stt-learning-studio .app>.stage{order:0}'));

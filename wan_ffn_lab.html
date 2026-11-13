@@ -16,7 +16,7 @@ header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justif
 <a class="stt-skip" href="#stt-main">跳到主要内容</a>
 <header><div><div class="brand">SEETHE TRUTH</div><div class="eyebrow">SOURCE → TENSOR → OPERATOR → DOT PRODUCT</div></div><nav><a href="teaching.html">课程中心</a><a href="learn.html?edition=teaching">自由积木</a><a href="engineering_journey.html">工程流程</a><a href="engineering_pipeline.html">训练状态机</a></nav></header>
 <main id="stt-main"><div class="eyebrow">SOURCE-PINNED · Wan2.2 I2V A14B · FFN COMPUTE MICROSCOPE</div>
-<h1>从真实 Wan FFN 源码，一直钻取到每一次乘加</h1>
+<h1>按 Wan2.2 源码顺序展开 FFN 的逐坐标计算</h1>
 <p class="lede muted">计算拓扑与顺序固定对照 Wan 官方 <code>wan/modules/model.py</code>（源码与配置均绑定 commit）。图中的张量与热力图由可执行 Float64 <b>微型数值模型</b>即时生成，不使用 Wan 原始权重或真实 Attention 输出；大模型规模显示的是官方配置下的形状及解析 FLOPs，而非真实运行速度。</p>
 <div class="stat-strip"><div class="stat"><label>WAN 原始 C / FFN H</label><strong>5120 → 13824 → 5120</strong></div><div class="stat"><label>结构</label><strong>Linear → GELU(tanh) → Linear</strong></div><div class="stat"><label>单 Token · FFN 投影理论 FLOPs</label><strong id="realFlops">—</strong></div></div>
 <div class="layout">
