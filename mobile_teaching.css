@@ -20,7 +20,7 @@ body.teaching-edition .header:after{content:"离线教学 · 不导出产物";co
  body.teaching-edition .stage-top{padding:11px;flex-wrap:wrap}
  body.teaching-edition .board-viewport{height:420px;overflow:auto}
  body.teaching-edition .playbar{padding:12px;overflow-x:auto}
- body.teaching-edition .playbar .row{min-width:max-content}
+ body.teaching-edition .playbar .row{min-width:0;flex-wrap:wrap}
  body.teaching-edition .btn{touch-action:manipulation}
 }
 

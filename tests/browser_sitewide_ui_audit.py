@@ -126,6 +126,60 @@ class SitewideHumanInterface(unittest.TestCase):
         finally:
             page.close()
 
+    def test_mobile_graph_advanced_tools_and_evidence_handoff(self):
+        page=self.browser.new_page(viewport={"width":390,"height":844},
+            is_mobile=True,has_touch=True)
+        errors=[]
+        page.on("pageerror",lambda e:errors.append(str(e)))
+        try:
+            self.assertEqual(page.goto(self.base+"/learn.html").status,200)
+            self.assertFalse(page.locator("#advancedGraphTools").evaluate("e=>e.open"))
+            self.assertTrue(page.locator("#mobileRun").is_visible())
+            self.assertTrue(page.locator("#mobileViewResult").is_disabled())
+            self.assertIn("QUALITATIVE CONTRACT",page.locator("#evidence").inner_text())
+            page.locator("#mobileRun").click()
+            self.assertIn("无数值输出",page.locator("#executionMode").inner_text())
+            self.assertFalse(page.locator("#mobileViewResult").is_disabled())
+            page.locator("#mobileNumericToggle").click()
+            self.assertEqual(page.locator("#studyMode").input_value(),"numeric")
+            self.assertTrue(page.locator("#mobileViewResult").is_disabled(),
+                "a new mode must revoke prior run evidence")
+            self.assertEqual(page.locator("#mobileNumericToggle").get_attribute("aria-pressed"),"true")
+            page.locator("#mobileRun").click()
+            self.assertIn("合成数值",page.locator("#executionMode").inner_text())
+            page.locator("#mobileViewResult").click()
+            self.assertEqual(page.evaluate("document.activeElement.id"),"inspectorTitle")
+            self.assertEqual(page.locator("#inspectorTitle").inner_text(),"输入张量")
+            page.locator("#advancedGraphTools summary").click()
+            self.assertTrue(page.locator("#advancedGraphTools").evaluate("e=>e.open"))
+            self.assertTrue(page.locator("#save").is_visible())
+            page.locator("#focusCurrent").click()
+            viewport=page.locator("#viewport").bounding_box()
+            selected=page.locator('[data-node="x"]').bounding_box()
+            self.assertGreaterEqual(selected["x"]+selected["width"],viewport["x"])
+            self.assertLessEqual(selected["x"],viewport["x"]+viewport["width"])
+            self.assertEqual(errors,[])
+        finally:
+            page.close()
+
+    def test_telemetry_source_tiers_are_visible_near_data(self):
+        page=self.browser.new_page(viewport={"width":390,"height":844},
+            is_mobile=True,has_touch=True)
+        try:
+            self.assertEqual(page.goto(self.base+"/telemetry.html").status,200)
+            page.locator("#demo").click()
+            self.assertEqual(page.locator("#telemetrySourceState").get_attribute("data-tier"),"demo")
+            self.assertIn("SYNTHETIC",page.locator("#telemetrySourceState").inner_text())
+            self.assertNotIn("数据由显式 PyTorch profiler 采集",page.locator("#evidence").inner_text())
+            imported=page.evaluate("window.SeetheTruthTelemetryEvidence.example()")
+            imported["meta"]["measurement"]="IMPORTED_TEST_FIXTURE"
+            page.locator("#file").set_input_files({"name":"fixture.json",
+                "mimeType":"application/json", "buffer":json.dumps(imported).encode("utf8")})
+            self.assertEqual(page.locator("#telemetrySourceState").get_attribute("data-tier"),"imported")
+            self.assertIn("未独立运行",page.locator("#telemetrySourceState").inner_text())
+        finally:
+            page.close()
+
     def test_twenty_surfaces_offer_real_navigation_and_keyboard_entry(self):
         self.assertEqual(len(PAGES),20)
         for name in PAGES:

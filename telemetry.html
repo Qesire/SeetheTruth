@@ -32,7 +32,7 @@ main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-te
 #hist{height:155px;width:100%;display:block}.info{color:#9fc5dc;font-size:11px}.legend{height:9px;border-radius:12px;margin-top:12px;background:linear-gradient(90deg,#3b6ed8,#0d1d33,#ffbd73)}
 .twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:15px}.tiny{font-size:10px;color:#86a5bf}
 #tooltip{position:fixed;pointer-events:none;display:none;background:#071523;border:1px solid #78ebff;border-radius:8px;padding:7px 10px;color:#e7fbff;font-size:11px;z-index:9}
-.notice{font-size:11px;color:#afd3e8;line-height:1.75;border-left:2px solid #63dceb;padding:9px 13px;background:#102033}
+.notice{font-size:11px;color:#afd3e8;line-height:1.75;border-left:2px solid #63dceb;padding:9px 13px;background:#102033}.source-state{margin-top:15px;padding:10px 13px;border:1px solid #46677c;border-left:3px solid #6be0d7;border-radius:8px;background:#102538;color:#d3edf4;font-size:12px}.source-state[data-tier="demo"]{border-left-color:#f3bf83;background:#2c271e}
 .error{color:#ffb7a7}code{font-family:Consolas,monospace;color:#b8f0fc;font-size:11px}
 @media(max-width:1150px){.layout{grid-template-columns:220px minmax(320px,1fr) 290px}.sidebar,.inspector,main{padding:15px}.rank{grid-template-columns:115px 1fr 65px}}
 @media(max-width:850px){header{height:auto;padding:14px;flex-wrap:wrap}.layout{display:flex;flex-direction:column;height:auto}.sidebar,.inspector{border:0;border-bottom:1px solid var(--line)}.stats{grid-template-columns:repeat(2,1fr)}.twocol{grid-template-columns:1fr}main{overflow:visible}}
@@ -44,7 +44,7 @@ main{padding:24px;overflow:auto;scrollbar-width:thin}.stats{display:grid;grid-te
 <div class="layout"><aside class="sidebar"><div class="eyebrow">01 / PERFORMANCE</div><h2 style="margin-top:8px">模块效率地图</h2><div class="hint">Host 时间包含子模块且不代表 GPU 延迟；同次采样的新 ATen 独占自 CPU 与包含子模块成本可分别显示，后者跨父子模块不可加总。</div><div id="modules"><p class="muted">导入采集结果后显示模块及调用次数。</p></div><div id="moduleCalls" class="hint"></div><hr><div class="eyebrow">02 / TENSOR GALLERY</div><div id="tensorlist" class="tensorlist"><p class="muted">需要显式开启 capture_values 才有数值样本。</p></div></aside>
 <main id="stt-main"><div class="eyebrow">INSTRUMENTED EXECUTION / QUANTITATIVE VIEW</div><h1>运行画像 · 张量显微镜</h1><div class="topnotes">统计证据驱动的计算图补充视图。不同数据来源分别标记；不将估算吞吐当作硬件利用率。</div>
 <div id="empty" class="empty"><div style="font-size:32px;color:#7defff">◇</div><h2>导入一次真实 PyTorch Profiler 采集</h2><p>该视图能够探索 ATen 算子性能排行、模块调用时间、实测张量形状，以及自愿提供的统计样本。</p><p><code>python examples/telemetry_demo.py</code></p><p class="tiny">点击「示意样本」可预览布局；其数据由程序生成，并明确标记 SYNTHETIC。</p></div>
-<div id="body" hidden><div class="stats" id="stats"></div><div class="panel"><div class="panel-title"><strong>ATen · Self time 排行</strong><span class="badge source" id="timerel"></span></div><div id="operators"></div><div class="tiny">算子时间来自 torch.profiler.key_averages；按 self time 排序。聚合 CPU 与设备时间不应相加为总延迟。</div></div>
+<div id="body" hidden><div id="telemetrySourceState" class="source-state" role="status" aria-live="polite"></div><div class="stats" id="stats"></div><div class="panel"><div class="panel-title"><strong>ATen · Self time 排行</strong><span class="badge source" id="timerel"></span></div><div id="operators"></div><div class="tiny">算子时间来自 torch.profiler.key_averages；按 self time 排序。聚合 CPU 与设备时间不应相加为总延迟。</div></div>
 <div class="twocol"><div class="panel"><div class="panel-title"><strong>张量切片热力图</strong><select id="heatmode" aria-label="热力图编码方式"><option value="signed">正负值</option><option value="magnitude">幅值</option><option value="zero">零 / 非零</option></select></div><div class="canvasframe"><canvas id="heatmap" role="img" aria-label="张量数值热力图" aria-describedby="matrixnote"></canvas></div><div class="legend" id="legend"></div><div class="tiny" id="matrixnote"></div></div>
 <div class="panel"><div class="panel-title"><strong>采样值分布</strong><select id="histmode" aria-label="采样值统计视图"><option value="hist">采样直方图</option><option value="rowenergy">行 L2 能量</option><option value="colabs">列平均绝对值</option></select><span class="badge" id="samplecount">sample</span></div><canvas id="hist" class="chart" role="img" aria-label="张量采样值的统计图"></canvas><div class="tiny">直方图只代表有限的抽样值，不是整个张量的精确分布。</div></div></div>
 <div class="panel"><div class="panel-title"><strong>Evidence contract · 指标口径</strong><span class="badge">可追溯</span></div><div id="evidence" class="notice"></div></div></div></main>
@@ -60,6 +60,10 @@ const F=Number.isFinite;
 function load(d,isDemo){const evidence=window.SeetheTruthUnifiedCore.inspectEvidence("telemetry","validate_import",{data:d,synthetic:isDemo});window.SeetheTruthLastTelemetryEvidence=evidence;doc=d;synthetic=evidence.data.synthetic;activeSnap=0;selectedModule=null;$('#empty').hidden=true;$('#body').hidden=false;render();}
 function render(){if(!doc)return;const meta=doc.meta||{},ops=doc.operators,mods=doc.modules,snaps=doc.snapshots;
 const gpu=meta.gpu_activity&&ops.some(o=>Number.isFinite(o.self_device_ms));rankMetric=gpu?'device':'cpu';
+$('#telemetrySourceState').dataset.tier=synthetic?'demo':'imported';
+$('#telemetrySourceState').textContent=synthetic
+ ?'SYNTHETIC · 程序生成的演示数据。图表用于了解界面和统计口径，不属于模型运行测量。'
+ :'IMPORTED JSON · 文件已通过结构与数值约束检查。采集来源由文件声明，页面未独立运行模型或验证采集身份。';
 const sum=ops.reduce((a,v)=>a+(Number(v[gpu?'self_device_ms':'self_cpu_ms'])||0),0);
 $('#timerel').textContent=(synthetic?'SYNTHETIC / ':gpu?'DEVICE / ':'CPU / ')+'self time';
 const st=[['ATen 算子',format(ops.length,0),'distinct aggregates'],['累计 self time',format(sum,3)+' ms',gpu?'device attribution':'CPU attribution'],['Module 调用',format(mods.reduce((a,m)=>a+(m.calls||0),0),0),'host call count'],['张量样本',format(snaps.length,0),meta.tensor_values_opt_in?'opt-in sampling':'values disabled']];
@@ -74,16 +78,16 @@ $('#moduleCalls').innerHTML=calls.length?'<div class="eyebrow">逐次调用 · P
 document.querySelectorAll('[data-mod]').forEach(el=>el.onclick=()=>{selectedModule=+el.dataset.mod;const index=snaps.findIndex(x=>x.module===mods[selectedModule].name);if(index>=0)activeSnap=index;render();});
 $('#tensorlist').innerHTML=snaps.map((s,i)=>'<button class="'+(i===activeSnap?'active':'')+'" data-snap="'+i+'"><b>'+esc(s.module)+'</b><span class="shape">'+esc((s.tensor?.shape||[]).join(' × '))+' / '+esc(s.tensor?.dtype)+'</span></button>').join('')||'<p class="muted">未开启数值样本采集。可仅查看 shape/stride 与性能数据。</p>';
 document.querySelectorAll('[data-snap]').forEach(el=>el.onclick=()=>{activeSnap=+el.dataset.snap;render();});
-$('#evidence').innerHTML='<b>'+esc(meta.measurement||'unknown')+'</b><p>'+esc(synthetic?'这是明确标识的模拟演示，不属于运行实测。':'数据由显式 PyTorch profiler 采集。CPU 时间与 CUDA device 时间是不同口径。')+'</p><p>'+esc((meta.notes||[]).join(' · '))+'</p>';
+$('#evidence').innerHTML='<b>'+esc(meta.measurement||'unknown')+'</b><p>'+esc(synthetic?'这是明确标识的模拟演示，不属于运行实测。':'文件声明来自 PyTorch Profiler；当前仅校验导入结构，不独立复现采集。CPU 和 CUDA device 时间口径不同。')+'</p><p>'+esc((meta.notes||[]).join(' · '))+'</p>';
 renderSnapshot();}
 function row(k,v){return '<div class="inspect-grid"><span>'+esc(k)+'</span><strong>'+esc(v)+'</strong></div>'}
 function renderSnapshot(){const s=doc.snapshots[activeSnap];if(!s){$('#selTitle').textContent='无数值样本';$('#selHint').textContent='使用 TelemetrySession(model, capture_values=True) 可主动采集有界激活样本；此选项可能泄露激活信息并改变计时。';$('#details').innerHTML='';clearCanvas('heatmap');clearCanvas('hist');$('#matrixnote').textContent='';return;}
 const t=s.tensor||{},d=s.summary||{},st=d.statistics||{};
-$('#selTitle').textContent=s.module;$('#selHint').textContent='运行时输出形状与截取的一个矩阵平面。';
+$('#selTitle').textContent=s.module;$('#selHint').textContent='导入文件记录的输出形状与一个采样矩阵平面；来源尚未独立复跑。';
 $('#details').innerHTML=row('Shape','['+(t.shape||[]).join(', ')+']')+row('Stride','['+(t.stride||[]).join(', ')+']')+row('Dtype',t.dtype)+row('Device',t.device)+row('Logical bytes',bytes(t.logical_bytes))+row('Contiguous',String(t.contiguous))+row('Sample mean',format(st.mean,5))+row('Sample std',format(st.std,5))+row('Sample zero fraction',st.mean==null?'—':format((d.sample_zero_fraction||0)*100,2)+'%')+row('Nonfinite samples',format(d.nonfinite_count,0))+row('Sample range',format(st.min,3)+' → '+format(st.max,3));
 $('#samplecount').textContent=format(d.sampled,0)+' / '+format(d.population,0)+' sampled';
 $('#matrixnote').textContent='显示原始最后两轴的稀疏网格采样 '+JSON.stringify(d.matrix_original_shape)+'；步长 '+JSON.stringify(d.matrix_stride)+'；高维张量固定前导轴 '+JSON.stringify(d.leading_indices||[])+'。并非完整权重图。';
-$('#interpret').textContent='所见热力图对应一次观测的激活切片。'+(t.contiguous?'当前张量连续布局。':'当前张量非连续，后续算子可能发生布局调整。')+' Heatmap、Histogram 都只解释采样值；不能以样本零值率替代整体稀疏率。';
+$('#interpret').textContent='所见热力图对应导入数据中声明的激活切片。'+(t.contiguous?'当前张量连续布局。':'当前张量非连续，后续算子可能发生布局调整。')+' Heatmap、Histogram 都只解释采样值；不能以样本零值率替代整体稀疏率。';
 drawMatrix();drawHistogram();}
 function clearCanvas(id){const c=$('#'+id);const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);}
 function initCanvas(id){const c=$('#'+id),r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);c.width=Math.max(50,Math.round(r.width*dpr));c.height=Math.max(50,Math.round(r.height*dpr));const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return{c,ctx,w:r.width,h:r.height};}
