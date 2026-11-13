@@ -33,3 +33,7 @@
 ### GitHub Actions 运行环境修订（2026-11-13）
 
 首次整改提交 `83d635f` 的 CI 实际下载并安装了 Noto Sans CJK SC，但浏览器尚未执行：`ubuntu-latest` 已升级至 Ubuntu 26.04，固定的 Playwright 1.55.0 在安装 Chromium 时返回 `does not support chromium on ubuntu26.04-x64`。现将浏览器验收 job 明确固定到 `ubuntu-24.04`，需以新提交的完整 HTTP 验收结果确认；此前失败不属于页面渲染结论。
+
+### 中文标题不应成为课程身份合同（2026-11-13）
+
+Ubuntu 24.04 的完整 HTTP Chromium 已验证 20 页双视口、中文栅格、320px 和首次执行状态，随后旧版 `tests/browser_unified_learning_core.py` 因假设兜底课程标题必须包含“积木”而失败。课程功能回退到第一门注册课本身正确；把断言改为对比 `#detailTitle` 与 `SeetheTruthCurriculum.lessons[0].title` 的实际身份，不再把自然语言字面词条当作导航契约。其余旧测试保持不变，需要由新的完整 CI 再验收。
