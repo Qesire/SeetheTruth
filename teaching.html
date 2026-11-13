@@ -52,7 +52,7 @@ h1{margin-bottom:10px}
 #deepDive .label{font-size:11px}
 #deepDive p{margin:0}
 #deepDive h2{font-size:21px;margin:0}
-#deepDive .action{margin-top:4px}
+#deepDive .action{margin:3px 0 2px;align-self:start;text-align:center}
 #deepDive .action:focus-visible{outline:3px solid #f1bd77;outline-offset:3px}
 #prefillMiniLab{margin-top:22px}
 @media(max-width:880px){
@@ -88,16 +88,16 @@ h1{margin-bottom:10px}
   </details>
  </nav>
 </header>
-<main id="stt-main"><div class="eyebrow">LEARN / BUILD / VERIFY</div><h1>从计算积木理解模型</h1>
-<p class="intro">选择一个机制，查看张量如何流动，并在对应实验里运行数值。PC 与 Android 使用同一份课程内容。</p>
-<div class="meta"><span id="editionLabel">教学中心</span><span id="version">—</span><span id="lessonCount">—</span><span id="coreCoverage">—</span><span>不要求 GPU / 后端</span></div>
+<main id="stt-main"><h1>从计算积木理解模型</h1>
+<p class="intro">选一项计算问题，沿图检查输入、运算与结果。桌面和 Android 使用相同课程。</p>
+<div class="meta"><span id="editionLabel">教学中心</span><span id="version">—</span><span id="lessonCount">—</span><span id="coreCoverage">—</span><span>无需 GPU</span></div>
+<div class="layout"><section aria-label="课程目录"><h2 class="section-title">课程目录</h2>
 <div class="controls"><input id="search" type="search" placeholder="搜索：VLM、多模态、Loop、Prefill、KV…" aria-label="搜索课程">
-<button id="all" aria-pressed="true">全部</button><button id="fundamentals" aria-pressed="false">基础 / 多模态</button><button id="inference" aria-pressed="false">前沿 / 推理</button><button id="engineering" aria-pressed="false">工程实战</button></div>
-<div class="layout"><section aria-label="课程目录"><h2 class="section-title">课程目录</h2><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除搜索或切换类别。</p></section>
-<aside id="deepDive" class="panel" aria-live="polite"><div class="label">当前课程</div><h2 id="detailTitle">—</h2><small id="level">—</small>
-<div><div class="label">数学 / 计算流</div><p id="theory">—</p></div><div><div class="label">作用机制与设计依据</div><p id="why" class="reason">—</p></div>
+<button id="all" aria-pressed="true">全部</button><button id="fundamentals" aria-pressed="false">基础 / 多模态</button><button id="inference" aria-pressed="false">前沿 / 推理</button><button id="engineering" aria-pressed="false">工程实战</button></div><div id="cards" class="cards" aria-label="共享课程列表"></div><p id="empty" hidden>没有匹配课程。清除搜索或切换类别。</p></section>
+<aside id="deepDive" class="panel" aria-live="polite"><div class="label">要研究的问题</div><h2 id="detailTitle">—</h2><small id="level">—</small>
+<a id="openLesson" class="action" href="learn.html?edition=teaching">打开计算实验</a>
+<div><div class="label">从输入到输出</div><p id="theory">—</p></div><div><div class="label">机制与限制</div><p id="why" class="reason">—</p></div>
 <div class="quiz"><div class="label">检验理解</div><p id="question">—</p><button id="reveal" aria-expanded="false">显示解析</button><p id="answer" class="answer" hidden></p></div>
-<a id="openLesson" class="action" href="learn.html?edition=teaching">进入计算实验</a>
 </aside></div>
 <section class="panel" style="margin-top:16px" id="prefillMiniLab">
 <div class="eyebrow">DEEPINFER · SOURCE-DERIVED MATH</div>

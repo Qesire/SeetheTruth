@@ -150,8 +150,10 @@ class UnifiedLearningBrowser(unittest.TestCase):
   try:
    self.assertEqual(page.goto(self.base+"/teaching.html?course=not-a-lesson").status,200)
    page.wait_for_function("!!window.SeetheTruthTeachingHub")
-   self.assertIn("积木",page.locator("#detailTitle").inner_text(),
-    "unknown course link must fall back to a valid first lesson")
+   self.assertEqual(
+    page.locator("#detailTitle").inner_text(),
+    page.evaluate("window.SeetheTruthCurriculum.lessons[0].title"),
+    "unknown course link must resolve to the registered first lesson, regardless of title copy")
   finally:
    page.close()
 

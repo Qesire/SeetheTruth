@@ -231,6 +231,12 @@ input[type="file"]{display:none}
 .lineage-node,.lineage-details{border:1px solid #335467;border-radius:7px;margin-top:6px;padding:7px;background:#0d2839}
 .lineage-node summary,.lineage-details summary{cursor:pointer;font-size:12px}
 .lineage-element{padding:5px;margin-top:5px;border-left:2px solid #4c958d;background:#122d3a;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace}
+ .execution-context{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;
+   padding:4px 18px;border-top:1px solid #294b5e;background:#102b3a;
+   font-size:12px;line-height:1.35;color:#b5dce5}
+ .execution-context strong{color:#a5f1d8;font-weight:700}
+ .execution-context span{min-width:0;overflow-wrap:anywhere}
+ @media(max-width:680px){.execution-context{padding:10px 12px}}
 </style><link rel="stylesheet" href="mobile_teaching.css"><link rel="stylesheet" href="compute_microscope.css"><style>
 #jumpToGraph{display:none}
 @media(max-width:700px){#jumpToGraph{display:inline-flex;align-items:center;min-height:40px}}
@@ -241,8 +247,8 @@ input[type="file"]{display:none}
 <a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><h1 class="brand" style="margin:0">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></h1>
-  <div class="sub">从“看懂模型”到“解释计算流” · 学习优先 / 无需 GPU</div></div>
- <nav class="head-actions" aria-label="学习与实验室导航"><a id="jumpToGraph" class="btn ghost" href="#stt-main">查看当前计算图</a><a id="jumpToCatalog" class="btn ghost" href="#stt-catalog">选择课程／积木</a><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><details class="stt-lab-menu"><summary>其他实验室</summary><div class="stt-lab-menu-items"><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div></details><span class="badge warning">TEACHING SIMULATION · 非真实模型</span></nav>
+  <div class="sub">自由连接积木 · 检查形状 · 运行微型数值</div></div>
+ <nav class="head-actions" aria-label="学习与实验室导航"><a id="jumpToGraph" class="btn ghost" href="#stt-main">查看当前计算图</a><a id="jumpToCatalog" class="btn ghost" href="#stt-catalog">选择课程／积木</a><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><details class="stt-lab-menu"><summary>其他实验室</summary><div class="stt-lab-menu-items"><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div></details><span class="badge warning">TEACHING SIMULATION · 合成教学计算</span></nav>
 </header>
 <div class="app">
  <aside class="rail" id="stt-catalog">
@@ -353,6 +359,10 @@ input[type="file"]{display:none}
    <div id="compositeStages" class="composite-stages"></div>
   </section>
   <div class="board-viewport" id="viewport"><div id="board" role="region" aria-label="可拖动积木与交互连线的微型神经网络工作台"><svg id="wires" aria-hidden="true"></svg><div id="blocks"></div></div></div>
+  <div class="execution-context" role="group" aria-label="当前计算图的执行与证据状态">
+   <strong id="executionMode">原理推演 · 尚未运行</strong>
+   <span id="executionStep">点击“推演计算逻辑”查看形状和依赖；若要观察张量数值，请切换学习方式。</span>
+  </div>
   <div class="playbar">
    <div class="row"><label class="study-mode-label" for="studyMode">学习方式
   <select id="studyMode" aria-label="学习方式">
@@ -1344,6 +1354,13 @@ function render(){
  $("#board").style.zoom=String(Number(factor.toFixed(3)));
  $("#fitLabel").textContent=(zoomMode==="fit"?"自动适配 ":zoomOverride===null?"清晰浏览 ":"手动缩放 ")+Math.round(factor*100)+"% · 大图可滚动 · 点击节点查看解释";
  $("#workspaceTitle").textContent=graph.title;
+ const visibleStep=run&&step>=0?run.steps[step]:null;
+ $("#executionMode").textContent=!run
+   ?(studyMode()==="concept"?"原理推演 · 尚未运行":"微型数值 · 尚未运行")
+   :(run.mode==="concept"?"已推演依赖与形状 · 无数值输出":"已执行合成数值 · 非预训练权重");
+ $("#executionStep").textContent=visibleStep
+   ?"第 "+(step+1)+" / "+run.steps.length+" 步 · "+visibleStep.id+" ["+visibleStep.shape.join(" × ")+"] · 选择积木可查看当前步骤"
+   :(studyMode()==="concept"?"点击“推演计算逻辑”，查看当前图的形状与依赖；要观察数值请切换学习方式。":"点击“运行小矩阵示例”，随后选择节点查看张量坐标。 ");
  $("#undo").disabled=!undo.length;$("#redo").disabled=!redo.length;
  $("#stepInfo").textContent=run?(step+1)+" / "+run.steps.length+(runScope?" · 分支 "+runScope:""):"尚未运行";
  $("#prev").disabled=!run||step<=0;$("#next").disabled=!run||step>=run.steps.length-1;

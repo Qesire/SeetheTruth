@@ -6,7 +6,8 @@ permissions:
   contents: read
 jobs:
   simulation-and-browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 is supported on Ubuntu 24.04, not ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +29,13 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_static_contracts.py' -v
       - name: Site-wide navigation, accessibility and screen contracts
         run: node tests/sitewide_ui_contracts.js
+      - name: Provision Chinese font for legible Chromium evidence
+        run: python scripts/ensure_cjk_font.py
       - name: Install headless Chromium
         run: |
           python -m pip install 'playwright==1.55.0'
-          # Ubuntu hosted runners already provide browser shared libraries. Avoid
-          # network-dependent apt font packages that can fail on mirror DNS.
+          # Hosted runners have browser shared libraries, but may omit CJK glyphs.
+          # Provision the font separately rather than installing apt font packages.
           python -m playwright install chromium
       - name: Verify state A/B exact coordinate round trip in Chromium (PC and phone)
         run: python tests/browser_state_ab_bridge.py
