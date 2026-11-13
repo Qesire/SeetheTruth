@@ -126,6 +126,22 @@ class SitewideHumanInterface(unittest.TestCase):
         finally:
             page.close()
 
+    def test_no_fixed_secondary_link_overlays_mobile_graph(self):
+        page=self.browser.new_page(viewport={"width":320,"height":740},
+            is_mobile=True,has_touch=True)
+        try:
+            self.assertEqual(page.goto(self.base+"/learn.html").status,200)
+            self.assertEqual(page.locator('a[href="tradeoffs.html"]').count(),1)
+            self.assertEqual(page.locator('a[href="tradeoffs.html"][style*="position:fixed"]').count(),0,
+                "secondary research links must not block graph nodes on small phones")
+            menu=page.locator(".head-actions .stt-lab-menu")
+            menu.locator("summary").click()
+            link=menu.locator('a[href="tradeoffs.html"]')
+            self.assertTrue(link.is_visible())
+            self.assertTrue(link.get_attribute("href").endswith("tradeoffs.html"))
+        finally:
+            page.close()
+
     def test_mobile_graph_advanced_tools_and_evidence_handoff(self):
         page=self.browser.new_page(viewport={"width":390,"height":844},
             is_mobile=True,has_touch=True)

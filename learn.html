@@ -267,11 +267,10 @@ input[type="file"]{display:none}
 <link rel="stylesheet" href="ui_accessibility.css">
 </head><body class="stt-learning-studio">
 <a class="stt-skip" href="#stt-main">跳到主要内容</a>
-<a href="tradeoffs.html" style="position:fixed;right:12px;bottom:12px;z-index:1000;background:#0c3947;color:#b5f7ff;border:1px solid #55b7c5;border-radius:9px;padding:10px 14px;text-decoration:none;font:600 12px system-ui;box-shadow:0 4px 20px #0008">架构设计权衡 ↗</a>
 <header class="header">
  <div><h1 class="brand" style="margin:0">SEETHE<b>TRUTH</b> <span style="font-weight:400;color:#7cb0c4">/ LEARNING STUDIO</span></h1>
   <div class="sub">自由连接积木 · 检查形状 · 运行微型数值</div></div>
- <nav class="head-actions" aria-label="学习与实验室导航"><a id="jumpToGraph" class="btn ghost" href="#stt-main">查看当前计算图</a><a id="jumpToCatalog" class="btn ghost" href="#stt-catalog">选择课程／积木</a><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><details class="stt-lab-menu"><summary>其他实验室</summary><div class="stt-lab-menu-items"><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div></details><span class="badge warning">TEACHING SIMULATION · 合成教学计算</span></nav>
+ <nav class="head-actions" aria-label="学习与实验室导航"><a id="jumpToGraph" class="btn ghost" href="#stt-main">查看当前计算图</a><a id="jumpToCatalog" class="btn ghost" href="#stt-catalog">选择课程／积木</a><a class="btn ghost" href="teaching.html">▤ 教学中心 · 双端同步</a><a class="btn primary" href="training.html">∂ 训练与优化器</a><details class="stt-lab-menu"><summary>其他实验室</summary><div class="stt-lab-menu-items"><a class="btn ghost" href="tradeoffs.html">架构成本与性能权衡</a><a class="btn ghost" href="engineering_journey.html">工程训练路线</a><a class="btn ghost" href="engineering_pipeline.html">训练流水线</a><a class="btn ghost" href="real_model_lab.html">◉ 真实小模型证据</a><a class="btn ghost" href="paper_lab.html">◇ 论文变换（拓展）</a><a class="btn ghost" href="micro_training.html">∂ 多参数 / MoE / PPO</a><a class="btn ghost" href="cache.html">◷ KV Cache 时间线</a><a class="btn ghost" href="deepinfer_worker_lab.html">⇥ DeepInfer Worker 时序</a><a class="btn ghost" href="deepinfer_kv_lifecycle_lab.html">◈ DeepInfer KV 生命周期</a><a class="btn ghost" href="deepinfer_scheduler_lab.html">⇄ Scheduler / KV / Worker</a><a class="btn ghost" href="deepinfer_prefill_lab.html">◈ Prefill / 多模态 Chunk</a><a class="btn ghost" href="index.html">◈ 全息源码图谱</a><a class="btn ghost" href="telemetry.html">◉ 研究扩展 · 性能（可选）</a></div></details><span class="badge warning">TEACHING SIMULATION · 合成教学计算</span></nav>
 </header>
 <div class="app">
  <aside class="rail" id="stt-catalog">
@@ -762,15 +761,17 @@ $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
 // Small teaching graphs should fit the actual available canvas in both axes.
 // Larger research DAGs preserve readable zoom and explicit scrolling.
-function graphFitScale(extent,viewport){
- const widthFit=Math.max(.72,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+function graphFitScale(extent,viewport,explicit=false){
+ const availableWidth=(Math.max(480,viewport.clientWidth)-24)/extent;
+ const widthFit=explicit?Math.max(.25,Math.min(1,availableWidth)):
+  Math.max(.72,Math.min(1,availableWidth));
  if(graph.nodes.length>8)return widthFit;
  const maxNodeBottom=Math.max(1,...graph.nodes.map(n=>n.y+230));
  const heightFit=Math.max(.5,Math.min(1,(Math.max(280,viewport.clientHeight)-22)/maxNodeBottom));
  return Math.min(widthFit,heightFit);
 }
 $("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
- zoomOverride=graphFitScale(extent,$("#viewport"));zoomMode="fit";render();
+ zoomOverride=graphFitScale(extent,$("#viewport"),true);zoomMode="fit";render();
  $("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;};
 $("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;zoomMode="readable";render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
