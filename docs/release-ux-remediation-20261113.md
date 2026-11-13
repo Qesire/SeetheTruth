@@ -29,3 +29,7 @@
 本地执行环境阻止 Chromium 访问 `127.0.0.1` HTTP，因此 **实际 HTTP 全站测试与新任务路径尚未本地通过**，必须以 GitHub Actions 对当前提交的真实工作流结果判断。静态 `set_content` 截图不能代替正式动态页面截图，更不能代替 Android 真机。
 
 公开发布依然需要由项目所有者决定许可证和第三方权利、审查合并候选、在最终 `main`/Tag 提交重新验收并准备分发工件。Beta 仍需要 Android 真机和非作者贯通任务的实测。不要为通过门禁而添加不相关的模型算子。
+
+### GitHub Actions 运行环境修订（2026-11-13）
+
+首次整改提交 `83d635f` 的 CI 实际下载并安装了 Noto Sans CJK SC，但浏览器尚未执行：`ubuntu-latest` 已升级至 Ubuntu 26.04，固定的 Playwright 1.55.0 在安装 Chromium 时返回 `does not support chromium on ubuntu26.04-x64`。现将浏览器验收 job 明确固定到 `ubuntu-24.04`，需以新提交的完整 HTTP 验收结果确认；此前失败不属于页面渲染结论。

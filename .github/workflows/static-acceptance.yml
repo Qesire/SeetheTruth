@@ -6,7 +6,8 @@ permissions:
   contents: read
 jobs:
   simulation-and-browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 is supported on Ubuntu 24.04, not ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
