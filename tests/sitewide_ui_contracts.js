@@ -31,6 +31,9 @@ for(const p of PAGES){
 }
 const studio=read('learn.html'),source=read('teaching_hub.js');
 assert.ok(studio.includes('id="jumpToGraph"')&&studio.includes('href="#stt-main"'));
+assert.ok(studio.includes('id="mobileNumericToggle"')&&studio.includes('id="mobileRun"')&&
+  studio.includes('id="mobileViewResult"')&&studio.includes('id="advancedGraphTools"')&&
+  studio.includes('id="focusCurrent"'),'mobile first-use task controls must exist');
 assert.ok(studio.includes('id="executionMode"')&&studio.includes('id="executionStep"'),
     'learning studio lacks source-bound execution context');
 assert.ok(read('teaching_hub.js').includes('lessonActions[l.id]'),
@@ -55,6 +58,7 @@ for(const lab of Core.labs){
    'specialist Android source route missing '+lab.href);
 }
 const telemetry=read('telemetry.html');
+assert.ok(telemetry.includes('id="telemetrySourceState"'), 'telemetry lacks visible source evidence identity');
 for(const name of ['aria-label="热力图编码方式"','aria-label="采样值统计视图"',
  'aria-label="张量数值热力图"','aria-label="张量采样值的统计图"'])
  assert.ok(telemetry.includes(name),'inaccessible telemetry control '+name);
