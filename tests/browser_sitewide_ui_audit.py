@@ -162,6 +162,38 @@ class SitewideHumanInterface(unittest.TestCase):
         finally:
             page.close()
 
+    def test_small_graph_fit_respects_both_canvas_axes(self):
+        # UI chrome changes may reduce canvas height even when its width is
+        # unchanged. Every node of a small named teaching graph must fit.
+        page=self.browser.new_page(viewport={"width":1600,"height":1000})
+        errors=[]
+        page.on("pageerror",lambda e:errors.append(str(e)))
+        try:
+            self.assertEqual(page.goto(self.base+"/learn.html").status,200)
+            page.locator('[data-preset="mask"]').click()
+            for explicit in (False,True):
+                if explicit:page.locator("#zoomFit").click()
+                proof=page.evaluate("""() => {
+                    const v=document.querySelector('#viewport').getBoundingClientRect();
+                    return {scale:Number(document.querySelector('#board').style.zoom),
+                        nodes:[...document.querySelectorAll('#blocks .block')].map(n=>{
+                            const r=n.getBoundingClientRect();
+                            return {id:n.dataset.node,left:r.left,right:r.right,top:r.top,bottom:r.bottom,
+                                viewport:{left:v.left,right:v.right,top:v.top,bottom:v.bottom}};
+                        })};
+                }""")
+                self.assertGreater(proof["scale"],.45)
+                for n in proof["nodes"]:
+                    with self.subTest(node=n["id"],explicitFit=explicit):
+                        v=n["viewport"]
+                        self.assertGreaterEqual(n["left"],v["left"]-3)
+                        self.assertLessEqual(n["right"],v["right"]+3)
+                        self.assertGreaterEqual(n["top"],v["top"]-3)
+                        self.assertLessEqual(n["bottom"],v["bottom"]+3)
+            self.assertEqual(errors,[])
+        finally:
+            page.close()
+
     def test_telemetry_source_tiers_are_visible_near_data(self):
         page=self.browser.new_page(viewport={"width":390,"height":844},
             is_mobile=True,has_touch=True)

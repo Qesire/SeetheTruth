@@ -760,7 +760,18 @@ function renderComposite(){
 $("#compositeLaunch").onclick=()=>openComposite("decoder",[]);
 $("#zoomIn").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)+.2);
 $("#zoomOut").onclick=()=>adjustZoom((Number($("#board").style.zoom)||1)-.2);
-$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;const width=Math.max(480,$("#viewport").clientWidth)-24;zoomOverride=Math.max(.25,Math.min(1,width/extent));zoomMode="fit";render();$("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;};
+// Small teaching graphs should fit the actual available canvas in both axes.
+// Larger research DAGs preserve readable zoom and explicit scrolling.
+function graphFitScale(extent,viewport){
+ const widthFit=Math.max(.72,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ if(graph.nodes.length>8)return widthFit;
+ const maxNodeBottom=Math.max(1,...graph.nodes.map(n=>n.y+230));
+ const heightFit=Math.max(.5,Math.min(1,(Math.max(280,viewport.clientHeight)-22)/maxNodeBottom));
+ return Math.min(widthFit,heightFit);
+}
+$("#zoomFit").onclick=()=>{const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
+ zoomOverride=graphFitScale(extent,$("#viewport"));zoomMode="fit";render();
+ $("#viewport").scrollLeft=0;$("#viewport").scrollTop=0;};
 $("#autoLayout").onclick=()=>{mutate(g=>G.layout(g));zoomOverride=null;zoomMode="readable";render();say("布局已整理；仅调整位置，参数与连线保持不变。");};
 $("#compositeBack").onclick=()=>{
  if(compositeHistory.length)openComposite(compositeHistory.at(-1),compositeHistory.slice(0,-1));
@@ -1388,7 +1399,7 @@ function render(){
  renderComposite();
  const extent=Math.max(850,...graph.nodes.map(n=>n.x+235))+30;
  const viewport=$("#viewport");
- const fit=Math.max(.72,Math.min(1,(Math.max(480,viewport.clientWidth)-24)/extent));
+ const fit=graphFitScale(extent,viewport);
  const factor=zoomOverride===null?fit:zoomOverride;
  $("#board").style.width=extent+"px";
  $("#board").style.height=Math.max(800,...graph.nodes.map(n=>n.y+175))+30+"px";
